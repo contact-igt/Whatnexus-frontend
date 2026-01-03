@@ -1,0 +1,105 @@
+
+"use client";
+
+import { UserPlus, Shield, MoreHorizontal } from 'lucide-react';
+import { GlassCard } from "@/components/ui/glass-card";
+import { AGENTS } from "@/lib/data";
+import { cn } from "@/lib/utils";
+
+interface TeamManagementViewProps {
+    isDarkMode: boolean;
+}
+
+export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => (
+    <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
+        <div className="flex justify-between items-end border-b border-white/5 pb-6">
+            <div>
+                <h1 className={cn("text-4xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Agent Matrix</h1>
+                <p className={cn("font-medium text-sm mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Manage shared inbox permissions and neural layer overrides.</p>
+            </div>
+            <button className="h-12 px-6 rounded-xl bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-500/20 flex items-center space-x-2">
+                <UserPlus size={16} />
+                <span>Invite Node</span>
+            </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+                <GlassCard isDarkMode={isDarkMode} className="p-0">
+                    <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5 rounded-t-2xl">
+                        <h3 className="font-bold uppercase tracking-tight text-sm">Active Nodes</h3>
+                        <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wide">4 Human Shards</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className={cn("text-[10px] font-bold uppercase tracking-wider", isDarkMode ? 'text-white/20' : 'text-slate-400')}>
+                                    <th className="px-8 py-4">Identity</th>
+                                    <th className="px-8 py-4">Pulse</th>
+                                    <th className="px-8 py-4 text-center">Load</th>
+                                    <th className="px-8 py-4">Security Role</th>
+                                    <th className="px-8 py-4 text-right">Settings</th>
+                                </tr>
+                            </thead>
+                            <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
+                                {AGENTS.map((agent) => (
+                                    <tr key={agent.id} className="group transition-all hover:bg-emerald-500/5">
+                                        <td className="px-8 py-4">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-white/10 group-hover:rotate-6 transition-transform shadow-lg">{agent.avatar}</div>
+                                                <span className={cn("text-sm font-semibold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-800')}>{agent.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <div className="flex items-center space-x-2">
+                                                <div className={cn("w-2 h-2 rounded-full", agent.status === 'Online' ? 'bg-emerald-500 animate-pulse' : agent.status === 'Busy' ? 'bg-orange-500' : 'bg-slate-600')} />
+                                                <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/50' : 'text-slate-500')}>{agent.status}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-4 text-center">
+                                            <span className={cn("text-xs font-bold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>{Math.floor(Math.random() * 10)} / 15</span>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <span className={cn("text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide", agent.role === 'Super Admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20')}>{agent.role}</span>
+                                        </td>
+                                        <td className="px-8 py-4 text-right">
+                                            <button className="p-2 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"><MoreHorizontal size={18} /></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </GlassCard>
+            </div>
+
+            <div className="space-y-6">
+                <GlassCard isDarkMode={isDarkMode} className="p-6 space-y-6">
+                    <div className="flex items-center space-x-2.5 text-emerald-500">
+                        <Shield size={20} className="animate-pulse" />
+                        <h3 className="font-bold text-base uppercase tracking-tight">Permission Matrix</h3>
+                    </div>
+                    <p className="text-[11px] font-medium text-slate-400 leading-relaxed uppercase tracking-wide">Define global overrides for human agents vs neural Receptionist.</p>
+
+                    <div className="space-y-3 pt-3 border-t border-white/5">
+                        {[
+                            { label: "Override AI Conversation", active: true },
+                            { label: "Mass Broadcast Access", active: true },
+                            { label: "Modify Knowledge Base", active: false },
+                            { label: "Delete Customer Data", active: false },
+                            { label: "Configure API Logic", active: false },
+                        ].map((perm, i) => (
+                            <div key={i} className={cn("p-3 rounded-xl border flex items-center justify-between transition-all group/item", isDarkMode ? 'bg-white/5 border-white/5 hover:border-white/10' : 'bg-slate-50 border-slate-100 hover:border-emerald-500/10')}>
+                                <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/80' : 'text-slate-700')}>{perm.label}</span>
+                                <button className={cn("w-9 h-5 rounded-full relative transition-all duration-300", perm.active ? 'bg-emerald-600' : 'bg-slate-700')}>
+                                    <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-300", perm.active ? 'right-0.5' : 'left-0.5 shadow-sm')} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <button className="w-full py-3 rounded-xl border border-white/10 text-[10px] font-bold uppercase tracking-wide hover:bg-white/5 transition-all">Reset All Permissions</button>
+                </GlassCard>
+            </div>
+        </div>
+    </div>
+);

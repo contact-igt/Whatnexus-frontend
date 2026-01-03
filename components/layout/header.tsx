@@ -1,0 +1,49 @@
+
+"use client";
+
+import { Globe, Bell, Command } from 'lucide-react';
+import { BRAND_NAME } from "@/lib/data";
+import { cn } from "@/lib/utils";
+
+interface HeaderProps {
+    isDarkMode: boolean;
+}
+
+export const Header = ({ isDarkMode }: HeaderProps) => {
+    return (
+        <header className={cn("h-20 shrink-0 flex items-center justify-between px-10 transition-all duration-700 border-b", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
+            <div className="flex items-center space-x-8">
+                <span className={cn("text-2xl font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>{BRAND_NAME}<span className="text-emerald-500">.</span></span>
+                <div className={cn("h-8 w-px", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2.5">
+                        <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Receptionist: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>Active</span></span>
+                    </div>
+                    <div className="flex items-center space-x-2.5">
+                        <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                        <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Region: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>GLOBAL_X</span></span>
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center space-x-10">
+                <div className={cn("flex items-center space-x-4 group cursor-pointer transition-all", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                    <Globe size={18} className="text-emerald-500 group-hover:rotate-180 transition-transform duration-1000" />
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Strategic Sync</span>
+                        <span className={cn("text-[11px] font-black uppercase tracking-widest", isDarkMode ? 'text-white' : 'text-slate-900')}>Optimized Hub</span>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <button className={cn("p-3.5 rounded-2xl transition-all relative border", isDarkMode ? 'border-white/5 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-400')}>
+                        <Bell size={20} />
+                        <div className="absolute top-3.5 right-3.5 w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
+                    </button>
+                    <button className={cn("p-3.5 rounded-2xl transition-all relative border", isDarkMode ? 'border-white/5 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-400')}>
+                        <Command size={20} />
+                    </button>
+                </div>
+            </div>
+        </header>
+    );
+};
