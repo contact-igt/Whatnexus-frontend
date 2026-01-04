@@ -10,7 +10,7 @@ import { DashboardView } from "@/components/views/dashboard-view";
 import { LeadsView } from "@/components/views/leads-view";
 import { ChatView } from "@/components/views/chat-view";
 import { TeamManagementView } from "@/components/views/team-view";
-import { KnowledgeView } from "@/components/views/knowledge-view";
+import { KnowledgeView } from "@/components/views/knowledge/knowledge-view";
 import { BroadcastView } from "@/components/views/broadcast-view";
 import { LogicView } from "@/components/views/logic-view";
 import { SystemGovernanceView } from "@/components/views/system-view";
