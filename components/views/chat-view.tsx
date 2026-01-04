@@ -1,12 +1,14 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { MESSAGES_MOCK, CONTACTS_MOCK, AGENTS } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import { useAddMessageMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
+import { callOpenAI } from '@/lib/openai';
 
 interface ChatViewProps {
     isDarkMode: boolean;
@@ -14,35 +16,246 @@ interface ChatViewProps {
     setSelectedContact: (contact: typeof CONTACTS_MOCK[0]) => void;
 }
 
+const getDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    const diffDays =
+        (startOfToday.getTime() - startOfDate.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7)
+        return date.toLocaleDateString("en-US", { weekday: "long" });
+
+    return date.toLocaleDateString("en-GB");
+};
+
+const formatChatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+
+    const startOfToday = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+    );
+
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfToday.getDate() - 1);
+
+    // Today → show time
+    if (date >= startOfToday) {
+        return date.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+        });
+    }
+
+    // Yesterday → show "Yesterday"
+    if (date >= startOfYesterday) {
+        return "Yesterday";
+    }
+
+    // Within last 7 days → show weekday
+    const diffDays =
+        (startOfToday.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (diffDays < 7) {
+        return date.toLocaleDateString("en-IN", { weekday: "long" });
+    }
+
+    // Older → show date
+    return date.toLocaleDateString("en-GB");
+};
+
+const formattedTime = (dateString: any) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+
+    return date.toLocaleTimeString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    });
+}
+
+
 export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: ChatViewProps) => {
-    const [messages, setMessages] = useState(MESSAGES_MOCK);
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const {
+        data: chatList,
+        isLoading: isChatsLoading,
+        isError: isChatsError,
+    } = useGetAllChatsQuery();
+    const [filteredChats, setFilteredChats] = useState(chatList?.data);
+    const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
+    const [messageSearchText, setMessageSearchText] = useState("");
+    const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
+    const [chatSearchText, setChatSearchText] = useState("");
+    const [selectedChat, setSelectedChat] = useState<any>(null);
+    const {
+        data: messagesData,
+        isLoading: isMessagesLoading,
+        isError: isMessagesError,
+    } = useMessagesByPhoneQuery(selectedChat?.phone);
     const [inputValue, setInputValue] = useState('');
     const [isSuggesting, setIsSuggesting] = useState(false);
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [chatSummary, setChatSummary] = useState<string | null>(null);
+    const { mutate: updateSeenMutate } = useUpdateSeenMutation();
+    const [message, setMessage] = useState<string>("");
 
-    const handleSendMessage = (textOverride: string | null = null) => {
-        const text = textOverride || inputValue;
-        if (!text.trim()) return;
-        const newMessage = {
-            id: messages.length + 1,
-            sender: 'John Doe',
-            text: text,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            type: 'outgoing'
-        };
-        setMessages([...messages, newMessage]);
-        if (!textOverride) setInputValue('');
+    const [chatFilter, setChatFilter] = useState<'all' | 'read' | 'unread'>('all');
+
+    const handleInputChange = (e: any) => {
+        setMessage(e.target.value);
+    }
+
+    console.log(chatList);
+
+    const handleChatSearch = (e: any) => {
+        setChatSearchText(e.target.value);
+    }
+
+    const handleMessageSearch = (e: any) => {
+        setMessageSearchText(e.target.value);
+    }
+
+    const handleSelectChat = (chat: any) => {
+        setSelectedChat({
+            phone: chat?.phone,
+            name: chat?.name ?? chat.phone,
+        });
+        if (selectedChat?.phone !== chat?.phone) {
+            setMessage("");
+            setChatSummary(null);
+        }
     };
+
+    useEffect(() => {
+        if (!selectedChat?.phone) return;
+        if (!chatList?.data?.length) return;
+
+        const hasUnreadUserMessages = chatList.data.some(
+            (msg: any) => msg.seen === "false"
+        );
+        if (hasUnreadUserMessages) {
+            updateSeenMutate(selectedChat?.phone);
+        }
+    }, [selectedChat?.phone, chatList?.data]);
+
+    const groupMessagesByDate = (messages: any[] = []) => {
+        console.log(messages)
+        return messages?.reduce((groups: any, msg: any) => {
+            const label = getDateLabel(msg.created_at || msg.timestamp);
+
+            if (!groups[label]) {
+                groups[label] = [];
+            }
+
+            groups[label].push(msg);
+            return groups;
+        }, {});
+    };
+
+    const handleSendMessage = () => {
+        if (!message.trim() || isPending) return;
+
+        const messageText = message.trim();
+        sendMessageMutate({
+            phone: selectedChat?.phone,
+            message: messageText,
+        });
+        setMessage("");
+    }
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const value = chatSearchText.trim().toLowerCase();
+            let filtered = chatList?.data;
+            console.log("chats", chatList?.data)
+            if (value) {
+                filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
+            }
+            console.log("chatFilter", chatFilter)
+            if (chatFilter === 'read') {
+                filtered = filtered?.filter((chat: any) => chat?.seen == "true");
+            } else if (chatFilter === 'unread') {
+                filtered = filtered?.filter((chat: any) => chat?.seen == "false" || chat?.seen == null);
+            }
+            console.log("filtered", filtered)
+            setFilteredChats(filtered);
+        }, 200);
+
+        return () => clearTimeout(timer);
+    }, [chatSearchText, chatList, chatFilter])
+
+    useEffect(() => {
+        const value = messageSearchText?.trim().toLowerCase();
+        let messagesToFilter = messagesData?.data;
+
+        if (!value) {
+            setFilteredMessage(messagesToFilter);
+            return;
+        }
+        const filtered = messagesToFilter?.filter((msg: any) =>
+            msg?.message?.toLowerCase().includes(value)
+        );
+        console.log("filtered", filtered)
+        setFilteredMessage(filtered);
+
+    }, [messageSearchText, selectedChat, messagesData]);
+
+    useEffect(() => {
+        if (chatList?.data?.length && !selectedChat) {
+            setSelectedChat({
+                phone: chatList.data[0].phone,
+                name: chatList.data[0].name ?? chatList.data[0].phone,
+            });
+        }
+    }, [chatList, selectedChat]);
+    const isSearching = messageSearchText.trim().length > 0;
+
+    const displayMessages = isSearching
+        ? filteredMessage
+        : messagesData?.data || [];
+    const groupedMessages = groupMessagesByDate(displayMessages);
+    const groupedEntries = Object.entries(groupedMessages);
+
+    useEffect(() => {
+        bottomRef?.current?.scrollIntoView({
+            behavior: "smooth",
+        })
+    }, [groupedMessages])
+
+    // const handleSendMessage = (textOverride: string | null = null) => {
+    //     const text = textOverride || inputValue;
+    //     if (!text.trim()) return;
+    //     const newMessage = {
+    //         id: messages.length + 1,
+    //         sender: 'John Doe',
+    //         text: text,
+    //         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    //         type: 'outgoing'
+    //     };
+    //     setMessages([...messages, newMessage]);
+    //     if (!textOverride) setInputValue('');
+    // };
 
     const suggestReply = async () => {
         setIsSuggesting(true);
         try {
-            const history = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
-            const prompt = `Based on this conversation history for WhatsNexus, suggest a professional and helpful short next message to send to ${selectedContact.name}. 
+            const history = messagesData?.data.map((m: any) => `${m.sender}: ${m.message}`).join('\n');
+            const prompt = `Based on this conversation history for WhatsNexus, suggest a professional and helpful short next message to send to ${selectedChat.name || selectedChat.phone}. 
       History:\n${history}\n\nReturn ONLY the message text.`;
-            const result = await callGemini(prompt, "You are a professional AI Receptionist for a SaaS platform.");
-            setInputValue(result);
+            const result = await callOpenAI(prompt, "You are a professional AI Receptionist for a SaaS platform.");
+            console.log("result", result)
+            setMessage(result);
         } catch (err) {
             console.error(err);
         } finally {
@@ -54,11 +267,12 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         setIsSummarizing(true);
         setChatSummary(null);
         try {
-            const history = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
-            const prompt = `Summarize this conversation between a business AI receptionist and a lead named ${selectedContact.name}. 
+            const history = messagesData?.data?.map((m: any) => `${m.sender}: ${m.message}`).join('\n');
+            const prompt = `Summarize this conversation between a business AI receptionist and a lead named ${selectedChat.name || selectedChat.phone}. 
       Highlight the key needs of the lead and any pending action items. Keep it under 40 words.
       History:\n${history}`;
-            const result = await callGemini(prompt, "You are a concise business analyst.");
+            const result = await callOpenAI(prompt, "You are a concise business analyst.");
+            console.log("result", result)
             setChatSummary(result);
         } catch (err) {
             setChatSummary("Unable to generate neural brief. Retry sync.");
@@ -80,7 +294,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                     </div>
                     <div className="relative group">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-emerald-500 transition-colors" size={14} />
-                        <input type="text" placeholder="Search Threads..." className={cn("w-full border rounded-xl py-2.5 pl-10 pr-4 text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20", isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')} />
+                        <input onChange={handleChatSearch} type="text" placeholder="Search Threads..." className={cn("w-full border rounded-xl py-2.5 pl-10 pr-4 text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20", isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')} />
                     </div>
                     <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-1">
                         {['All', 'Assigned', 'Unassigned'].map(f => (
@@ -89,21 +303,36 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto px-2 space-y-1 no-scrollbar py-4">
-                    {CONTACTS_MOCK.map((c, i) => (
-                        <button key={c.id} onClick={() => setSelectedContact(c)} className={cn("w-full p-3 rounded-xl flex items-center space-x-3 transition-all duration-200", selectedContact.id === c.id ? (isDarkMode ? 'bg-white/10 shadow-lg' : 'bg-white shadow-md border border-emerald-100') : (isDarkMode ? 'hover:bg-white/5 opacity-60' : 'hover:bg-slate-50 opacity-80'))}>
-                            <div className="relative">
-                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border transition-all", selectedContact.id === c.id ? 'scale-105' : '', isDarkMode ? 'bg-white/10 text-white border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200')}>{c.name[0]}</div>
-                                {c.active && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 bg-emerald-500 border-[#151518] shadow-sm shadow-emerald-500/50 animate-pulse" />}
-                            </div>
-                            <div className="flex-1 text-left truncate">
-                                <div className="flex justify-between items-center mb-0.5">
-                                    <span className={cn("text-xs font-bold block", isDarkMode ? 'text-white' : 'text-slate-900')}>{c.name}</span>
-                                    <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded border", c.assignedTo ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')}>{c.assignedTo ? 'AGENT' : 'AI'}</span>
+                    {isChatsLoading ? (
+                        Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className={cn("w-full p-3 rounded-xl flex items-center space-x-3 mb-1", isDarkMode ? "bg-white/5" : "bg-slate-50")}>
+                                <div className={cn("w-10 h-10 rounded-xl animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                <div className="flex-1 space-y-2">
+                                    <div className={cn("h-3 w-24 rounded animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                    <div className={cn("h-2 w-32 rounded animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
                                 </div>
-                                <span className={cn("text-[10px] font-medium truncate block", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{c.lastMsg}</span>
                             </div>
-                        </button>
-                    ))}
+                        ))
+                    ) : filteredChats && filteredChats?.length > 0 ? (
+                        filteredChats?.map((chat: any, i: number) => (
+                            <button key={i} onClick={() => handleSelectChat(chat)} className={cn("w-full p-3 rounded-xl flex items-center space-x-3 transition-all duration-200", selectedChat?.phone === chat?.phone ? (isDarkMode ? 'bg-white/10 shadow-lg' : 'bg-white shadow-md border border-emerald-100') : (isDarkMode ? 'hover:bg-white/5 opacity-60' : 'hover:bg-slate-50 opacity-80'))}>
+                                <div className="relative">
+                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border transition-all", selectedChat?.phone === chat?.phone ? 'scale-105' : '', isDarkMode ? 'bg-white/10 text-white border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200')}>{chat?.name}</div>
+                                    {chat.seen && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 bg-emerald-500 border-[#151518] shadow-sm shadow-emerald-500/50 animate-pulse" />}
+                                </div>
+                                <div className="flex-1 text-left truncate">
+                                    <div className="flex justify-between items-center mb-0.5">
+                                        <span className={cn("text-xs font-bold block", isDarkMode ? 'text-white' : 'text-slate-900')}>{chat?.name || chat.phone}</span>
+                                        {/* <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded border", chat.seen ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')}>{chat.seen ? 'AGENT' : 'AI'}</span> */}
+                                    </div>
+                                    <span className={cn("text-[10px] font-medium truncate block", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{chat.message}</span>
+                                </div>
+                            </button>
+                        ))) : (
+                        <div className="flex-1 flex items-center justify-center">
+                            <span className="text-slate-500 text-sm">No chats found</span>
+                        </div>
+                    )}
                 </div>
             </GlassCard>
 
@@ -155,7 +384,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                         <div className="flex items-center space-x-3">
                             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedContact.name[0]}</div>
                             <div>
-                                <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedContact.name}</h3>
+                                <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.phone}</h3>
                                 <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
                             </div>
                         </div>
@@ -174,26 +403,53 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
-                        {messages.map((m, i) => (
-                            <div key={m.id} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", m.type === 'incoming' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}>
-                                <div className="max-w-[70%] group">
-                                    <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
-                                        m.type === 'ai'
-                                            ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
-                                            : m.type === 'incoming'
-                                                ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
-                                                : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
-                                    )}>
-                                        {m.type === 'ai' && (
-                                            <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
-                                                <Sparkles size={10} className="animate-pulse" />
-                                                <span>AI Receptionist Layer</span>
-                                            </div>
-                                        )}
-                                        {m.text}
+                        {isMessagesLoading ? (
+                            <div className="space-y-6">
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                    <div key={i} className="space-y-4">
+                                        <div className="flex justify-start">
+                                            <div className={cn("w-[60%] h-16 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <div className={cn("w-[60%] h-12 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                        </div>
                                     </div>
-                                    <p className={cn("text-[9px] font-bold uppercase tracking-wide mt-2 opacity-40", m.type === 'incoming' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{m.time}</p>
+                                ))}
+                            </div>
+                        ) : groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
+                            <div key={index}>
+                                <div className="flex justify-center my-6 sticky top-0 z-10">
+                                    <span className={cn(
+                                        "px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-sm backdrop-blur-md border transition-all",
+                                        isDarkMode
+                                            ? "bg-[#1A1A1B]/80 text-white/80 border-white/10 shadow-black/20"
+                                            : "bg-white/80 text-slate-600 border-slate-200 shadow-slate-200/50"
+                                    )}>
+                                        {dateLabel}
+                                    </span>
                                 </div>
+                                {msgs.map((msg: any, msgIndex: number) => (
+                                    <div key={msg.id || msgIndex} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", msg.sender === 'user' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${msgIndex * 50}ms`, animationFillMode: 'both' }}>
+                                        <div className="max-w-[70%] group">
+                                            <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
+                                                msg.sender === 'bot'
+                                                    ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
+                                                    : msg.sender === 'user'
+                                                        ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
+                                                        : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
+                                            )}>
+                                                {msg.sender === 'bot' && (
+                                                    <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
+                                                        <Sparkles size={10} className="animate-pulse" />
+                                                        <span>AI Receptionist Layer</span>
+                                                    </div>
+                                                )}
+                                                {msg.message}
+                                            </div>
+                                            <p className={cn("text-[9px] font-bold uppercase tracking-wide my-2 opacity-40", msg.sender === 'user' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{formattedTime(msg.created_at)}</p>
+                                        </div>
+                                    </div>))}
+                                    <div ref={bottomRef}/>
                             </div>
                         ))}
                     </div>
@@ -221,15 +477,21 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                                 <button className="p-3 transition-all hover:scale-110 text-emerald-500 hover:bg-emerald-500/10 rounded-xl"><Plus size={18} /></button>
                                 <textarea
                                     rows={1}
-                                    value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+                                    value={message}
+                                    onChange={handleInputChange}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleSendMessage();
+                                            setMessage("");
+                                        }
+                                    }}
                                     placeholder="Type a neural response..."
                                     className={cn("flex-1 bg-transparent border-none focus:ring-0 text-[13px] py-3 resize-none max-h-32 focus:outline-none transition-colors", isDarkMode ? 'text-white placeholder:text-white/20' : 'text-slate-900')}
                                 />
                                 <div className="flex items-center space-x-1 pb-1">
                                     <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
-                                    <button onClick={() => handleSendMessage()} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"><Send size={16} /></button>
+                                    <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"><Send size={16} /></button>
                                 </div>
                             </div>
                         </div>
