@@ -99,7 +99,7 @@ export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) 
                                     <input
                                         type="checkbox"
                                         className="sr-only peer"
-                                        checked={setting.setting_value}
+                                        checked={setting.setting_value=="true"}
                                         onChange={() => handleToggleActive(setting.id, setting.setting_value)}
                                     />
                                     <div className={cn(
@@ -109,7 +109,7 @@ export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) 
                                     )}>
                                         <div className={cn(
                                             "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all shadow-sm",
-                                            setting.setting_value ? "translate-x-5" : "translate-x-0"
+                                            setting.setting_value=="true" ? "translate-x-5" : "translate-x-0"
                                         )} />
                                     </div>
                                 </label>

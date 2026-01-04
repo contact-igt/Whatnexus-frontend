@@ -347,8 +347,8 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                             className={cn(
                                 "px-6 py-2.5 rounded-xl text-sm font-semibold transition-all border",
                                 isDarkMode
-                                    ? 'border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
-                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    ? ` ${isView ? 'bg-red-500 border-white/10 text-white hover:bg-red-600 hover:text-white' : 'border-slate-200 text-slate-600  text-white/70 hover:bg-white/5 hover:text-white'}`
+                                    : `${isView ? 'border-none text-white bg-red-500 hover:bg-red-600 hover:text-white' : 'border-slate-200 text-slate-600  hover:bg-slate-50 hover:text-slate-900'}`
                             )}
                         >
                             {isView ? "Close" : "Cancel"}
@@ -374,29 +374,6 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                 <div className="space-y-5">
                     {isKnowledge && (
                         <>
-                            <div>
-                                <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                    Title
-                                </label>
-                                <div className="relative">
-                                    <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                        <Type size={16} />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        disabled={isView}
-                                        value={isEdit ? (editContent?.name || selectedItem?.item?.title || selectedItem?.item?.file_name) : (selectedItem?.item?.title || selectedItem?.item?.file_name)}
-                                        onChange={(e) => setEditContent({ ...editContent, name: e.target.value })}
-                                        className={cn(
-                                            "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
-                                            isView && "opacity-60 cursor-not-allowed",
-                                            isDarkMode
-                                                ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
-                                        )}
-                                    />
-                                </div>
-                            </div>
 
                             {(selectedItem?.item?.type === 'text' || selectedItem?.item?.text) && (
                                 <div>
@@ -418,30 +395,6 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                                 isDarkMode
                                                     ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
                                                     : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
-                                            )}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedItem?.item?.source_url && (
-                                <div>
-                                    <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                        Source URL
-                                    </label>
-                                    <div className="relative">
-                                        <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                            <Link2 size={16} />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            disabled
-                                            value={selectedItem?.item?.source_url}
-                                            className={cn(
-                                                "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none opacity-60 cursor-not-allowed",
-                                                isDarkMode
-                                                    ? 'bg-white/5 border-white/10 text-white'
-                                                    : 'bg-white border-slate-200 text-slate-900'
                                             )}
                                         />
                                     </div>

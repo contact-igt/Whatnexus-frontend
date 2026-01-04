@@ -19,22 +19,22 @@ export const useGetAllSettingQuery = () => {
     return { data, isLoading, isError };
 };
 
-export const useUpdateSettingMutation = ()=>{
-    const queryClient = useQueryClient();
+// export const useUpdateSettingMutation = ()=>{
+//     const queryClient = useQueryClient();
 
-    return useMutation({
-        mutationFn:(id: string, data: any)=>{
-            return SettingsApis.updateSettingById(id, data)
-        },
-        onSuccess:()=>{
-            queryClient.invalidateQueries({queryKey: ['settings']})
-            toast.success('Setting updated successfully!')
-        },
-        onError:(error: any)=>{
-            toast.error(error?.response?.data?.message || error.message || 'Failed to update setting')
-        }
-    })
-}
+//     return useMutation({
+//         mutationFn:(id: string, data: any)=>{
+//             return SettingsApis.updateSettingById(id, data)
+//         },
+//         onSuccess:()=>{
+//             queryClient.invalidateQueries({queryKey: ['settings']})
+//             toast.success('Setting updated successfully!')
+//         },
+//         onError:(error: any)=>{
+//             toast.error(error?.response?.data?.message || error.message || 'Failed to update setting')
+//         }
+//     })
+// }
 
 export const useActivateSettingMutation = ()=>{
     const queryClient = useQueryClient();
