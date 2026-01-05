@@ -81,7 +81,6 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
     const { mutate: createPromptMutate, isPending: isCreatePromptPending } = useCreatePromptMutation();
     const { mutate: activatePromptMutate, isPending: isActivatePromptPending } = useActivatePromptMutation();
 
-
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             validateAndSetFile(e.target.files[0]);
@@ -415,16 +414,19 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
+                                                disabled={promptsData?.data?.every((prompt: any)=> prompt?.is_active == "false") ? false : prompt.is_active == "true" ? false : true}
                                                 checked={prompt.is_active == "true" ? true : false}
                                                 onChange={() => handleToggleActive(prompt.id, prompt.is_active)}
                                             />
                                             <div className={cn(
                                                 "w-11 h-6 rounded-full peer transition-all",
                                                 "peer-checked:bg-emerald-600",
+                                                "peer-disabled:opacity-40 peer-disabled:cursor-not-allowed",
                                                 isDarkMode ? 'bg-white/10' : 'bg-slate-300'
                                             )}>
                                                 <div className={cn(
                                                     "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
+                                                    "peer-checked:translate-x-5",
                                                     prompt.is_active == "true" ? "translate-x-5" : "translate-x-0"
                                                 )} />
                                             </div>
