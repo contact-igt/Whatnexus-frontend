@@ -87,6 +87,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
     const handleDeleteFile = (index: number) => {
         setUploadedData((prev: any) => prev?.filter((_: any, i: number) => i !== index))
     }
+    
     const handleUploadKnowledge = async (type: 'file' | 'text' | 'url') => {
         const title = "Ophthall conclave conference";
         console.log("uploadedData", uploadedData)

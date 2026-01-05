@@ -439,7 +439,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                     <textarea
                                         rows={10}
                                         disabled={isView}
-                                        value={isEdit ? (editContent?.prompt || selectedItem?.item?.prompt) : selectedItem?.item?.prompt}
+                                        value={isEdit ? editContent?.prompt : selectedItem?.item?.prompt}
                                         onChange={(e) => setEditContent({ ...editContent, prompt: e.target.value })}
                                         className={cn(
                                             "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none resize-none custom-scrollbar",
