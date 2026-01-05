@@ -68,3 +68,19 @@ export const useUpdateSeenMutation = () => {
         },
     })
 }
+
+
+export const useChatSuggestMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: any) => {
+            return MessagesApis.chatSuggest(data);
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["messages", variables.phone],
+            });
+        },
+    });
+}

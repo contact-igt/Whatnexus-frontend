@@ -2,12 +2,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles } from 'lucide-react';
+import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { MESSAGES_MOCK, CONTACTS_MOCK, AGENTS } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
-import { useAddMessageMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
+import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
 
 interface ChatViewProps {
@@ -103,8 +103,8 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         isLoading: isMessagesLoading,
         isError: isMessagesError,
     } = useMessagesByPhoneQuery(selectedChat?.phone);
+    const {mutateAsync: chatSuggestMutate, isPending: isSuggesting} = useChatSuggestMutation();
     const [inputValue, setInputValue] = useState('');
-    const [isSuggesting, setIsSuggesting] = useState(false);
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [chatSummary, setChatSummary] = useState<string | null>(null);
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
@@ -248,18 +248,14 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
     // };
 
     const suggestReply = async () => {
-        setIsSuggesting(true);
         try {
-            const history = messagesData?.data.map((m: any) => `${m.sender}: ${m.message}`).join('\n');
-            const prompt = `Based on this conversation history for WhatsNexus, suggest a professional and helpful short next message to send to ${selectedChat.name || selectedChat.phone}. 
-      History:\n${history}\n\nReturn ONLY the message text.`;
-            const result = await callOpenAI(prompt, "You are a professional AI Receptionist for a SaaS platform.");
-            console.log("result", result)
-            setMessage(result);
+           const response = await chatSuggestMutate({
+                phone: selectedChat?.phone,
+            });
+            console.log("response", response)
+            setMessage(response?.data);
         } catch (err) {
             console.error(err);
-        } finally {
-            setIsSuggesting(false);
         }
     };
 
@@ -268,7 +264,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         setChatSummary(null);
         try {
             const history = messagesData?.data?.map((m: any) => `${m.sender}: ${m.message}`).join('\n');
-            const prompt = `Summarize this conversation between a business AI receptionist and a lead named ${selectedChat.name || selectedChat.phone}. 
+            const prompt = `Summarize this conversation between a business AI receptionist and a lead named ${selectedChat?.name || selectedChat?.phone}. 
       Highlight the key needs of the lead and any pending action items. Keep it under 40 words.
       History:\n${history}`;
             const result = await callOpenAI(prompt, "You are a concise business analyst.");
@@ -317,7 +313,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                         filteredChats?.map((chat: any, i: number) => (
                             <button key={i} onClick={() => handleSelectChat(chat)} className={cn("w-full p-3 rounded-xl flex items-center space-x-3 transition-all duration-200", selectedChat?.phone === chat?.phone ? (isDarkMode ? 'bg-white/10 shadow-lg' : 'bg-white shadow-md border border-emerald-100') : (isDarkMode ? 'hover:bg-white/5 opacity-60' : 'hover:bg-slate-50 opacity-80'))}>
                                 <div className="relative">
-                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border transition-all", selectedChat?.phone === chat?.phone ? 'scale-105' : '', isDarkMode ? 'bg-white/10 text-white border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200')}>{chat?.name}</div>
+                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border transition-all", selectedChat?.phone === chat?.phone ? 'scale-105' : '', isDarkMode ? 'bg-white/10 text-white border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200')}>{chat?.name ? chat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
                                     {chat.seen && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 bg-emerald-500 border-[#151518] shadow-sm shadow-emerald-500/50 animate-pulse" />}
                                 </div>
                                 <div className="flex-1 text-left truncate">
@@ -382,9 +378,9 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                 <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
                     <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
                         <div className="flex items-center space-x-3">
-                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedContact.name[0]}</div>
+                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
                             <div>
-                                <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.phone}</h3>
+                                <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.name ? selectedChat?.name : selectedChat?.phone}</h3>
                                 <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
                             </div>
                         </div>

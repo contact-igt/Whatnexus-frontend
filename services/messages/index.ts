@@ -24,4 +24,8 @@ export class MessagesApiData {
       `/chats/mark?phone=${phone}`
     );
   };
+
+  chatSuggest = async (data: any)=>{
+    return await _axios("post", "/chats/suggest", data)
+  }
 }
