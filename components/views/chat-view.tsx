@@ -169,6 +169,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         const messageText = message.trim();
         sendMessageMutate({
             phone: selectedChat?.phone,
+            name: selectedChat?.name,
             message: messageText,
         });
         setMessage("");
