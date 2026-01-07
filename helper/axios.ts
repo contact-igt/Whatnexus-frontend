@@ -28,7 +28,8 @@ export const _axios = async (
 
   const endpoint = `${APIURL}${url}`;
   const state: RootState = store.getState();
-  const token = process.env.META_ACCESS_TOKEN;
+  const activeTab = state?.auth?.activeTabData;
+  const token = activeTab == "chats" ? process.env.META_ACCESS_TOKEN : state?.auth?.token;
 
   if (token) {
     try {
