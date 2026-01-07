@@ -12,12 +12,14 @@ interface AuthState {
   token: string | null;
   refreshToken: string | null;
   user: User | null;
+  activeTabData: string;
 }
 
 const initialState: AuthState = {
   token: null,
   refreshToken: null,
   user: null,
+  activeTabData: 'dashboard',
 };
 
 const authSlice = createSlice({
@@ -32,6 +34,9 @@ const authSlice = createSlice({
       state.refreshToken = action.payload.refreshToken;
       state.user = action.payload.user;
     },
+    setActiveTabData: (state, action: PayloadAction<string>) => {
+      state.activeTabData = action.payload;
+    },
     clearAuthData: (state) => {
       state.token = null;
       state.refreshToken = null;
@@ -40,5 +45,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setAuthData, clearAuthData } = authSlice.actions;
+export const { setAuthData, clearAuthData, setActiveTabData } = authSlice.actions;
 export default authSlice.reducer;
