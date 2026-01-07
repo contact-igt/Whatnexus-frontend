@@ -1,15 +1,36 @@
 
 "use client";
 
-import { Globe, Bell, Command } from 'lucide-react';
+import { Globe, Bell } from 'lucide-react';
 import { BRAND_NAME } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { useState } from 'react';
+import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
+import { useDispatch } from 'react-redux';
+import { clearAuthData } from '@/redux/slices/auth/authSlice';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
     isDarkMode: boolean;
+    onNavigateToProfile: () => void;
 }
 
-export const Header = ({ isDarkMode }: HeaderProps) => {
+export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
+    const { user } = useAuth();
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const dispatch = useDispatch();
+    const router = useRouter();
+
+    const handleLogout = () => {
+        dispatch(clearAuthData());
+        router.push('/login');
+    };
+
+    const handleViewProfile = () => {
+        onNavigateToProfile();
+    };
+
     return (
         <header className={cn("h-20 shrink-0 flex items-center justify-between px-10 transition-all duration-700 border-b", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
             <div className="flex items-center space-x-8">
@@ -39,9 +60,33 @@ export const Header = ({ isDarkMode }: HeaderProps) => {
                         <Bell size={20} />
                         <div className="absolute top-3.5 right-3.5 w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
                     </button>
-                    <button className={cn("p-3.5 rounded-2xl transition-all relative border", isDarkMode ? 'border-white/5 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-400')}>
-                        <Command size={20} />
-                    </button>
+
+                    {/* User Profile Avatar with Dropdown */}
+                    <div className="relative">
+                        <div
+                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            className={cn(
+                                "rounded-2xl flex items-center font-black text-xs border cursor-pointer transition-all duration-300 overflow-hidden",
+                                "w-12 h-12 justify-center hover:rotate-6",
+                                isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-900 text-white border-slate-700'
+                            )}
+                        >
+                            <div className={cn("shrink-0 flex items-center justify-center")}>
+                                {user?.username?.split("")[0].toUpperCase()}
+                            </div>
+                        </div>
+
+                        {/* Dropdown */}
+                        {isProfileOpen && (
+                            <UserProfileDropdown
+                                isDarkMode={isDarkMode}
+                                user={user}
+                                onClose={() => setIsProfileOpen(false)}
+                                onLogout={handleLogout}
+                                onViewProfile={handleViewProfile}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
         </header>
