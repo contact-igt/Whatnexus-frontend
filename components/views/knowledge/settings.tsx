@@ -16,8 +16,8 @@ interface SettingsProps {
 }
 
 export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) => {
-    const {data: settingsData, isLoading: settingsPending} = useGetAllSettingQuery();
-    const {mutate: activateSettingMutate, isPending: activatePending} = useActivateSettingMutation();    // Mock State for Settings - In real app, this would come from API
+    const { data: settingsData, isLoading: settingsPending } = useGetAllSettingQuery();
+    const { mutate: activateSettingMutate, isPending: activatePending } = useActivateSettingMutation();    // Mock State for Settings - In real app, this would come from API
     const [settings, setSettings] = useState([
         {
             id: 'autoSync',
@@ -44,9 +44,9 @@ export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) 
 
     const handleToggleActive = (id: string, isActive: string) => {
         const data = {
-            setting_value: isActive == "true" ? "false" : "true" 
+            setting_value: isActive == "true" ? "false" : "true"
         }
-        activateSettingMutate({id, data})
+        activateSettingMutate({ id, data })
     };
 
     return (
@@ -67,7 +67,34 @@ export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) 
                 </div>
 
                 <div className="space-y-2">
-                    {settingsData?.data?.map((setting: any, index: number) => (
+                    {settingsPending ? (
+                        Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "flex items-center justify-between p-4 rounded-xl border animate-pulse",
+                                    isDarkMode
+                                        ? "bg-white/5 border-white/5"
+                                        : "bg-slate-50 border-slate-100"
+                                )}
+                            >
+                                <div className="flex items-center space-x-4">
+                                    <div className={cn(
+                                        "w-10 h-10 rounded-full shrink-0",
+                                        isDarkMode ? "bg-white/10" : "bg-slate-200"
+                                    )} />
+                                    <div className="space-y-2">
+                                        <div className={cn("h-4 w-40 rounded", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                        <div className={cn("h-3 w-64 rounded", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                    </div>
+                                </div>
+                                <div className={cn(
+                                    "w-11 h-6 rounded-full",
+                                    isDarkMode ? "bg-white/10" : "bg-slate-200"
+                                )} />
+                            </div>
+                        ))
+                    ) : settingsData?.data?.map((setting: any, index: number) => (
                         <div
                             key={index}
                             className={cn(
@@ -99,7 +126,7 @@ export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) 
                                     <input
                                         type="checkbox"
                                         className="sr-only peer"
-                                        checked={setting.setting_value=="true"}
+                                        checked={setting.setting_value == "true"}
                                         onChange={() => handleToggleActive(setting.id, setting.setting_value)}
                                     />
                                     <div className={cn(
@@ -109,7 +136,7 @@ export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) 
                                     )}>
                                         <div className={cn(
                                             "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all shadow-sm",
-                                            setting.setting_value=="true" ? "translate-x-5" : "translate-x-0"
+                                            setting.setting_value == "true" ? "translate-x-5" : "translate-x-0"
                                         )} />
                                     </div>
                                 </label>

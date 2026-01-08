@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User } from 'lucide-react';
+import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { MESSAGES_MOCK, CONTACTS_MOCK, AGENTS } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
@@ -103,7 +103,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         isLoading: isMessagesLoading,
         isError: isMessagesError,
     } = useMessagesByPhoneQuery(selectedChat?.phone);
-    const {mutateAsync: chatSuggestMutate, isPending: isSuggesting} = useChatSuggestMutation();
+    const { mutateAsync: chatSuggestMutate, isPending: isSuggesting } = useChatSuggestMutation();
     const [inputValue, setInputValue] = useState('');
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [chatSummary, setChatSummary] = useState<string | null>(null);
@@ -250,7 +250,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
 
     const suggestReply = async () => {
         try {
-           const response = await chatSuggestMutate({
+            const response = await chatSuggestMutate({
                 phone: selectedChat?.phone,
             });
             console.log("response", response)
@@ -312,7 +312,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                         ))
                     ) : filteredChats && filteredChats?.length > 0 ? (
                         filteredChats?.map((chat: any, i: number) => (
-                            <button key={i} onClick={() => handleSelectChat(chat)} className={cn("w-full p-3 rounded-xl flex items-center space-x-3 transition-all duration-200", selectedChat?.phone === chat?.phone ? (isDarkMode ? 'bg-white/10 shadow-lg' : 'bg-white shadow-md border border-emerald-100') : (isDarkMode ? 'hover:bg-white/5 opacity-60' : 'hover:bg-slate-50 opacity-80'))}>
+                            <button key={i} onClick={() => handleSelectChat(chat)} className={cn("w-full p-3 rounded-xl flex items-center space-x-3 transition-all duration-200", selectedChat?.phone === chat?.phone ? (isDarkMode ? 'bg-white/10 shadow-lg' : 'bg-white shadow-md border border-emerald-500') : (isDarkMode ? 'hover:bg-white/5 opacity-60' : 'hover:bg-slate-50 opacity-80'))}>
                                 <div className="relative">
                                     <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border transition-all", selectedChat?.phone === chat?.phone ? 'scale-105' : '', isDarkMode ? 'bg-white/10 text-white border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200')}>{chat?.name ? chat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
                                     {chat.seen && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 bg-emerald-500 border-[#151518] shadow-sm shadow-emerald-500/50 animate-pulse" />}
@@ -326,8 +326,16 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                                 </div>
                             </button>
                         ))) : (
-                        <div className="flex-1 flex items-center justify-center">
-                            <span className="text-slate-500 text-sm">No chats found</span>
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300">
+                            <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg transform rotate-3 transition-all", isDarkMode ? "bg-white/5 border border-white/10" : "bg-slate-100 border border-slate-200")}>
+                                <MessageSquareOff size={32} className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-500")} />
+                            </div>
+                            <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? "text-white" : "text-slate-900")}>
+                                No conversations found
+                            </h3>
+                            <p className={cn("text-xs max-w-[180px] leading-relaxed", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                {chatSearchText ? "Try adjusting your search filters" : "New messages will appear here"}
+                            </p>
                         </div>
                     )}
                 </div>
@@ -413,42 +421,58 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                                     </div>
                                 ))}
                             </div>
-                        ) : groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
-                            <div key={index}>
-                                <div className="flex justify-center my-6 sticky top-0 z-10">
-                                    <span className={cn(
-                                        "px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-sm backdrop-blur-md border transition-all",
-                                        isDarkMode
-                                            ? "bg-[#1A1A1B]/80 text-white/80 border-white/10 shadow-black/20"
-                                            : "bg-white/80 text-slate-600 border-slate-200 shadow-slate-200/50"
-                                    )}>
-                                        {dateLabel}
-                                    </span>
-                                </div>
-                                {msgs.map((msg: any, msgIndex: number) => (
-                                    <div key={msg.id || msgIndex} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", msg.sender === 'user' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${msgIndex * 50}ms`, animationFillMode: 'both' }}>
-                                        <div className="max-w-[70%] group">
-                                            <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
-                                                msg.sender === 'bot'
-                                                    ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
-                                                    : msg.sender === 'user'
-                                                        ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
-                                                        : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
-                                            )}>
-                                                {msg.sender === 'bot' && (
-                                                    <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
-                                                        <Sparkles size={10} className="animate-pulse" />
-                                                        <span>AI Receptionist Layer</span>
-                                                    </div>
-                                                )}
-                                                {msg.message}
+                        ) : groupedEntries?.length > 0 ? (
+                            groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
+                                <div key={index}>
+                                    <div className="flex justify-center my-6 sticky top-0 z-10">
+                                        <span className={cn(
+                                            "px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-sm backdrop-blur-md border transition-all",
+                                            isDarkMode
+                                                ? "bg-[#1A1A1B]/80 text-white/80 border-white/10 shadow-black/20"
+                                                : "bg-white/80 text-slate-600 border-slate-200 shadow-slate-200/50"
+                                        )}>
+                                            {dateLabel}
+                                        </span>
+                                    </div>
+                                    {msgs.map((msg: any, msgIndex: number) => (
+                                        <div key={msg.id || msgIndex} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", msg.sender === 'user' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${msgIndex * 10}ms`, animationFillMode: 'both' }}>
+                                            <div className="max-w-[70%] group">
+                                                <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
+                                                    msg.sender === 'bot'
+                                                        ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
+                                                        : msg.sender === 'user'
+                                                            ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
+                                                            : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
+                                                )}>
+                                                    {msg.sender === 'bot' && (
+                                                        <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
+                                                            <Sparkles size={10} className="animate-pulse" />
+                                                            <span>AI Receptionist Layer</span>
+                                                        </div>
+                                                    )}
+                                                    {msg.message}
+                                                </div>
+                                                <p className={cn("text-[9px] font-bold uppercase tracking-wide my-2 opacity-40", msg.sender === 'user' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{formattedTime(msg.created_at)}</p>
                                             </div>
-                                            <p className={cn("text-[9px] font-bold uppercase tracking-wide my-2 opacity-40", msg.sender === 'user' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{formattedTime(msg.created_at)}</p>
-                                        </div>
-                                    </div>))}
-                                    <div ref={bottomRef}/>
+                                        </div>))}
+                                    <div ref={bottomRef} />
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
+                                <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform -rotate-6 transition-all", isDarkMode ? "bg-white/5 border border-white/10" : "bg-slate-50 border border-slate-200")}>
+                                    <MessageSquareDashed size={40} className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-400")} />
+                                </div>
+                                <div className="text-center space-y-2">
+                                    <h3 className={cn("text-lg font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                                        No messages yet
+                                    </h3>
+                                    <p className={cn("text-xs font-medium uppercase tracking-wider", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                                        Start the conversation
+                                    </p>
+                                </div>
                             </div>
-                        ))}
+                        )}
                     </div>
 
                     <div className="p-6 shrink-0 relative">
@@ -488,7 +512,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                                 />
                                 <div className="flex items-center space-x-1 pb-1">
                                     <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
-                                    <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"><Send size={16} /></button>
+                                    <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all">{isPending ? <Loader2 className={cn("animate-spin", isDarkMode ? 'text-white/600' : 'text-slate-200')} size={16} /> : <Send size={16} />}</button>
                                 </div>
                             </div>
                         </div>

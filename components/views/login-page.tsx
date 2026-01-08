@@ -145,17 +145,19 @@ export default function LoginPage() {
                     : "bg-white/90 border-slate-200/50 shadow-slate-400/30"
             )}>
                 {/* Logo */}
-                <div className="flex justify-center mb-5 animate-in fade-in slide-in-from-top-4 duration-700">
-                    {/* <div className="relative w-48 h-16">
-                        <Image
-                            src="/whatnexus-logo.png"
-                            alt="WhatsNexus Logo"
-                            fill
-                            className="object-contain"
-                            priority
-                        />
-                    </div> */}
-                    <span className={cn("text-2xl font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>{BRAND_NAME}<span className="text-emerald-500">.</span></span>
+                <div className="relative flex flex-col items-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+                    <div className="flex items-center gap-3">
+                        <span className={cn("text-4xl font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                            WHATSNEXUS<span className="text-emerald-500">.</span>
+                        </span>
+                        <div className={cn("absolute top-0 right-2 px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wide uppercase",
+                            isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-emerald-50 border-emerald-200 text-emerald-600")}>
+                            Beta
+                        </div>
+                    </div>
+                    <span className={cn("text-[10px] font-bold tracking-[0.2em] mt-2 uppercase opacity-60", isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+                        Powered by Invictus Global Tech
+                    </span>
                 </div>
 
                 {/* Header */}
@@ -200,6 +202,7 @@ export default function LoginPage() {
                                 {...register("email")}
                                 id="email"
                                 type="text"
+                                autoComplete="new-password"
                                 placeholder="Enter your email or username"
                                 className={cn(
                                     "w-full pl-12 pr-4 py-3 rounded-xl border transition-all duration-300 outline-none",
@@ -239,6 +242,7 @@ export default function LoginPage() {
                             <input
                                 {...register("password")}
                                 id="password"
+                                autoComplete="new-password"
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Enter your password"
                                 className={cn(

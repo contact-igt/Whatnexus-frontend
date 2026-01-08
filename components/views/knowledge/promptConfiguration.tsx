@@ -377,12 +377,32 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
 
                 <div className="space-y-3">
                     {isPromptsLoading ? (
-                        <div className="flex flex-col items-center justify-center h-[200px]">
-                            <Loader2 className={cn("animate-spin mb-3", isDarkMode ? 'text-white/40' : 'text-slate-400')} size={32} />
-                            <p className={cn("text-sm", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                Loading prompts...
-                            </p>
-                        </div>
+                        Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "p-4 rounded-xl border animate-pulse",
+                                    isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                                )}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-start space-x-4 flex-1">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-lg shrink-0",
+                                            isDarkMode ? 'bg-white/10' : 'bg-slate-200'
+                                        )} />
+                                        <div className="flex-1 min-w-0 space-y-2">
+                                            <div className={cn("h-4 w-32 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                            <div className={cn("h-3 w-24 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-4">
+                                        <div className={cn("w-11 h-6 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        <div className={cn("w-8 h-8 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))
                     ) : promptsData?.data?.length > 0 ? (
                         promptsData.data.map((prompt: any) => (
                             <div
@@ -414,7 +434,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
-                                                disabled={promptsData?.data?.every((prompt: any)=> prompt?.is_active == "false") ? false : prompt.is_active == "true" ? false : true}
+                                                disabled={promptsData?.data?.every((prompt: any) => prompt?.is_active == "false") ? false : prompt.is_active == "true" ? false : true}
                                                 checked={prompt.is_active == "true" ? true : false}
                                                 onChange={() => handleToggleActive(prompt.id, prompt.is_active)}
                                             />

@@ -8,7 +8,7 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
 
 interface SidebarProps {
-    handleActiveTab: (tab:string)=> void;
+    handleActiveTab: (tab: string) => void;
     activeTab: string;
     setActiveTab: (tab: string) => void;
     isDarkMode: boolean;
@@ -29,11 +29,16 @@ export const Sidebar = ({ handleActiveTab, activeTab, setActiveTab, isDarkMode, 
                 isDarkMode ? 'border-r border-white/5 bg-[#0D0D0F]' : 'border-r border-slate-200 bg-white shadow-2xl'
             )}
         >
-            <div className={cn("mb-14 animate-in fade-in slide-in-from-top-4 duration-1000 transition-all", isExpanded ? "px-6" : "px-5")}>
-                <div className={cn("w-14 h-14 rounded-[1.6rem] flex flex-col items-center justify-center transition-all duration-700 group cursor-pointer overflow-hidden relative shadow-2xl border border-transparent hover:rotate-12", isDarkMode ? 'bg-white' : 'bg-slate-900')}>
-                    <div className={cn("text-[9px] font-black tracking-tighter transition-colors mb-0.5", isDarkMode ? 'text-emerald-600' : 'text-white')}>AI</div>
-                    <Zap className={cn("transition-transform duration-700 group-hover:scale-125", isDarkMode ? 'text-emerald-600' : 'text-white')} size={22} fill="currentColor" />
-                </div>
+            <div className={cn("mb-10 animate-in fade-in slide-in-from-top-4 duration-1000 transition-all ml-1", isExpanded ? "px-4" : "px-3")}>
+                {!isExpanded ? (
+                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl tracking-tighter shadow-lg transition-transform hover:scale-105", isDarkMode ? 'bg-white text-slate-900' : 'bg-slate-900 text-white')}>
+                        W<span className="text-emerald-500">.</span>
+                    </div>
+                ) : (
+                    <div className={cn("flex items-center justify-start font-black text-xl tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                        WHATSNEXUS<span className="text-emerald-500">.</span>
+                    </div>
+                )}
             </div>
 
             <nav className="flex-1 flex flex-col space-y-6 px-4 overflow-y-auto no-scrollbar">
@@ -68,6 +73,6 @@ export const Sidebar = ({ handleActiveTab, activeTab, setActiveTab, isDarkMode, 
                     </span>
                 </div>
             </div>
-        </aside>
+        </aside >
     );
 };

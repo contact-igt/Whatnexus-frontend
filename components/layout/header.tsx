@@ -24,7 +24,7 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
 
     const handleLogout = () => {
         dispatch(clearAuthData());
-        router.push('/login');
+        router.replace('/login');
     };
 
     const handleViewProfile = () => {
@@ -34,7 +34,21 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
     return (
         <header className={cn("h-20 shrink-0 flex items-center justify-between px-10 transition-all duration-700 border-b", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
             <div className="flex items-center space-x-8">
-                <span className={cn("text-2xl font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>{BRAND_NAME}<span className="text-emerald-500">.</span></span>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                        <span className={cn("text-[20px] font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                            WHATSNEXUS<span className="text-emerald-500">.</span>
+                        </span>
+                        <div className={cn("px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border",
+                            isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200')}>
+                            Beta
+                        </div>
+                    </div>
+                    <span className={cn("text-[8px] font-bold tracking-[0.15em] uppercase opacity-50 whitespace-nowrap",
+                        isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
+                        Powered by Invictus Global Tech
+                    </span>
+                </div>
                 <div className={cn("h-8 w-px", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
                 <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2.5">
