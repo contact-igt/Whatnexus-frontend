@@ -37,10 +37,12 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
 
     const onSubmit = (data: FormData) => {
         console.log(data)
-        createManagementMutate(data, {onSuccess:()=>{
-            reset();
-            setIsInviteModalOpen(false);
-        }});
+        createManagementMutate(data, {
+            onSuccess: () => {
+                reset();
+                setIsInviteModalOpen(false);
+            }
+        });
     }
     const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -83,31 +85,65 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                                     </tr>
                                 </thead>
                                 <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                                    {managementData?.data?.map((agent: any) => (
-                                        <tr key={agent.id} className="group transition-all hover:bg-emerald-500/5">
-                                            <td className="px-8 py-4">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-white/10 group-hover:rotate-6 transition-transform shadow-lg">{!agent?.username ? agent?.username?.split("")[0].toUpperCase() : <User size={16} />}</div>
-                                                    <span className={cn("text-sm font-semibold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-800')}>{agent?.username}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-4">
-                                                <div className="flex items-center space-x-2">
-                                                    <div className={cn("w-2 h-2 rounded-full", agent.status === 'Online' ? 'bg-emerald-500 animate-pulse' : agent?.status === 'Busy' ? 'bg-orange-500' : 'bg-slate-600')} />
-                                                    <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/50' : 'text-slate-500')}>{agent?.status}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-4 text-center">
-                                                <span className={cn("text-xs font-bold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>{Math.floor(Math.random() * 10)} / 15</span>
-                                            </td>
-                                            <td className="px-8 py-4">
-                                                <span className={cn("text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide", agent.role === 'super-admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20')}>{agent?.role}</span>
-                                            </td>
-                                            <td className="px-8 py-4 text-right">
-                                                <button className="p-2 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"><MoreHorizontal size={18} /></button>
+                                    {isLoading ? (
+                                        Array.from({ length: 4 }).map((_, index) => (
+                                            <tr key={index} className="animate-pulse">
+                                                <td className="px-8 py-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={cn("w-9 h-9 rounded-xl", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                        <div className={cn("h-4 w-24 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className={cn("w-2 h-2 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                        <div className={cn("h-3 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-4 text-center">
+                                                    <div className={cn("h-4 w-12 rounded mx-auto", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                </td>
+                                                <td className="px-8 py-4">
+                                                    <div className={cn("h-5 w-20 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                </td>
+                                                {/* <td className="px-8 py-4 text-right">
+                                                    <div className={cn("h-8 w-8 rounded ml-auto", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                </td> */}
+                                            </tr>
+                                        ))
+                                    ) : managementData?.data?.length > 0 ? (
+                                        managementData.data.map((agent: any) => (
+                                            <tr key={agent.id} className="group transition-all hover:bg-emerald-500/5">
+                                                <td className="px-8 py-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-white/10 group-hover:rotate-6 transition-transform shadow-lg">{!agent?.username ? agent?.username?.split("")[0].toUpperCase() : <User size={16} />}</div>
+                                                        <span className={cn("text-sm font-semibold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-800')}>{agent?.username}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className={cn("w-2 h-2 rounded-full", agent.status === 'Online' ? 'bg-emerald-500 animate-pulse' : agent?.status === 'Busy' ? 'bg-orange-500' : 'bg-slate-600')} />
+                                                        <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/50' : 'text-slate-500')}>{agent?.status}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-4 text-center">
+                                                    <span className={cn("text-xs font-bold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>{Math.floor(Math.random() * 10)} / 15</span>
+                                                </td>
+                                                <td className="px-8 py-4">
+                                                    <span className={cn("text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide", agent.role === 'super-admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20')}>{agent?.role}</span>
+                                                </td>
+                                                <td className="px-8 py-4 text-right">
+                                                    <button className="p-2 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"><MoreHorizontal size={18} /></button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="px-8 py-12 text-center">
+                                                <p className={cn("text-sm font-medium", isDarkMode ? 'text-white/40' : 'text-slate-400')}>No team members found</p>
                                             </td>
                                         </tr>
-                                    ))}
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -166,14 +202,18 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                         <button
                             type='submit'
                             form="invite-form"
-                            className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+                            disabled={createManagementLoading}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20",
+                                createManagementLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-emerald-700"
+                            )}
                         >
-                            Send Invite
+                            {createManagementLoading ? 'Sending...' : 'Send Invite'}
                         </button>
                     </div>
                 }
             >
-                <form id="invite-form" onSubmit={handleFormSubmit} className="space-y-5">
+                <form id="invite-form" autoComplete="off" onSubmit={handleFormSubmit} className="space-y-5">
                     <div>
                         <label className={cn(
                             "text-xs font-bold uppercase tracking-wider mb-2 block",
@@ -195,13 +235,13 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                                         ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10'
                                         : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white'
                                 )}
-                                placeholder="Enter user name"
+                                placeholder="Enter username"
                             />
-                            </div>
-                             {errors.username && (
-                                <p className="text-xs text-red-500 font-bold mt-2">{errors.username.message}</p>
-                            )}
                         </div>
+                        {errors.username && (
+                            <p className="text-xs text-red-500 font-bold mt-2">{errors.username.message}</p>
+                        )}
+                    </div>
                     <div>
                         <label className={cn(
                             "text-xs font-bold uppercase tracking-wider mb-2 block",
@@ -216,6 +256,7 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                             )} />
                             <input
                                 type="email"
+                                autoComplete='new-password'
                                 {...register('email')}
                                 className={cn(
                                     "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
@@ -225,10 +266,10 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                                 )}
                                 placeholder="email@example.com"
                             />
-                            </div>
-                              {errors.email && (
-                                <p className="text-xs text-red-500 font-bold mt-2">{errors.email.message}</p>
-                            )}
+                        </div>
+                        {errors.email && (
+                            <p className="text-xs text-red-500 font-bold mt-2">{errors.email.message}</p>
+                        )}
                     </div>
                     <div>
                         <label className={cn(
@@ -244,6 +285,7 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                             )} />
                             <input
                                 type="password"
+                                autoComplete='new-password'
                                 {...register('password')}
                                 className={cn(
                                     "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
@@ -253,10 +295,10 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                                 )}
                                 placeholder="Enter password"
                             />
-                                </div>
-                            {errors.password && (
-                                <p className="text-xs text-red-500 font-bold mt-2">{errors.password.message}</p>
-                            )}
+                        </div>
+                        {errors.password && (
+                            <p className="text-xs text-red-500 font-bold mt-2">{errors.password.message}</p>
+                        )}
                     </div>
 
                     <div>
@@ -291,10 +333,10 @@ export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
                                 <option value="admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Admin</option>
                                 <option value="super-admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Super Admin</option>
                             </select>
-                            </div>
-                            {errors.role && (
-                                <p className="text-xs text-red-500 font-bold mt-2">{errors.role.message}</p>
-                            )}
+                        </div>
+                        {errors.role && (
+                            <p className="text-xs text-red-500 font-bold mt-2">{errors.role.message}</p>
+                        )}
                     </div>
                 </form>
             </Modal>

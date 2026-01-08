@@ -26,8 +26,8 @@ export const useLoginMutation = ()=>{
             toast.success("Login successful")
             router.replace("/")
         },
-        onError: (error)=>{
-            toast.error(error?.message || "Something went wrong")
+        onError: (error: any)=>{
+            toast.error(error?.response?.data?.message || error?.message || "Something went wrong")
         }
     })
 }

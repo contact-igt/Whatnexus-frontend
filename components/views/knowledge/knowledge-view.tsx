@@ -269,8 +269,9 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
 
             <div className={cn("flex items-center space-x-1 p-1 rounded-xl w-fit", isDarkMode ? 'bg-white/5' : 'bg-slate-100')}>
                 {
-                    knowledgeTabs?.map((tab) => (
+                    knowledgeTabs?.map((tab, index) => (
                         <button
+                            key={index}
                             onClick={() => handleTabChange(tab?.value as TabType)}
                             className={cn(
                                 "px-6 py-2.5 rounded-lg text-sm font-semibold transition-all",
@@ -374,83 +375,106 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                 <div className="space-y-5">
                     {isKnowledge && (
                         <>
-
-                            {(selectedItem?.item?.type === 'text' || selectedItem?.item?.text) && (
-                                <div>
-                                    <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                        Content
-                                    </label>
-                                    <div className="relative">
-                                        <div className={cn("absolute left-3 top-3", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                            <AlignLeft size={16} />
-                                        </div>
-                                        <textarea
-                                            rows={10}
-                                            disabled={isView}
-                                            value={isEdit ? (editContent?.text || selectedItem?.item?.text) : (editContent?.text || selectedItem?.item?.text || selectedItem?.item?.raw_text || "")}
-                                            onChange={(e) => setEditContent({ ...editContent, text: e.target.value })}
-                                            className={cn(
-                                                "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none resize-none custom-scrollbar",
-                                                isView && "opacity-60 cursor-not-allowed",
-                                                isDarkMode
-                                                    ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                    : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
-                                            )}
-                                        />
+                            {isKnowledgeByIdLoading ? (
+                                <div className="space-y-4 animate-pulse">
+                                    <div>
+                                        <div className={cn("h-4 w-24 rounded mb-2", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                        <div className={cn("h-[250px] w-full rounded-xl", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
                                     </div>
                                 </div>
+                            ) : (
+                                (selectedItem?.item?.type === 'text' || selectedItem?.item?.text) && (
+                                    <div>
+                                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                            Content
+                                        </label>
+                                        <div className="relative">
+                                            <div className={cn("absolute left-3 top-3", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                <AlignLeft size={16} />
+                                            </div>
+                                            <textarea
+                                                rows={10}
+                                                disabled={isView}
+                                                value={isEdit ? (editContent?.text || selectedItem?.item?.text) : (editContent?.text || selectedItem?.item?.text || selectedItem?.item?.raw_text || "")}
+                                                onChange={(e) => setEditContent({ ...editContent, text: e.target.value })}
+                                                className={cn(
+                                                    "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none resize-none custom-scrollbar",
+                                                    isView && "opacity-60 cursor-not-allowed",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                )
                             )}
                         </>
                     )}
 
                     {isPrompt && (
                         <>
-                            <div>
-                                <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                    Name
-                                </label>
-                                <div className="relative">
-                                    <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                        <Type size={16} />
+                            {isPromptByIdLoading ? (
+                                <div className="space-y-4 animate-pulse">
+                                    <div>
+                                        <div className={cn("h-4 w-16 rounded mb-2", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                        <div className={cn("h-10 w-full rounded-xl", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
                                     </div>
-                                    <input
-                                        type="text"
-                                        disabled={isView}
-                                        value={isEdit ? (editContent?.name || selectedItem?.item?.name) : selectedItem?.item?.name}
-                                        onChange={(e) => setEditContent({ ...editContent, name: e.target.value })}
-                                        className={cn(
-                                            "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
-                                            isView && "opacity-60 cursor-not-allowed",
-                                            isDarkMode
-                                                ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                    Instructions
-                                </label>
-                                <div className="relative">
-                                    <div className={cn("absolute left-3 top-3", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                        <AlignLeft size={16} />
+                                    <div>
+                                        <div className={cn("h-4 w-24 rounded mb-2", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                        <div className={cn("h-[250px] w-full rounded-xl", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
                                     </div>
-                                    <textarea
-                                        rows={10}
-                                        disabled={isView}
-                                        value={isEdit ? editContent?.prompt : selectedItem?.item?.prompt}
-                                        onChange={(e) => setEditContent({ ...editContent, prompt: e.target.value })}
-                                        className={cn(
-                                            "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none resize-none custom-scrollbar",
-                                            isView && "opacity-60 cursor-not-allowed",
-                                            isDarkMode
-                                                ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
-                                        )}
-                                    />
                                 </div>
-                            </div>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                            Name
+                                        </label>
+                                        <div className="relative">
+                                            <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                <Type size={16} />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                disabled={isView}
+                                                value={isEdit ? (editContent?.name || selectedItem?.item?.name) : selectedItem?.item?.name}
+                                                onChange={(e) => setEditContent({ ...editContent, name: e.target.value })}
+                                                className={cn(
+                                                    "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                                                    isView && "opacity-60 cursor-not-allowed",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                            Instructions
+                                        </label>
+                                        <div className="relative">
+                                            <div className={cn("absolute left-3 top-3", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                <AlignLeft size={16} />
+                                            </div>
+                                            <textarea
+                                                rows={10}
+                                                disabled={isView}
+                                                value={isEdit ? editContent?.prompt : selectedItem?.item?.prompt}
+                                                onChange={(e) => setEditContent({ ...editContent, prompt: e.target.value })}
+                                                className={cn(
+                                                    "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none resize-none custom-scrollbar",
+                                                    isView && "opacity-60 cursor-not-allowed",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </>
                     )}
                 </div>

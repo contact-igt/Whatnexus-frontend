@@ -41,6 +41,7 @@ const authSlice = createSlice({
       state.token = null;
       state.refreshToken = null;
       state.user = null;
+      state.activeTabData = 'dashboard';
     },
   },
 });
