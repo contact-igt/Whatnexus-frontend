@@ -40,7 +40,7 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
-
+    console.log("formData", formData)
     return (
         <div className={cn(
             "flex-1 overflow-y-auto p-8",
@@ -95,7 +95,6 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                         )}
                     </div>
 
-                    {/* Profile Header */}
                     <div className="flex items-center gap-4">
                         <div className={cn(
                             "w-20 h-20 rounded-2xl flex items-center justify-center font-black text-2xl border shrink-0",
@@ -122,8 +121,6 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                         </div>
                     </div>
                 </div>
-
-                {/* Profile Information */}
                 <div className={cn(
                     "rounded-2xl border p-6",
                     isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'
@@ -136,9 +133,6 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-
-                        {/* Username */}
                         <div>
                             <label className={cn(
                                 "text-xs font-bold uppercase tracking-wider mb-2 block",
@@ -178,7 +172,6 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                             )}
                         </div>
 
-                        {/* Phone */}
                         <div>
                             <label className={cn(
                                 "text-xs font-bold uppercase tracking-wider mb-2 block",
@@ -213,12 +206,12 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                                         : 'bg-slate-50 border-slate-200 text-slate-600'
                                 )}>
                                     <Phone size={16} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} />
-                                    {formData.mobile || "Not set"}
+                                    {formData?.mobile || "Not set"}
                                 </div>
                             )}
                         </div>
 
-                        {/* Email */}
+
                         <div  className="md:col-span-2">
                             <label className={cn(
                                 "text-xs font-bold uppercase tracking-wider mb-2 block",
@@ -233,11 +226,10 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                                     : 'bg-slate-50 border-slate-200 text-slate-600'
                             )}>
                                 <Mail size={16} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} />
-                                {formData.email || "Not set"}
+                                {formData?.email || "Not set"}
                             </div>
                         </div>
 
-                        {/* Role */}
                         <div className="md:col-span-2">
                             <label className={cn(
                                 "text-xs font-bold uppercase tracking-wider mb-2 block",
@@ -269,6 +261,8 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                                     /> */}
                                     <select
                                         // {...register('role')}
+                                        value={formData?.role}
+                                        onChange={(e) => handleInputChange('role', e.target.value)}
                                         className={cn(
                                             "w-full pl-10 pr-9 py-2.5 rounded-xl border font-medium text-sm transition-all appearance-none cursor-pointer",
                                             isDarkMode
@@ -292,7 +286,7 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                                         : 'bg-slate-50 border-slate-200 text-slate-600'
                                 )}>
                                     <Briefcase size={16} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} />
-                                    {formData.role || "Not set"}
+                                    {formData?.role?.split("-").map((word:any)=> word.charAt(0).toUpperCase() + word.slice(1)).join(" ") || "Not set"}
                                 </div>
                             )}
                         </div>

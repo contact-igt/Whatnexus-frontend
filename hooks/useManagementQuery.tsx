@@ -31,7 +31,7 @@ export const useCreateManagementMutation = ()=>{
             toast.success("Management created successfully")
         },
         onError: (error: any)=>{
-            toast.error(error?.response?.data?.message || error.message || "Failed to create management")
+            toast.error(error?.response?.data?.message || error?.message || "Failed to create management")
         }
     })
 }

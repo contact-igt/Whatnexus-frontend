@@ -87,7 +87,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
     const handleDeleteFile = (index: number) => {
         setUploadedData((prev: any) => prev?.filter((_: any, i: number) => i !== index))
     }
-    
+
     const handleUploadKnowledge = async (type: 'file' | 'text' | 'url') => {
         const title = "Ophthall conclave conference";
         console.log("uploadedData", uploadedData)
@@ -425,7 +425,37 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                 </div>
 
                 <div className="space-y-3">
-                    {knowledgeData?.data?.map((source: any, index: number) => {
+                    {isKnowledgeLoading ? (
+                        Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "p-4 rounded-xl border animate-pulse",
+                                    isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                                )}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-start space-x-4 flex-1">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-lg shrink-0",
+                                            isDarkMode ? 'bg-white/10' : 'bg-slate-200'
+                                        )} />
+                                        <div className="flex-1 min-w-0 space-y-2">
+                                            <div className="flex items-center space-x-3">
+                                                <div className={cn("h-4 w-32 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                <div className={cn("h-5 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                            </div>
+                                            <div className={cn("h-3 w-20 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-4">
+                                        <div className={cn("w-11 h-6 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        <div className={cn("w-8 h-8 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : knowledgeData?.data?.map((source: any, index: number) => {
                         const createdAt = new Date(source?.created_at).getTime();
                         const now = Date.now();
                         const isProcessing = now - createdAt < 5 * 60 * 1000;
@@ -477,14 +507,14 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         <div className={cn(
                                             "w-11 h-6 rounded-full peer transition-all",
                                             "peer-checked:bg-emerald-600",
-                                                isDarkMode ? 'bg-white/10' : 'bg-slate-300'
-                                            )}>
-                                                <div className={cn(
-                                                    "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
-                                                    source.is_active == "true" ? "translate-x-5" : "translate-x-0"
-                                                )} />
-                                            </div>
-                                        </label>
+                                            isDarkMode ? 'bg-white/10' : 'bg-slate-300'
+                                        )}>
+                                            <div className={cn(
+                                                "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
+                                                source.is_active == "true" ? "translate-x-5" : "translate-x-0"
+                                            )} />
+                                        </div>
+                                    </label>
                                     <ActionMenu
                                         isDarkMode={isDarkMode}
                                         isView={source?.type == "text"}
