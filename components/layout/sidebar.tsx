@@ -35,7 +35,7 @@ export const Sidebar = ({ handleActiveTab, activeTab, setActiveTab, isDarkMode, 
                         W<span className="text-emerald-500">.</span>
                     </div>
                 ) : (
-                    <div className={cn("flex items-center justify-start font-black text-xl tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                    <div className={cn("flex items-center justify-center font-black text-xl tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
                         WHATSNEXUS<span className="text-emerald-500">.</span>
                     </div>
                 )}
