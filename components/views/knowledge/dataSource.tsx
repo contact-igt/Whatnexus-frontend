@@ -169,7 +169,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
 
     const handleToggleActive = (id: string, isActive: string) => {
         const status = {
-            is_active: isActive == "true" ? "false" : "true"
+            status: isActive == "active" ? "inactive" : "active"
         }
         activateKnowledgeMutate({
             id, data: status
@@ -501,8 +501,8 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         <input
                                             type="checkbox"
                                             className="sr-only peer"
-                                            checked={source.is_active == "true" ? true : false}
-                                            onChange={() => handleToggleActive(source.id, source.is_active)}
+                                            checked={source.status == "active" ? true : false}
+                                            onChange={() => handleToggleActive(source.id, source.status)}
                                         />
                                         <div className={cn(
                                             "w-11 h-6 rounded-full peer transition-all",
@@ -511,7 +511,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         )}>
                                             <div className={cn(
                                                 "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
-                                                source.is_active == "true" ? "translate-x-5" : "translate-x-0"
+                                                source.status == "active" ? "translate-x-5" : "translate-x-0"
                                             )} />
                                         </div>
                                     </label>

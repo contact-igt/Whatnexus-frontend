@@ -22,7 +22,7 @@ export class knowledgeApiData {
     return await _axios("put", `/knowledge/${id}`, data)
   }
   activateKnowledgeById = async(id: string, data: any)=>{
-    return await _axios("put", `/knowledge-active/${id}`, data)
+    return await _axios("put", `/knowledge-status/${id}?status=${data.status}`)
   }
   deleteKnowledgeById = async(id: string)=>{
     return await _axios("delete", `/knowledge/${id}`)
