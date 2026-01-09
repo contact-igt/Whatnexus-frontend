@@ -37,8 +37,9 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<{ item: any, mode?: string } | null>(null);
     const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
-    const [editContent, setEditContent] = useState<{ name?: any, prompt?: any, text?: any }>({
+    const [editContent, setEditContent] = useState<{ name?: any, title?: any, prompt?: any, text?: any }>({
         name: "",
+        title: "",
         prompt: "",
         text: ""
     });
@@ -114,7 +115,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                 title: string;
                 text?: string;
             } = {
-                title: "Ophthall conclave conference",
+                title: editContent?.title,
                 text: editContent?.text
             }
             updateKnowledgeMutate({
@@ -238,12 +239,11 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
         processFiles(e.dataTransfer.files);
     };
 
-
     useEffect(() => {
         if (isViewModalOpen && knowledgeDetailsById && selectedItem?.mode == "knowledge") {
             const data = knowledgeDetailsById.data || knowledgeDetailsById;
             const content = data?.raw_text;
-            setEditContent({ text: content });
+            setEditContent({ text: content, title: data?.title });
         }
         else if (isViewModalOpen && promptDetailsById && selectedItem?.mode == "prompt") {
             const data = promptDetailsById.data || promptDetailsById;
@@ -251,11 +251,12 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
             setEditContent({ name: data?.name, prompt: content });
         }
     }, [knowledgeDetailsById, promptDetailsById, viewMode, isViewModalOpen]);
+
     console.log("promptDetailsById", promptDetailsById)
     console.log("viewMode", viewMode);
     console.log("selectedItem", selectedItem);
     console.log("uploadedData", uploadedData);
-    console.log("selectedItem", selectedItem)
+    console.log("selectedItem", selectedItem);
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">
@@ -383,8 +384,31 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                     </div>
                                 </div>
                             ) : (
-                                (selectedItem?.item?.type === 'text' || selectedItem?.item?.text) && (
+                                (selectedItem?.item?.type === 'text' || selectedItem?.item?.type === 'file' || selectedItem?.item?.type === 'url') && (
                                     <div>
+                                        <div className='mb-4'>
+                                            <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                                Title
+                                            </label>
+                                            <div className="relative">
+                                                <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                    <Type size={16} />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    disabled={isView}
+                                                    value={isEdit ? (editContent?.title || selectedItem?.item?.title) : (editContent?.title || selectedItem?.item?.title || "")}
+                                                    onChange={(e) => setEditContent({ ...editContent, title: e.target.value })}
+                                                    className={cn(
+                                                        "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                                                        isView && "opacity-60 cursor-not-allowed",
+                                                        isDarkMode
+                                                            ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                                            : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
                                         <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
                                             Content
                                         </label>
