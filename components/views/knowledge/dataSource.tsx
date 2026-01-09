@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from 'react';
-import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2 } from 'lucide-react';
+import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Link2, File } from 'lucide-react';
 import { ActionMenu } from "@/components/ui/action-menu";
 import { GlassCard } from "@/components/ui/glass-card";
 import { KNOWLEDGE_SOURCES } from "@/lib/data";
@@ -73,12 +73,28 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
     const { mutate: activateKnowledgeMutate, isPending: isActivatePending } = useActivateKnowledgeMutation();
     const { mutate: updateKnowledgeMutate } = useUpdateKnowledgeMutation();
     const [activeTab, setActiveTab] = useState<TabType>('data-sources');
-    const [websiteUrl, setWebsiteUrl] = useState("");
     const [isUpdating, setIsUpdating] = useState<{ status: boolean, type: any }>({
         status: false,
         type: null
     });
-    const [textContent, setTextContent] = useState("");
+    const [error, setError] = useState({
+        documentTitle: "",
+        text: "",
+        websiteUrlTitle: "",
+        websiteUrl: "",
+        textContent: "",
+        urlTitle: "",
+        textTitle: ""
+    });
+    const [inputValue, setInputValue] = useState({
+        documentTitle: "",
+        text: "",
+        websiteUrlTitle: "",
+        websiteUrl: "",
+        textContent: "",
+        urlTitle: "",
+        textTitle: ""
+    });
 
     const handleFileButtonClick = () => {
         fileInputRef.current?.click();
@@ -88,16 +104,34 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
         setUploadedData((prev: any) => prev?.filter((_: any, i: number) => i !== index))
     }
 
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setInputValue((prev) => ({ ...prev, [name]: value }));
+        if (value.trim()) {
+            setError((prev) => ({ ...prev, [name]: "" }));
+        }
+    };
+
     const handleUploadKnowledge = async (type: 'file' | 'text' | 'url') => {
-        const title = "Ophthall conclave conference";
+        const defaultTitle = "Ophthall conclave conference";
         console.log("uploadedData", uploadedData)
         if (type === 'file') {
             setIsUpdating({ status: true, type: "file" })
             if (uploadedData.length === 0) {
                 return;
             }
+            if (!inputValue.documentTitle.trim()) {
+                setError((prev) => ({ ...prev, documentTitle: "Document title is required" }))
+                setIsUpdating({ status: false, type: null })
+                return;
+            }
+            if (inputValue.documentTitle.trim().length < 3 || inputValue.documentTitle.trim().length > 100) {
+                setError((prev) => ({ ...prev, documentTitle: "Title must be between 3 and 100 characters" }))
+                setIsUpdating({ status: false, type: null })
+                return;
+            }
             uploadKnowledgeMutate({
-                title: title,
+                title: inputValue.documentTitle,
                 file_name: uploadedData ? uploadedData[0]?.name?.replace(/\.[^/.]+$/, "")
                     ?.replace(/\s*\(\d+\)$/, "") : "",
                 type: "file",
@@ -107,6 +141,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
             }, {
                 onSuccess: () => {
                     setUploadedData([]);
+                    setInputValue((prev) => ({ ...prev, documentTitle: "" }));
                     setIsUpdating({ status: false, type: null });
                 },
                 onError: () => {
@@ -116,20 +151,45 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
 
         } else if (type === 'text') {
             setIsUpdating({ status: true, type: "text" })
-            if (!textContent.trim()) {
+            let hasError = false;
+            const newError = { ...error };
+
+            if (!inputValue.textTitle.trim()) {
+                newError.textTitle = "Content title is required";
+                hasError = true;
+            } else if (inputValue.textTitle.trim().length < 3 || inputValue.textTitle.trim().length > 100) {
+                newError.textTitle = "Title must be between 3 and 100 characters";
+                hasError = true;
+            }
+
+            if (!inputValue.textContent.trim()) {
+                newError.textContent = "Text content is required";
+                hasError = true;
+            } else if (inputValue.textContent.trim().length < 10) {
+                newError.textContent = "Content must be at least 10 characters";
+                hasError = true;
+            } else if (inputValue.textContent.trim().length > 5000) {
+                newError.textContent = "Content cannot exceed 5000 characters";
+                hasError = true;
+            }
+
+            if (hasError) {
+                setError(newError);
+                setIsUpdating({ status: false, type: null });
                 return;
             }
+
             uploadKnowledgeMutate({
-                title: title,
-                file_name: title,
+                title: inputValue.textTitle,
+                file_name: inputValue.textTitle,
                 type: 'text',
-                text: textContent.trim(),
+                text: inputValue.textContent.trim(),
                 source_url: '',
                 file: ''
             },
                 {
                     onSuccess: () => {
-                        setTextContent('');
+                        setInputValue((prev) => ({ ...prev, textContent: "", textTitle: "" }));
                         setIsUpdating({ status: false, type: null });
                     },
                     onError: () => {
@@ -138,26 +198,50 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                 });
         } else if (type === 'url') {
             setIsUpdating({ status: true, type: "url" })
-            if (!websiteUrl.trim()) {
-                return;
+            let hasError = false;
+            const newError = { ...error };
+
+            if (!inputValue.websiteUrlTitle.trim()) {
+                newError.websiteUrlTitle = "Title is required";
+                hasError = true;
+            } else if (inputValue.websiteUrlTitle.trim().length < 3 || inputValue.websiteUrlTitle.trim().length > 100) {
+                newError.websiteUrlTitle = "Title must be between 3 and 100 characters";
+                hasError = true;
             }
-            try {
-                new URL(websiteUrl);
-            } catch (e) {
-                // enqueueSnackbar("Please enter a valid URL", { variant: "error" })
+
+            if (!inputValue.websiteUrl.trim()) {
+                newError.websiteUrl = "Website URL is required";
+                hasError = true;
+            } else {
+                try {
+                    const url = new URL(inputValue.websiteUrl);
+                    if (url.protocol !== "http:" && url.protocol !== "https:") {
+                        newError.websiteUrl = "Please enter a valid URL including http:// or https://";
+                        hasError = true;
+                    }
+                } catch (e) {
+                    newError.websiteUrl = "Please enter a valid URL including http:// or https://";
+                    hasError = true;
+                }
+            }
+
+
+            if (hasError) {
+                setError(newError);
                 setIsUpdating({ status: false, type: null });
                 return;
             }
+
             uploadKnowledgeMutate({
-                title: title,
-                file_name: title,
+                title: inputValue.websiteUrlTitle,
+                file_name: inputValue.websiteUrlTitle,
                 type: 'url',
                 text: '',
-                source_url: websiteUrl.trim(),
+                source_url: inputValue.websiteUrl.trim(),
                 file: ''
             }, {
                 onSuccess: () => {
-                    setWebsiteUrl('');
+                    setInputValue((prev) => ({ ...prev, websiteUrl: "", websiteUrlTitle: "" }));
                     setIsUpdating({ status: false, type: null });
                 },
                 onError: () => {
@@ -176,10 +260,11 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
         })
     }
     console.log("uploadedData", uploadedData)
-    console.log("knowledgeData", knowledgeData)
+    console.log("knowledgeData", knowledgeData);
+
+    console.log("documentTitle", inputValue?.documentTitle)
     return (
         <div className="space-y-6">
-            {/* Upload Documents and Uploaded Files - Side by Side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Upload Documents Card */}
                 <GlassCard isDarkMode={isDarkMode} onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className="p-6">
@@ -317,21 +402,42 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     </div>
 
                     {uploadedData.length > 0 && !isKnowledgeLoading && (
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                onClick={() => {
-                                    if (uploadedData.length > 0) {
-                                        handleUploadKnowledge('file');
-                                    }
-                                }}
-                                disabled={uploadedData.length === 0 || isPending}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20",
-                                    uploading && 'opacity-50 cursor-not-allowed'
-                                )}
-                            >
-                                {isPending && isUpdating.status == true && isUpdating.type == "file" ? "Uploading..." : "Upload Document"}
-                            </button>
+                        <div className="mt-4 space-y-4">
+                            <div>
+                                <label className={cn("text-xs font-semibold mb-1.5 block", isDarkMode ? 'text-white/70' : 'text-slate-600')}>
+                                    Document Title <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={inputValue.documentTitle}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter a title for this document"
+                                    className={cn(
+                                        "w-full px-3 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
+                                        isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
+                                        error.documentTitle ? "border-red-500" : ""
+                                    )}
+                                    name="documentTitle"
+                                />
+                                <p className="text-red-500 text-xs font-bold mt-2">
+                                    {error.documentTitle}
+                                </p>
+                            </div>
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={() => {
+                                        if (uploadedData.length > 0) {
+                                            handleUploadKnowledge('file');
+                                        }
+                                    }}
+                                    disabled={uploadedData.length === 0 || isPending}
+                                    className={cn(
+                                        "px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+                                    )}
+                                >
+                                    {isPending && isUpdating.status == true && isUpdating.type == "file" ? "Uploading..." : "Upload Document"}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </GlassCard>
@@ -344,32 +450,61 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     <h3 className={cn("text-lg font-bold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
                         Add Website URL
                     </h3>
-                    <p className={cn("text-xs mb-6", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                    <p className={cn("text-xs mb-5", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
                         Crawl your website for information.
                     </p>
 
-                    <div className="space-y-4">
-                        <div className="relative">
-                            <Globe className={cn("absolute left-3 top-1/2 -translate-y-1/2", isDarkMode ? 'text-white/30' : 'text-slate-400')} size={18} />
+                    <div className="space-y-7">
+                        <div>
+                            <label className={cn("text-xs font-semibold mb-2 block", isDarkMode ? 'text-white/70' : 'text-slate-600')}>
+                                Title <span className="text-red-500">*</span>
+                            </label>
                             <input
-                                type="url"
-                                value={websiteUrl}
-                                onChange={(e) => setWebsiteUrl(e.target.value)}
-                                placeholder="https://cityhospital.com/services"
+                                type="text"
+                                value={inputValue.websiteUrlTitle}
+                                onChange={handleInputChange}
+                                placeholder="Enter a title for this URL"
                                 className={cn(
-                                    "w-full pl-11 pr-4 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
-                                    isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                    "w-full px-3 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
+                                    isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
+                                    error.websiteUrlTitle ? "border-red-500" : ""
                                 )}
+                                name="websiteUrlTitle"
                             />
+                            <p className="text-red-500 text-xs font-bold mt-2">
+                                {error.websiteUrlTitle}
+                            </p>
                         </div>
+                        <div className="relative">
+                            <h4 className={cn("text-xs font-semibold mb-1.5", isDarkMode ? 'text-white/70' : 'text-slate-600')}>
+                                Website URL <span className="text-red-500">*</span>
+                            </h4>
+                            <div className="relative">
+                                <Globe className={cn("absolute left-3 top-6 -translate-y-1/2", isDarkMode ? 'text-white/30' : 'text-slate-400')} size={18} />
+                                <input
+                                    type="url"
+                                    value={inputValue.websiteUrl}
+                                    onChange={handleInputChange}
+                                    placeholder="https://cityhospital.com/services"
+                                    className={cn(
+                                        "w-full pl-11 pr-4 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
+                                        isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
+                                        error.websiteUrl ? "border-red-500" : ""
+                                    )}
+                                    name="websiteUrl"
+                                />
+                                <p className="text-red-500 text-xs font-bold mt-2">
+                                    {error.websiteUrl}
+                                </p>
+                            </div>
+                        </div>
+
                         <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
                             The AI will automatically re-crawl this URL every 24 hours.
                         </p>
                         <button onClick={() => {
-                            if (websiteUrl?.trim()) {
-                                handleUploadKnowledge("url")
-                            }
-                        }} disabled={!websiteUrl.trim() || isPending || uploading} className="w-full px-6 py-2.5 flex justify-center items-center rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20">
+                            handleUploadKnowledge("url")
+                        }} disabled={isPending || uploading} className={cn("w-full px-6 py-2.5 flex justify-center items-center rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20", (isPending || uploading) && 'opacity-50 cursor-not-allowed')}>
                             {isPending && isUpdating.status == true && isUpdating.type == "url" ? <Loader2 className={cn("animate-spin w-6 h-6", isDarkMode ? 'text-white/40' : 'text-slate-400')} size={32} /> : "Add"}
                         </button>
                     </div>
@@ -385,25 +520,52 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     </p>
 
                     <div className="space-y-4">
+                        <div className='mb-4'>
+                            <label className={cn("text-xs font-semibold mb-1.5 block", isDarkMode ? 'text-white/70' : 'text-slate-600')}>
+                                Content Title <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={inputValue.textTitle}
+                                onChange={handleInputChange}
+                                placeholder="Enter a title for this content"
+                                className={cn(
+                                    "w-full px-3 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 mb-1",
+                                    isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
+                                    error.textTitle ? "border-red-500" : ""
+                                )}
+                                name="textTitle"
+                            />
+                            <p className="text-red-500 text-xs font-bold mt-1">
+                                {error.textTitle}
+                            </p>
+                        </div>
+
+                        <h4 className={cn("text-xs font-semibold mb-1.5", isDarkMode ? 'text-white/70' : 'text-slate-600')}>
+                            Content Text <span className="text-red-500">*</span>
+                        </h4>
                         <textarea
                             placeholder="Enter text content here... (e.g. FAQs, policies, procedures)"
                             rows={4}
-                            value={textContent}
-                            onChange={(e) => setTextContent(e.target.value)}
+                            value={inputValue.textContent}
+                            onChange={handleInputChange}
                             className={cn(
-                                "w-full px-4 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none",
-                                isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                "w-full px-4 py-3 mb-0 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none",
+                                isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
+                                error.textContent ? "border-red-500" : ""
                             )}
+                            name="textContent"
                         />
-                        <div className="flex items-center justify-between">
+                        <p className="text-red-500 text-xs font-bold my-2">
+                            {error.textContent}
+                        </p>
+                        <div className="flex items-center justify-between mt-4">
                             <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                {textContent.length} characters
+                                {inputValue.textContent.length} characters
                             </span>
                             <button onClick={() => {
-                                if (textContent?.trim()) {
-                                    handleUploadKnowledge("text")
-                                }
-                            }} disabled={!textContent.trim() || isPending || uploading} className="px-6 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20">
+                                handleUploadKnowledge("text")
+                            }} disabled={isPending || uploading} className={cn("px-6 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20", (isPending || uploading) && 'opacity-50 cursor-not-allowed')}>
                                 {isPending && isUpdating.status == true && isUpdating.type == "text" ? <Loader2 className={cn("animate-spin w-6 h-6", isDarkMode ? 'text-white/40' : 'text-slate-400')} size={32} /> : "Add Content"}
                             </button>
                         </div>
@@ -411,7 +573,6 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                 </GlassCard>
             </div>
 
-            {/* Active Sources */}
             <GlassCard isDarkMode={isDarkMode} className="p-6">
                 <div className="flex items-center justify-between mb-6">
                     <div>
@@ -473,12 +634,22 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                             "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
                                             isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50'
                                         )}>
-                                            <FileText className="text-emerald-500" size={20} />
+                                            {source?.type === "file" && (
+                                                <File className="text-emerald-500" size={20} />
+                                            )}
+                                            {
+                                            source?.type === "text" && (
+                                                <FileText className="text-emerald-500" size={20} />
+                                            )
+                                            }
+                                            {source?.type === "url" && (
+                                                <Link2 className="text-emerald-500" size={20} />
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center space-x-3 mb-1">
-                                                <h4 className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                                    {source.file_name}
+                                                <h4 className={cn("text-sm font-semibold truncate max-w-[300px]", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                    {source.title || source.file_name}
                                                 </h4>
                                                 {!isProcessing ? (
                                                     <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
@@ -492,9 +663,22 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                31 Dec 2025
-                                            </p>
+                                            <div className='flex items-center space-x-3'>
+                                                {source?.type === "file" && (
+                                                    <p className={cn('text-xs truncate max-w-[200px]', isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                        {source?.file_name}
+                                                    </p>
+                                                )}
+                                                {source?.type === "url" && (
+                                                    <a href={source?.source_url} target="_blank" rel="noopener noreferrer" className={cn('text-xs truncate w-auto hover:underline flex items-center', isDarkMode ? 'text-blue-400/80' : 'text-blue-500')}>
+                                                        <Link2 size={10} className="mr-1" />
+                                                        {source?.source_url}
+                                                    </a>
+                                                )}
+                                                <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                    {formatDate(source?.created_at || new Date().toISOString())}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer mx-3">
@@ -517,8 +701,8 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                     </label>
                                     <ActionMenu
                                         isDarkMode={isDarkMode}
-                                        isView={source?.type == "text"}
-                                        isEdit={source?.type == "text"}
+                                        isView={source?.type == "text" || source?.type == "file"}
+                                        isEdit={source?.type == "text" || source?.type == "file"}
                                         onView={() => handleView(source, 'knowledge')}
                                         onEdit={() => handleEdit(source, 'knowledge')}
                                         onDelete={() => handleDeleteClick(source, 'knowledge')}

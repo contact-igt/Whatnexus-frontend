@@ -40,6 +40,7 @@ export const useUploadKnowledgeMutation = () => {
     });
 };
 
+
 export const useGetKnowledgesQuery = () => {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['knowledges'],
@@ -65,7 +66,8 @@ export const useKnowledgeByIdQuery = (id: string, type: string) => {
         staleTime: 3 * 60 * 1000,
     });
     return query;
-}   
+}
+
 
 export const useUpdateKnowledgeMutation = () => {
     const queryClient = useQueryClient();
@@ -95,12 +97,16 @@ export const useActivateKnowledgeMutation = () => {
         mutationFn: ({ id, data }: { id: string, data: any }) => {
             return KnowledgeApis.activateKnowledgeById(id, data)
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["knowledges"] })
-            toast.success("Knowledge activated successfully");
+        onSuccess: (response: any) => {
+            queryClient.invalidateQueries({ queryKey: ["knowledges"] });
+            const message =
+                response?.data?.message ||
+                response?.message ||
+                "Knowledge status updated successfully";
+            toast.success(message);
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || error?.message || 'Failed to activate knowledge');
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to update knowledge status');
         },
     })
 }
