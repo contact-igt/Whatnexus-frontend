@@ -75,6 +75,7 @@ export default function LoginPage() {
             router.replace("/");
         }
     }, [token]);
+    
     return (
         <div className={cn(
             "min-h-screen flex items-center justify-center p-4 transition-all duration-700 relative overflow-hidden",
