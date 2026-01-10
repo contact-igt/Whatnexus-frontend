@@ -49,25 +49,6 @@ const formatDate = (dateString: string) => {
     });
 };
 
-const formatDisplayKnowledge = (type: string, data: any): string => {
-    switch (type) {
-        case "text":
-            return data?.text
-                ? data.text.length > 120
-                    ? `${data.text.slice(0, 120)}...`
-                    : data.text
-                : "Text content";
-
-        case "url":
-            return data?.source_url || "Website URL";
-
-        case "pdf":
-            return data?.file_name || data?.file_url || "Uploaded file";
-
-        default:
-            return "knowledge source";
-    }
-};
 
 export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, uploadedData, setUploadedData, setIsDragging, handleDragEnter, handleDragOver, handleDragLeave, handleDrop, handleUploadFile, handleDeleteClick, handleEdit, handleView, uploading }: PromptConfigurationProps) => {
     const fileRef = useRef<HTMLInputElement>(null);
@@ -362,7 +343,6 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                 </div>
             </GlassCard>
 
-            {/* Configured Prompts */}
             <GlassCard isDarkMode={isDarkMode} className="p-6">
                 <div className="flex items-center justify-between mb-6">
                     <div>
