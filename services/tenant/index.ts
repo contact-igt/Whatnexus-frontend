@@ -1,0 +1,19 @@
+import { _axios } from "@/helper/axios";
+
+// export interface CreatePromptData {
+//     name: string;
+//     prompt: string;
+// }
+
+export class TenantApiData {
+    createTenant = async (data: any) => {
+        return await _axios("post", "/tenant", data);
+    };
+    getAllTenants = async () => {
+        return await _axios("get", "/tenants");
+    };
+
+    updateTenant = async (id: string, data: any) => {
+        return await _axios("put", `/tenant/${id}`, data);
+    };
+}

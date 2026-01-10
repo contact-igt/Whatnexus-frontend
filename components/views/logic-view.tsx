@@ -7,12 +7,11 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { NEURAL_RULES } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
 
-interface LogicViewProps {
-    isDarkMode: boolean;
-}
 
-export const LogicView = ({ isDarkMode }: LogicViewProps) => {
+export const LogicView = () => {
+    const {isDarkMode} = useTheme();
     const [isUpdatingPersona, setIsUpdatingPersona] = useState(false);
     const [personaDescription, setPersonaDescription] = useState('Helpful, expert, and efficient SaaS consultant.');
     const [personaResult, setPersonaResult] = useState<string | null>(null);

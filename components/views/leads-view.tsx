@@ -7,12 +7,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { LEADS } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
 
-interface LeadsViewProps {
-    isDarkMode: boolean;
-}
-
-export const LeadsView = ({ isDarkMode }: LeadsViewProps) => {
+export const LeadsView = () => {
+    const { isDarkMode } = useTheme();
     const [analyzingId, setAnalyzingId] = useState<string | null>(null);
     const [insight, setInsight] = useState<{ id: string; text: string } | null>(null);
 

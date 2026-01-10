@@ -7,12 +7,11 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { BROADCAST_CAMPAIGNS, BRAND_NAME } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
 
-interface BroadcastViewProps {
-    isDarkMode: boolean;
-}
 
-export const BroadcastView = ({ isDarkMode }: BroadcastViewProps) => {
+export const BroadcastView = () => {
+    const {isDarkMode} = useTheme();
     const [isDrafting, setIsDrafting] = useState(false);
     const [draftGoal, setDraftGoal] = useState('');
     const [aiDraft, setAiDraft] = useState('');

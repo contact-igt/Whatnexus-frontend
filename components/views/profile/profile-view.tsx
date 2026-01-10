@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Mail, Phone, User, Briefcase, Award, Edit2, Save, X, ChevronDown } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
-interface ProfileViewProps {
-    isDarkMode: boolean;
-}
 
-export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
+export const ProfileView = () => {
+    const {isDarkMode} = useTheme();
     const { user } = useAuth();
     const [isEditMode, setIsEditMode] = useState(false);
     const [formData, setFormData] = useState({

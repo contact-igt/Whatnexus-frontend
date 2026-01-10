@@ -1,24 +1,26 @@
 
 "use client";
 
-import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings } from 'lucide-react';
 import { FloatingDockItem } from "@/components/ui/floating-dock-item";
+import { FloatingDockDropdown } from "@/components/ui/floating-dock-dropdown";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTheme } from "@/hooks/useTheme";
 
-interface SidebarProps {
-    handleActiveTab: (tab: string) => void;
-    activeTab: string;
-    setActiveTab: (tab: string) => void;
-    isDarkMode: boolean;
-    toggleTheme: () => void;
-}
 
-export const Sidebar = ({ handleActiveTab, activeTab, setActiveTab, isDarkMode, toggleTheme }: SidebarProps) => {
+
+export const Sidebar = () => {
     const { user } = useAuth();
+    const router = useRouter();
+    const { isDarkMode } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);
 
+    const handleActiveTab = (tab: string) => {
+        router.push(tab);
+    }
     return (
         <aside
             onMouseEnter={() => setIsExpanded(true)}
@@ -29,7 +31,7 @@ export const Sidebar = ({ handleActiveTab, activeTab, setActiveTab, isDarkMode, 
                 isDarkMode ? 'border-r border-white/5 bg-[#0D0D0F]' : 'border-r border-slate-200 bg-white shadow-2xl'
             )}
         >
-            <div className={cn("mb-10 animate-in fade-in slide-in-from-top-4 duration-1000 transition-all ml-1", isExpanded ? "px-4" : "px-3")}>
+            <div className={cn("mb-10 animate-in fade-in slide-in-from-top-4 duration-1000 transition-all flex items-center justify-center", isExpanded ? "px-4" : "px-3")}>
                 {!isExpanded ? (
                     <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl tracking-tighter shadow-lg transition-transform hover:scale-105", isDarkMode ? 'bg-white text-slate-900' : 'bg-slate-900 text-white')}>
                         W<span className="text-emerald-500">.</span>
@@ -42,23 +44,37 @@ export const Sidebar = ({ handleActiveTab, activeTab, setActiveTab, isDarkMode, 
             </div>
 
             <nav className="flex-1 flex flex-col space-y-6 px-4 overflow-y-auto no-scrollbar">
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={LayoutDashboard} label="Neural Hub" active={activeTab === 'dashboard'} onClick={() => handleActiveTab('dashboard')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" active={activeTab === 'leads'} onClick={() => handleActiveTab('leads')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={MessageSquare} label="Shared Inbox" active={activeTab === 'chats'} onClick={() => handleActiveTab('chats')} urgent={true} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" active={activeTab === 'team'} onClick={() => handleActiveTab('team')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" active={activeTab === 'followups'} onClick={() => handleActiveTab('followups')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" active={activeTab === 'appointments'} onClick={() => handleActiveTab('appointments')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Stethoscope} label="Doctors" active={activeTab === 'doctors'} onClick={() => handleActiveTab('doctors')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Radio} label="Broadcasts" active={activeTab === 'broadcast'} onClick={() => handleActiveTab('broadcast')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" active={activeTab === 'knowledge'} onClick={() => handleActiveTab('knowledge')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Brain} label="AI Logic" active={activeTab === 'logic'} onClick={() => handleActiveTab('logic')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Smartphone} label="Governance" active={activeTab === 'system'} onClick={() => handleActiveTab('system')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={LayoutDashboard} label="Neural Hub" route="/dashboard" onClick={() => handleActiveTab('/dashboard')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" route="/leads" onClick={() => handleActiveTab('/leads')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={MessageSquare} label="Shared Inbox" route="/chats" onClick={() => handleActiveTab('/chats')} urgent={true} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" route="/appointments" onClick={() => handleActiveTab('/appointments')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Stethoscope} label="Doctors" route="/doctors" onClick={() => handleActiveTab('/doctors')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Radio} label="Broadcasts" route="/broadcast" onClick={() => handleActiveTab('/broadcast')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" route="/knowledge" onClick={() => handleActiveTab('/knowledge')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Brain} label="AI Logic" route="/logic" onClick={() => handleActiveTab('/logic')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Smartphone} label="Governance" route="/system" onClick={() => handleActiveTab('/system')} />
+                {user?.role === 'super-admin' && <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Building2} label="Organizations" route="/organizations" onClick={() => handleActiveTab('/organizations')} />}
+                <FloatingDockDropdown
+                    isExpanded={isExpanded}
+                    isDarkMode={isDarkMode}
+                    icon={Settings}
+                    label="Settings"
+                    items={[
+                        {
+                            label: 'WhatsApp Settings',
+                            route: '/settings/whatsapp-settings',
+                            onClick: () => handleActiveTab('/settings/whatsapp-settings'),
+                        }
+                    ]}
+                />
             </nav>
 
             <div className={cn("mt-auto space-y-6 flex flex-col transition-all duration-300", isExpanded ? "items-start px-6" : "items-center")}>
-                <button onClick={toggleTheme} className={cn("p-4 rounded-2xl mt-2 transition-all border group relative", isDarkMode ? 'border-white/5 hover:bg-white/5 text-emerald-400' : 'border-slate-200 hover:bg-slate-100 text-slate-500')}>
+                {/* <button onClick={toggleTheme} className={cn("p-4 rounded-2xl mt-2 transition-all border group relative", isDarkMode ? 'border-white/5 hover:bg-white/5 text-emerald-400' : 'border-slate-200 hover:bg-slate-100 text-slate-500')}>
                     {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
+                </button> */}
                 <div className={cn(
                     "rounded-2xl flex items-center font-black text-xs border cursor-pointer transition-all duration-300 overflow-hidden",
                     isExpanded ? "w-full px-4 py-3 gap-3 justify-start" : "w-12 h-12 justify-center hover:rotate-6",

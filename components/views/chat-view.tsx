@@ -4,17 +4,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
-import { MESSAGES_MOCK, CONTACTS_MOCK, AGENTS } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
 import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
+import { useTheme } from '@/hooks/useTheme';
 
-interface ChatViewProps {
-    isDarkMode: boolean;
-    selectedContact: typeof CONTACTS_MOCK[0];
-    setSelectedContact: (contact: typeof CONTACTS_MOCK[0]) => void;
-}
 
 const getDateLabel = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -33,44 +27,6 @@ const getDateLabel = (dateStr: string) => {
     return date.toLocaleDateString("en-GB");
 };
 
-const formatChatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-
-    const startOfToday = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate()
-    );
-
-    const startOfYesterday = new Date(startOfToday);
-    startOfYesterday.setDate(startOfToday.getDate() - 1);
-
-    // Today → show time
-    if (date >= startOfToday) {
-        return date.toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        });
-    }
-
-    // Yesterday → show "Yesterday"
-    if (date >= startOfYesterday) {
-        return "Yesterday";
-    }
-
-    // Within last 7 days → show weekday
-    const diffDays =
-        (startOfToday.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
-
-    if (diffDays < 7) {
-        return date.toLocaleDateString("en-IN", { weekday: "long" });
-    }
-
-    // Older → show date
-    return date.toLocaleDateString("en-GB");
-};
 
 const formattedTime = (dateString: any) => {
     if (!dateString) return "";
@@ -85,7 +41,8 @@ const formattedTime = (dateString: any) => {
 }
 
 
-export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: ChatViewProps) => {
+export const ChatView = () => {
+    const {isDarkMode} = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const {
         data: chatList,
@@ -115,8 +72,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
     const handleInputChange = (e: any) => {
         setMessage(e.target.value);
     }
-
-    console.log(chatList);
 
     const handleChatSearch = (e: any) => {
         setChatSearchText(e.target.value);
@@ -150,7 +105,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
     }, [selectedChat?.phone, chatList?.data]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
-        console.log(messages)
         return messages?.reduce((groups: any, msg: any) => {
             const label = getDateLabel(msg.created_at || msg.timestamp);
 
@@ -179,17 +133,14 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();
             let filtered = chatList?.data;
-            console.log("chats", chatList?.data)
             if (value) {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
-            console.log("chatFilter", chatFilter)
             if (chatFilter === 'read') {
                 filtered = filtered?.filter((chat: any) => chat?.seen == "true");
             } else if (chatFilter === 'unread') {
                 filtered = filtered?.filter((chat: any) => chat?.seen == "false" || chat?.seen == null);
             }
-            console.log("filtered", filtered)
             setFilteredChats(filtered);
         }, 200);
 
@@ -207,7 +158,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         const filtered = messagesToFilter?.filter((msg: any) =>
             msg?.message?.toLowerCase().includes(value)
         );
-        console.log("filtered", filtered)
         setFilteredMessage(filtered);
 
     }, [messageSearchText, selectedChat, messagesData]);
@@ -253,7 +203,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
             const response = await chatSuggestMutate({
                 phone: selectedChat?.phone,
             });
-            console.log("response", response)
             setMessage(response?.data);
         } catch (err) {
             console.error(err);
@@ -269,7 +218,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
       Highlight the key needs of the lead and any pending action items. Keep it under 40 words.
       History:\n${history}`;
             const result = await callOpenAI(prompt, "You are a concise business analyst.");
-            console.log("result", result)
             setChatSummary(result);
         } catch (err) {
             setChatSummary("Unable to generate neural brief. Retry sync.");
@@ -366,7 +314,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                             <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Controller</span>
                             <div className="flex items-center space-x-2">
                                 <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm shadow-blue-500/30">JD</div>
-                                <span className={cn("text-xs font-bold uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-700')}>{selectedContact.assignedTo ? AGENTS.find(a => a.id === selectedContact.assignedTo)?.name : 'Unassigned'}</span>
+                                {/* <span className={cn("text-xs font-bold uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-700')}>{selectedContact?.assignedTo ? AGENTS.find(a => a.id === selectedContact?.assignedTo)?.name : 'Unassigned'}</span> */}
                             </div>
                         </div>
                         <div className="h-6 w-px bg-white/10" />

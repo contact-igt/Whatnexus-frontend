@@ -52,12 +52,18 @@ const formatDate = (dateString: string) => {
 
 export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, uploadedData, setUploadedData, setIsDragging, handleDragEnter, handleDragOver, handleDragLeave, handleDrop, handleUploadFile, handleDeleteClick, handleEdit, handleView, uploading }: PromptConfigurationProps) => {
     const fileRef = useRef<HTMLInputElement>(null);
-    const [aiName, setAiName] = useState("");
     const [inputType, setInputType] = useState<'text' | 'file'>('text');
-    const [promptText, setPromptText] = useState("");
+    const [error, setError] = useState({
+        aiName: "",
+        promptText: "",
+        selectFile: "",
+    })
+    const [inputValue, setInputValue] = useState({
+        aiName: "",
+        promptText: "",
+    })
     const [isUploading, setIsUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [promptsList, setPromptsList] = useState<PromptItem[]>([]);
     const { data: promptsData, isLoading: isPromptsLoading, isError } = useGetPromptConfigurationQuery();
     const { mutate: createPromptMutate, isPending: isCreatePromptPending } = useCreatePromptMutation();
     const { mutate: activatePromptMutate, isPending: isActivatePromptPending } = useActivatePromptMutation();
@@ -97,37 +103,72 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
         }
     };
 
+    const handleInputChange = (e: any) => {
+        const {name, value} = e.target;
+        setInputValue((prev)=> ({...prev, [name]: value}));
+
+        if (name === "aiName" && value.trim().length >= 3) {
+            setError((prev) => ({ ...prev, [name]: "" }));
+        }
+        else if (name === "aiName" && value.trim().length < 3) {
+            setError((prev) => ({ ...prev, [name]: "Name must be at least 3 characters long." }));
+        }
+
+        if (name === "promptText" && value.trim().length >= 10) {
+            setError((prev) => ({ ...prev, [name]: "" }));
+        }
+        else if (name === "promptText" && value.trim().length < 10) {
+            setError((prev) => ({ ...prev, [name]: "Prompt instructions must be at least 10 characters long." }));
+        }
+    }
+
     const handleAddPrompt = () => {
-        if (!aiName.trim()) {
-            toast.error("Please enter a name.");
+        if (inputType == "text" && !inputValue?.aiName.trim() && !inputValue?.promptText.trim()) {
+            setError((prev) => ({ ...prev, aiName: "Please enter a name." }));
+            setError((prev) => ({ ...prev, promptText: "Prompt instructions must be at least 10 characters long." }));
+            return;
+        }
+        if (inputType == "file" && !inputValue?.aiName.trim() && !selectedFile) {
+            setError((prev) => ({ ...prev, aiName: "Please enter a name." }));
+            setError((prev) => ({ ...prev, selectFile: "Please select a file." }));
+            return;
+        }
+        if (!inputValue?.aiName.trim()) {
+            setError((prev) => ({ ...prev, aiName: "Please enter a name." }));
+            return;
+        }
+        else if(inputValue?.aiName.trim().length < 3){
+            setError((prev) => ({ ...prev, aiName: "Name must be at least 3 characters long." }));
             return;
         }
 
-        if (inputType === 'text' && !promptText.trim()) {
-            toast.error("Please enter prompt instructions.");
+        if (inputType === 'text' && !inputValue?.promptText.trim()) {
+            setError((prev) => ({ ...prev, promptText: "Please enter prompt instructions." }));
             return;
         }
         else if (inputType === 'file' && !selectedFile) {
-            toast.error("Please select a file.");
+            setError((prev) => ({ ...prev, selectFile: "Please select a file." }));
             return;
         }
 
         if (inputType === "text") {
-            if (!promptText.trim()) {
-                toast.error("Please enter prompt instructions.");
+            if (!inputValue?.promptText.trim()) {
+                setError((prev) => ({ ...prev, promptText: "Please enter prompt instructions." }));
                 return;
             }
-            if (promptText.trim().length < 10) {
-                toast.error("Prompt instructions must be at least 10 characters long.");
+            if (inputValue?.promptText.trim().length < 10) {
+                setError((prev) => ({ ...prev, promptText: "Prompt instructions must be at least 10 characters long." }));
                 return;
             }
             createPromptMutate({
-                name: aiName.trim(),
-                prompt: promptText.trim()
+                name: inputValue?.aiName.trim(),
+                prompt: inputValue?.promptText.trim()
             }, {
                 onSuccess: () => {
-                    setAiName("");
-                    setPromptText("");
+                    setInputValue({
+                        aiName: "",
+                        promptText: "",
+                    })
                 }
             });
         }
@@ -137,12 +178,14 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                 return;
             }
             createPromptMutate({
-                name: aiName.trim(),
+                name: inputValue?.aiName.trim(),
                 prompt: selectedFile?.text
             }, {
                 onSuccess: () => {
-                    setAiName("");
-                    setPromptText("");
+                    setInputValue({
+                        aiName: "",
+                        promptText: "",
+                    })
                     setSelectedFile(null);
                     if (fileRef.current) fileRef.current.value = "";
                 }
@@ -154,7 +197,6 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
         activatePromptMutate({ id, data: { is_active: isActive == "true" ? "false" : "true" } });
     };
 
-    // Helper to handle local drag and drop
     const handleLocalDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         // setIsDragging(false); // Local drag state needed if separate from props. 
@@ -167,12 +209,10 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
 
     const handleLocalDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
-        // setIsDragging(true);
     };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Add New Configuration */}
             <GlassCard isDarkMode={isDarkMode} className="p-6">
                 <h3 className={cn("text-lg font-bold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
                     Add New Configuration
@@ -184,18 +224,23 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                 <div className="space-y-4">
                     <div>
                         <label className={cn("text-xs font-semibold mb-2 block", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                            Name
+                            Name <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
-                            value={aiName}
-                            onChange={(e) => setAiName(e.target.value)}
+                            name='aiName'
+                            value={inputValue?.aiName}
+                            onChange={handleInputChange}
                             placeholder="e.g. Receptionist Bot"
                             className={cn(
                                 "w-full px-4 py-2.5 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
-                                isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
+                                error?.aiName ? 'border-red-500' : ''
                             )}
                         />
+                        {error?.aiName && (
+                            <p className="text-xs text-red-500 mt-2">{error.aiName}</p>
+                        )}
                     </div>
 
                     <div>
@@ -233,26 +278,33 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                     {inputType === 'text' ? (
                         <div className="animate-in fade-in duration-300">
                             <label className={cn("text-xs font-semibold mb-2 block", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                Prompt Instructions
+                                Prompt Instructions <span className="text-red-500">*</span>
                             </label>
                             <textarea
-                                value={promptText}
-                                onChange={(e) => setPromptText(e.target.value)}
+                                name='promptText'
+                                onChange={handleInputChange}
+                                value={inputValue?.promptText}
                                 placeholder="Enter detailed instructions for the AI..."
                                 rows={8}
                                 className={cn(
                                     "w-full px-4 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none",
-                                    isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                    isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
+                                    error?.promptText ? 'border-red-500' : ''
                                 )}
                             />
-                            <p className={cn("text-xs mt-2 text-right", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                {promptText.length} characters
-                            </p>
+                            <div className='flex justify-between items-center'>
+                                <p className="text-xs text-red-500 mt-1">{error?.promptText}</p>
+
+                                <p className={cn("text-xs mt-2 text-right", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                    {inputValue?.promptText?.length} characters
+                                </p>
+                            </div>
+
                         </div>
                     ) : (
                         <div className="animate-in fade-in duration-300">
                             <label className={cn("text-xs font-semibold mb-2 block", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                Upload Prompt File
+                                Upload Prompt File <span className="text-red-500">*</span>
                             </label>
 
                             {!selectedFile ? (
@@ -329,6 +381,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                     </button>
                                 </div>
                             )}
+                            {error.selectFile && <p className="text-red-500 text-sm mt-1">{error.selectFile}</p>}
                         </div>
                     )}
 

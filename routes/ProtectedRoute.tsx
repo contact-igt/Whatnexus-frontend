@@ -1,3 +1,4 @@
+"use client";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';

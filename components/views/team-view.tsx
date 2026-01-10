@@ -10,10 +10,7 @@ import * as z from "zod";
 import { useCreateManagementMutation, useManagementQuery } from '@/hooks/useManagementQuery';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-interface TeamManagementViewProps {
-    isDarkMode: boolean;
-}
+import { useTheme } from '@/hooks/useTheme';
 
 const formSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -25,18 +22,17 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const TeamManagementView = ({ isDarkMode }: TeamManagementViewProps) => {
+export const TeamManagementView = () => {
+    const {isDarkMode} = useTheme();
     const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
         resolver: zodResolver(formSchema)
     })
     const { data: managementData, isLoading } = useManagementQuery();
     const { mutate: createManagementMutate, isPending: createManagementLoading } = useCreateManagementMutation();
-    console.log("managementData", managementData);
 
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
     const onSubmit = (data: FormData) => {
-        console.log(data)
         createManagementMutate(data, {
             onSuccess: () => {
                 reset();

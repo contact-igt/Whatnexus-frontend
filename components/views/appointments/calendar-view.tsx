@@ -7,8 +7,8 @@ import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { Appointment } from './booking-list';
-import { AppointmentModal } from './appointment-modal';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { AppointmentModal } from './appointment-modal';
 
 interface CalendarViewProps {
     isDarkMode: boolean;

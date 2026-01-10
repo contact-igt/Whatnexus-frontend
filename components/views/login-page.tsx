@@ -40,9 +40,7 @@ export default function LoginPage() {
     const { token } = useAuth();
     const { mutate: loginMutate, isPending: isLoading } = useLoginMutation();
     const [showPassword, setShowPassword] = useState(false);
-    const { theme, setTheme } = useTheme();
-
-    const isDarkMode = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const { theme, setTheme, isDarkMode } = useTheme();
 
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
@@ -75,7 +73,7 @@ export default function LoginPage() {
             router.replace("/");
         }
     }, [token]);
-    
+
     return (
         <div className={cn(
             "min-h-screen flex items-center justify-center p-4 transition-all duration-700 relative overflow-hidden",

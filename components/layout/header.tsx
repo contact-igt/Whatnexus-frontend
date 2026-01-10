@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Globe, Bell } from 'lucide-react';
+import { Globe, Bell, Sun, Moon } from 'lucide-react';
 import { BRAND_NAME } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -10,25 +10,21 @@ import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
 import { useDispatch } from 'react-redux';
 import { clearAuthData } from '@/redux/slices/auth/authSlice';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@/hooks/useTheme';
 
-interface HeaderProps {
-    isDarkMode: boolean;
-    onNavigateToProfile: () => void;
-}
 
-export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
+export const Header = () => {
     const { user } = useAuth();
+    const { theme, setTheme, isDarkMode } = useTheme();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const dispatch = useDispatch();
     const router = useRouter();
-
+    const toggleTheme = () => {
+        setTheme(isDarkMode ? "light" : "dark");
+    };
     const handleLogout = () => {
         dispatch(clearAuthData());
         router.replace('/login');
-    };
-
-    const handleViewProfile = () => {
-        onNavigateToProfile();
     };
 
     return (
@@ -74,7 +70,9 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
                         <Bell size={20} />
                         <div className="absolute top-3.5 right-3.5 w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
                     </button>
-
+                    <button onClick={toggleTheme} className={cn("p-3 rounded-2xl mt-0 transition-all border group relative", isDarkMode ? 'border-white/5 hover:bg-white/5 text-emerald-400' : 'border-slate-200 hover:bg-slate-100 text-slate-500')}>
+                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
                     {/* User Profile Avatar with Dropdown */}
                     <div className="relative">
                         <div
@@ -85,11 +83,11 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
                                 isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-900 text-white border-slate-700'
                             )}
                         >
+
                             <div className={cn("shrink-0 flex items-center justify-center")}>
                                 {user?.username?.split("")[0].toUpperCase()}
                             </div>
                         </div>
-
                         {/* Dropdown */}
                         {isProfileOpen && (
                             <UserProfileDropdown
@@ -97,7 +95,6 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
                                 user={user}
                                 onClose={() => setIsProfileOpen(false)}
                                 onLogout={handleLogout}
-                                onViewProfile={handleViewProfile}
                             />
                         )}
                     </div>
