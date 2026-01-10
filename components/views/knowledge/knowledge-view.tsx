@@ -2,14 +2,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Type, AlignLeft, Link2 } from 'lucide-react';
-import { GlassCard } from "@/components/ui/glass-card";
-import { KNOWLEDGE_SOURCES } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
+import { Loader2, Type, AlignLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { extractTextFromFile } from '@/utils/ocr';
 import { DataSource } from './dataSource';
-import { ActionMenu } from "@/components/ui/action-menu";
 import { Modal } from "@/components/ui/modal";
 import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation } from '@/hooks/usePromptQuery';
 import { toast } from "sonner";
@@ -50,7 +46,6 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
     const { mutate: updatePromptMutute } = useUpdatePromptMutation();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<{ item: any, type: string } | null>(null);
-
     const { mutate: deleteKnowledgeMutate } = useDeleteKnowledgeById();
     const { mutate: deletePromptMutate } = useDeletePromptMutation();
     const isView = viewMode === "view";
@@ -106,8 +101,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
         setViewMode('edit');
         setIsViewModalOpen(true);
     };
-    console.log("isPrompt", isPrompt)
-    console.log("selectedItem", selectedItem?.mode)
+
     const handleUpdate = () => {
         if (!selectedItem) return;
         if (selectedItem?.mode == "knowledge") {
@@ -196,7 +190,6 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
         });
 
         if (validFiles.length === 0) return;
-        // Add files to uploaded files list
         const newFiles = await Promise.all(validFiles.map(async (file) => {
             const text = await extractTextFromFile(file);
             return {
@@ -252,11 +245,6 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
         }
     }, [knowledgeDetailsById, promptDetailsById, viewMode, isViewModalOpen]);
 
-    console.log("promptDetailsById", promptDetailsById)
-    console.log("viewMode", viewMode);
-    console.log("selectedItem", selectedItem);
-    console.log("uploadedData", uploadedData);
-    console.log("selectedItem", selectedItem);
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">
@@ -335,7 +323,6 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                     />
                 )
             }
-            {/* View/Edit Modal */}
             <Modal
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
@@ -397,7 +384,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                                 <input
                                                     type="text"
                                                     disabled={isView}
-                                                    value={isEdit ? (editContent?.title || selectedItem?.item?.title) : (editContent?.title || selectedItem?.item?.title || "")}
+                                                    value={isEdit ? editContent?.title  : selectedItem?.item?.title}
                                                     onChange={(e) => setEditContent({ ...editContent, title: e.target.value })}
                                                     className={cn(
                                                         "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
@@ -503,8 +490,6 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                     )}
                 </div>
             </Modal>
-
-            {/* Delete Confirmation Modal */}
             <Modal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}

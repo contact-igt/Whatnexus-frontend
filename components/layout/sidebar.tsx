@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope } from 'lucide-react';
 import { FloatingDockItem } from "@/components/ui/floating-dock-item";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -47,6 +47,8 @@ export const Sidebar = ({ handleActiveTab, activeTab, setActiveTab, isDarkMode, 
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={MessageSquare} label="Shared Inbox" active={activeTab === 'chats'} onClick={() => handleActiveTab('chats')} urgent={true} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" active={activeTab === 'team'} onClick={() => handleActiveTab('team')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" active={activeTab === 'followups'} onClick={() => handleActiveTab('followups')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" active={activeTab === 'appointments'} onClick={() => handleActiveTab('appointments')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Stethoscope} label="Doctors" active={activeTab === 'doctors'} onClick={() => handleActiveTab('doctors')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Radio} label="Broadcasts" active={activeTab === 'broadcast'} onClick={() => handleActiveTab('broadcast')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" active={activeTab === 'knowledge'} onClick={() => handleActiveTab('knowledge')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Brain} label="AI Logic" active={activeTab === 'logic'} onClick={() => handleActiveTab('logic')} />

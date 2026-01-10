@@ -15,6 +15,8 @@ import { LogicView } from "@/components/views/logic-view";
 import { SystemGovernanceView } from "@/components/views/system-view";
 import { FollowUpHubView } from "@/components/views/follow-up-view";
 import { ProfileView } from "@/components/views/profile/profile-view";
+import { AppointmentsView } from "@/components/views/appointments/appointments-view";
+import { DoctorsView } from "@/components/views/doctor/doctors-view";
 import { CONTACTS_MOCK } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from '@/routes/ProtectedRoute';
@@ -52,16 +54,18 @@ export default function Home() {
       case 'logic': return <LogicView isDarkMode={isDarkMode} />;
       case 'system': return <SystemGovernanceView isDarkMode={isDarkMode} />;
       case 'followups': return <FollowUpHubView isDarkMode={isDarkMode} />;
+      case 'appointments': return <AppointmentsView isDarkMode={isDarkMode} />;
+      case 'doctors': return <DoctorsView isDarkMode={isDarkMode} />;
       case 'profile': return <ProfileView isDarkMode={isDarkMode} />;
       default: return <DashboardView isDarkMode={isDarkMode} />;
     }
   };
 
-  useEffect(()=>{
-    if(activeTabData){
+  useEffect(() => {
+    if (activeTabData) {
       setActiveTab(activeTabData)
     }
-  },[activeTabData])
+  }, [activeTabData])
 
   return (
     <ProtectedRoute>

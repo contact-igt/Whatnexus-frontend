@@ -259,9 +259,11 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
             id, data: status
         })
     }
+
+    const activeKnowledgeData = knowledgeData?.data?.filter((source: any) => source.status === "active");
+    const inactiveKnowledgeData = knowledgeData?.data?.filter((source: any)=> source.status === "inactive");
     console.log("uploadedData", uploadedData)
     console.log("knowledgeData", knowledgeData);
-
     console.log("documentTitle", inputValue?.documentTitle)
     return (
         <div className="space-y-6">
@@ -616,7 +618,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                 </div>
                             </div>
                         ))
-                    ) : knowledgeData?.data?.map((source: any, index: number) => {
+                    ) : activeKnowledgeData?.map((source: any, index: number) => {
                         const createdAt = new Date(source?.created_at).getTime();
                         const now = Date.now();
                         const isProcessing = now - createdAt < 5 * 60 * 1000;
@@ -638,9 +640,9 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                 <File className="text-emerald-500" size={20} />
                                             )}
                                             {
-                                            source?.type === "text" && (
-                                                <FileText className="text-emerald-500" size={20} />
-                                            )
+                                                source?.type === "text" && (
+                                                    <FileText className="text-emerald-500" size={20} />
+                                                )
                                             }
                                             {source?.type === "url" && (
                                                 <Link2 className="text-emerald-500" size={20} />
@@ -713,6 +715,146 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     })}
                 </div>
             </GlassCard>
+            {inactiveKnowledgeData?.length > 0 && <GlassCard isDarkMode={isDarkMode} className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 className={cn("text-lg font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                            Inactive Sources
+                        </h3>
+                        <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                            Content currently not finding the AI's responses.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    {isKnowledgeLoading ? (
+                        Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "p-4 rounded-xl border animate-pulse",
+                                    isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                                )}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-start space-x-4 flex-1">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-lg shrink-0",
+                                            isDarkMode ? 'bg-white/10' : 'bg-slate-200'
+                                        )} />
+                                        <div className="flex-1 min-w-0 space-y-2">
+                                            <div className="flex items-center space-x-3">
+                                                <div className={cn("h-4 w-32 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                <div className={cn("h-5 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                            </div>
+                                            <div className={cn("h-3 w-20 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-4">
+                                        <div className={cn("w-11 h-6 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        <div className={cn("w-8 h-8 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : inactiveKnowledgeData?.map((source: any, index: number) => {
+                        const createdAt = new Date(source?.created_at).getTime();
+                        const now = Date.now();
+                        const isProcessing = now - createdAt < 5 * 60 * 1000;
+                        return (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all hover:border-emerald-500/30 group",
+                                    isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                                )}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-start space-x-4 flex-1">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                                            isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50'
+                                        )}>
+                                            {source?.type === "file" && (
+                                                <File className="text-emerald-500" size={20} />
+                                            )}
+                                            {
+                                                source?.type === "text" && (
+                                                    <FileText className="text-emerald-500" size={20} />
+                                                )
+                                            }
+                                            {source?.type === "url" && (
+                                                <Link2 className="text-emerald-500" size={20} />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center space-x-3 mb-1">
+                                                <h4 className={cn("text-sm font-semibold truncate max-w-[300px]", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                    {source.title || source.file_name}
+                                                </h4>
+                                                {!isProcessing ? (
+                                                    <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                                        <CheckCircle2 size={12} />
+                                                        <span className="text-xs font-semibold">Trained</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-500/10 text-slate-500 border border-slate-500/20">
+                                                        <Clock size={12} />
+                                                        <span className="text-xs font-semibold">Processing</span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className='flex items-center space-x-3'>
+                                                {source?.type === "file" && (
+                                                    <p className={cn('text-xs truncate max-w-[200px]', isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                        {source?.file_name}
+                                                    </p>
+                                                )}
+                                                {source?.type === "url" && (
+                                                    <a href={source?.source_url} target="_blank" rel="noopener noreferrer" className={cn('text-xs truncate w-auto hover:underline flex items-center', isDarkMode ? 'text-blue-400/80' : 'text-blue-500')}>
+                                                        <Link2 size={10} className="mr-1" />
+                                                        {source?.source_url}
+                                                    </a>
+                                                )}
+                                                <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                    {formatDate(source?.created_at || new Date().toISOString())}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer mx-3">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={source.status == "active" ? true : false}
+                                            onChange={() => handleToggleActive(source.id, source.status)}
+                                        />
+                                        <div className={cn(
+                                            "w-11 h-6 rounded-full peer transition-all",
+                                            "peer-checked:bg-emerald-600",
+                                            isDarkMode ? 'bg-white/10' : 'bg-slate-300'
+                                        )}>
+                                            <div className={cn(
+                                                "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
+                                                source.status == "active" ? "translate-x-5" : "translate-x-0"
+                                            )} />
+                                        </div>
+                                    </label>
+                                    <ActionMenu
+                                        isDarkMode={isDarkMode}
+                                        isView={source?.type == "text" || source?.type == "file"}
+                                        isEdit={source?.type == "text" || source?.type == "file"}
+                                        onView={() => handleView(source, 'knowledge')}
+                                        onEdit={() => handleEdit(source, 'knowledge')}
+                                        onDelete={() => handleDeleteClick(source, 'knowledge')}
+                                    />
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </GlassCard>}
         </div>
     )
 }
