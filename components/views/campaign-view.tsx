@@ -112,7 +112,6 @@ export const CampaignView = () => {
 
     return (
         <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
-            {/* Header */}
             <div className="flex justify-between items-end">
                 <div className="space-y-1">
                     <div className="flex items-center space-x-2 text-emerald-500">
@@ -154,7 +153,6 @@ export const CampaignView = () => {
                 </div>
             </GlassCard> */}
 
-            {/* Search and Refresh */}
             <div className="flex gap-4">
                 <div className="flex-1 relative">
                     <Search size={18} className={cn("absolute left-4 top-1/2 -translate-y-1/2", isDarkMode ? 'text-white/30' : 'text-slate-400')} />
@@ -184,7 +182,6 @@ export const CampaignView = () => {
                 </button>
             </div>
 
-            {/* Tabs */}
             <div className="flex gap-2 border-b border-white/5 overflow-x-auto no-scrollbar">
                 {tabs.map((tab) => (
                     <button
@@ -204,7 +201,6 @@ export const CampaignView = () => {
                 ))}
             </div>
 
-            {/* Campaigns Table */}
             <GlassCard isDarkMode={isDarkMode} className="p-0">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left min-w-[900px]">
@@ -282,7 +278,6 @@ export const CampaignView = () => {
                 </div>
             </GlassCard>
 
-            {/* Pagination */}
             <div className="flex items-center justify-between">
                 <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                     Showing {filteredCampaigns.length} of {campaigns.length} campaigns

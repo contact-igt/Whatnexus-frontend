@@ -2,10 +2,6 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import Providers from "@/provider/provider";
-import ProtectedRoute from "@/routes/ProtectedRoute";
-import { cn } from "@/lib/utils";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
 // import { useTheme } from "@/hooks/useTheme";
 
 

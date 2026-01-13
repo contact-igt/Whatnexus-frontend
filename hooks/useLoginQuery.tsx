@@ -6,27 +6,29 @@ import { useDispatch } from "react-redux";
 import { toast } from "sonner";
 
 
-const {login} = new authApis();
+const { login } = new authApis();
 
 
-export const useLoginMutation = ()=>{
+export const useLoginMutation = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     return useMutation({
-        mutationFn: (data: any)=> login(data),
-        onSuccess: (data, variables)=>{
-            if(!data || data?.success == false){
+        mutationFn: (data: any) => login(data),
+        onSuccess: (data, variables) => {
+            console.log(data)
+            if (!data || data?.success == false) {
                 toast.error(data?.message || "Something went wrong")
+                return; // Early return to prevent navigation and auth data dispatch on failure
             }
             dispatch(setAuthData({
-                token: variables.rememberMe === true ? data?.refreshToken : data?.accessToken,
-                refreshToken: data?.refreshToken,
+                token: variables.rememberMe === true ? data?.tokens?.refreshToken : data?.tokens?.accessToken,
+                refreshToken: data?.tokens?.refreshToken,
                 user: data?.user
             }))
             toast.success("Login successful")
-            router.replace("/")
+            router.push("/dashboard")
         },
-        onError: (error: any)=>{
+        onError: (error: any) => {
             toast.error(error?.response?.data?.message || error?.message || "Something went wrong")
         }
     })

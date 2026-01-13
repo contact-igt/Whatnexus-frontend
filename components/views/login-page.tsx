@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useDispatch } from "react-redux";
 import { useTheme } from "@/hooks/useTheme";
 import { Eye, EyeOff, Mail, Lock, LogIn, Sun, Moon, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BRAND_NAME } from "@/lib/data";
 import { useLoginMutation } from "@/hooks/useLoginQuery";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
@@ -64,13 +62,13 @@ export default function LoginPage() {
     const onSubmit = async (data: LoginFormData) => {
         loginMutate(data, {
             onSuccess: () => {
-                router.push("/")
+                router.push("/dashboard")
             }
         })
     };
     useEffect(() => {
         if (token) {
-            router.replace("/");
+            router.replace("/dashboard");
         }
     }, [token]);
 

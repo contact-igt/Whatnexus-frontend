@@ -150,7 +150,6 @@ export const TemplateEditorModal = ({
                                 required
                             />
 
-                            {/* Category */}
                             <Select
                                 isDarkMode={isDarkMode}
                                 label="Message Category"
@@ -161,7 +160,7 @@ export const TemplateEditorModal = ({
                                 required
                             />
 
-                            {/* Language */}
+
                             <Select
                                 isDarkMode={isDarkMode}
                                 label="Language"
@@ -171,7 +170,6 @@ export const TemplateEditorModal = ({
                                 onChange={(value) => setFormData({ ...formData, language: value })}
                             />
 
-                            {/* Template Type */}
                             <Select
                                 isDarkMode={isDarkMode}
                                 label="Template Type"
@@ -181,7 +179,6 @@ export const TemplateEditorModal = ({
                                 onChange={(value) => setFormData({ ...formData, templateType: value })}
                             />
 
-                            {/* Medical Specialty */}
                             <Select
                                 isDarkMode={isDarkMode}
                                 label="Medical Specialty"
@@ -257,7 +254,6 @@ export const TemplateEditorModal = ({
                                             </div>
                                         </div>
 
-                                        {/* Message Area */}
                                         <div className="p-4 h-[calc(100%-3rem)] overflow-y-auto custom-scrollbar">
                                             {formData.body ? (
                                                 <div className="bg-[#005c4b] text-white px-3 py-2 rounded-lg text-xs max-w-[85%] shadow-lg">

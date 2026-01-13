@@ -53,7 +53,6 @@ export const CreateTemplateModal = ({
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-white/5">
                     <h2 className={cn("text-lg font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                         Create new template
@@ -71,10 +70,8 @@ export const CreateTemplateModal = ({
                     </button>
                 </div>
 
-                {/* Content */}
                 <div className="p-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Generate with AI */}
                         <button
                             onClick={onGenerateAI}
                             className={cn(

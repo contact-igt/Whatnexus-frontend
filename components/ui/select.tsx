@@ -12,7 +12,7 @@ interface SelectProps {
     required?: boolean;
     options: { value: string; label: string }[];
     value?: string;
-    onChange: (value: string) => void;
+    onChange?: (value: any) => void;
     className?: string;
     placeholder?: string;
     disabled?: boolean;
@@ -47,7 +47,7 @@ export const Select = ({
     }, []);
 
     const handleSelect = (optionValue: string) => {
-        onChange(optionValue);
+        onChange?.(optionValue);
         setIsOpen(false);
     };
 

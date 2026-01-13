@@ -11,7 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 
 import { OrganizationModal } from "./organization-modal";
 import { useActivatePromptMutation, useCreatePromptMutation, useGetPromptConfigurationQuery } from '@/hooks/usePromptQuery';
-import { useCreateTenantMutation, useDeleteTenantMutation, useGetTenantsQuery } from '@/hooks/useTenantQuery';
+import { useCreateTenantMutation, useDeleteTenantMutation, useGetTenantsQuery, useTenantStatusMutation } from '@/hooks/useTenantQuery';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { ActionMenu } from '@/components/ui/action-menu';
@@ -52,11 +52,10 @@ export const OrganizationView = () => {
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    // const [isLoading, setIsLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const { data: tenantsData, isLoading: isTenantLoading, isError } = useGetTenantsQuery();
-    // const { mutate: createTenantMutate, isPending: isCreateTenantPending } = useCreateTenantMutation();
-    const {mutate: deleteMutate, isPending: isDeletePending} = useDeleteTenantMutation();
+    const {mutate: updateTenantStatusMutate, isPending: isTenantStatusPending} = useTenantStatusMutation(); 
+    const { mutate: deleteMutate, isPending: isDeletePending } = useDeleteTenantMutation();
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
@@ -99,7 +98,7 @@ export const OrganizationView = () => {
         console.log("Navigate to WhatsApp", id)
         router.push(`/whatsapp-settings`);
     }
-    const handleDeleteClick = (id: string)=>{
+    const handleDeleteClick = (id: string) => {
         deleteMutate(id);
     }
     const handleSaveOrganization = (orgData: Partial<Organization>) => {
@@ -139,8 +138,14 @@ export const OrganizationView = () => {
                 </div>
             </div>
         );
-    }
+    };
 
+    const handleToggleActive = (id: string, status: string)=>{
+        const data = {
+            status: status == "active" ? "inactive" : "active"
+        }
+        updateTenantStatusMutate({id, data});
+    }
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">
@@ -207,14 +212,14 @@ export const OrganizationView = () => {
                     <>
                         <TableHeader isDarkMode={isDarkMode}>
                             <tr>
-                                <TableHead isDarkMode={isDarkMode}>Organization</TableHead>
-                                <TableHead isDarkMode={isDarkMode}>Admin</TableHead>
-                                <TableHead isDarkMode={isDarkMode}>Type</TableHead>
-                                <TableHead isDarkMode={isDarkMode}>Plan</TableHead>
-                                <TableHead isDarkMode={isDarkMode}>Users</TableHead>
-                                <TableHead isDarkMode={isDarkMode}>Status</TableHead>
-                                <TableHead isDarkMode={isDarkMode}>Expiry</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">Actions</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Organization</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Admin</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Type</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Plan</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Users</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Status</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Expiry</TableHead>
+                                <TableHead align="center" isDarkMode={isDarkMode}>Actions</TableHead>
                             </tr>
                         </TableHeader>
                         <TableBody>
@@ -224,15 +229,16 @@ export const OrganizationView = () => {
                                     isDarkMode={isDarkMode}
                                     isLast={index === tenantsData?.data?.length - 1}
                                 >
-                                    <TableCell>
-                                        <div className="flex items-center space-x-3">
+                                    <TableCell align="center">
+                                        <div className="pl-1 flex justify-center items-center">
+                                            <div className='flex justify-start items-center space-x-3'>
                                             <div className={cn(
                                                 "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
                                                 isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
                                             )}>
                                                 {org.type == "hospital" ? <Hospital className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} /> : <Building2 className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} />}
                                             </div>
-                                            <div>
+                                            <div className='text-start'>
                                                 <p className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
                                                     {org.name}
                                                 </p>
@@ -240,10 +246,11 @@ export const OrganizationView = () => {
                                                     {org.email}
                                                 </p>
                                             </div>
+                                            </div>
                                         </div>
                                     </TableCell>
 
-                                    <TableCell>
+                                    <TableCell align="center">
                                         <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
                                             {org.adminName}
                                         </p>
@@ -251,13 +258,13 @@ export const OrganizationView = () => {
                                             {org.adminEmail ? org.adminEmail : org?.country_code + org?.mobile}
                                         </p>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell align="center">
                                         <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
                                             {org.type}
                                         </p>
                                     </TableCell>
 
-                                    <TableCell>
+                                    <TableCell align="center">
                                         <span className={cn(
                                             "px-3 py-1 rounded-full text-xs font-medium uppercase inline-block",
                                             getPlanBadgeColor(org.subscriptionPlan)
@@ -267,7 +274,7 @@ export const OrganizationView = () => {
                                     </TableCell>
 
                                     {/* Users */}
-                                    <TableCell>
+                                    <TableCell align="center">
                                         <div className="flex items-center space-x-2">
                                             <Users className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
@@ -275,18 +282,36 @@ export const OrganizationView = () => {
                                             </span>
                                         </div>
                                     </TableCell>
-                                    <TableCell>
-                                        <span className={cn(
+                                    <TableCell align="center">
+                                        {/* <span className={cn(
                                             "text-xs font-medium px-2 py-0.5 rounded-full w-fit inline-block",
                                             !org.isActive
                                                 ? isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-100 text-emerald-700"
                                                 : isDarkMode ? "bg-red-500/10 text-red-400" : "bg-red-100 text-red-700"
                                         )}>
                                             {!org.isActive ? 'Active' : 'Suspended'}
-                                        </span>
+                                        </span> */}
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={org.status == "active" ? true : false}
+                                                onChange={() => handleToggleActive(org.id, org.status)}
+                                            />
+                                            <div className={cn(
+                                                "w-11 h-6 rounded-full peer transition-all",
+                                                "peer-checked:bg-emerald-600",
+                                                isDarkMode ? 'bg-white/10' : 'bg-slate-300'
+                                            )}>
+                                                <div className={cn(
+                                                    "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
+                                                    org.status == "active" ? "translate-x-5" : "translate-x-0"
+                                                )} />
+                                            </div>
+                                        </label>
                                     </TableCell>
 
-                                    <TableCell>
+                                    <TableCell align="center">
                                         <div className="flex items-center space-x-2">
                                             <Calendar className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
@@ -295,7 +320,7 @@ export const OrganizationView = () => {
                                         </div>
                                     </TableCell>
 
-                                    <TableCell align="right">
+                                    <TableCell align="center">
                                         <ActionMenu
                                             isDarkMode={isDarkMode}
                                             isView={true}

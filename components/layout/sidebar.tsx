@@ -46,7 +46,7 @@ export const Sidebar = () => {
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={LayoutDashboard} label="Neural Hub" route="/dashboard" onClick={() => handleActiveTab('/dashboard')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" route="/leads" onClick={() => handleActiveTab('/leads')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={MessageSquare} label="Shared Inbox" route="/chats" onClick={() => handleActiveTab('/chats')} urgent={true} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} />
+                <RoleBasedWrapper allowedRoles={['admin']}><FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} /></RoleBasedWrapper>
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" route="/appointments" onClick={() => handleActiveTab('/appointments')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Zap} label="Templates" route="/templates" onClick={() => handleActiveTab('/templates')} />

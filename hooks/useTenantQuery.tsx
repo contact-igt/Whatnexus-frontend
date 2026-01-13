@@ -40,6 +40,22 @@ export const useUpdateTenantMutation = () => {
     });
 };
 
+export const useTenantStatusMutation = ()=>{
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({id, data}: {id: string, data: any}) => {
+            return TenantApis.updateTenantStatus(id, data);
+        },
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            toast.success(response?.data?.message || response?.message || 'Tenant status updated successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to update tenant');
+        },
+    })
+}
+
 export const useGetTenantsQuery = () => {
 
     const { data, isLoading, isError, error } = useQuery({

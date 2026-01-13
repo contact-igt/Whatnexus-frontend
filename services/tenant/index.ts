@@ -17,7 +17,9 @@ export class TenantApiData {
     updateTenant = async (id: string, data: any) => {
         return await _axios("put", `/tenant/${id}`, data);
     };
-    
+    updateTenantStatus = async(id: string, data: any)=>{
+        return await _axios("put", `/tenant-status/${id}?status=${data?.status}`)
+    }
     deleteTenant = async (id: string)=>{
         return await _axios("delete", `/tenant/${id}`)
     }

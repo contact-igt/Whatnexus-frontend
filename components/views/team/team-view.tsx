@@ -8,16 +8,18 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import * as z from "zod";
 import { useCreateManagementMutation, useManagementQuery } from '@/hooks/useManagementQuery';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@/hooks/useTheme';
 import { RoleBasedWrapper } from '@/components/ui/role-based-wrapper';
+import { Select } from '../../ui/select';
+import { Input } from '../../ui/input';
 
 const formSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }),
+    country_code: z.string().min(2, { message: "Country code must be at least 2 characters." }),
     mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
     email: z.string().email({ message: "Invalid email address." }),
-    role: z.string().min(1, { message: "Please select a role." }),
     password: z.string().min(8, { message: "Password must be at least 8 characters." }),
 });
 
@@ -25,7 +27,10 @@ type FormData = z.infer<typeof formSchema>;
 
 export const TeamManagementView = () => {
     const { isDarkMode } = useTheme();
-    const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+    const { control, register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+        defaultValues: {
+            "country_code": "+91"
+        },
         resolver: zodResolver(formSchema)
     })
     const { data: managementData, isLoading } = useManagementQuery();
@@ -217,130 +222,66 @@ export const TeamManagementView = () => {
                 }
             >
                 <form id="invite-form" autoComplete="off" onSubmit={handleFormSubmit} className="space-y-5">
-                    <div>
-                        <label className={cn(
-                            "text-xs font-bold uppercase tracking-wider mb-2 block",
-                            isDarkMode ? 'text-white/40' : 'text-slate-500'
-                        )}>
-                            Username
-                        </label>
-                        <div className="relative">
-                            <User size={16} className={cn(
-                                "absolute left-3 top-1/2 -translate-y-1/2",
-                                isDarkMode ? 'text-white/40' : 'text-slate-400'
-                            )} />
-                            <input
-                                type="text"
-                                {...register('username')}
-                                className={cn(
-                                    "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
-                                    isDarkMode
-                                        ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10'
-                                        : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white'
-                                )}
-                                placeholder="Enter username"
-                            />
-                        </div>
-                        {errors.username && (
-                            <p className="text-xs text-red-500 font-bold mt-2">{errors.username.message}</p>
-                        )}
-                    </div>
-                    <div>
-                        <label className={cn(
-                            "text-xs font-bold uppercase tracking-wider mb-2 block",
-                            isDarkMode ? 'text-white/40' : 'text-slate-500'
-                        )}>
-                            Email
-                        </label>
-                        <div className="relative">
-                            <Mail size={16} className={cn(
-                                "absolute left-3 top-1/2 -translate-y-1/2",
-                                isDarkMode ? 'text-white/40' : 'text-slate-400'
-                            )} />
-                            <input
-                                type="email"
-                                autoComplete='new-password'
-                                {...register('email')}
-                                className={cn(
-                                    "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
-                                    isDarkMode
-                                        ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10'
-                                        : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white'
-                                )}
-                                placeholder="email@example.com"
-                            />
-                        </div>
-                        {errors.email && (
-                            <p className="text-xs text-red-500 font-bold mt-2">{errors.email.message}</p>
-                        )}
-                    </div>
-                    <div>
-                        <label className={cn(
-                            "text-xs font-bold uppercase tracking-wider mb-2 block",
-                            isDarkMode ? 'text-white/40' : 'text-slate-500'
-                        )}>
-                            Password
-                        </label>
-                        <div className="relative">
-                            <Lock size={16} className={cn(
-                                "absolute left-3 top-1/2 -translate-y-1/2",
-                                isDarkMode ? 'text-white/40' : 'text-slate-400'
-                            )} />
-                            <input
-                                type="password"
-                                autoComplete='new-password'
-                                {...register('password')}
-                                className={cn(
-                                    "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
-                                    isDarkMode
-                                        ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10'
-                                        : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white'
-                                )}
-                                placeholder="Enter password"
-                            />
-                        </div>
-                        {errors.password && (
-                            <p className="text-xs text-red-500 font-bold mt-2">{errors.password.message}</p>
-                        )}
-                    </div>
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label=" Username"
+                        {...register('username')}
+                        icon={User}
+                        placeholder="Enter username"
+                        disabled={createManagementLoading}
+                        error={errors.username?.message}
+                        required
+                    />
+                    <Controller
+                        name="country_code"
+                        control={control}
+                        render={({ field }) => (
+                            <Select
+                                label="Country Code"
+                                value={field.value}
+                                onChange={field.onChange}
+                                isDarkMode={isDarkMode}
+                                options={[
+                                    { value: '+91', label: 'India (+91)' },
+                                    { value: '+1', label: 'USA (+1)' },
+                                    { value: '+44', label: 'UK (+44)' },
+                                    { value: '+971', label: 'UAE (+971)' }
+                                ]}
+                                disabled={createManagementLoading}
+                                error={errors.country_code?.message}
 
-                    <div>
-                        <label className={cn(
-                            "text-xs font-bold uppercase tracking-wider mb-2 block",
-                            isDarkMode ? 'text-white/40' : 'text-slate-500'
-                        )}>
-                            Role
-                        </label>
-                        <div className="relative">
-                            <Shield size={16} className={cn(
-                                "absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10",
-                                isDarkMode ? 'text-white/40' : 'text-slate-400'
-                            )} />
-                            <ChevronDown size={16} className={cn(
-                                "absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-10",
-                                isDarkMode ? 'text-white/40' : 'text-slate-400'
-                            )} />
-                            <select
-                                {...register('role')}
-                                className={cn(
-                                    "w-full pl-10 pr-9 py-2.5 rounded-xl border font-medium text-sm transition-all appearance-none cursor-pointer",
-                                    isDarkMode
-                                        ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10 hover:bg-white/[0.07]'
-                                        : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white hover:bg-slate-100'
-                                )}
-                                style={{
-                                    backgroundImage: 'none'
-                                }}
-                            >
-                                <option value="agent" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Agent</option>
-                                <option value="admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Admin</option>
-                                <option value="super_admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Super Admin</option>
-                            </select>
-                        </div>
-                        {errors.role && (
-                            <p className="text-xs text-red-500 font-bold mt-2">{errors.role.message}</p>
-                        )}
-                    </div>
+                            />
+                        )} />
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Mobile Number"
+                        {...register('mobile')}
+                        icon={Phone}
+                        placeholder="+91 1234567890"
+                        disabled={createManagementLoading}
+                        error={errors.mobile?.message}
+                        required
+                    />
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Email"
+                        {...register('email')}
+                        icon={Mail}
+                        placeholder="Enter email"
+                        disabled={createManagementLoading}
+                        error={errors.email?.message}
+                        required
+                    />
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Password"
+                        {...register('password')}
+                        icon={Lock}
+                        placeholder="Enter password"
+                        disabled={createManagementLoading}
+                        error={errors.password?.message}
+                        required
+                    />
                 </form>
             </Modal>
         </div>

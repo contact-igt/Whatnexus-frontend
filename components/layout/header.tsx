@@ -2,7 +2,6 @@
 "use client";
 
 import { Globe, Bell, Sun, Moon } from 'lucide-react';
-import { BRAND_NAME } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
@@ -15,7 +14,7 @@ import { useTheme } from '@/hooks/useTheme';
 
 export const Header = () => {
     const { user } = useAuth();
-    const { theme, setTheme, isDarkMode } = useTheme();
+    const { setTheme, isDarkMode } = useTheme();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const dispatch = useDispatch();
     const router = useRouter();
@@ -73,7 +72,6 @@ export const Header = () => {
                     <button onClick={toggleTheme} className={cn("p-3 rounded-2xl mt-0 transition-all border group relative", isDarkMode ? 'border-white/5 hover:bg-white/5 text-emerald-400' : 'border-slate-200 hover:bg-slate-100 text-slate-500')}>
                         {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                     </button>
-                    {/* User Profile Avatar with Dropdown */}
                     <div className="relative">
                         <div
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -88,7 +86,6 @@ export const Header = () => {
                                 {user?.username?.split("")[0].toUpperCase()}
                             </div>
                         </div>
-                        {/* Dropdown */}
                         {isProfileOpen && (
                             <UserProfileDropdown
                                 isDarkMode={isDarkMode}

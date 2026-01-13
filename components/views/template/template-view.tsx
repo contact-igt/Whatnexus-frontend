@@ -7,10 +7,11 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { TemplateCard } from '@/components/ui/template-card';
-import { CreateTemplateModal } from '@/components/ui/create-template-modal';
-import { TemplateData, TemplateEditorModal } from '@/components/ui/template-editor-modal';
-import { AIPromptModal } from '@/components/ui/ai-prompt-modal';
+import { CreateTemplateModal } from '@/components/views/template/create-template-modal';
+import { TemplateData, TemplateEditorModal } from '@/components/views/template/template-editor-modal';
+import { AIPromptModal } from '@/components/views/template/ai-prompt-modal';
 import { RoleBasedWrapper } from '@/components/ui/role-based-wrapper';
+import { callOpenAI } from '@/lib/openai';
 
 type TabType = 'explore' | 'all' | 'draft' | 'pending' | 'approved' | 'action-required' | 'admin-only';
 type FilterType = 'trending' | 'marketing' | 'utility' | 'authentication' | 'appointments' | 'follow-ups' | 'prescriptions' | 'lab-results';
@@ -112,6 +113,26 @@ export const TemplateView = () => {
 
     const [editorInitialData, setEditorInitialData] = useState<TemplateData | undefined>(undefined);
 
+    const TEMPLATE_SYSTEM_PROMPT = `
+You are a WhatsApp Business template generator.
+
+Rules:
+- Generate Meta-approved WhatsApp templates only.
+- Use professional and polite language.
+- Use variables like {{patient_name}}, {{doctor_name}}, {{date}}, {{time}}, {{clinic_name}} when needed.
+- Do NOT include emojis.
+- Output ONLY the template body text.
+- Keep the content concise and compliant.
+
+Template categories:
+- UTILITY: reminders, confirmations, alerts
+- MARKETING: offers, promotions
+- AUTHENTICATION: OTP, verification
+
+If the user intent is unclear, generate a GENERAL UTILITY template.
+`;
+
+
     const handleStartFromScratch = () => {
         setIsCreateModalOpen(false);
         setEditorInitialData(undefined);
@@ -121,7 +142,6 @@ export const TemplateView = () => {
     const handleUseTemplate = () => {
         setIsCreateModalOpen(false);
         setEditorInitialData(undefined);
-        // In a real app, this would show a template selector
         setIsEditorModalOpen(true);
     };
 
@@ -130,44 +150,18 @@ export const TemplateView = () => {
         setIsAIPromptModalOpen(true);
     };
 
-    const handleAIGenerate = (prompt: string) => {
-        // Pre-fill editor with mock AI generated content based on prompt
-        const isAppointment = prompt.toLowerCase().includes('appointment') || prompt.toLowerCase().includes('remind');
-        const isPromo = prompt.toLowerCase().includes('discount') || prompt.toLowerCase().includes('offer');
+    const handleAIGenerate = async (prompt: string) => {
+        try {
+            const aiResponse = await callOpenAI(
+                prompt,
+                TEMPLATE_SYSTEM_PROMPT
+            );
 
-        let data: TemplateData = {
-            name: "AI Generated Template",
-            category: "UTILITY",
-            language: "English",
-            templateType: "TEXT",
-            specialty: "GENERAL",
-            body: ""
-        };
-
-        if (isAppointment) {
-            data = {
-                name: "Appointment Reminder",
-                category: "UTILITY",
-                language: "English",
-                templateType: "TEXT",
-                specialty: "GENERAL",
-                body: "Hello {patient_name},\n\nThis is a friendly reminder for your upcoming appointment with Dr. {doctor_name} on {date} at {time}.\n\nPlease arrive 10 minutes early.\n\nThank you,\n{clinic_name}"
-            };
-        } else if (isPromo) {
-            data = {
-                name: "Special Offer",
-                category: "MARKETING",
-                language: "English",
-                templateType: "IMAGE",
-                specialty: "DERMATOLOGY",
-                body: "Hello {patient_name},\n\nWe have a special offer just for you! Get 20% off on all skin treatments this month.\n\nBook your slot now: {booking_link}\n\nTerm & Conditions apply."
-            };
-        } else {
-            data.body = `Hello {patient_name},\n\n${prompt}\n\nRegards,\n{clinic_name}`;
+            setEditorInitialData(aiResponse);
+            setIsEditorModalOpen(true);
+        } catch (error) {
+            console.error("AI template generation failed", error);
         }
-
-        setEditorInitialData(data);
-        setIsEditorModalOpen(true);
     };
 
     const handleSaveTemplate = (templateData: TemplateData) => {
@@ -231,8 +225,8 @@ export const TemplateView = () => {
                     </div>
                     <div className="w-full md:w-auto relative group">
                         <div className={cn(
-                            "absolute -inset-1 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-1000",
-                            isDarkMode ? "bg-gradient-to-r from-purple-600 to-blue-600" : "bg-gradient-to-r from-purple-400 to-blue-400"
+                            "absolute -inset-1 rounded-xl blur opacity-50 group-hover:opacity-60 transition duration-1000",
+                            isDarkMode ? "bg-gradient-to-br from-purple-500 to-blue-500" : "bg-gradient-to-r from-purple-400 to-blue-400"
                         )} />
                         <button
                             onClick={() => setIsAIPromptModalOpen(true)}
@@ -470,7 +464,6 @@ export const TemplateView = () => {
                 </div>
             </div>
 
-            {/* Modals */}
             <CreateTemplateModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
