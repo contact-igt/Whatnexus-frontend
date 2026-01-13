@@ -484,14 +484,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                                 )} />
                                             </div>
                                         </label>
-                                        <ActionMenu
-                                            isDarkMode={isDarkMode}
-                                            isView={true}
-                                            isEdit={true}
-                                            onView={() => handleView(prompt, 'prompt')}
-                                            onEdit={() => handleEdit(prompt, 'prompt')}
-                                            onDelete={() => handleDeleteClick(prompt, 'prompt')}
-                                        />
+
                                     </div>
                                 </div>
                             </div>

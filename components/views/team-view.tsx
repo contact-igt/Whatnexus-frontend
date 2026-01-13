@@ -11,6 +11,7 @@ import { useCreateManagementMutation, useManagementQuery } from '@/hooks/useMana
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@/hooks/useTheme';
+import { RoleBasedWrapper } from '@/components/ui/role-based-wrapper';
 
 const formSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -23,7 +24,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export const TeamManagementView = () => {
-    const {isDarkMode} = useTheme();
+    const { isDarkMode } = useTheme();
     const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
         resolver: zodResolver(formSchema)
     })
@@ -53,13 +54,15 @@ export const TeamManagementView = () => {
                     <h1 className={cn("text-4xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Agent Matrix</h1>
                     <p className={cn("font-medium text-sm mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Manage shared inbox permissions and neural layer overrides.</p>
                 </div>
-                <button
-                    onClick={() => setIsInviteModalOpen(true)}
-                    className="h-12 px-6 rounded-xl bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-500/20 flex items-center space-x-2"
-                >
-                    <UserPlus size={16} />
-                    <span>Invite Node</span>
-                </button>
+                <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
+                    <button
+                        onClick={() => setIsInviteModalOpen(true)}
+                        className="h-12 px-6 rounded-xl bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-500/20 flex items-center space-x-2"
+                    >
+                        <UserPlus size={16} />
+                        <span>Invite Node</span>
+                    </button>
+                </RoleBasedWrapper>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -126,10 +129,12 @@ export const TeamManagementView = () => {
                                                     <span className={cn("text-xs font-bold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>{Math.floor(Math.random() * 10)} / 15</span>
                                                 </td>
                                                 <td className="px-8 py-4">
-                                                    <span className={cn("text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide", agent.role === 'super-admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20')}>{agent?.role}</span>
+                                                    <span className={cn("text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide", agent.role === 'super_admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20')}>{agent?.role}</span>
                                                 </td>
                                                 <td className="px-8 py-4 text-right">
-                                                    <button className="p-2 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"><MoreHorizontal size={18} /></button>
+                                                    <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
+                                                        <button className="p-2 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"><MoreHorizontal size={18} /></button>
+                                                    </RoleBasedWrapper>
                                                 </td>
                                             </tr>
                                         ))
@@ -147,31 +152,33 @@ export const TeamManagementView = () => {
                 </div>
 
                 <div className="space-y-6">
-                    <GlassCard isDarkMode={isDarkMode} className="p-6 space-y-6">
-                        <div className="flex items-center space-x-2.5 text-emerald-500">
-                            <Shield size={20} className="animate-pulse" />
-                            <h3 className="font-bold text-base uppercase tracking-tight">Permission Matrix</h3>
-                        </div>
-                        <p className="text-[11px] font-medium text-slate-400 leading-relaxed uppercase tracking-wide">Define global overrides for human agents vs neural Receptionist.</p>
+                    <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
+                        <GlassCard isDarkMode={isDarkMode} className="p-6 space-y-6">
+                            <div className="flex items-center space-x-2.5 text-emerald-500">
+                                <Shield size={20} className="animate-pulse" />
+                                <h3 className="font-bold text-base uppercase tracking-tight">Permission Matrix</h3>
+                            </div>
+                            <p className="text-[11px] font-medium text-slate-400 leading-relaxed uppercase tracking-wide">Define global overrides for human agents vs neural Receptionist.</p>
 
-                        <div className="space-y-3 pt-3 border-t border-white/5">
-                            {[
-                                { label: "Override AI Conversation", active: true },
-                                { label: "Mass Broadcast Access", active: true },
-                                { label: "Modify Knowledge Base", active: false },
-                                { label: "Delete Customer Data", active: false },
-                                { label: "Configure API Logic", active: false },
-                            ].map((perm, i) => (
-                                <div key={i} className={cn("p-3 rounded-xl border flex items-center justify-between transition-all group/item", isDarkMode ? 'bg-white/5 border-white/5 hover:border-white/10' : 'bg-slate-50 border-slate-100 hover:border-emerald-500/10')}>
-                                    <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/80' : 'text-slate-700')}>{perm.label}</span>
-                                    <button className={cn("w-9 h-5 rounded-full relative transition-all duration-300", perm.active ? 'bg-emerald-600' : 'bg-slate-700')}>
-                                        <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-300", perm.active ? 'right-0.5' : 'left-0.5 shadow-sm')} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        <button className="w-full py-3 rounded-xl border border-white/10 text-[10px] font-bold uppercase tracking-wide hover:bg-white/5 transition-all">Reset All Permissions</button>
-                    </GlassCard>
+                            <div className="space-y-3 pt-3 border-t border-white/5">
+                                {[
+                                    { label: "Override AI Conversation", active: true },
+                                    { label: "Mass Broadcast Access", active: true },
+                                    { label: "Modify Knowledge Base", active: false },
+                                    { label: "Delete Customer Data", active: false },
+                                    { label: "Configure API Logic", active: false },
+                                ].map((perm, i) => (
+                                    <div key={i} className={cn("p-3 rounded-xl border flex items-center justify-between transition-all group/item", isDarkMode ? 'bg-white/5 border-white/5 hover:border-white/10' : 'bg-slate-50 border-slate-100 hover:border-emerald-500/10')}>
+                                        <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/80' : 'text-slate-700')}>{perm.label}</span>
+                                        <button className={cn("w-9 h-5 rounded-full relative transition-all duration-300", perm.active ? 'bg-emerald-600' : 'bg-slate-700')}>
+                                            <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-300", perm.active ? 'right-0.5' : 'left-0.5 shadow-sm')} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <button className="w-full py-3 rounded-xl border border-white/10 text-[10px] font-bold uppercase tracking-wide hover:bg-white/5 transition-all">Reset All Permissions</button>
+                        </GlassCard>
+                    </RoleBasedWrapper>
                 </div>
             </div>
 
@@ -327,7 +334,7 @@ export const TeamManagementView = () => {
                             >
                                 <option value="agent" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Agent</option>
                                 <option value="admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Admin</option>
-                                <option value="super-admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Super Admin</option>
+                                <option value="super_admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Super Admin</option>
                             </select>
                         </div>
                         {errors.role && (

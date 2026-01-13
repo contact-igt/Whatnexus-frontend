@@ -6,9 +6,8 @@ import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 
 
-
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-    const { theme, setTheme, isDarkMode } = useTheme();
+    const { isDarkMode } = useTheme();
     return (<ProtectedRoute>
         <div className={cn("flex h-screen font-sans overflow-hidden relative transition-colors duration-300", isDarkMode ? 'bg-[#0A0A0B] text-slate-200' : 'bg-[#FAFAFB] text-slate-900')}>
             <div className={cn("absolute top-[-20%] left-[-10%] w-[80%] h-[80%] blur-[200px] rounded-full transition-all duration-300", isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-200/40')} />

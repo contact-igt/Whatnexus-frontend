@@ -55,5 +55,21 @@ export const useGetTenantsQuery = () => {
     }, [isError, error]);
 
     return { data, isLoading, isError };
-}
+};
 
+export const useDeleteTenantMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => {
+            return TenantApis.deleteTenant(id);
+        },
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            toast.success(response?.data?.message || response?.message || 'Organization deleted successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to delete organization');
+        },
+    });
+};

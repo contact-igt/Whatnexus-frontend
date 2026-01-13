@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings, Megaphone } from 'lucide-react';
 import { FloatingDockItem } from "@/components/ui/floating-dock-item";
 import { FloatingDockDropdown } from "@/components/ui/floating-dock-dropdown";
 import { cn } from "@/lib/utils";
@@ -9,8 +9,7 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from "@/hooks/useTheme";
-
-
+import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
 
 export const Sidebar = () => {
     const { user } = useAuth();
@@ -21,6 +20,7 @@ export const Sidebar = () => {
     const handleActiveTab = (tab: string) => {
         router.push(tab);
     }
+
     return (
         <aside
             onMouseEnter={() => setIsExpanded(true)}
@@ -42,7 +42,6 @@ export const Sidebar = () => {
                     </div>
                 )}
             </div>
-
             <nav className="flex-1 flex flex-col space-y-6 px-4 overflow-y-auto no-scrollbar">
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={LayoutDashboard} label="Neural Hub" route="/dashboard" onClick={() => handleActiveTab('/dashboard')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" route="/leads" onClick={() => handleActiveTab('/leads')} />
@@ -50,27 +49,33 @@ export const Sidebar = () => {
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" route="/appointments" onClick={() => handleActiveTab('/appointments')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Zap} label="Templates" route="/templates" onClick={() => handleActiveTab('/templates')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Stethoscope} label="Doctors" route="/doctors" onClick={() => handleActiveTab('/doctors')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Radio} label="Broadcasts" route="/broadcast" onClick={() => handleActiveTab('/broadcast')} />
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Megaphone} label="Campaign" route="/campaign" onClick={() => handleActiveTab('/campaign')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" route="/knowledge" onClick={() => handleActiveTab('/knowledge')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Brain} label="AI Logic" route="/logic" onClick={() => handleActiveTab('/logic')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Smartphone} label="Governance" route="/system" onClick={() => handleActiveTab('/system')} />
-                {user?.role === 'super-admin' && <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Building2} label="Organizations" route="/organizations" onClick={() => handleActiveTab('/organizations')} />}
-                <FloatingDockDropdown
-                    isExpanded={isExpanded}
-                    isDarkMode={isDarkMode}
-                    icon={Settings}
-                    label="Settings"
-                    items={[
-                        {
-                            label: 'WhatsApp Settings',
-                            route: '/settings/whatsapp-settings',
-                            onClick: () => handleActiveTab('/settings/whatsapp-settings'),
-                        }
-                    ]}
-                />
+                <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Smartphone} label="Governance" route="/system" onClick={() => handleActiveTab('/system')} />
+                </RoleBasedWrapper>
+                <RoleBasedWrapper allowedRoles={['super_admin']}>
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Building2} label="Organizations" route="/organizations" onClick={() => handleActiveTab('/organizations')} />
+                </RoleBasedWrapper>
+                <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
+                    <FloatingDockDropdown
+                        isExpanded={isExpanded}
+                        isDarkMode={isDarkMode}
+                        icon={Settings}
+                        label="Settings"
+                        items={[
+                            {
+                                label: 'WhatsApp Settings',
+                                route: '/settings/whatsapp-settings',
+                                onClick: () => handleActiveTab('/settings/whatsapp-settings'),
+                            }
+                        ]}
+                    />
+                </RoleBasedWrapper>
             </nav>
-
             <div className={cn("mt-auto space-y-6 flex flex-col transition-all duration-300", isExpanded ? "items-start px-6" : "items-center")}>
                 {/* <button onClick={toggleTheme} className={cn("p-4 rounded-2xl mt-2 transition-all border group relative", isDarkMode ? 'border-white/5 hover:bg-white/5 text-emerald-400' : 'border-slate-200 hover:bg-slate-100 text-slate-500')}>
                     {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}

@@ -91,8 +91,8 @@ export const OrganizationModal = ({
             newErrors.mobile = "mobile number is required";
         } else if (!/^\d+$/.test(formData.mobile)) {
             newErrors.mobile = "mobile number must contain only digits";
-        } else if (formData.mobile.length < 7 || formData.mobile.length > 15) {
-            newErrors.mobile = "mobile number must be between 7 and 15 digits";
+        } else if (formData.mobile.length < 10 || formData.mobile.length > 12) {
+            newErrors.mobile = "mobile number must be between 10 and 12 digits";
         }
 
         setErrors(newErrors);

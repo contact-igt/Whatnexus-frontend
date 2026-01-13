@@ -9,6 +9,7 @@ export class TenantApiData {
     createTenant = async (data: any) => {
         return await _axios("post", "/tenant", data);
     };
+
     getAllTenants = async () => {
         return await _axios("get", "/tenants");
     };
@@ -16,4 +17,8 @@ export class TenantApiData {
     updateTenant = async (id: string, data: any) => {
         return await _axios("put", `/tenant/${id}`, data);
     };
+    
+    deleteTenant = async (id: string)=>{
+        return await _axios("delete", `/tenant/${id}`)
+    }
 }

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Eye, Edit2, Ban, Building2, Users, Calendar, CheckCircle, XCircle, Clock, MessageCircle, Hospital } from 'lucide-react';
+import { Plus, Eye, Edit2, Ban, Building2, Users, Calendar, CheckCircle, XCircle, Clock, MessageCircle, Hospital, Trash } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/select";
@@ -11,14 +11,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 
 import { OrganizationModal } from "./organization-modal";
 import { useActivatePromptMutation, useCreatePromptMutation, useGetPromptConfigurationQuery } from '@/hooks/usePromptQuery';
-import { useCreateTenantMutation, useGetTenantsQuery } from '@/hooks/useTenantQuery';
+import { useCreateTenantMutation, useDeleteTenantMutation, useGetTenantsQuery } from '@/hooks/useTenantQuery';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
-
-interface OrganizationViewProps {
-    isDarkMode: boolean;
-    // onNavigateToWhatsApp?: (organizationId: string) => void;
-}
+import { ActionMenu } from '@/components/ui/action-menu';
 
 export interface Organization {
     id: string;
@@ -60,124 +56,13 @@ export const OrganizationView = () => {
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const { data: tenantsData, isLoading: isTenantLoading, isError } = useGetTenantsQuery();
     // const { mutate: createTenantMutate, isPending: isCreateTenantPending } = useCreateTenantMutation();
-
+    const {mutate: deleteMutate, isPending: isDeletePending} = useDeleteTenantMutation();
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
 
-    // Load organizations from localStorage
-    // useEffect(() => {
-    //     const loadOrganizations = () => {
-    //         const stored = localStorage.getItem('organizations');
-    //         if (stored) {
-    //             const parsed = JSON.parse(stored);
-    //             const orgsWithDates = parsed.map((org: any) => ({
-    //                 ...org,
-    //                 registeredDate: new Date(org.registeredDate),
-    //                 expiryDate: new Date(org.expiryDate)
-    //             }));
-    //             setOrganizations(orgsWithDates);
-    //             setFilteredOrganizations(orgsWithDates);
-    //         } else {
-    //             // Mock data for initial display
-    //             const mockOrganizations: Organization[] = [
-    //                 {
-    //                     id: '1',
-    //                     name: 'City Eye Hospital',
-    //                     email: 'admin@cityeye.com',
-    //                     phone: '+91 98765 43210',
-    //                     address: '123 Medical Street, Mumbai, Maharashtra',
-    //                     subscriptionStatus: 'active',
-    //                     subscriptionPlan: 'pro',
-    //                     userCount: 25,
-    //                     maxUsers: 50,
-    //                     registeredDate: new Date(2025, 0, 15),
-    //                     expiryDate: new Date(2026, 0, 15),
-    //                     adminName: 'Dr. Rajesh Kumar',
-    //                     adminEmail: 'rajesh@cityeye.com',
-    //                     isActive: true
-    //                 },
-    //                 {
-    //                     id: '2',
-    //                     name: 'Vision Care Center',
-    //                     email: 'contact@visioncare.com',
-    //                     phone: '+91 98765 43211',
-    //                     address: '456 Health Avenue, Delhi',
-    //                     subscriptionStatus: 'trial',
-    //                     subscriptionPlan: 'basic',
-    //                     userCount: 8,
-    //                     maxUsers: 10,
-    //                     registeredDate: new Date(2025, 11, 1),
-    //                     expiryDate: new Date(2026, 0, 1),
-    //                     adminName: 'Dr. Priya Sharma',
-    //                     adminEmail: 'priya@visioncare.com',
-    //                     isActive: true
-    //                 },
-    //                 {
-    //                     id: '3',
-    //                     name: 'Advanced Eye Clinic',
-    //                     email: 'info@advancedeye.com',
-    //                     phone: '+91 98765 43212',
-    //                     address: '789 Wellness Road, Bangalore',
-    //                     subscriptionStatus: 'expired',
-    //                     subscriptionPlan: 'enterprise',
-    //                     userCount: 45,
-    //                     maxUsers: 100,
-    //                     registeredDate: new Date(2024, 5, 10),
-    //                     expiryDate: new Date(2025, 11, 10),
-    //                     adminName: 'Dr. Amit Patel',
-    //                     adminEmail: 'amit@advancedeye.com',
-    //                     isActive: false
-    //                 }
-    //             ];
-    //             setOrganizations(mockOrganizations);
-    //             setFilteredOrganizations(mockOrganizations);
-    //             localStorage.setItem('organizations', JSON.stringify(mockOrganizations));
-    //         }
-    //         setIsLoading(false);
-    //     };
 
-    //     loadOrganizations();
-    // }, []);
-
-    // useEffect(() => {
-    //     let filtered = tenantsData?.data;
-
-    //     if (searchQuery.trim() !== '') {
-    //         filtered = filtered.filter((org: any) =>
-    //             org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    //             org.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    //             org.phone.includes(searchQuery) ||
-    //             org.adminName.toLowerCase().includes(searchQuery.toLowerCase())
-    //         );
-    //     }
-
-    //     if (filterStatus !== 'all') {
-    //         filtered = filtered.filter((org: any) => org.subscriptionStatus === filterStatus);
-    //     }
-
-    //     setFilteredOrganizations(filtered);
-    // }, [searchQuery, filterStatus, organizations]);
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active': return 'text-emerald-500 bg-emerald-500/10';
-            case 'trial': return 'text-blue-500 bg-blue-500/10';
-            case 'expired': return 'text-red-500 bg-red-500/10';
-            default: return 'text-slate-500 bg-slate-500/10';
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'active': return <CheckCircle size={14} />;
-            case 'trial': return <Clock size={14} />;
-            case 'expired': return <XCircle size={14} />;
-            default: return <XCircle size={14} />;
-        }
-    };
-    console.log("tenantsData", tenantsData)
     const getPlanBadgeColor = (plan: string) => {
         switch (plan) {
             case 'basic': return 'bg-slate-500/10 text-slate-600';
@@ -209,9 +94,13 @@ export const OrganizationView = () => {
         setSelectedOrg(org || null);
         setIsModalOpen(true);
     };
+
     const handleNavigateToWhatsApp = (id: string) => {
         console.log("Navigate to WhatsApp", id)
         router.push(`/whatsapp-settings`);
+    }
+    const handleDeleteClick = (id: string)=>{
+        deleteMutate(id);
     }
     const handleSaveOrganization = (orgData: Partial<Organization>) => {
         if (modalMode === 'create') {
@@ -335,7 +224,6 @@ export const OrganizationView = () => {
                                     isDarkMode={isDarkMode}
                                     isLast={index === tenantsData?.data?.length - 1}
                                 >
-                                    {/* Organization */}
                                     <TableCell>
                                         <div className="flex items-center space-x-3">
                                             <div className={cn(
@@ -355,7 +243,6 @@ export const OrganizationView = () => {
                                         </div>
                                     </TableCell>
 
-                                    {/* Admin */}
                                     <TableCell>
                                         <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
                                             {org.adminName}
@@ -364,15 +251,12 @@ export const OrganizationView = () => {
                                             {org.adminEmail ? org.adminEmail : org?.country_code + org?.mobile}
                                         </p>
                                     </TableCell>
-
-                                    {/* Type */}
                                     <TableCell>
                                         <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
                                             {org.type}
                                         </p>
                                     </TableCell>
 
-                                    {/* Plan */}
                                     <TableCell>
                                         <span className={cn(
                                             "px-3 py-1 rounded-full text-xs font-medium uppercase inline-block",
@@ -391,8 +275,6 @@ export const OrganizationView = () => {
                                             </span>
                                         </div>
                                     </TableCell>
-
-                                    {/* Status */}
                                     <TableCell>
                                         <span className={cn(
                                             "text-xs font-medium px-2 py-0.5 rounded-full w-fit inline-block",
@@ -404,7 +286,6 @@ export const OrganizationView = () => {
                                         </span>
                                     </TableCell>
 
-                                    {/* Expiry */}
                                     <TableCell>
                                         <div className="flex items-center space-x-2">
                                             <Calendar className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
@@ -414,69 +295,17 @@ export const OrganizationView = () => {
                                         </div>
                                     </TableCell>
 
-                                    {/* Actions */}
                                     <TableCell align="right">
-                                        <div className="flex items-center justify-end space-x-2">
-                                            <button
-                                                onClick={() => handleOpenModal('view', org)}
-                                                className={cn(
-                                                    "p-2 rounded-lg transition-all",
-                                                    isDarkMode
-                                                        ? 'hover:bg-white/10 text-white/60 hover:text-white'
-                                                        : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
-                                                )}
-                                                title="View Details"
-                                            >
-                                                <Eye size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleOpenModal('edit', org)}
-                                                className={cn(
-                                                    "p-2 rounded-lg transition-all",
-                                                    isDarkMode
-                                                        ? 'hover:bg-white/10 text-white/60 hover:text-white'
-                                                        : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
-                                                )}
-                                                title="Edit"
-                                            >
-                                                <Edit2 size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleNavigateToWhatsApp(org.id)}
-                                                className={cn(
-                                                    "p-2 rounded-lg transition-all relative",
-                                                    org.whatsappConfig?.isConnected
-                                                        ? isDarkMode
-                                                            ? 'hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300'
-                                                            : 'hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700'
-                                                        : isDarkMode
-                                                            ? 'hover:bg-white/10 text-white/60 hover:text-white'
-                                                            : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
-                                                )}
-                                                title={org.whatsappConfig?.isConnected ? 'WhatsApp Connected' : 'Connect WhatsApp'}
-                                            >
-                                                <MessageCircle size={16} />
-                                                {org.whatsappConfig?.isConnected && (
-                                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-current" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => handleToggleStatus(org.id)}
-                                                className={cn(
-                                                    "p-2 rounded-lg transition-all",
-                                                    org.isActive
-                                                        ? isDarkMode
-                                                            ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
-                                                            : 'hover:bg-red-50 text-red-600 hover:text-red-700'
-                                                        : isDarkMode
-                                                            ? 'hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300'
-                                                            : 'hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700'
-                                                )}
-                                                title={org.isActive ? 'Suspend' : 'Activate'}
-                                            >
-                                                <Ban size={16} />
-                                            </button>
-                                        </div>
+                                        <ActionMenu
+                                            isDarkMode={isDarkMode}
+                                            isView={true}
+                                            isEdit={true}
+                                            isWhatsAppConfig={true}
+                                            onWhatsAppConfig={() => handleNavigateToWhatsApp(org)}
+                                            onView={() => handleOpenModal('view', org)}
+                                            onEdit={() => handleOpenModal('edit', org)}
+                                            onDelete={() => handleDeleteClick(org)}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             ))}

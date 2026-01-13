@@ -65,6 +65,7 @@ export const Settings = ({ isDarkMode, handleEdit, handleView }: SettingsProps) 
                         </p>
                     </div>
                 </div>
+                
 
                 <div className="space-y-2">
                     {settingsPending ? (
