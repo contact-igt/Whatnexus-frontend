@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState } from 'react';
 import { UserPlus, Shield, MoreHorizontal, User, Mail, Phone, Lock, Globe, ChevronDown, Badge } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
@@ -51,7 +50,7 @@ export const TeamManagementView = () => {
         e.stopPropagation();
         await handleSubmit(onSubmit)(e);
     };
-
+    const filteredManagementUsers  = managementData?.data?.filter((user: any)=> user.role !== "super_admin" )
     return (
         <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
             <div className="flex justify-between items-end border-b border-white/5 pb-6">
@@ -115,8 +114,8 @@ export const TeamManagementView = () => {
                                                 </td> */}
                                             </tr>
                                         ))
-                                    ) : managementData?.data?.length > 0 ? (
-                                        managementData.data.map((agent: any) => (
+                                    ) : filteredManagementUsers?.length > 0 ? (
+                                        filteredManagementUsers?.map((agent: any) => (
                                             <tr key={agent.id} className="group transition-all hover:bg-emerald-500/5">
                                                 <td className="px-8 py-4">
                                                     <div className="flex items-center space-x-3">

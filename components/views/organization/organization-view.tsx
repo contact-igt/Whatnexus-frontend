@@ -54,7 +54,7 @@ export const OrganizationView = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const { data: tenantsData, isLoading: isTenantLoading, isError } = useGetTenantsQuery();
-    const {mutate: updateTenantStatusMutate, isPending: isTenantStatusPending} = useTenantStatusMutation(); 
+    const { mutate: updateTenantStatusMutate, isPending: isTenantStatusPending } = useTenantStatusMutation();
     const { mutate: deleteMutate, isPending: isDeletePending } = useDeleteTenantMutation();
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,9 +94,9 @@ export const OrganizationView = () => {
         setIsModalOpen(true);
     };
 
-    const handleNavigateToWhatsApp = (id: string) => {
-        console.log("Navigate to WhatsApp", id)
-        router.push(`/whatsapp-settings`);
+    const handleNavigateToWhatsApp = (org: any) => {
+        console.log("Navigate to WhatsApp", org.id)
+        router.push(`/whatsapp-settings?tenantId=${org.id}`);
     }
     const handleDeleteClick = (id: string) => {
         deleteMutate(id);
@@ -140,11 +140,11 @@ export const OrganizationView = () => {
         );
     };
 
-    const handleToggleActive = (id: string, status: string)=>{
+    const handleToggleActive = (id: string, status: string) => {
         const data = {
             status: status == "active" ? "inactive" : "active"
         }
-        updateTenantStatusMutate({id, data});
+        updateTenantStatusMutate({ id, data });
     }
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
@@ -232,20 +232,20 @@ export const OrganizationView = () => {
                                     <TableCell align="center">
                                         <div className="pl-1 flex justify-center items-center">
                                             <div className='flex justify-start items-center space-x-3'>
-                                            <div className={cn(
-                                                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                                                isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
-                                            )}>
-                                                {org.type == "hospital" ? <Hospital className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} /> : <Building2 className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} />}
-                                            </div>
-                                            <div className='text-start'>
-                                                <p className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                    {org.name}
-                                                </p>
-                                                <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                    {org.email}
-                                                </p>
-                                            </div>
+                                                <div className={cn(
+                                                    "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                                                    isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
+                                                )}>
+                                                    {org.type == "hospital" ? <Hospital className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} /> : <Building2 className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} />}
+                                                </div>
+                                                <div className='text-start'>
+                                                    <p className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                        {org.name}
+                                                    </p>
+                                                    <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                                        {org.email}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </TableCell>

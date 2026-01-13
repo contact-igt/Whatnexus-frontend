@@ -40,10 +40,10 @@ export const useUpdateTenantMutation = () => {
     });
 };
 
-export const useTenantStatusMutation = ()=>{
+export const useTenantStatusMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({id, data}: {id: string, data: any}) => {
+        mutationFn: ({ id, data }: { id: string, data: any }) => {
             return TenantApis.updateTenantStatus(id, data);
         },
         onSuccess: (response) => {
@@ -55,6 +55,50 @@ export const useTenantStatusMutation = ()=>{
         },
     })
 }
+
+// WhatsApp Configuration Hooks
+export const useGetWhatsAppConfigQuery = (tenantId: string | null) => {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['whatsapp-config', tenantId],
+        queryFn: async () => {
+            if (!tenantId) return null;
+            return await TenantApis.getWhatsAppConfig(tenantId);
+        },
+        enabled: !!tenantId,
+    });
+
+    return { data: data?.data, isLoading, isError, error };
+};
+
+export const useSaveWhatsAppConfigMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ tenantId, data }: { tenantId: string; data: any }) => {
+            return TenantApis.saveWhatsAppConfig(tenantId, data);
+        },
+        onSuccess: (response, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-config', variables.tenantId] });
+            toast.success(response?.data?.message || response?.message || 'WhatsApp configuration saved successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to save WhatsApp configuration');
+        },
+    });
+};
+
+export const useTestWhatsAppConnectionMutation = () => {
+    return useMutation({
+        mutationFn: ({ tenantId, data }: { tenantId: string; data: any }) => {
+            return TenantApis.testWhatsAppConnection(tenantId, data);
+        },
+        onSuccess: (response) => {
+            toast.success(response?.data?.message || response?.message || 'Connection successful!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Connection failed');
+        },
+    });
+};
 
 export const useGetTenantsQuery = () => {
 
