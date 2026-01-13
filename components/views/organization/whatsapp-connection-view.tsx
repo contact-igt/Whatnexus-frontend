@@ -130,8 +130,34 @@ export const WhatsAppConnectionView = () => {
     //         setShowCredentialsForm(true);
     //     }, 1000);
     // };
+    // const connectWhatsApp = () => {
+    //     const clientId = "1811169506187093";
+
+    //     const redirectUri = encodeURIComponent(
+    //         "http://localhost:8000/api/whatsapp/callback"
+    //     );
+
+    //     const scopes = [
+    //         "business_management",
+    //         "whatsapp_business_management",
+    //         "whatsapp_business_messaging",
+    //     ].join(",");
+
+    //     const fbAuthUrl =
+    //         `https://www.facebook.com/v19.0/dialog/oauth +
+    //         ?client_id=${clientId} +
+    //         &redirect_uri=${redirectUri} +
+    //         &scope=${scopes} +
+    //         &response_type=code`;
+
+    //     window.location.href = fbAuthUrl;
+    // };
+
+
+
     const connectWhatsApp = () => {
         const clientId = "1811169506187093";
+
 
         const redirectUri = encodeURIComponent(
             "http://localhost:8000/api/whatsapp/callback"
@@ -144,11 +170,11 @@ export const WhatsAppConnectionView = () => {
         ].join(",");
 
         const fbAuthUrl =
-            `https://www.facebook.com/v19.0/dialog/oauth +
-            ?client_id=${clientId} +
-            &redirect_uri=${redirectUri} +
-            &scope=${scopes} +
-            &response_type=code`;
+            `https://www.facebook.com/dialog/oauth` +
+            `?client_id=${clientId}` +
+            `&redirect_uri=${redirectUri}` +
+            `&scope=${scopes}` +
+            `&response_type=code`;
 
         window.location.href = fbAuthUrl;
     };
