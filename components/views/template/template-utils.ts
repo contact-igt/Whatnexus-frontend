@@ -106,6 +106,16 @@ export function getCategoryIcon(category: TemplateCategory): string {
 /**
  * Get type icon name
  */
+// export function getTypeIcon(type: string): string {
+//     const icons = {
+//         TEXT: 'FileText',
+//         IMAGE: 'Image',
+//         VIDEO: 'Video',
+//         DOCUMENT: 'File',
+//     };
+//     return icons[type] || 'FileText';
+// }
+
 export function getTypeIcon(type: string): string {
     const icons = {
         TEXT: 'FileText',
@@ -113,7 +123,12 @@ export function getTypeIcon(type: string): string {
         VIDEO: 'Video',
         DOCUMENT: 'File',
     };
-    return icons[type] || 'FileText';
+
+    if (type in icons) {
+        return icons[type as keyof typeof icons];
+    }
+
+    return 'FileText';
 }
 
 /**
