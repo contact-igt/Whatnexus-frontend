@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 
 export type Theme = "light" | "dark" | "system";
 
-// Helper function to get initial theme from localStorage
+interface ThemeContextType {
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
+    isDarkMode: boolean;
+    mounted: boolean;
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
 function getInitialTheme(): Theme {
     if (typeof window === "undefined") return "system";
 
@@ -16,29 +24,45 @@ function getInitialTheme(): Theme {
     }
 }
 
-export function useTheme() {
-    // Initialize with the actual saved theme, not "system"
-    const [theme, setTheme] = useState<Theme>(getInitialTheme);
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+    const [theme, setThemeState] = useState<Theme>("system");
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        const saved = getInitialTheme();
+        setThemeState(saved);
         setMounted(true);
     }, []);
 
-    const changeTheme = (newTheme: Theme) => {
-        console.log("🔄 Changing theme to:", newTheme);
-        setTheme(newTheme);
-        localStorage.setItem("theme", newTheme);
+    const isDarkMode = mounted && (
+        theme === "dark" ||
+        (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
 
-        // Apply theme immediately to DOM
+    useLayoutEffect(() => {
+        if (!mounted) return;
+
         const root = document.documentElement;
-        const isDark = newTheme === "dark" || (newTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-
         root.classList.remove("light", "dark");
-        root.classList.add(isDark ? "dark" : "light");
+        root.classList.add(isDarkMode ? "dark" : "light");
+    }, [theme, mounted, isDarkMode]);
 
-        console.log("✅ Theme applied immediately:", isDark ? "dark" : "light");
+    const setTheme = (newTheme: Theme) => {
+        setThemeState(newTheme);
+        localStorage.setItem("theme", newTheme);
     };
 
-    return { theme, setTheme: changeTheme, mounted };
+    return (
+        <ThemeContext.Provider value={{ theme, setTheme, isDarkMode, mounted }}>
+            {children}
+        </ThemeContext.Provider>
+    );
+}
+
+export function useTheme() {
+    const context = useContext(ThemeContext);
+    if (context === undefined) {
+        throw new Error("useTheme must be used within a ThemeProvider");
+    }
+    return context;
 }

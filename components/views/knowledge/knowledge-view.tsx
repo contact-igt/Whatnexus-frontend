@@ -12,15 +12,13 @@ import { toast } from "sonner";
 import { useDeleteKnowledgeById, useKnowledgeByIdQuery, useUpdateKnowledgeMutation } from '@/hooks/useUploadKnowledge';
 import { PromptConfiguration } from './promptConfiguration';
 import { Settings } from './settings';
-
-interface KnowledgeViewProps {
-    isDarkMode: boolean;
-}
+import { useTheme } from '@/hooks/useTheme';
 
 type TabType = 'data-sources' | 'prompts' | 'settings';
 
 
-export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
+export const KnowledgeView = () => {
+    const {isDarkMode} = useTheme();
     const [activeTab, setActiveTab] = useState<TabType>('data-sources');
     const [uploading, setUploading] = useState(false);
     const { mutate: activatePromptMutate } = useActivatePromptMutation();
@@ -34,6 +32,12 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
     const [selectedItem, setSelectedItem] = useState<{ item: any, mode?: string } | null>(null);
     const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
     const [editContent, setEditContent] = useState<{ name?: any, title?: any, prompt?: any, text?: any }>({
+        name: "",
+        title: "",
+        prompt: "",
+        text: ""
+    });
+    const [error, setError] = useState<{ name?: string, title?: string, prompt?: string, text?: string }>({
         name: "",
         title: "",
         prompt: "",
@@ -105,6 +109,22 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
     const handleUpdate = () => {
         if (!selectedItem) return;
         if (selectedItem?.mode == "knowledge") {
+            if (editContent?.title.trim().length >= 3) {
+                setError((prev) => ({ ...prev, title: "" }));
+            }
+            else if (editContent?.title.trim().length < 3) {
+                setError((prev) => ({ ...prev, title: "Title must be at least 3 characters long." }));
+            }
+
+            if (editContent?.text.trim().length >= 10) {
+                setError((prev) => ({ ...prev, text: "" }));
+            }
+            else if (editContent?.text.trim().length < 10) {
+                setError((prev) => ({ ...prev, text: "Text must be at least 10 characters long." }));
+            }
+            if (error.title || error.text) {
+                return;
+            }
             const knowledgePayload: {
                 title: string;
                 text?: string;
@@ -118,6 +138,21 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
             });
         }
         else if (selectedItem?.mode == "prompt") {
+            if (editContent?.name.trim().length >= 3) {
+                setError((prev) => ({ ...prev, name: "" }));
+            }
+            else if (editContent?.name.trim().length < 3) {
+                setError((prev) => ({ ...prev, name: "Name must be at least 3 characters long." }));
+            }
+            if (editContent?.prompt.trim().length >= 10) {
+                setError((prev) => ({ ...prev, prompt: "" }));
+            }
+            else if (editContent?.prompt.trim().length < 10) {
+                setError((prev) => ({ ...prev, prompt: "Prompt must be at least 10 characters long." }));
+            }
+            if (error.name || error.prompt) {
+                return;
+            }
             const promptPayload: {
                 name: string;
                 prompt?: string;
@@ -151,6 +186,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
             setItemToDelete(null);
         }
     };
+
     useEffect(() => {
         if (
             isViewModalOpen &&
@@ -160,6 +196,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
             refetchKnowledgeById();
         }
     }, [isViewModalOpen]);
+
     const processFiles = async (files: FileList | null) => {
         const MAX_FILE_SIZE_MB = 5;
         const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -206,6 +243,41 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
         setUploadedData(prev => [...newFiles, ...prev]);
     };
 
+    const handleInputChange = (e: any) => {
+        const { name, value } = e.target;
+        setEditContent(prev => ({ ...prev, [name]: value }));
+        if (selectedItem?.mode === "knowledge") {
+            if (name === "title" && value.trim().length >= 3) {
+                setError((prev) => ({ ...prev, [name]: "" }));
+            }
+            else if (name === "title" && value.trim().length < 3) {
+                setError((prev) => ({ ...prev, [name]: "Title must be at least 3 characters long." }));
+            }
+
+            if (name === "text" && value.trim().length >= 10) {
+                setError((prev) => ({ ...prev, [name]: "" }));
+            }
+            else if (name === "text" && value.trim().length < 10) {
+                setError((prev) => ({ ...prev, [name]: "Text Content must be at least 10 characters long." }));
+            }
+        }
+        else if (selectedItem?.mode === "prompt") {
+            if (name === "name" && value.trim().length >= 3) {
+                setError((prev) => ({ ...prev, [name]: "" }));
+            }
+            else if (name === "name" && value.trim().length < 3) {
+                setError((prev) => ({ ...prev, [name]: "Name must be at least 3 characters long." }));
+            }
+
+            if (name === "prompt" && value.trim().length >= 10) {
+                setError((prev) => ({ ...prev, [name]: "" }));
+            }
+            else if (name === "prompt" && value.trim().length < 10) {
+                setError((prev) => ({ ...prev, [name]: "Prompt instructions must be at least 10 characters long." }));
+            }
+        }
+    }
+
     const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         processFiles(e.target.files);
         console.log("files", e.target.files)
@@ -232,6 +304,11 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
         processFiles(e.dataTransfer.files);
     };
 
+    const handleCloseViewModal = () => {
+        setIsViewModalOpen(false);
+        setEditContent({ title: "", text: "" });
+        setError({ title: "", text: "" });
+    }
     useEffect(() => {
         if (isViewModalOpen && knowledgeDetailsById && selectedItem?.mode == "knowledge") {
             const data = knowledgeDetailsById.data || knowledgeDetailsById;
@@ -244,7 +321,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
             setEditContent({ name: data?.name, prompt: content });
         }
     }, [knowledgeDetailsById, promptDetailsById, viewMode, isViewModalOpen]);
-
+    console.log("editContent", editContent)
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">
@@ -325,14 +402,14 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
             }
             <Modal
                 isOpen={isViewModalOpen}
-                onClose={() => setIsViewModalOpen(false)}
+                onClose={handleCloseViewModal}
                 title={dialogTitle}
                 description={dialogDescription}
                 isDarkMode={isDarkMode}
                 footer={
                     <div className="flex items-center justify-end space-x-3">
                         <button
-                            onClick={() => setIsViewModalOpen(false)}
+                            onClick={handleCloseViewModal}
                             className={cn(
                                 "px-6 py-2.5 rounded-xl text-sm font-semibold transition-all border",
                                 isDarkMode
@@ -375,7 +452,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                     <div>
                                         <div className='mb-4'>
                                             <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                                Title
+                                                Title <span className="text-red-500">*</span>
                                             </label>
                                             <div className="relative">
                                                 <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
@@ -384,20 +461,23 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                                 <input
                                                     type="text"
                                                     disabled={isView}
-                                                    value={isEdit ? editContent?.title  : selectedItem?.item?.title}
-                                                    onChange={(e) => setEditContent({ ...editContent, title: e.target.value })}
+                                                    value={isEdit ? editContent?.title : selectedItem?.item?.title}
+                                                    onChange={handleInputChange}
+                                                    name="title"
                                                     className={cn(
                                                         "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                                         isView && "opacity-60 cursor-not-allowed",
                                                         isDarkMode
                                                             ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                            : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                            : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30',
+                                                        error?.title && "border-red-500"
                                                     )}
                                                 />
+                                                {error?.title && <p className="text-red-500 text-xs mt-1">{error?.title}</p>}
                                             </div>
                                         </div>
                                         <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                            Content
+                                            Content <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
                                             <div className={cn("absolute left-3 top-3", isDarkMode ? "text-white/30" : "text-slate-400")}>
@@ -407,15 +487,19 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                                 rows={10}
                                                 disabled={isView}
                                                 value={isEdit ? (editContent?.text || selectedItem?.item?.text) : (editContent?.text || selectedItem?.item?.text || selectedItem?.item?.raw_text || "")}
-                                                onChange={(e) => setEditContent({ ...editContent, text: e.target.value })}
+                                                onChange={handleInputChange}
+                                                name="text"
                                                 className={cn(
                                                     "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none resize-none custom-scrollbar",
                                                     isView && "opacity-60 cursor-not-allowed",
                                                     isDarkMode
                                                         ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30',
+                                                    error?.text && "border-red-500"
+
                                                 )}
                                             />
+                                            {error?.text && <p className="text-red-500 text-xs mt-1">{error?.text}</p>}
                                         </div>
                                     </div>
                                 )
@@ -440,7 +524,7 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                 <>
                                     <div>
                                         <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                            Name
+                                            Name <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
                                             <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
@@ -449,21 +533,24 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                             <input
                                                 type="text"
                                                 disabled={isView}
-                                                value={isEdit ? (editContent?.name || selectedItem?.item?.name) : selectedItem?.item?.name}
-                                                onChange={(e) => setEditContent({ ...editContent, name: e.target.value })}
+                                                value={isEdit ? editContent?.name : selectedItem?.item?.name}
+                                                onChange={handleInputChange}
+                                                name="name"
                                                 className={cn(
                                                     "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                                     isView && "opacity-60 cursor-not-allowed",
                                                     isDarkMode
                                                         ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30',
+                                                    error?.name && "border-red-500"
                                                 )}
                                             />
+                                            {error?.name && <p className="text-red-500 text-xs mt-1">{error?.name}</p>}
                                         </div>
                                     </div>
                                     <div>
                                         <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                            Instructions
+                                            Instructions <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
                                             <div className={cn("absolute left-3 top-3", isDarkMode ? "text-white/30" : "text-slate-400")}>
@@ -473,15 +560,18 @@ export const KnowledgeView = ({ isDarkMode }: KnowledgeViewProps) => {
                                                 rows={10}
                                                 disabled={isView}
                                                 value={isEdit ? editContent?.prompt : selectedItem?.item?.prompt}
-                                                onChange={(e) => setEditContent({ ...editContent, prompt: e.target.value })}
+                                                onChange={handleInputChange}
+                                                name="prompt"
                                                 className={cn(
                                                     "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none resize-none custom-scrollbar",
                                                     isView && "opacity-60 cursor-not-allowed",
                                                     isDarkMode
                                                         ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
-                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30',
+                                                    error?.prompt && "border-red-500"
                                                 )}
                                             />
+                                            {error?.prompt && <p className="text-red-500 text-xs mt-1">{error?.prompt}</p>}
                                         </div>
                                     </div>
                                 </>

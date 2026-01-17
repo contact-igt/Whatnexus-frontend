@@ -7,12 +7,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { PulseMetric } from "@/components/ui/pulse-metric";
 import { BRAND_NAME, KPI_DATA } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
 
-interface DashboardViewProps {
-    isDarkMode: boolean;
-}
-
-export const DashboardView = ({ isDarkMode }: DashboardViewProps) => {
+export const DashboardView = () => {
+    const { isDarkMode } = useTheme();
     const [hasAnimated, setHasAnimated] = useState(false);
     useEffect(() => {
         setHasAnimated(true);

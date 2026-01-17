@@ -2,19 +2,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed } from 'lucide-react';
+import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
-import { MESSAGES_MOCK, CONTACTS_MOCK, AGENTS } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
 import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
+import { useTheme } from '@/hooks/useTheme';
 
-interface ChatViewProps {
-    isDarkMode: boolean;
-    selectedContact: typeof CONTACTS_MOCK[0];
-    setSelectedContact: (contact: typeof CONTACTS_MOCK[0]) => void;
-}
 
 const getDateLabel = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -33,44 +27,6 @@ const getDateLabel = (dateStr: string) => {
     return date.toLocaleDateString("en-GB");
 };
 
-const formatChatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-
-    const startOfToday = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate()
-    );
-
-    const startOfYesterday = new Date(startOfToday);
-    startOfYesterday.setDate(startOfToday.getDate() - 1);
-
-    // Today → show time
-    if (date >= startOfToday) {
-        return date.toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        });
-    }
-
-    // Yesterday → show "Yesterday"
-    if (date >= startOfYesterday) {
-        return "Yesterday";
-    }
-
-    // Within last 7 days → show weekday
-    const diffDays =
-        (startOfToday.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
-
-    if (diffDays < 7) {
-        return date.toLocaleDateString("en-IN", { weekday: "long" });
-    }
-
-    // Older → show date
-    return date.toLocaleDateString("en-GB");
-};
 
 const formattedTime = (dateString: any) => {
     if (!dateString) return "";
@@ -85,7 +41,8 @@ const formattedTime = (dateString: any) => {
 }
 
 
-export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: ChatViewProps) => {
+export const ChatView = () => {
+    const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const {
         data: chatList,
@@ -109,14 +66,13 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
     const [chatSummary, setChatSummary] = useState<string | null>(null);
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
     const [message, setMessage] = useState<string>("");
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
 
     const [chatFilter, setChatFilter] = useState<'all' | 'read' | 'unread'>('all');
 
     const handleInputChange = (e: any) => {
         setMessage(e.target.value);
     }
-
-    console.log(chatList);
 
     const handleChatSearch = (e: any) => {
         setChatSearchText(e.target.value);
@@ -150,7 +106,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
     }, [selectedChat?.phone, chatList?.data]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
-        console.log(messages)
         return messages?.reduce((groups: any, msg: any) => {
             const label = getDateLabel(msg.created_at || msg.timestamp);
 
@@ -179,17 +134,14 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();
             let filtered = chatList?.data;
-            console.log("chats", chatList?.data)
             if (value) {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
-            console.log("chatFilter", chatFilter)
             if (chatFilter === 'read') {
                 filtered = filtered?.filter((chat: any) => chat?.seen == "true");
             } else if (chatFilter === 'unread') {
                 filtered = filtered?.filter((chat: any) => chat?.seen == "false" || chat?.seen == null);
             }
-            console.log("filtered", filtered)
             setFilteredChats(filtered);
         }, 200);
 
@@ -207,7 +159,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
         const filtered = messagesToFilter?.filter((msg: any) =>
             msg?.message?.toLowerCase().includes(value)
         );
-        console.log("filtered", filtered)
         setFilteredMessage(filtered);
 
     }, [messageSearchText, selectedChat, messagesData]);
@@ -253,7 +204,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
             const response = await chatSuggestMutate({
                 phone: selectedChat?.phone,
             });
-            console.log("response", response)
             setMessage(response?.data);
         } catch (err) {
             console.error(err);
@@ -269,7 +219,6 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
       Highlight the key needs of the lead and any pending action items. Keep it under 40 words.
       History:\n${history}`;
             const result = await callOpenAI(prompt, "You are a concise business analyst.");
-            console.log("result", result)
             setChatSummary(result);
         } catch (err) {
             setChatSummary("Unable to generate neural brief. Retry sync.");
@@ -315,7 +264,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                             <button key={i} onClick={() => handleSelectChat(chat)} className={cn("w-full p-3 rounded-xl flex items-center space-x-3 transition-all duration-200", selectedChat?.phone === chat?.phone ? (isDarkMode ? 'bg-white/10 shadow-lg' : 'bg-white shadow-md border border-emerald-500') : (isDarkMode ? 'hover:bg-white/5 opacity-60' : 'hover:bg-slate-50 opacity-80'))}>
                                 <div className="relative">
                                     <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border transition-all", selectedChat?.phone === chat?.phone ? 'scale-105' : '', isDarkMode ? 'bg-white/10 text-white border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200')}>{chat?.name ? chat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
-                                    {chat.seen && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 bg-emerald-500 border-[#151518] shadow-sm shadow-emerald-500/50 animate-pulse" />}
+                                    {/* {chat.seen && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 bg-emerald-500 border-[#151518] shadow-sm shadow-emerald-500/50 animate-pulse" />} */}
                                 </div>
                                 <div className="flex-1 text-left truncate">
                                     <div className="flex justify-between items-center mb-0.5">
@@ -366,7 +315,7 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                             <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Controller</span>
                             <div className="flex items-center space-x-2">
                                 <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm shadow-blue-500/30">JD</div>
-                                <span className={cn("text-xs font-bold uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-700')}>{selectedContact.assignedTo ? AGENTS.find(a => a.id === selectedContact.assignedTo)?.name : 'Unassigned'}</span>
+                                {/* <span className={cn("text-xs font-bold uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-700')}>{selectedContact?.assignedTo ? AGENTS.find(a => a.id === selectedContact?.assignedTo)?.name : 'Unassigned'}</span> */}
                             </div>
                         </div>
                         <div className="h-6 w-px bg-white/10" />
@@ -385,26 +334,75 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                 </GlassCard>
 
                 <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
-                    <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
-                        <div className="flex items-center space-x-3">
-                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
-                            <div>
-                                <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.name ? selectedChat?.name : selectedChat?.phone}</h3>
-                                <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
+                    <div className="px-6 py-4 border-b border-white/5 shrink-0">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-3">
+                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
+                                <div>
+                                    <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.name ? selectedChat?.name : selectedChat?.phone}</h3>
+                                    <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <button
+                                    onClick={() => {
+                                        setIsSearchVisible(!isSearchVisible);
+                                        if (!isSearchVisible) {
+                                            setMessageSearchText('');
+                                        }
+                                    }}
+                                    className={cn(
+                                        "p-2 rounded-lg transition-all",
+                                        isSearchVisible
+                                            ? 'bg-emerald-500/10 text-emerald-500'
+                                            : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500'
+                                    )}
+                                    title="Search Messages"
+                                >
+                                    <Search size={18} />
+                                </button>
+                                <button
+                                    onClick={summarizeChat}
+                                    disabled={isSummarizing}
+                                    className={cn("p-2 rounded-lg transition-all", isSummarizing ? 'animate-pulse text-emerald-500 bg-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500')}
+                                    title="Neural Chat Summary"
+                                >
+                                    <ClipboardList size={18} />
+                                </button>
+                                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
+                                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><HistoryIcon size={18} /></button>
                             </div>
                         </div>
-                        <div className="flex items-center space-x-1">
-                            <button
-                                onClick={summarizeChat}
-                                disabled={isSummarizing}
-                                className={cn("p-2 rounded-lg transition-all", isSummarizing ? 'animate-pulse text-emerald-500 bg-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500')}
-                                title="Neural Chat Summary"
-                            >
-                                <ClipboardList size={18} />
-                            </button>
-                            <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
-                            <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><HistoryIcon size={18} /></button>
-                        </div>
+                        {/* Message Search Bar - Conditionally Visible */}
+                        {isSearchVisible && (
+                            <div className="relative group animate-in slide-in-from-top-2 fade-in duration-200">
+                                <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", messageSearchText ? 'text-emerald-500' : (isDarkMode ? 'text-white/20' : 'text-slate-400'), 'group-focus-within:text-emerald-500')} size={14} />
+                                <input
+                                    onChange={handleMessageSearch}
+                                    value={messageSearchText}
+                                    type="text"
+                                    placeholder="Search in conversation..."
+                                    autoFocus
+                                    className={cn(
+                                        "w-full border rounded-xl py-2 pl-10 pr-20 text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20",
+                                        isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                    )}
+                                />
+                                {messageSearchText && (
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md", isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
+                                            {filteredMessage?.length || 0} {filteredMessage?.length === 1 ? 'match' : 'matches'}
+                                        </span>
+                                        <button
+                                            onClick={() => setMessageSearchText('')}
+                                            className={cn("p-1 rounded-lg transition-all", isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-600')}
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
@@ -421,6 +419,20 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                                     </div>
                                 ))}
                             </div>
+                        ) : isSearching && filteredMessage?.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
+                                <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform rotate-12 transition-all", isDarkMode ? "bg-white/5 border border-white/10" : "bg-slate-50 border border-slate-200")}>
+                                    <SearchX size={40} className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-400")} />
+                                </div>
+                                <div className="text-center space-y-2">
+                                    <h3 className={cn("text-lg font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                                        No matches found
+                                    </h3>
+                                    <p className={cn("text-xs font-medium uppercase tracking-wider max-w-[200px]", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                                        Try different keywords
+                                    </p>
+                                </div>
+                            </div>
                         ) : groupedEntries?.length > 0 ? (
                             groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
                                 <div key={index}>
@@ -434,27 +446,40 @@ export const ChatView = ({ isDarkMode, selectedContact, setSelectedContact }: Ch
                                             {dateLabel}
                                         </span>
                                     </div>
-                                    {msgs.map((msg: any, msgIndex: number) => (
-                                        <div key={msg.id || msgIndex} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", msg.sender === 'user' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${msgIndex * 10}ms`, animationFillMode: 'both' }}>
-                                            <div className="max-w-[70%] group">
-                                                <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
-                                                    msg.sender === 'bot'
-                                                        ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
-                                                        : msg.sender === 'user'
-                                                            ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
-                                                            : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
-                                                )}>
-                                                    {msg.sender === 'bot' && (
-                                                        <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
-                                                            <Sparkles size={10} className="animate-pulse" />
-                                                            <span>AI Receptionist Layer</span>
-                                                        </div>
-                                                    )}
-                                                    {msg.message}
+                                    {msgs.map((msg: any, msgIndex: number) => {
+                                        const highlightText = (text: string, search: string) => {
+                                            if (!search.trim()) return text;
+                                            const parts = text.split(new RegExp(`(${search})`, 'gi'));
+                                            return parts.map((part, i) =>
+                                                part.toLowerCase() === search.toLowerCase()
+                                                    ? <mark key={i} className="bg-yellow-400 text-slate-900 px-0.5 rounded font-semibold">{part}</mark>
+                                                    : part
+                                            );
+                                        };
+
+                                        return (
+                                            <div key={msg.id || msgIndex} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", msg.sender === 'user' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${msgIndex * 10}ms`, animationFillMode: 'both' }}>
+                                                <div className="max-w-[70%] group">
+                                                    <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
+                                                        msg.sender === 'bot'
+                                                            ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
+                                                            : msg.sender === 'user'
+                                                                ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
+                                                                : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
+                                                    )}>
+                                                        {msg.sender === 'bot' && (
+                                                            <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
+                                                                <Sparkles size={10} className="animate-pulse" />
+                                                                <span>AI Receptionist Layer</span>
+                                                            </div>
+                                                        )}
+                                                        {messageSearchText ? highlightText(msg.message, messageSearchText) : msg.message}
+                                                    </div>
+                                                    <p className={cn("text-[9px] font-bold uppercase tracking-wide my-2 opacity-40", msg.sender === 'user' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{formattedTime(msg.created_at)}</p>
                                                 </div>
-                                                <p className={cn("text-[9px] font-bold uppercase tracking-wide my-2 opacity-40", msg.sender === 'user' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{formattedTime(msg.created_at)}</p>
                                             </div>
-                                        </div>))}
+                                        );
+                                    })}
                                     <div ref={bottomRef} />
                                 </div>
                             ))

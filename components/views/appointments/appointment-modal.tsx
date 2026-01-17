@@ -274,7 +274,7 @@ export const AppointmentModal = ({
                                 "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                 isView && "opacity-60 cursor-not-allowed",
                                 isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                    ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30 [&>option]:bg-slate-800 [&>option]:text-white'
                                     : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
                             )}
                         >
@@ -296,7 +296,7 @@ export const AppointmentModal = ({
                                 "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none capitalize",
                                 isView && "opacity-60 cursor-not-allowed",
                                 isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                    ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30 [&>option]:bg-slate-800 [&>option]:text-white'
                                     : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
                             )}
                         >
@@ -320,7 +320,7 @@ export const AppointmentModal = ({
                             "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                             isView && "opacity-60 cursor-not-allowed",
                             isDarkMode
-                                ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30 [&>option]:bg-slate-800 [&>option]:text-white'
                                 : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
                         )}
                     >

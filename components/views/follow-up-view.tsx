@@ -7,12 +7,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { FOLLOW_UPS_MOCK } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
 
-interface FollowUpHubViewProps {
-    isDarkMode: boolean;
-}
-
-export const FollowUpHubView = ({ isDarkMode }: FollowUpHubViewProps) => {
+export const FollowUpHubView = () => {
+    const {isDarkMode} = useTheme();
     const [selectedLead, setSelectedLead] = useState<typeof FOLLOW_UPS_MOCK[0] | null>(null);
     const [isPlanning, setIsPlanning] = useState(false);
     const [planResult, setPlanResult] = useState<string | null>(null);

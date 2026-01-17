@@ -248,7 +248,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                         className={cn(
                             "px-4 py-3 rounded-xl text-sm border transition-all focus:outline-none min-w-[200px]",
                             isDarkMode
-                                ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30'
+                                ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30 [&>option]:bg-slate-800 [&>option]:text-white'
                                 : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
                         )}
                     >
@@ -308,7 +308,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                                             <h3 className={cn("font-semibold text-lg", isDarkMode ? "text-white" : "text-slate-900")}>
                                                 {doctor.name}
                                             </h3>
-                                            <div className={cn("flex items-center space-x-1.5 text-xs mt-1", getStatusColor(doctor.currentStatus))}>
+                                            <div className={cn("flex items-center rounded-full p-1 px-3 w-fit space-x-1.5 text-xs mt-1", getStatusColor(doctor.currentStatus))}>
                                                 {getStatusIcon(doctor.currentStatus)}
                                                 <span className="capitalize font-medium">{doctor.currentStatus.replace('-', ' ')}</span>
                                             </div>

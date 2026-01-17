@@ -1,18 +1,23 @@
 
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface FloatingDockItemProps {
     icon: LucideIcon;
-    active: boolean;
     onClick: () => void;
     label: string;
+    route: string;
     isDarkMode?: boolean;
     urgent?: boolean;
     isExpanded?: boolean;
 }
 
-export const FloatingDockItem = ({ icon: Icon, active, onClick, label, isDarkMode = true, urgent = false, isExpanded = false }: FloatingDockItemProps) => (
+export const FloatingDockItem = ({ icon: Icon, route, onClick, label, isDarkMode = true, urgent = false, isExpanded = false }: FloatingDockItemProps) => {
+    const pathname = usePathname();
+    const active = pathname === route;
+
+    return (
     <button
         onClick={onClick}
         className={cn(
@@ -25,7 +30,6 @@ export const FloatingDockItem = ({ icon: Icon, active, onClick, label, isDarkMod
     >
         <Icon size={20} strokeWidth={active ? 2.5 : 1.5} className="shrink-0" />
 
-        {/* Inline label when expanded */}
         <span className={cn(
             "font-semibold text-sm whitespace-nowrap transition-all duration-300",
             isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 absolute"
@@ -33,7 +37,6 @@ export const FloatingDockItem = ({ icon: Icon, active, onClick, label, isDarkMod
             {label}
         </span>
 
-        {/* Tooltip label when collapsed */}
         {!isExpanded && (
             <span className={cn(
                 "absolute left-20 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[100] border shadow-2xl translate-x-4 group-hover:translate-x-0",
@@ -53,3 +56,4 @@ export const FloatingDockItem = ({ icon: Icon, active, onClick, label, isDarkMod
         )}
     </button>
 );
+}

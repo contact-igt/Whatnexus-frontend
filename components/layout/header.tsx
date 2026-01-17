@@ -1,8 +1,7 @@
 
 "use client";
 
-import { Globe, Bell } from 'lucide-react';
-import { BRAND_NAME } from "@/lib/data";
+import { Globe, Bell, Sun, Moon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
@@ -10,25 +9,21 @@ import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
 import { useDispatch } from 'react-redux';
 import { clearAuthData } from '@/redux/slices/auth/authSlice';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@/hooks/useTheme';
 
-interface HeaderProps {
-    isDarkMode: boolean;
-    onNavigateToProfile: () => void;
-}
 
-export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
+export const Header = () => {
     const { user } = useAuth();
+    const { setTheme, isDarkMode } = useTheme();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const dispatch = useDispatch();
     const router = useRouter();
-
+    const toggleTheme = () => {
+        setTheme(isDarkMode ? "light" : "dark");
+    };
     const handleLogout = () => {
         dispatch(clearAuthData());
         router.replace('/login');
-    };
-
-    const handleViewProfile = () => {
-        onNavigateToProfile();
     };
 
     return (
@@ -37,7 +32,7 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
                 <div className="flex flex-col">
                     <div className="flex items-center gap-3">
                         <span className={cn("text-[20px] font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                            WHATSNEXUS<span className="text-emerald-500">.</span>
+                            WhatsNexus<span className="text-emerald-500">.</span>
                         </span>
                         <div className={cn("px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border",
                             isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200')}>
@@ -74,8 +69,9 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
                         <Bell size={20} />
                         <div className="absolute top-3.5 right-3.5 w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
                     </button>
-
-                    {/* User Profile Avatar with Dropdown */}
+                    <button onClick={toggleTheme} className={cn("p-3 rounded-2xl mt-0 transition-all border group relative", isDarkMode ? 'border-white/5 hover:bg-white/5 text-emerald-400' : 'border-slate-200 hover:bg-slate-100 text-slate-500')}>
+                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
                     <div className="relative">
                         <div
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -85,19 +81,17 @@ export const Header = ({ isDarkMode, onNavigateToProfile }: HeaderProps) => {
                                 isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-900 text-white border-slate-700'
                             )}
                         >
+
                             <div className={cn("shrink-0 flex items-center justify-center")}>
                                 {user?.username?.split("")[0].toUpperCase()}
                             </div>
                         </div>
-
-                        {/* Dropdown */}
                         {isProfileOpen && (
                             <UserProfileDropdown
                                 isDarkMode={isDarkMode}
                                 user={user}
                                 onClose={() => setIsProfileOpen(false)}
                                 onLogout={handleLogout}
-                                onViewProfile={handleViewProfile}
                             />
                         )}
                     </div>

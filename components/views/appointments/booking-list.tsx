@@ -4,8 +4,8 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, Eye, Edit2, X, Clock, User, Phone, Calendar as CalendarIcon, FileText, UserCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { AppointmentModal } from './appointment-modal';
 import { format } from 'date-fns';
+import { AppointmentModal } from './appointment-modal';
 
 interface BookingListProps {
     isDarkMode: boolean;
@@ -56,7 +56,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                         time: '10:00 AM',
                         type: 'Consultation',
                         status: 'confirmed',
-                        notes: 'Regular checkup'
+                        notes: 'Regular eye checkup - Patient experiencing mild blurred vision',
+                        doctorId: '1',
+                        doctorName: 'Dr. Sarah Johnson'
                     },
                     {
                         id: '2',
@@ -66,7 +68,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                         time: '02:30 PM',
                         type: 'Follow-up',
                         status: 'pending',
-                        notes: 'Post-surgery follow-up'
+                        notes: 'Post-surgery follow-up appointment to check healing progress',
+                        doctorId: '2',
+                        doctorName: 'Dr. Michael Chen'
                     },
                     {
                         id: '3',
@@ -76,7 +80,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                         time: '11:00 AM',
                         type: 'Surgery',
                         status: 'completed',
-                        notes: 'Cataract surgery'
+                        notes: 'Cataract surgery completed successfully',
+                        doctorId: '1',
+                        doctorName: 'Dr. Sarah Johnson'
                     }
                 ];
                 setAppointments(mockAppointments);
@@ -97,7 +103,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
             const filtered = appointments.filter(apt =>
                 apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 apt.contact.includes(searchQuery) ||
-                apt.type.toLowerCase().includes(searchQuery.toLowerCase())
+                apt.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (apt.doctorName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                (apt.notes?.toLowerCase() || '').includes(searchQuery.toLowerCase())
             );
             setFilteredAppointments(filtered);
         }
@@ -269,9 +277,15 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                     </div>
 
                                     {appointment.notes && (
-                                        <p className={cn("text-sm italic", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                            "{appointment.notes.length > 80 ? appointment.notes.substring(0, 80) + '...' : appointment.notes}"
-                                        </p>
+                                        <div className={cn(
+                                            "mt-3 pt-3 border-t",
+                                            isDarkMode ? "border-white/10" : "border-slate-200"
+                                        )}>
+                                            <p className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                                <span className="font-semibold">Summary: </span>
+                                                {appointment.notes.length > 80 ? appointment.notes.substring(0, 80) + '...' : appointment.notes}
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
 

@@ -114,7 +114,6 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
 
     const handleUploadKnowledge = async (type: 'file' | 'text' | 'url') => {
         const defaultTitle = "Ophthall conclave conference";
-        console.log("uploadedData", uploadedData)
         if (type === 'file') {
             setIsUpdating({ status: true, type: "file" })
             if (uploadedData.length === 0) {
@@ -262,9 +261,6 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
 
     const activeKnowledgeData = knowledgeData?.data?.filter((source: any) => source.status === "active");
     const inactiveKnowledgeData = knowledgeData?.data?.filter((source: any)=> source.status === "inactive");
-    console.log("uploadedData", uploadedData)
-    console.log("knowledgeData", knowledgeData);
-    console.log("documentTitle", inputValue?.documentTitle)
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

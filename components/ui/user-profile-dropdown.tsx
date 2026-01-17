@@ -3,6 +3,7 @@
 import { User, Settings, LogOut, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface UserProfileDropdownProps {
     isDarkMode: boolean;
@@ -12,11 +13,11 @@ interface UserProfileDropdownProps {
     } | null;
     onClose: () => void;
     onLogout: () => void;
-    onViewProfile: () => void;
 }
 
-export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout, onViewProfile }: UserProfileDropdownProps) => {
+export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: UserProfileDropdownProps) => {
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const router = useRouter();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -36,7 +37,7 @@ export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout, onVie
             icon: User,
             label: "View Profile",
             onClick: () => {
-                onViewProfile();
+                router.push("/profile")
                 onClose();
             }
         },
