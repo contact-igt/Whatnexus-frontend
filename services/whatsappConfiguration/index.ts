@@ -13,6 +13,7 @@ export class whatsappConfigApiData {
         return await _axios("get", "/whatsapp-accounts");
     }
     saveWhatsappConfig = async(data: whatsappConfigApiData)=>{
+        console.log("data", data)
         return await _axios("post", "/whatsapp-account", data);
     }
     testWhatsAppConfig = async () => {

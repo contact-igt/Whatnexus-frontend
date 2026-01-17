@@ -38,7 +38,7 @@ export const Sidebar = () => {
                     </div>
                 ) : (
                     <div className={cn("flex items-center justify-center font-black text-xl tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                        WHATSNEXUS<span className="text-emerald-500">.</span>
+                        WhatsNexus<span className="text-emerald-500">.</span>
                     </div>
                 )}
             </div>

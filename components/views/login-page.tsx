@@ -5,11 +5,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTheme } from "@/hooks/useTheme";
-import { Eye, EyeOff, Mail, Lock, LogIn, Sun, Moon, Check } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, LogIn, Sun, Moon, Check, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLoginMutation } from "@/hooks/useLoginQuery";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
+import Link from "next/link";
 
 const loginSchema = z.object({
     email: z
@@ -79,6 +80,28 @@ export default function LoginPage() {
                 ? "bg-slate-950"
                 : "bg-slate-50"
         )}>
+            {/* Home Button */}
+            <Link href="/">
+                <button
+                    className={cn(
+                        "fixed top-6 left-6 z-50 p-3 rounded-xl transition-all duration-300",
+                        "backdrop-blur-xl border shadow-lg hover:scale-110 active:scale-95",
+                        "group",
+                        isDarkMode
+                            ? "bg-slate-800/80 border-white/10 hover:border-emerald-500/50 shadow-black/40"
+                            : "bg-white/80 border-slate-200 hover:border-emerald-500/50 shadow-slate-300/50"
+                    )}
+                    aria-label="Go to home"
+                >
+                    <Home className={cn(
+                        "w-5 h-5 transition-all duration-300",
+                        isDarkMode
+                            ? "text-emerald-400 group-hover:text-emerald-300"
+                            : "text-emerald-600 group-hover:text-emerald-500"
+                    )} />
+                </button>
+            </Link>
+
             {/* Theme Toggle Button */}
             <button
                 onClick={toggleTheme}
@@ -121,14 +144,18 @@ export default function LoginPage() {
                     }}
                 />
 
-                {/* Accent Shapes */}
+                {/* Accent Shapes - Square Glowing */}
                 <div className={cn(
-                    "absolute top-20 right-20 w-64 h-64 rounded-full blur-3xl opacity-20",
+                    "absolute top-20 right-20 w-64 h-64 rounded-3xl blur-3xl opacity-20 rotate-12",
                     isDarkMode ? "bg-emerald-600" : "bg-emerald-400"
                 )} />
                 <div className={cn(
-                    "absolute bottom-20 left-20 w-80 h-80 rounded-full blur-3xl opacity-20",
+                    "absolute bottom-20 left-20 w-80 h-80 rounded-3xl blur-3xl opacity-20 -rotate-12",
                     isDarkMode ? "bg-blue-600" : "bg-blue-400"
+                )} />
+                <div className={cn(
+                    "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-3xl blur-3xl opacity-10 rotate-45",
+                    isDarkMode ? "bg-teal-600" : "bg-teal-400"
                 )} />
             </div>
 
@@ -145,7 +172,7 @@ export default function LoginPage() {
                 <div className="relative flex flex-col items-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
                     <div className="flex items-center gap-3">
                         <span className={cn("text-4xl font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                            WHATSNEXUS<span className="text-emerald-500">.</span>
+                            WhatsNexus<span className="text-emerald-500">.</span>
                         </span>
                         <div className={cn("absolute top-0 right-2 px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wide uppercase",
                             isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-emerald-50 border-emerald-200 text-emerald-600")}>

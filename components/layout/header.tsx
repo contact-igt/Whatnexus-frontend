@@ -32,7 +32,7 @@ export const Header = () => {
                 <div className="flex flex-col">
                     <div className="flex items-center gap-3">
                         <span className={cn("text-[20px] font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                            WHATSNEXUS<span className="text-emerald-500">.</span>
+                            WhatsNexus<span className="text-emerald-500">.</span>
                         </span>
                         <div className={cn("px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border",
                             isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200')}>

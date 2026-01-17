@@ -14,10 +14,6 @@ export const useGetWhatsappConfigQuery = () => {
         staleTime: 2 * 60 * 1000,
     })
 
-    if (isError) {
-        toast.error('Failed to load WhatsApp configuration')
-    }
-
     return { data, isLoading, isError }
 }
 
@@ -25,6 +21,7 @@ export const useSaveWhatsAppConfigMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ data }: { data: any }) => {
+             console.log("datahook", data)
             return whatsappConfigApis.saveWhatsappConfig(data);
         },
         onSuccess: (response, variables) => {

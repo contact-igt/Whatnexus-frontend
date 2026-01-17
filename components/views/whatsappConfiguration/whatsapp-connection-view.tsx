@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { ArrowLeft, MessageCircle, CheckCircle2, XCircle, Eye, EyeOff, Loader2, Shield, Phone, Key, Smartphone, Building2, Users, Hospital } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Organization } from "../organization/organization-view";
 import { usePathname, useRouter } from 'next/navigation';
@@ -47,7 +46,7 @@ export const whatsappConnectSchema = z.object({
 });
 
 export const WhatsAppConnectionView = () => {
-    const { register, handleSubmit, formState: { errors } } = useForm<WhatsAppConfig>({
+    const { register, handleSubmit, formState: { errors }, watch } = useForm<WhatsAppConfig>({
         resolver: zodResolver(whatsappConnectSchema),
         defaultValues: {
             waba_id: '',
@@ -97,7 +96,7 @@ export const WhatsAppConnectionView = () => {
         if (WhatsAppConnectionData?.data?.id) return 'text-emerald-500 bg-emerald-500/10';
         return 'text-slate-500 bg-slate-500/10';
     };
-
+    const whatsappNumber = watch("whatsapp_number");
     const getStatusIcon = () => {
         if (WhatsAppConnectionData?.data?.id) return <CheckCircle2 size={16} />;
         return <XCircle size={16} />;
@@ -108,7 +107,8 @@ export const WhatsAppConnectionView = () => {
     }
 
     const onSubmit = (data: any) => {
-        saveWhatsConfigMutate(data);
+        console.log("datafunc", data)
+        saveWhatsConfigMutate({data});
     }
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1000px] mx-auto no-scrollbar pb-32">
