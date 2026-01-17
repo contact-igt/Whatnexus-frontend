@@ -7,12 +7,12 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { LEADS } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
+import { useLeadIntelligenceQuery } from '@/hooks/useLeadIntelligenceQuery';
 
-interface LeadsViewProps {
-    isDarkMode: boolean;
-}
-
-export const LeadsView = ({ isDarkMode }: LeadsViewProps) => {
+export const LeadsView = () => {
+    const { isDarkMode } = useTheme();
+    const { data: leadIntelligenceData, isLoading, isError } = useLeadIntelligenceQuery();
     const [analyzingId, setAnalyzingId] = useState<string | null>(null);
     const [insight, setInsight] = useState<{ id: string; text: string } | null>(null);
 
@@ -29,7 +29,30 @@ export const LeadsView = ({ isDarkMode }: LeadsViewProps) => {
             setAnalyzingId(null);
         }
     };
+    const getHeatStateStyles = (state: string) => {
+        switch (state?.toLowerCase()) {
+            case 'hot': return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
+            case 'warm': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+            case 'cold': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+            case 'super_cold': return 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20';
+            default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+        }
+    };
 
+    const formatMessageDate = (dateString: string) => {
+        if (!dateString) return { date: '-', time: '' };
+        try {
+            const date = new Date(dateString);
+            return {
+                date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+            };
+        } catch (e) {
+            return { date: '-', time: '' };
+        }
+    };
+
+    console.log("leadIntelligenceData", leadIntelligenceData)
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in fade-in duration-700 no-scrollbar pb-32">
             <div className="flex justify-between items-end border-b border-white/5 pb-6">
@@ -45,8 +68,69 @@ export const LeadsView = ({ isDarkMode }: LeadsViewProps) => {
                     <button className="h-10 px-5 rounded-xl bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Sync CRM</button>
                 </div>
             </div>
-
             <GlassCard isDarkMode={isDarkMode} className="overflow-hidden p-0 rounded-2xl">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[900px]">
+                        <thead>
+                            <tr className={cn("text-xs font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/30 bg-white/5' : 'text-slate-400 bg-slate-50')}>
+                                <th className="px-6 py-4 text">Lead Identity</th>
+                                {/* <th className="px-6 py-4">Origin</th> */}
+                                <th className="px-6 py-4 text-center">Neural Score</th>
+                                <th className="px-6 py-4 text-center">Heat State</th>
+                                <th className="px-6 py-4 text-center">Last Message</th>
+                                <th className="px-6 py-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
+                            {leadIntelligenceData?.data?.map((lead: any, i: number) => {
+                                const { date, time } = formatMessageDate(lead.last_user_message_at);
+                                return (
+                                    <tr key={lead.id} className={cn("group transition-all hover:bg-emerald-500/5 animate-in slide-in-from-left-4", isDarkMode ? '' : 'hover:bg-slate-50')} style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center space-x-3">
+                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border", isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-700')}>
+                                                    {lead.name[0]}
+                                                </div>
+                                                <div>
+                                                    <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{lead.name}</p>
+                                                    <p className="text-[10px] text-slate-500 uppercase font-medium tracking-wider">+{lead?.phone}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        {/* <td className={cn("px-6 py-4 text-xs font-medium uppercase tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{lead.source}</td> */}
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex flex-col justify-center items-center">
+                                                <span className={cn("text-xs font-bold mb-1.5", lead.heat_score > 80 ? 'text-emerald-500' : 'text-orange-500')}>{lead.heat_score}</span>
+                                                <div className={cn("h-1 w-12 rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-200')}>
+                                                    <div className={cn("h-full rounded-full transition-all duration-[2000ms] ease-out", lead.heat_score > 80 ? 'bg-emerald-500' : 'bg-orange-500')} style={{ width: `${lead.heat_score}%` }} />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(lead.heat_state))}>
+                                                {lead.heat_state}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center min-w-[150px]">
+                                            <div className="flex flex-col">
+                                                <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/90' : 'text-slate-700')}>{date}</span>
+                                                <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{time}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                <button className="p-2 hover:bg-white/10 rounded-lg hover:text-emerald-500 transition-colors"><MessageSquare size={16} /></button>
+                                                <button className="p-2 hover:bg-white/10 rounded-lg hover:text-rose-500 transition-colors"><MoreHorizontal size={16} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </GlassCard>
+            {/* <GlassCard isDarkMode={isDarkMode} className="overflow-hidden p-0 rounded-2xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
@@ -123,7 +207,7 @@ export const LeadsView = ({ isDarkMode }: LeadsViewProps) => {
                         </tbody>
                     </table>
                 </div>
-            </GlassCard>
+            </GlassCard> */}
         </div>
     );
 };

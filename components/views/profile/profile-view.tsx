@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Mail, Phone, User, Briefcase, Award, Edit2, Save, X, ChevronDown } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
-interface ProfileViewProps {
-    isDarkMode: boolean;
-}
 
-export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
+export const ProfileView = () => {
+    const { isDarkMode } = useTheme();
     const { user } = useAuth();
     const [isEditMode, setIsEditMode] = useState(false);
     const [formData, setFormData] = useState({
@@ -212,7 +211,7 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                         </div>
 
 
-                        <div  className="md:col-span-2">
+                        <div className="md:col-span-2">
                             <label className={cn(
                                 "text-xs font-bold uppercase tracking-wider mb-2 block",
                                 isDarkMode ? 'text-white/40' : 'text-slate-500'
@@ -275,7 +274,7 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                                     >
                                         <option value="agent" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Agent</option>
                                         <option value="admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Admin</option>
-                                        <option value="super-admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Super Admin</option>
+                                        <option value="super_admin" className={isDarkMode ? 'bg-[#1c1c21] text-white' : 'bg-white text-slate-900'}>Super Admin</option>
                                     </select>
                                 </div>
                             ) : (
@@ -286,7 +285,7 @@ export const ProfileView = ({ isDarkMode }: ProfileViewProps) => {
                                         : 'bg-slate-50 border-slate-200 text-slate-600'
                                 )}>
                                     <Briefcase size={16} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} />
-                                    {formData?.role?.split("-").map((word:any)=> word.charAt(0).toUpperCase() + word.slice(1)).join(" ") || "Not set"}
+                                    {formData?.role?.split("-").map((word: any) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ") || "Not set"}
                                 </div>
                             )}
                         </div>

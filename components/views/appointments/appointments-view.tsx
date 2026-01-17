@@ -4,16 +4,16 @@
 import { useState } from 'react';
 import { Calendar, List } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
 import { BookingList } from './booking-list';
 import { CalendarView } from './calendar-view';
 
-interface AppointmentsViewProps {
-    isDarkMode: boolean;
-}
 
 type TabType = 'booking-list' | 'calendar';
 
-export const AppointmentsView = ({ isDarkMode }: AppointmentsViewProps) => {
+export const AppointmentsView = () => {
+      const {theme } = useTheme()
+    const isDarkMode = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     const [activeTab, setActiveTab] = useState<TabType>('booking-list');
 
     const appointmentTabs = [

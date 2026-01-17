@@ -7,12 +7,11 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { SYSTEM_LOGS } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import { useTheme } from '@/hooks/useTheme';
 
-interface SystemGovernanceViewProps {
-    isDarkMode: boolean;
-}
 
-export const SystemGovernanceView = ({ isDarkMode }: SystemGovernanceViewProps) => {
+export const SystemGovernanceView = () => {
+    const {isDarkMode} = useTheme();
     const [isAuditing, setIsAuditing] = useState(false);
     const [auditReport, setAuditReport] = useState<string | null>(null);
 
