@@ -18,15 +18,15 @@ export const useLoginMutation = () => {
             console.log(data)
             if (!data || data?.success == false) {
                 toast.error(data?.message || "Something went wrong")
-                return; // Early return to prevent navigation and auth data dispatch on failure
+                return;
             }
             dispatch(setAuthData({
-                token: variables.rememberMe === true ? data?.tokens?.refreshToken : data?.tokens?.accessToken,
-                refreshToken: data?.tokens?.refreshToken,
+                token: variables.rememberMe === true ? data?.refreshToken : data?.accessToken,
+                refreshToken: data?.refreshToken,
                 user: data?.user
             }))
             toast.success("Login successful")
-            router.push("/dashboard")
+            router.replace("/dashboard")
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || error?.message || "Something went wrong")
