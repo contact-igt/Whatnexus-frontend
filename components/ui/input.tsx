@@ -42,6 +42,7 @@ export const Input = ({
                     </div>
                 )}
                 <input
+                    autoComplete='new-password'
                     {...props}
                     className={cn(
                         "w-full py-2.5 rounded-xl text-sm border transition-all focus:outline-none",

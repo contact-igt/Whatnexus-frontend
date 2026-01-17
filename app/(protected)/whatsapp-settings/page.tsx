@@ -1,5 +1,5 @@
-import { WhatsAppConnectionView } from "@/components/views/organization/whatsapp-connection-view";
+import { WhatsAppConnectionView } from "@/components/views/whatsappConfiguration/whatsapp-connection-view";
 
 export default function WhatsAppSettingsPage() {
-    return <WhatsAppConnectionView  />;
+    return <WhatsAppConnectionView />;
 }

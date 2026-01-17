@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { ArrowLeft, MessageCircle, CheckCircle2, XCircle, Eye, EyeOff, Loader2, Shield, Phone, Key, Smartphone, Building2, PlayCircle, ChevronDown, ChevronUp, Rocket, Calendar, Facebook, BookOpen } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { cn } from "../../../lib/utils";
+import {Input} from '../../ui/input';
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Organization } from "./organization-view";
+import { Organization } from "../organization/organization-view";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useTheme } from '@/hooks/useTheme';
-import { useGetWhatsAppConfigQuery, useSaveWhatsAppConfigMutation, useTestWhatsAppConnectionMutation } from '@/hooks/useTenantQuery';
 
+import { useTheme } from '../../../hooks/useTheme';
 
 interface WhatsAppConfig {
     wabaId: string;
@@ -28,7 +27,7 @@ interface SetupStep {
     completed: boolean;
 }
 
-export const WhatsAppConnectionView = () => {
+export const WhatsAppConnectionViewOld = () => {
     const { isDarkMode } = useTheme();
     const searchParams = useSearchParams();
     const tenantId = searchParams.get('tenantId');
@@ -631,7 +630,7 @@ export const WhatsAppConnectionView = () => {
                                         icon={Shield}
                                         placeholder="Enter WABA ID"
                                         value={formData.wabaId}
-                                        onChange={(e) => handleChange('wabaId', e.target.value)}
+                                        onChange={(e:any) => handleChange('wabaId', e.target.value)}
                                         error={errors.wabaId}
                                         required
                                     />
@@ -642,7 +641,7 @@ export const WhatsAppConnectionView = () => {
                                         icon={Phone}
                                         placeholder="Enter Phone Number ID"
                                         value={formData.phoneNumberId}
-                                        onChange={(e) => handleChange('phoneNumberId', e.target.value)}
+                                        onChange={(e:any) => handleChange('phoneNumberId', e.target.value)}
                                         error={errors.phoneNumberId}
                                         required
                                     />
@@ -654,7 +653,7 @@ export const WhatsAppConnectionView = () => {
                                         icon={Smartphone}
                                         placeholder="Enter Meta App ID"
                                         value={formData.metaAppId}
-                                        onChange={(e) => handleChange('metaAppId', e.target.value)}
+                                        onChange={(e:any) => handleChange('metaAppId', e.target.value)}
                                         error={errors.metaAppId}
                                         required
                                     />
@@ -668,7 +667,7 @@ export const WhatsAppConnectionView = () => {
                                             type={showAppSecret ? "text" : "password"}
                                             placeholder="Enter Meta App Secret (Optional)"
                                             value={formData.metaAppSecret}
-                                            onChange={(e) => handleChange('metaAppSecret', e.target.value)}
+                                            onChange={(e:any) => handleChange('metaAppSecret', e.target.value)}
                                         />
                                         {formData.metaAppSecret && (
                                             <button
@@ -694,7 +693,7 @@ export const WhatsAppConnectionView = () => {
                                             type={showAccessToken ? "text" : "password"}
                                             placeholder="Enter your Meta Access Token"
                                             value={formData.accessToken}
-                                            onChange={(e) => handleChange('accessToken', e.target.value)}
+                                            onChange={(e:any) => handleChange('accessToken', e.target.value)}
                                             error={errors.accessToken}
                                             required
                                         />
@@ -827,7 +826,7 @@ export const WhatsAppConnectionView = () => {
                                     icon={Shield}
                                     placeholder="Enter WABA ID"
                                     value={formData.wabaId}
-                                    onChange={(e) => handleChange('wabaId', e.target.value)}
+                                    onChange={(e:any) => handleChange('wabaId', e.target.value)}
                                     error={errors.wabaId}
                                     required
                                     disabled={true}
@@ -839,7 +838,7 @@ export const WhatsAppConnectionView = () => {
                                     icon={Phone}
                                     placeholder="Enter Phone Number ID"
                                     value={formData.phoneNumberId}
-                                    onChange={(e) => handleChange('phoneNumberId', e.target.value)}
+                                    onChange={(e:any) => handleChange('phoneNumberId', e.target.value)}
                                     error={errors.phoneNumberId}
                                     required
                                     disabled={true}
@@ -852,7 +851,7 @@ export const WhatsAppConnectionView = () => {
                                     icon={Smartphone}
                                     placeholder="Enter Meta App ID"
                                     value={formData.metaAppId}
-                                    onChange={(e) => handleChange('metaAppId', e.target.value)}
+                                    onChange={(e:any) => handleChange('metaAppId', e.target.value)}
                                     error={errors.metaAppId}
                                     required
                                     disabled={true}
@@ -867,7 +866,7 @@ export const WhatsAppConnectionView = () => {
                                         type={showAppSecret ? "text" : "password"}
                                         placeholder="Enter Meta App Secret (Optional)"
                                         value={formData.metaAppSecret}
-                                        onChange={(e) => handleChange('metaAppSecret', e.target.value)}
+                                        onChange={(e:any) => handleChange('metaAppSecret', e.target.value)}
                                         disabled={true}
                                     />
                                     {formData.metaAppSecret && (
@@ -894,7 +893,7 @@ export const WhatsAppConnectionView = () => {
                                         type={showAccessToken ? "text" : "password"}
                                         placeholder="Enter your Meta Access Token"
                                         value={formData.accessToken}
-                                        onChange={(e) => handleChange('accessToken', e.target.value)}
+                                        onChange={(e:any) => handleChange('accessToken', e.target.value)}
                                         error={errors.accessToken}
                                         required
                                         disabled={true}
