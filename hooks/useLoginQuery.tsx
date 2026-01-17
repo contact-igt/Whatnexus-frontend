@@ -21,8 +21,8 @@ export const useLoginMutation = () => {
                 return;
             }
             dispatch(setAuthData({
-                token: variables.rememberMe === true ? data?.refreshToken : data?.accessToken,
-                refreshToken: data?.refreshToken,
+                token: variables.rememberMe === true ? data?.tokens?.refreshToken : data?.tokens?.accessToken,
+                refreshToken: data?.tokens?.refreshToken,
                 user: data?.user
             }))
             toast.success("Login successful")
