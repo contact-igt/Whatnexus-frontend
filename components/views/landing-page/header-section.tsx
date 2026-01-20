@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Zap, Menu, LogIn } from 'lucide-react';
+import { Zap, Menu, LogIn, X } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './shared-components';
 
 export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
     const [isScrolled, setIsScrolled] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -15,7 +16,7 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
     }, []);
 
     return (
-        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-black/80 backdrop-blur-md py-3 border-b border-white/5' : 'bg-transparent py-5'}`}>
+        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isMobileMenuOpen ? 'bg-[#0A0A0B] py-3 border-b border-white/5' : isScrolled ? 'bg-black/80 backdrop-blur-md py-3 border-b border-white/5' : 'bg-transparent py-5'}`}>
             <div className="container mx-auto px-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     {/* <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center rotate-12 shadow-xl">
@@ -29,7 +30,7 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
                         <span className="text-[8.9px] text-white/30 font-bold tracking-widest uppercase">Powered by Invictus Global Tech</span>
                     </div>
                 </div>
-                <div className="hidden md:flex items-center gap-8">
+                <div className="hidden min-[992px]:flex items-center gap-8">
                     <nav className="flex items-center gap-8 text-[11px] font-black uppercase tracking-widest text-white/40">
                         <a href="#matrix" className="hover:text-emerald-400 transition-colors">Matrix</a>
                         <a href="#ui" className="hover:text-emerald-400 transition-colors">UI Preview</a>
@@ -42,8 +43,36 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
                     </Link>
                     <Button onClick={onDemoClick} className="py-2 text-[11px] uppercase tracking-widest">Request Demo</Button>
                 </div>
-                <button className="md:hidden text-white/50"><Menu /></button>
+                <button
+                    className="min-[992px]:hidden text-white/50 hover:text-emerald-400 transition-colors"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                >
+                    {isMobileMenuOpen ? <X /> : <Menu />}
+                </button>
             </div>
+
+            {/* Mobile Menu */}
+            {isMobileMenuOpen && (
+                <div className="min-[992px]:hidden absolute top-full left-0 right-0 bg-[#0A0A0B] border-b border-white/5 p-6 animate-in slide-in-from-top-2">
+                    <nav className="flex flex-col gap-6 text-sm font-bold uppercase tracking-widest text-white/60">
+                        <a href="#matrix" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Matrix</a>
+                        <a href="#ui" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>UI Preview</a>
+                        <a href="#healthcare" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Healthcare</a>
+
+                        <div className="h-px bg-white/5 my-2" />
+
+                        <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full">
+                            <Button variant="secondary" className="w-full py-3 text-xs uppercase tracking-widest">
+                                <LogIn size={16} /> Login
+                            </Button>
+                        </Link>
+
+                        <Button onClick={() => { onDemoClick(); setIsMobileMenuOpen(false); }} className="w-full py-3 text-xs uppercase tracking-widest mt-2">
+                            Request Demo
+                        </Button>
+                    </nav>
+                </div>
+            )}
         </header>
     );
 };
