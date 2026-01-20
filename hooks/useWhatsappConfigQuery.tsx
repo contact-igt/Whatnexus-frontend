@@ -2,10 +2,14 @@ import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { whatsappConfigApiData } from "@/services/whatsappConfiguration";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useDispatch } from "react-redux";
+import { setWhatsAppApiDetails } from "@/redux/slices/auth/authSlice";
+import { useEffect } from "react";
 
 const whatsappConfigApis = new whatsappConfigApiData();
 
 export const useGetWhatsappConfigQuery = () => {
+    const dispatch = useDispatch();
     const { token } = useAuth();
     const { data, isLoading, isError } = useQuery({
         queryKey: ['whatsapp-config'],
@@ -13,7 +17,11 @@ export const useGetWhatsappConfigQuery = () => {
         queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
         staleTime: 2 * 60 * 1000,
     })
-
+    useEffect(() => {
+        if (data?.data) {
+            dispatch(setWhatsAppApiDetails(data.data));
+        }
+    }, [data, dispatch]);
     return { data, isLoading, isError }
 }
 
@@ -21,7 +29,7 @@ export const useSaveWhatsAppConfigMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ data }: { data: any }) => {
-             console.log("datahook", data)
+            console.log("datahook", data)
             return whatsappConfigApis.saveWhatsappConfig(data);
         },
         onSuccess: (response, variables) => {

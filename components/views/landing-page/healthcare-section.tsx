@@ -17,7 +17,7 @@ export const HealthcareSection = () => {
             <div className="container mx-auto max-w-6xl">
                 <div className="grid lg:grid-cols-2 gap-16 items-center">
                     <div>
-                        <SectionHeader title="Built for hospitals." subtitle="Healthcare Mode" />
+                        <SectionHeader title="Built for hospitals." subtitle="Healthcare Mode" mobileCenter={true}/>
                         <ul className="space-y-6">
                             {benefits.map((item, i) => (
                                 <li key={i} className="flex gap-4">
