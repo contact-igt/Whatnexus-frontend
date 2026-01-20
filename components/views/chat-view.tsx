@@ -8,6 +8,11 @@ import { cn } from "@/lib/utils";
 import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+
+import { socket } from "@/utils/socket";
+
+
 
 
 const getDateLabel = (dateStr: string) => {
@@ -226,6 +231,34 @@ export const ChatView = () => {
             setIsSummarizing(false);
         }
     };
+
+
+
+    const { user } = useAuth()
+
+
+    useEffect(() => {
+        socket.connect();
+
+        socket.on("connect", () => {
+            console.log("✅ Dashboard connected:", socket.id);
+            socket.emit("join-tenant", user?.tenant_id);
+        });
+
+        socket.on("new-message", (data) => {
+            console.log("📩 New message:", data);
+
+            //   setMessages((prev) => [...prev, data]);
+        });
+
+        return () => {
+            socket.off("new-message");
+            socket.disconnect();
+        };
+    }, [user?.tenant_id]);
+
+
+
 
     return (
         <div className="flex h-full p-6 space-x-6 animate-in slide-in-from-right-8 duration-500">
