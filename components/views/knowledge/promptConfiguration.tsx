@@ -104,8 +104,8 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
     };
 
     const handleInputChange = (e: any) => {
-        const {name, value} = e.target;
-        setInputValue((prev)=> ({...prev, [name]: value}));
+        const { name, value } = e.target;
+        setInputValue((prev) => ({ ...prev, [name]: value }));
 
         if (name === "aiName" && value.trim().length >= 3) {
             setError((prev) => ({ ...prev, [name]: "" }));
@@ -137,7 +137,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
             setError((prev) => ({ ...prev, aiName: "Please enter a name." }));
             return;
         }
-        else if(inputValue?.aiName.trim().length < 3){
+        else if (inputValue?.aiName.trim().length < 3) {
             setError((prev) => ({ ...prev, aiName: "Name must be at least 3 characters long." }));
             return;
         }
@@ -484,7 +484,14 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                                 )} />
                                             </div>
                                         </label>
-
+                                        <ActionMenu
+                                            isDarkMode={isDarkMode}
+                                            isView={true}
+                                            isEdit={true}
+                                            onView={() => handleView(prompt, 'prompt')}
+                                            onEdit={() => handleEdit(prompt, 'prompt')}
+                                            onDelete={() => handleDeleteClick(prompt, 'prompt')}
+                                        />
                                     </div>
                                 </div>
                             </div>
