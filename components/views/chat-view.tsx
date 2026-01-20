@@ -236,7 +236,6 @@ export const ChatView = () => {
 
     const { user } = useAuth()
 
-
     useEffect(() => {
         socket.connect();
 
@@ -248,7 +247,6 @@ export const ChatView = () => {
         socket.on("new-message", (data) => {
             console.log("📩 New message:", data);
 
-            //   setMessages((prev) => [...prev, data]);
         });
 
         return () => {
