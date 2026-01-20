@@ -7,11 +7,14 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { LEADS } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
+import dayjs from "@/utils/dayjs";
 import { useTheme } from '@/hooks/useTheme';
 import { useLeadIntelligenceQuery } from '@/hooks/useLeadIntelligenceQuery';
+import { useRouter } from 'next/navigation';
 
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
+    const router = useRouter();
     const { data: leadIntelligenceData, isLoading, isError } = useLeadIntelligenceQuery();
     const [analyzingId, setAnalyzingId] = useState<string | null>(null);
     const [insight, setInsight] = useState<{ id: string; text: string } | null>(null);
@@ -41,17 +44,18 @@ export const LeadsView = () => {
 
     const formatMessageDate = (dateString: string) => {
         if (!dateString) return { date: '-', time: '' };
-        try {
-            const date = new Date(dateString);
-            return {
-                date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-            };
-        } catch (e) {
-            return { date: '-', time: '' };
-        }
+
+        const d = dayjs.utc(dateString).tz('Asia/Kolkata');
+
+        return {
+            date: d.format('MMM D'),
+            time: d.format('hh:mm A')
+        };
     };
 
+    const handleLeadOpen = (leadPhone: string) => {
+        router.push(`/chats?phone=${leadPhone}`)
+    }
     console.log("leadIntelligenceData", leadIntelligenceData)
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in fade-in duration-700 no-scrollbar pb-32">
@@ -82,7 +86,42 @@ export const LeadsView = () => {
                             </tr>
                         </thead>
                         <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                            {leadIntelligenceData?.data?.map((lead: any, i: number) => {
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className={cn("animate-pulse", isDarkMode ? 'border-b border-white/5' : 'border-b border-slate-100')}>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center space-x-3">
+                                                <div className={cn("w-10 h-10 rounded-xl", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                <div className="space-y-2">
+                                                    <div className={cn("h-3 w-24 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                    <div className={cn("h-2 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex flex-col items-center space-y-2">
+                                                <div className={cn("h-3 w-8 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                <div className={cn("h-1 w-12 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className={cn("h-6 w-20 rounded-lg mx-auto", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="space-y-1 flex flex-col items-center">
+                                                <div className={cn("h-3 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                <div className={cn("h-2 w-10 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end space-x-2">
+                                                <div className={cn("h-8 w-8 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                                <div className={cn("h-8 w-8 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : leadIntelligenceData?.data?.map((lead: any, i: number) => {
                                 const { date, time } = formatMessageDate(lead.last_user_message_at);
                                 return (
                                     <tr key={lead.id} className={cn("group transition-all hover:bg-emerald-500/5 animate-in slide-in-from-left-4", isDarkMode ? '' : 'hover:bg-slate-50')} style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
@@ -119,7 +158,7 @@ export const LeadsView = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                <button className="p-2 hover:bg-white/10 rounded-lg hover:text-emerald-500 transition-colors"><MessageSquare size={16} /></button>
+                                                <button onClick={() => handleLeadOpen(lead?.phone)} className="p-2 hover:bg-white/10 rounded-lg hover:text-emerald-500 transition-colors"><MessageSquare size={16} /></button>
                                                 <button className="p-2 hover:bg-white/10 rounded-lg hover:text-rose-500 transition-colors"><MoreHorizontal size={16} /></button>
                                             </div>
                                         </td>
