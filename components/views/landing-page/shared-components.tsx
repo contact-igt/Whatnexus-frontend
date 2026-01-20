@@ -23,6 +23,7 @@ export const Button = ({
     children,
     variant = 'primary',
     className = "",
+    disabled=false,
     onClick,
     type = "button"
 }: {
@@ -30,6 +31,7 @@ export const Button = ({
     variant?: 'primary' | 'secondary' | 'ghost';
     className?: string;
     onClick?: () => void;
+    disabled?: boolean;
     type?: "button" | "submit";
 }) => {
     const base = "px-6 py-3 rounded-[16px] font-bold transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
@@ -39,7 +41,7 @@ export const Button = ({
         ghost: `text-white/70 hover:text-white`
     };
     return (
-        <button type={type} onClick={onClick} className={`${base} ${styles[variant]} ${className}`}>
+        <button type={type} disabled={disabled} onClick={onClick} className={`${base} ${styles[variant]} ${className}`}>
             {children}
         </button>
     );
@@ -48,13 +50,15 @@ export const Button = ({
 export const SectionHeader = ({
     title,
     subtitle,
-    centered = false
+    centered = false,
+    mobileCenter = false
 }: {
     title: string;
     subtitle: string;
     centered?: boolean;
+    mobileCenter?: boolean;
 }) => (
-    <div className={`mb-12 ${centered ? 'text-center' : ''}`}>
+    <div className={`mb-12 ${centered ? 'text-center' : ''} ${mobileCenter && window.innerWidth < 768 ? 'text-center' : ''}`}>
         <p className="text-[#10B981] font-bold tracking-[0.2em] uppercase text-[10px] mb-3">{subtitle}</p>
         <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter">{title}</h2>
     </div>

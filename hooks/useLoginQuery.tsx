@@ -1,6 +1,6 @@
 import { setAuthData } from "@/redux/slices/auth/authSlice";
 import { authApis } from "@/services/auth";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ const { login } = new authApis();
 
 
 export const useLoginMutation = () => {
+    const queryClient = useQueryClient();
     const dispatch = useDispatch();
     const router = useRouter();
     return useMutation({
@@ -25,8 +26,9 @@ export const useLoginMutation = () => {
                 refreshToken: data?.tokens?.refreshToken,
                 user: data?.user
             }))
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] })
             toast.success("Login successful")
-            router.replace("/dashboard")
+            router.replace("/dashboard");
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || error?.message || "Something went wrong")

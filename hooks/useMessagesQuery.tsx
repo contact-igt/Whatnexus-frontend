@@ -26,7 +26,7 @@ export const useMessagesByPhoneQuery = (phone_number: string) => {
         queryKey: ['messages', phone_number],
         queryFn: () => MessagesApis.getMessagesByPhone(phone_number),
         enabled: !!phone_number,
-        staleTime: 3 * 60 * 1000,
+        staleTime: 0,
     });
 
     return { data, isLoading, isError };

@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useEffect, useRef, useState } from 'react';
 import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
@@ -8,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { socket } from "@/utils/socket";
 
 
 const getDateLabel = (dateStr: string) => {
@@ -42,8 +43,10 @@ const formattedTime = (dateString: any) => {
 
 
 export const ChatView = () => {
+    const { whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
+    const [newMessage, setNewMessage] = useState<any[]>([]);
     const {
         data: chatList,
         isLoading: isChatsLoading,
@@ -93,6 +96,7 @@ export const ChatView = () => {
         }
     };
 
+
     useEffect(() => {
         if (!selectedChat?.phone) return;
         if (!chatList?.data?.length) return;
@@ -126,6 +130,7 @@ export const ChatView = () => {
             phone: selectedChat?.phone,
             name: selectedChat?.name,
             message: messageText,
+            phone_number_id: whatsappApiDetails?.phone_number_id
         });
         setMessage("");
     }
@@ -153,7 +158,7 @@ export const ChatView = () => {
         let messagesToFilter = messagesData?.data;
 
         if (!value) {
-            setFilteredMessage(messagesToFilter);
+            setFilteredMessage(messagesToFilter ?? []);
             return;
         }
         const filtered = messagesToFilter?.filter((msg: any) =>
@@ -171,11 +176,15 @@ export const ChatView = () => {
             });
         }
     }, [chatList, selectedChat]);
+    const selectedChatRef = useRef<any>(null);
     const isSearching = messageSearchText.trim().length > 0;
-
+    const updatedMessageData =
+        newMessage.length > 0
+            ? [...(messagesData?.data ?? []), ...newMessage]
+            : messagesData?.data ?? [];
     const displayMessages = isSearching
-        ? filteredMessage
-        : messagesData?.data || [];
+        ? filteredMessage ?? []
+        : updatedMessageData ?? [];
     const groupedMessages = groupMessagesByDate(displayMessages);
     const groupedEntries = Object.entries(groupedMessages);
 
@@ -184,20 +193,6 @@ export const ChatView = () => {
             behavior: "smooth",
         })
     }, [groupedMessages])
-
-    // const handleSendMessage = (textOverride: string | null = null) => {
-    //     const text = textOverride || inputValue;
-    //     if (!text.trim()) return;
-    //     const newMessage = {
-    //         id: messages.length + 1,
-    //         sender: 'John Doe',
-    //         text: text,
-    //         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    //         type: 'outgoing'
-    //     };
-    //     setMessages([...messages, newMessage]);
-    //     if (!textOverride) setInputValue('');
-    // };
 
     const suggestReply = async () => {
         try {
@@ -226,6 +221,75 @@ export const ChatView = () => {
             setIsSummarizing(false);
         }
     };
+
+    const { user } = useAuth()
+    useEffect(() => {
+        setNewMessage([]);
+    }, [selectedChat?.phone]);
+
+    useEffect(() => {
+        selectedChatRef.current = selectedChat;
+    }, [selectedChat]);
+
+    const handleIncomingMessage = (data: any) => {
+        console.log("📩 New message received:", data);
+
+        if (selectedChatRef.current?.phone === data.phone) {
+            setNewMessage(prev => [...prev, data]);
+        }
+        // ✅ Update chat list safely
+        setFilteredChats((prev: any) => {
+            if (!prev) return prev;
+
+            const index = prev.findIndex((c: any) => c.phone === data.phone);
+
+            if (index !== -1) {
+                const updated = [...prev];
+                updated[index] = {
+                    ...updated[index],
+                    message: data.message,
+                    last_message_time: data.created_at,
+                    seen: "false",
+                };
+
+                return [
+                    updated[index],
+                    ...updated.filter((_, i) => i !== index),
+                ];
+            }
+
+            return [
+                {
+                    phone: data.phone,
+                    message: data.message,
+                    last_message_time: data.created_at,
+                    seen: "false",
+                },
+                ...prev,
+            ];
+        });
+    };
+
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+
+        if (!socket.connected) {
+            socket.connect();
+        }
+
+        socket.on("connect", () => {
+            console.log("✅ Dashboard connected:", socket.id);
+            socket.emit("join-tenant", user.tenant_id);
+        });
+
+        socket.off("new-message"); // ⬅️ prevent duplicates
+        socket.on("new-message", handleIncomingMessage);
+
+        return () => {
+            socket.off("new-message", handleIncomingMessage);
+            socket.off("connect");
+        };
+    }, [user?.tenant_id]);
 
     return (
         <div className="flex h-full p-6 space-x-6 animate-in slide-in-from-right-8 duration-500">

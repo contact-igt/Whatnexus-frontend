@@ -90,29 +90,45 @@ export const VideoDemoSection = () => {
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (isDragging) {
-                e.preventDefault(); // Prevent text selection
+                e.preventDefault();
                 handleSeek(e.clientX);
             }
         };
 
-        const handleMouseUp = () => {
+        const handleTouchMove = (e: TouchEvent) => {
+            if (isDragging) {
+                e.preventDefault(); 
+                handleSeek(e.touches[0].clientX);
+            }
+        };
+
+        const handleDragEnd = () => {
             setIsDragging(false);
         };
 
         if (isDragging) {
             window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
+            window.addEventListener('mouseup', handleDragEnd);
+            window.addEventListener('touchmove', handleTouchMove, { passive: false });
+            window.addEventListener('touchend', handleDragEnd);
         }
 
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('mouseup', handleDragEnd);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleDragEnd);
         };
     }, [isDragging, duration]);
 
     const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         setIsDragging(true);
         handleSeek(e.clientX);
+    };
+
+    const handleProgressTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+        setIsDragging(true);
+        handleSeek(e.touches[0].clientX);
     };
 
     const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,29 +252,34 @@ export const VideoDemoSection = () => {
 
                             {/* Custom Controls */}
                             <div
-                                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-md transition-all duration-300 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
+                                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent transition-all duration-300 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
                                     }`}
                             >
                                 {/* Progress Bar */}
-                                <div className="px-4 pt-6 pb-2">
+                                <div className="px-4 pt-4 group/progress">
                                     <div
-                                        ref={progressRef}
-                                        className="relative h-1.5 bg-white/20 rounded-full cursor-pointer group/progress hover:h-2 transition-all"
+                                        className="py-4 cursor-pointer relative touch-none"
                                         onMouseDown={handleProgressMouseDown}
+                                        onTouchStart={handleProgressTouchStart}
                                     >
-                                        {/* Buffered Progress */}
                                         <div
-                                            className="absolute h-full bg-white/30 rounded-full transition-all"
-                                            style={{ width: `${buffered}%` }}
-                                        />
-
-                                        {/* Current Progress */}
-                                        <div
-                                            className="absolute h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all"
-                                            style={{ width: `${(currentTime / duration) * 100}%` }}
+                                            ref={progressRef}
+                                            className="relative h-1.5 bg-white/20 rounded-full transition-all group-hover/progress:h-2"
                                         >
-                                            {/* Progress Thumb */}
-                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover/progress:opacity-100 transition-opacity" />
+                                            {/* Buffered Progress */}
+                                            <div
+                                                className="absolute h-full bg-white/30 rounded-full transition-all"
+                                                style={{ width: `${buffered}%` }}
+                                            />
+
+                                            {/* Current Progress */}
+                                            <div
+                                                className="absolute h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all"
+                                                style={{ width: `${(currentTime / duration) * 100}%` }}
+                                            >
+                                                {/* Progress Thumb */}
+                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover/progress:opacity-100 transition-opacity scale-100" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
