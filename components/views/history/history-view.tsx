@@ -1,7 +1,7 @@
 
 "use client";
 import { useEffect, useRef, useState } from 'react';
-import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX } from 'lucide-react';
+import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX, MessageCircle } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
@@ -9,6 +9,8 @@ import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { socket } from "@/utils/socket";
+import { useRouter, useSearchParams } from 'next/navigation';
+import { WeeklyChatSummaryModal } from '../weekly-chat-summary-modal';
 
 
 const getDateLabel = (dateStr: string) => {
@@ -42,8 +44,8 @@ const formattedTime = (dateString: any) => {
 }
 
 
-export const ChatView = () => {
-    const { whatsappApiDetails } = useAuth();
+export const HistoryView = () => {
+    const { user, whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
@@ -70,6 +72,11 @@ export const ChatView = () => {
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
     const [message, setMessage] = useState<string>("");
     const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
+    const router = useRouter();
+    const selectedChatRef = useRef<any>(null);
+    const searchParams = useSearchParams();
+    const phoneParam = searchParams.get('phone');
 
     const [chatFilter, setChatFilter] = useState<'all' | 'read' | 'unread'>('all');
 
@@ -86,16 +93,18 @@ export const ChatView = () => {
     }
 
     const handleSelectChat = (chat: any) => {
+        if (selectedChat?.phone === chat.phone) return;
         setSelectedChat({
             phone: chat?.phone,
+            contact_id: chat?.contact_id,
             name: chat?.name ?? chat.phone,
         });
         if (selectedChat?.phone !== chat?.phone) {
             setMessage("");
             setChatSummary(null);
         }
+        router.replace(`?phone=${chat.phone}`, { scroll: false });
     };
-
 
     useEffect(() => {
         if (!selectedChat?.phone) return;
@@ -121,7 +130,7 @@ export const ChatView = () => {
             return groups;
         }, {});
     };
-
+    console.log("selectedChat", selectedChat)
     const handleSendMessage = () => {
         if (!message.trim() || isPending) return;
 
@@ -130,6 +139,7 @@ export const ChatView = () => {
             phone: selectedChat?.phone,
             name: selectedChat?.name,
             message: messageText,
+            contact_id: selectedChat?.contact_id,
             phone_number_id: whatsappApiDetails?.phone_number_id
         });
         setMessage("");
@@ -169,14 +179,33 @@ export const ChatView = () => {
     }, [messageSearchText, selectedChat, messagesData]);
 
     useEffect(() => {
-        if (chatList?.data?.length && !selectedChat) {
-            setSelectedChat({
-                phone: chatList.data[0].phone,
-                name: chatList.data[0].name ?? chatList.data[0].phone,
-            });
+        if (!chatList?.data?.length) return;
+        if (phoneParam) {
+            const chatFromUrl = chatList.data.find(
+                (c: any) => String(c.phone) === String(phoneParam)
+            );
+
+            if (chatFromUrl) {
+                setSelectedChat({
+                    phone: chatFromUrl.phone,
+                    contact_id: chatFromUrl.contact_id,
+                    name: chatFromUrl.name ?? chatFromUrl.phone,
+                });
+                return;
+            }
         }
-    }, [chatList, selectedChat]);
-    const selectedChatRef = useRef<any>(null);
+        const firstChat = chatList.data[0];
+
+        setSelectedChat({
+            phone: firstChat.phone,
+            contact_id: firstChat.contact_id,
+            name: firstChat.name ?? firstChat.phone,
+        });
+
+        router.replace(`?phone=${firstChat.phone}`, { scroll: false });
+
+    }, [chatList?.data, phoneParam]);
+
     const isSearching = messageSearchText.trim().length > 0;
     const updatedMessageData =
         newMessage.length > 0
@@ -222,7 +251,6 @@ export const ChatView = () => {
         }
     };
 
-    const { user } = useAuth()
     useEffect(() => {
         setNewMessage([]);
     }, [selectedChat?.phone]);
@@ -237,7 +265,7 @@ export const ChatView = () => {
         if (selectedChatRef.current?.phone === data.phone) {
             setNewMessage(prev => [...prev, data]);
         }
-        // ✅ Update chat list safely
+
         setFilteredChats((prev: any) => {
             if (!prev) return prev;
 
@@ -247,6 +275,7 @@ export const ChatView = () => {
                 const updated = [...prev];
                 updated[index] = {
                     ...updated[index],
+                    name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
                     seen: "false",
@@ -261,6 +290,7 @@ export const ChatView = () => {
             return [
                 {
                     phone: data.phone,
+                    name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
                     seen: "false",
@@ -289,7 +319,43 @@ export const ChatView = () => {
             socket.off("new-message", handleIncomingMessage);
             socket.off("connect");
         };
-    }, [user?.tenant_id]);
+    }, []);
+
+    useEffect(() => {
+        if (groupedEntries?.length > 0) {
+            setTimeout(() => {
+                bottomRef?.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "end"
+                });
+            }, 100);
+        }
+    }, [selectedChat?.phone, groupedEntries?.length]);
+    console.log("filteredChat", filteredChats)
+    if (!whatsappApiDetails?.phone_number_id) {
+        return (
+            <div className="flex h-full flex-col items-center justify-center p-6 space-y-6 animate-in fade-in duration-500">
+                <GlassCard isDarkMode={isDarkMode} className="p-10 flex flex-col items-center text-center max-w-sm border-dashed">
+                    <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform rotate-3 transition-all", isDarkMode ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-emerald-50 border border-emerald-200")}>
+                        <MessageCircle size={40} className="text-emerald-500" />
+                    </div>
+                    <h3 className={cn("text-xl font-bold mb-2", isDarkMode ? "text-white" : "text-slate-900")}>
+                        WhatsApp Not Connected
+                    </h3>
+                    <p className={cn("text-sm leading-relaxed mb-8", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                        Connect your WhatsApp Business API account to start messaging and managing your conversations.
+                    </p>
+                    <button
+                        onClick={() => router.push('/settings/whatsapp-settings')}
+                        className="flex items-center space-x-2 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+                    >
+                        <MessageCircle size={18} />
+                        <span>Connect WhatsApp</span>
+                    </button>
+                </GlassCard>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-full p-6 space-x-6 animate-in slide-in-from-right-8 duration-500">
@@ -368,6 +434,7 @@ export const ChatView = () => {
                             </div>
                             <p className={cn("text-xs leading-relaxed font-medium", isDarkMode ? 'text-white/90' : 'text-slate-800')}>
                                 {chatSummary}
+                                {/* <WeeklyChatSummary /> */}
                             </p>
                         </GlassCard>
                     </div>
@@ -434,7 +501,13 @@ export const ChatView = () => {
                                     <ClipboardList size={18} />
                                 </button>
                                 <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
-                                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><HistoryIcon size={18} /></button>
+                                <button
+                                    onClick={() => setIsWeeklySummaryOpen(true)}
+                                    className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors"
+                                    title="Weekly Summary"
+                                >
+                                    <HistoryIcon size={18} />
+                                </button>
                             </div>
                         </div>
                         {/* Message Search Bar - Conditionally Visible */}
@@ -608,6 +681,15 @@ export const ChatView = () => {
                     </div>
                 </GlassCard>
             </div>
+
+            {/* Weekly Summary Modal */}
+            <WeeklyChatSummaryModal
+                isOpen={isWeeklySummaryOpen}
+                onClose={() => setIsWeeklySummaryOpen(false)}
+                chatName={selectedChat?.name || selectedChat?.phone}
+                chatPhone={selectedChat?.phone}
+                isDarkMode={isDarkMode}
+            />
         </div>
     );
 };

@@ -21,6 +21,23 @@ export const useGetAllChatsQuery = () => {
     return { data, isLoading, isError };
 };
 
+
+
+export const useGetAllLiveChatsQuery = () => {
+
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ['livechats'],
+        queryFn: () => MessagesApis.getAllLiveChats(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    if (isError) {
+        toast.error('Failed to load messages');
+    }
+
+    return { data, isLoading, isError };
+};
+
 export const useMessagesByPhoneQuery = (phone_number: string) => {
     const { data, isLoading, isError } = useQuery({
         queryKey: ['messages', phone_number],

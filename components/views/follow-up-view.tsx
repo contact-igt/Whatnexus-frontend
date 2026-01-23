@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 
 export const FollowUpHubView = () => {
-    const {isDarkMode} = useTheme();
+    const { isDarkMode } = useTheme();
     const [selectedLead, setSelectedLead] = useState<typeof FOLLOW_UPS_MOCK[0] | null>(null);
     const [isPlanning, setIsPlanning] = useState(false);
     const [planResult, setPlanResult] = useState<string | null>(null);
@@ -54,52 +54,80 @@ export const FollowUpHubView = () => {
                     <GlassCard isDarkMode={isDarkMode} className="p-0">
                         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5 rounded-t-2xl">
                             <h3 className="font-bold uppercase tracking-tight text-sm">Engagement Timeline</h3>
-                            <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wide">4 Pending Shards</span>
+                            <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wide">
+                                {FOLLOW_UPS_MOCK.length} Pending Shards
+                            </span>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className={cn("text-[10px] font-bold uppercase tracking-wider", isDarkMode ? 'text-white/20' : 'text-slate-400')}>
-                                        <th className="px-8 py-4">Lead</th>
-                                        <th className="px-8 py-4">Window</th>
-                                        <th className="px-8 py-4 text-center">Channel</th>
-                                        <th className="px-8 py-4 text-right">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                                    {FOLLOW_UPS_MOCK.map((item, i) => (
-                                        <tr key={item.id} className="group transition-all hover:bg-emerald-500/5">
-                                            <td className="px-8 py-4">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[10px] border", isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-100')}>{item.leadName[0]}</div>
-                                                    <p className={cn("text-sm font-semibold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-800')}>{item.leadName}</p>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-4">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase">{item.time}</p>
-                                            </td>
-                                            <td className="px-8 py-4 text-center">
-                                                <div className="flex justify-center">
-                                                    {item.type === 'WhatsApp' ? <MessageCircle size={14} className="text-emerald-500" /> : item.type === 'Call' ? <Phone size={14} className="text-blue-500" /> : <Mail size={14} className="text-orange-500" />}
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-4 text-right">
-                                                <button
-                                                    onClick={() => generateFollowup(item)}
-                                                    className={cn("text-[8px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider border transition-all",
-                                                        item.status === 'Overdue' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20' :
-                                                            item.status === 'Due Today' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                                                'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                                                    )}
-                                                >
-                                                    {item.status}
-                                                </button>
-                                            </td>
+
+                        {FOLLOW_UPS_MOCK.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
+                                <div className={cn(
+                                    "w-20 h-20 rounded-2xl flex items-center justify-center mb-6 border-2",
+                                    isDarkMode
+                                        ? 'bg-emerald-500/10 border-emerald-500/20'
+                                        : 'bg-emerald-50 border-emerald-200'
+                                )}>
+                                    <Timer size={36} className="text-emerald-500" />
+                                </div>
+                                <h3 className={cn(
+                                    "text-xl font-bold mb-2",
+                                    isDarkMode ? 'text-white' : 'text-slate-900'
+                                )}>
+                                    No Follow-ups Scheduled
+                                </h3>
+                                <p className={cn(
+                                    "text-sm font-medium max-w-md",
+                                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                                )}>
+                                    All caught up! No pending follow-ups at the moment.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className={cn("text-[10px] font-bold uppercase tracking-wider", isDarkMode ? 'text-white/20' : 'text-slate-400')}>
+                                            <th className="px-8 py-4">Lead</th>
+                                            <th className="px-8 py-4">Window</th>
+                                            <th className="px-8 py-4 text-center">Channel</th>
+                                            <th className="px-8 py-4 text-right">Status</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
+                                        {FOLLOW_UPS_MOCK.map((item, i) => (
+                                            <tr key={item.id} className="group transition-all hover:bg-emerald-500/5">
+                                                <td className="px-8 py-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[10px] border", isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-100')}>{item.leadName[0]}</div>
+                                                        <p className={cn("text-sm font-semibold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-800')}>{item.leadName}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-4">
+                                                    <p className="text-[10px] text-slate-500 font-bold uppercase">{item.time}</p>
+                                                </td>
+                                                <td className="px-8 py-4 text-center">
+                                                    <div className="flex justify-center">
+                                                        {item.type === 'WhatsApp' ? <MessageCircle size={14} className="text-emerald-500" /> : item.type === 'Call' ? <Phone size={14} className="text-blue-500" /> : <Mail size={14} className="text-orange-500" />}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-4 text-right">
+                                                    <button
+                                                        onClick={() => generateFollowup(item)}
+                                                        className={cn("text-[8px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider border transition-all",
+                                                            item.status === 'Overdue' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20' :
+                                                                item.status === 'Due Today' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                                                                    'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                                        )}
+                                                    >
+                                                        {item.status}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </GlassCard>
                 </div>
 
