@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX, MessageCircle } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
-import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
+import { useAddMessageMutation, useChatSuggestMutation, useGetAllLiveChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -52,7 +52,7 @@ export const ChatView = () => {
         data: chatList,
         isLoading: isChatsLoading,
         isError: isChatsError,
-    } = useGetAllChatsQuery();
+    } = useGetAllLiveChatsQuery();
     const [filteredChats, setFilteredChats] = useState(chatList?.data);
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");

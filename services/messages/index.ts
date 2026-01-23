@@ -14,6 +14,11 @@ export class MessagesApiData {
     return await _axios("get", "/chats");
   };
 
+  getAllLiveChats = async () => {
+    return await _axios("get", "/live-chats")
+
+  };
+
   addMessage = async (data: SendMessageData) => {
     return await _axios("post", "/chats/send", data);
   };
@@ -25,7 +30,7 @@ export class MessagesApiData {
     );
   };
 
-  chatSuggest = async (data: any)=>{
+  chatSuggest = async (data: any) => {
     return await _axios("post", "/chats/suggest", data)
   }
 }
