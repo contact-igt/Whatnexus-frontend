@@ -56,13 +56,13 @@ export const Sidebar = () => {
                                 label: 'Chats',
                                 route: '/shared-inbox/live-chats',
                                 icon: MessageCircle,
-                                onClick: () => handleActiveTab('/share-inbox/live-chats'),
+                                onClick: () => handleActiveTab('/shared-inbox/live-chats'),
                             },
                             {
                                 label: 'History',
                                 route: '/shared-inbox/history',
                                 icon: Timer,
-                                onClick: () => handleActiveTab('/share-inbox/history'),
+                                onClick: () => handleActiveTab('/shared-inbox/history'),
                             }
                         ]}
                     />
