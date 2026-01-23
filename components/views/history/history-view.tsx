@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
+import { WeeklyChatSummaryModal } from '../weekly-chat-summary-modal';
 
 
 const getDateLabel = (dateStr: string) => {
@@ -43,7 +44,7 @@ const formattedTime = (dateString: any) => {
 }
 
 
-export const ChatView = () => {
+export const HistoryView = () => {
     const { user, whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -71,6 +72,7 @@ export const ChatView = () => {
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
     const [message, setMessage] = useState<string>("");
     const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
     const router = useRouter();
     const selectedChatRef = useRef<any>(null);
     const searchParams = useSearchParams();
@@ -94,6 +96,7 @@ export const ChatView = () => {
         if (selectedChat?.phone === chat.phone) return;
         setSelectedChat({
             phone: chat?.phone,
+            contact_id: chat?.contact_id,
             name: chat?.name ?? chat.phone,
         });
         if (selectedChat?.phone !== chat?.phone) {
@@ -102,7 +105,6 @@ export const ChatView = () => {
         }
         router.replace(`?phone=${chat.phone}`, { scroll: false });
     };
-
 
     useEffect(() => {
         if (!selectedChat?.phone) return;
@@ -128,7 +130,7 @@ export const ChatView = () => {
             return groups;
         }, {});
     };
-
+    console.log("selectedChat", selectedChat)
     const handleSendMessage = () => {
         if (!message.trim() || isPending) return;
 
@@ -137,6 +139,7 @@ export const ChatView = () => {
             phone: selectedChat?.phone,
             name: selectedChat?.name,
             message: messageText,
+            contact_id: selectedChat?.contact_id,
             phone_number_id: whatsappApiDetails?.phone_number_id
         });
         setMessage("");
@@ -185,6 +188,7 @@ export const ChatView = () => {
             if (chatFromUrl) {
                 setSelectedChat({
                     phone: chatFromUrl.phone,
+                    contact_id: chatFromUrl.contact_id,
                     name: chatFromUrl.name ?? chatFromUrl.phone,
                 });
                 return;
@@ -194,6 +198,7 @@ export const ChatView = () => {
 
         setSelectedChat({
             phone: firstChat.phone,
+            contact_id: firstChat.contact_id,
             name: firstChat.name ?? firstChat.phone,
         });
 
@@ -260,7 +265,7 @@ export const ChatView = () => {
         if (selectedChatRef.current?.phone === data.phone) {
             setNewMessage(prev => [...prev, data]);
         }
-        // ✅ Update chat list safely
+
         setFilteredChats((prev: any) => {
             if (!prev) return prev;
 
@@ -270,6 +275,7 @@ export const ChatView = () => {
                 const updated = [...prev];
                 updated[index] = {
                     ...updated[index],
+                    name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
                     seen: "false",
@@ -284,6 +290,7 @@ export const ChatView = () => {
             return [
                 {
                     phone: data.phone,
+                    name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
                     seen: "false",
@@ -324,7 +331,7 @@ export const ChatView = () => {
             }, 100);
         }
     }, [selectedChat?.phone, groupedEntries?.length]);
-
+    console.log("filteredChat", filteredChats)
     if (!whatsappApiDetails?.phone_number_id) {
         return (
             <div className="flex h-full flex-col items-center justify-center p-6 space-y-6 animate-in fade-in duration-500">
@@ -427,6 +434,7 @@ export const ChatView = () => {
                             </div>
                             <p className={cn("text-xs leading-relaxed font-medium", isDarkMode ? 'text-white/90' : 'text-slate-800')}>
                                 {chatSummary}
+                                {/* <WeeklyChatSummary /> */}
                             </p>
                         </GlassCard>
                     </div>
@@ -493,7 +501,13 @@ export const ChatView = () => {
                                     <ClipboardList size={18} />
                                 </button>
                                 <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
-                                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><HistoryIcon size={18} /></button>
+                                <button
+                                    onClick={() => setIsWeeklySummaryOpen(true)}
+                                    className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors"
+                                    title="Weekly Summary"
+                                >
+                                    <HistoryIcon size={18} />
+                                </button>
                             </div>
                         </div>
                         {/* Message Search Bar - Conditionally Visible */}
@@ -667,6 +681,15 @@ export const ChatView = () => {
                     </div>
                 </GlassCard>
             </div>
+
+            {/* Weekly Summary Modal */}
+            <WeeklyChatSummaryModal
+                isOpen={isWeeklySummaryOpen}
+                onClose={() => setIsWeeklySummaryOpen(false)}
+                chatName={selectedChat?.name || selectedChat?.phone}
+                chatPhone={selectedChat?.phone}
+                isDarkMode={isDarkMode}
+            />
         </div>
     );
 };
