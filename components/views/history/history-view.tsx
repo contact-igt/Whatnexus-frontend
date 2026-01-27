@@ -8,7 +8,7 @@ import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, use
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { socket } from "@/utils/socket";
+// import { socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { WeeklyChatSummaryModal } from '../weekly-chat-summary-modal';
 
@@ -300,26 +300,26 @@ export const HistoryView = () => {
         });
     };
 
-    useEffect(() => {
-        if (!user?.tenant_id) return;
+    // useEffect(() => {
+    //     if (!user?.tenant_id) return;
 
-        if (!socket.connected) {
-            socket.connect();
-        }
+    //     if (!socket.connected) {
+    //         socket.connect();
+    //     }
 
-        socket.on("connect", () => {
-            console.log("✅ Dashboard connected:", socket.id);
-            socket.emit("join-tenant", user.tenant_id);
-        });
+    //     socket.on("connect", () => {
+    //         console.log("✅ Dashboard connected:", socket.id);
+    //         socket.emit("join-tenant", user.tenant_id);
+    //     });
 
-        socket.off("new-message"); // ⬅️ prevent duplicates
-        socket.on("new-message", handleIncomingMessage);
+    //     socket.off("new-message"); // ⬅️ prevent duplicates
+    //     socket.on("new-message", handleIncomingMessage);
 
-        return () => {
-            socket.off("new-message", handleIncomingMessage);
-            socket.off("connect");
-        };
-    }, []);
+    //     return () => {
+    //         socket.off("new-message", handleIncomingMessage);
+    //         socket.off("connect");
+    //     };
+    // }, []);
 
     useEffect(() => {
         if (groupedEntries?.length > 0) {
