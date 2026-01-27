@@ -7,7 +7,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { LaunchCampaignModal } from "@/components/ui/launch-campaign-modal";
-import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
 
 type TabType = 'all' | 'broadcast' | 'api' | 'scheduled' | 'qrscan';
 

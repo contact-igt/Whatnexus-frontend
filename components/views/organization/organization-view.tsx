@@ -212,11 +212,11 @@ export const OrganizationView = () => {
                     <>
                         <TableHeader isDarkMode={isDarkMode}>
                             <tr>
-                                <TableHead align="center" isDarkMode={isDarkMode}>Organization</TableHead>
+                                <TableHead align="left" isDarkMode={isDarkMode}>Organization</TableHead>
                                 <TableHead align="center" isDarkMode={isDarkMode}>Admin</TableHead>
                                 <TableHead align="center" isDarkMode={isDarkMode}>Type</TableHead>
                                 <TableHead align="center" isDarkMode={isDarkMode}>Plan</TableHead>
-                                <TableHead align="center" isDarkMode={isDarkMode}>Users</TableHead>
+                                <TableHead align="left" isDarkMode={isDarkMode}>Users</TableHead>
                                 <TableHead align="center" isDarkMode={isDarkMode}>Status</TableHead>
                                 <TableHead align="center" isDarkMode={isDarkMode}>Expiry</TableHead>
                                 <TableHead align="center" isDarkMode={isDarkMode}>Actions</TableHead>
@@ -229,8 +229,8 @@ export const OrganizationView = () => {
                                     isDarkMode={isDarkMode}
                                     isLast={index === tenantsData?.data?.length - 1}
                                 >
-                                    <TableCell align="center">
-                                        <div className="pl-1 flex justify-center items-center">
+                                    <TableCell align="left">
+                                        <div className="flex justify-start items-center">
                                             <div className='flex justify-start items-center space-x-3'>
                                                 <div className={cn(
                                                     "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
@@ -312,7 +312,7 @@ export const OrganizationView = () => {
                                     </TableCell>
 
                                     <TableCell align="center">
-                                        <div className="flex items-center space-x-2">
+                                        <div className="flex items-center justify-center space-x-2">
                                             <Calendar className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
                                                 {formatDate(org.expiryDate)}
