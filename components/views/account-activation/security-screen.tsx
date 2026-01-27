@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
-import { Lock, Eye, EyeOff, Shield, Check, X } from "lucide-react";
+import { Lock, Eye, EyeOff, Shield, Check, ArrowLeft } from "lucide-react";
 
 const passwordSchema = z
     .object({
@@ -31,11 +31,13 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 
 interface SecurityScreenProps {
     onSetupComplete: () => void;
+    onGoBack?: () => void;
     email?: string;
 }
 
 export default function SecurityScreen({
     onSetupComplete,
+    onGoBack,
     email = "user@example.com",
 }: SecurityScreenProps) {
     const { isDarkMode } = useTheme();
@@ -72,314 +74,277 @@ export default function SecurityScreen({
     };
 
     return (
-        <div className="w-full max-w-md mx-auto animate-in fade-in slide-in-from-bottom-6 duration-500">
-            <div
-                className={cn(
-                    "p-6 rounded-2xl backdrop-blur-xl border transition-all duration-300",
-                    "shadow-xl relative overflow-hidden",
-                    isDarkMode
-                        ? "bg-slate-900/90 border-slate-700/50"
-                        : "bg-white/90 border-slate-200/50"
-                )}
-            >
-                {/* Decorative gradient */}
-                <div
-                    className={cn(
-                        "absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-15 -translate-y-1/2 translate-x-1/2",
-                        isDarkMode ? "bg-emerald-500" : "bg-emerald-400"
-                    )}
-                />
-
-                <div className="relative z-10">
-                    {/* Icon */}
-                    {/* <div className="flex justify-center mb-4">
-                        <div
-                            className={cn(
-                                "p-3 rounded-xl",
-                                isDarkMode
-                                    ? "bg-emerald-500/10 border border-emerald-500/20"
-                                    : "bg-emerald-50 border border-emerald-200"
-                            )}
-                        >
-                            <Shield
-                                className={cn(
-                                    "w-8 h-8",
-                                    isDarkMode ? "text-emerald-400" : "text-emerald-600"
-                                )}
-                            />
-                        </div>
-                    </div> */}
-
-                    <div className="flex flex-col items-center mb-4 animate-in fade-in slide-in-from-top-4 duration-700">
-                        <div className="flex items-center gap-2">
-                            <span
-                                className={cn(
-                                    "text-2xl font-black tracking-tighter",
-                                    isDarkMode ? "text-white" : "text-slate-900"
-                                )}
-                            >
-                                WhatsNexus<span className="text-emerald-500">.</span>
-                            </span>
-                            <div
-                                className={cn(
-                                    "px-1.5 py-0.5 rounded-full border text-[8px] font-bold tracking-wide uppercase",
-                                    isDarkMode
-                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
-                                        : "bg-emerald-50 border-emerald-200 text-emerald-600"
-                                )}
-                            >
-                                Beta
-                            </div>
-                        </div>
-                        <span
-                            className={cn(
-                                "text-[8px] font-bold tracking-[0.2em] mt-1 uppercase opacity-60",
-                                isDarkMode ? "text-slate-400" : "text-slate-500"
-                            )}
-                        >
-                            Powered by Invictus Global Tech
-                        </span>
-                    </div>
-
-                    {/* Title */}
-                    <h1
+        <>
+            {/* <div className="flex justify-center mb-4">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl" />
+                    <div
                         className={cn(
-                            "text-2xl font-bold text-center mb-2",
-                            isDarkMode ? "text-emerald-400" : "text-emerald-600"
+                            "relative p-3 rounded-full",
+                            isDarkMode
+                                ? "bg-slate-800/80 border border-emerald-500/30"
+                                : "bg-slate-900/80 border border-emerald-500/30"
                         )}
                     >
-                        Secure Your Account
-                    </h1>
-                    <p
+                        <Shield
+                            className="w-5 h-5 text-emerald-400"
+                        />
+                    </div>
+                </div>
+            </div> */}
+
+            {/* Title */}
+            <h1
+                className={cn(
+                    "text-lg font-bold text-center mb-1",
+                    isDarkMode ? "text-white" : "text-slate-900"
+                )}
+            >
+                Security Setup
+            </h1>
+            <p
+                className={cn(
+                    "text-center text-[11px] mb-5",
+                    isDarkMode ? "text-slate-400" : "text-slate-600"
+                )}
+            >
+                Please set a strong password for your new account
+            </p>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-7">
+                <div>
+                    <label
+                        htmlFor="password"
                         className={cn(
-                            "text-center text-sm mb-5",
+                            "block text-[10px] font-semibold mb-1.5 uppercase tracking-wide",
                             isDarkMode ? "text-slate-400" : "text-slate-600"
                         )}
                     >
-                        Create a strong password for <span className="font-semibold">{email}</span>
-                    </p>
-
-                    {/* Form */}
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        {/* Password Field */}
-                        <div>
-                            <label
-                                htmlFor="password"
+                        Create Password
+                    </label>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Lock
                                 className={cn(
-                                    "block text-sm font-medium mb-2",
-                                    isDarkMode ? "text-slate-300" : "text-slate-700"
+                                    "w-4 h-4",
+                                    isDarkMode ? "text-slate-500" : "text-slate-400"
                                 )}
-                            >
-                                Password
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock
-                                        className={cn(
-                                            "w-5 h-5",
-                                            isDarkMode ? "text-slate-500" : "text-slate-400"
-                                        )}
-                                    />
-                                </div>
-                                <input
-                                    {...register("password")}
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Enter your password"
-                                    className={cn(
-                                        "w-full pl-12 pr-12 py-3 rounded-xl border transition-all duration-300 outline-none",
-                                        "focus:ring-2 focus:ring-emerald-500/50",
-                                        isDarkMode
-                                            ? "bg-slate-800/50 border-slate-700 text-white placeholder-slate-500"
-                                            : "bg-white/50 border-slate-300 text-slate-900 placeholder-slate-400",
-                                        errors.password && "border-red-500 focus:ring-red-500/50"
-                                    )}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className={cn(
-                                        "absolute inset-y-0 right-0 pr-4 flex items-center transition-colors",
-                                        isDarkMode
-                                            ? "text-slate-500 hover:text-slate-300"
-                                            : "text-slate-400 hover:text-slate-600"
-                                    )}
-                                >
-                                    {showPassword ? (
-                                        <EyeOff className="w-5 h-5" />
-                                    ) : (
-                                        <Eye className="w-5 h-5" />
-                                    )}
-                                </button>
-                            </div>
-                            {errors.password && (
-                                <p className="mt-1.5 text-sm text-red-500">
-                                    {errors.password.message}
-                                </p>
-                            )}
+                            />
                         </div>
-
-                        {/* Confirm Password Field */}
-                        <div>
-                            <label
-                                htmlFor="confirmPassword"
-                                className={cn(
-                                    "block text-sm font-medium mb-2",
-                                    isDarkMode ? "text-slate-300" : "text-slate-700"
-                                )}
-                            >
-                                Confirm Password
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock
-                                        className={cn(
-                                            "w-5 h-5",
-                                            isDarkMode ? "text-slate-500" : "text-slate-400"
-                                        )}
-                                    />
-                                </div>
-                                <input
-                                    {...register("confirmPassword")}
-                                    id="confirmPassword"
-                                    type={showConfirmPassword ? "text" : "password"}
-                                    placeholder="Confirm your password"
-                                    className={cn(
-                                        "w-full pl-12 pr-12 py-3 rounded-xl border transition-all duration-300 outline-none",
-                                        "focus:ring-2 focus:ring-emerald-500/50",
-                                        isDarkMode
-                                            ? "bg-slate-800/50 border-slate-700 text-white placeholder-slate-500"
-                                            : "bg-white/50 border-slate-300 text-slate-900 placeholder-slate-400",
-                                        errors.confirmPassword &&
-                                        "border-red-500 focus:ring-red-500/50"
-                                    )}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className={cn(
-                                        "absolute inset-y-0 right-0 pr-4 flex items-center transition-colors",
-                                        isDarkMode
-                                            ? "text-slate-500 hover:text-slate-300"
-                                            : "text-slate-400 hover:text-slate-600"
-                                    )}
-                                >
-                                    {showConfirmPassword ? (
-                                        <EyeOff className="w-5 h-5" />
-                                    ) : (
-                                        <Eye className="w-5 h-5" />
-                                    )}
-                                </button>
-                            </div>
-                            {errors.confirmPassword && (
-                                <p className="mt-1.5 text-sm text-red-500">
-                                    {errors.confirmPassword.message}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Password Requirements */}
-                        <div
+                        <input
+                            {...register("password")}
+                            id="password"
+                            autoComplete="new-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Min. 8 characters"
                             className={cn(
-                                "p-3 rounded-xl space-y-2",
-                                isDarkMode ? "bg-slate-800/50" : "bg-slate-50"
+                                "w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border transition-all duration-300 outline-none",
+                                "focus:ring-1 focus:ring-emerald-500/50",
+                                isDarkMode
+                                    ? "bg-slate-800/50 border-slate-700 text-white placeholder-slate-500"
+                                    : "bg-white/50 border-slate-300 text-slate-900 placeholder-slate-400",
+                                errors.password && "border-red-500 focus:ring-red-500/50"
                             )}
-                        >
-                            <p
-                                className={cn(
-                                    "text-sm font-medium mb-2",
-                                    isDarkMode ? "text-slate-300" : "text-slate-700"
-                                )}
-                            >
-                                Password must contain:
-                            </p>
-                            <div className="space-y-1.5">
-                                {[
-                                    { label: "At least 8 characters", valid: validations.minLength },
-                                    { label: "One uppercase letter", valid: validations.hasUppercase },
-                                    { label: "One lowercase letter", valid: validations.hasLowercase },
-                                    { label: "One number", valid: validations.hasNumber },
-                                    { label: "One special character", valid: validations.hasSpecial },
-                                ].map((requirement, index) => (
-                                    <div key={index} className="flex items-center gap-2">
-                                        <div
-                                            className={cn(
-                                                "w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200",
-                                                requirement.valid
-                                                    ? isDarkMode
-                                                        ? "bg-emerald-500/20 text-emerald-400"
-                                                        : "bg-emerald-100 text-emerald-600"
-                                                    : isDarkMode
-                                                        ? "bg-slate-700 text-slate-500"
-                                                        : "bg-slate-200 text-slate-400"
-                                            )}
-                                        >
-                                            {requirement.valid ? (
-                                                <Check className="w-3 h-3" strokeWidth={3} />
-                                            ) : (
-                                                <X className="w-3 h-3" strokeWidth={3} />
-                                            )}
-                                        </div>
-                                        <span
-                                            className={cn(
-                                                "text-[14px] transition-colors duration-200",
-                                                requirement.valid
-                                                    ? isDarkMode
-                                                        ? "text-emerald-400"
-                                                        : "text-emerald-600"
-                                                    : isDarkMode
-                                                        ? "text-slate-400"
-                                                        : "text-slate-600"
-                                            )}
-                                        >
-                                            {requirement.label}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Submit Button */}
+                        />
                         <button
-                            type="submit"
-                            disabled={isSubmitting}
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
                             className={cn(
-                                "w-full py-3.5 px-4 rounded-xl font-semibold text-white",
-                                "transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]",
-                                "flex items-center justify-center gap-2",
-                                "shadow-lg hover:shadow-2xl relative overflow-hidden group",
-                                "bg-gradient-to-r from-emerald-600 to-emerald-500",
-                                "hover:from-emerald-500 hover:to-emerald-400",
-                                "border border-emerald-400/20",
-                                isSubmitting && "opacity-70 cursor-not-allowed"
+                                "absolute inset-y-0 right-0 pr-3 flex items-center transition-colors",
+                                isDarkMode
+                                    ? "text-slate-500 hover:text-slate-300"
+                                    : "text-slate-400 hover:text-slate-600"
                             )}
                         >
-                            {/* Animated gradient overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-
-                            {/* Glow effect */}
-                            <div className={cn(
-                                "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-                                "bg-gradient-to-r from-emerald-400/20 to-emerald-300/20 blur-xl"
-                            )} />
-
-                            <span className="relative z-10 flex items-center gap-2">
-                                {isSubmitting ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        <span className="font-semibold drop-shadow-sm">Setting up...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Shield className="w-5 h-5 drop-shadow-sm" />
-                                        <span className="font-semibold drop-shadow-sm">Setup Account</span>
-                                    </>
-                                )}
-                            </span>
+                            {showPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                            ) : (
+                                <Eye className="w-4 h-4" />
+                            )}
                         </button>
-                    </form>
+                    </div>
+                    {errors.password && (
+                        <p className="text-red-500 text-[10px] mt-1">
+                            {errors.password.message}
+                        </p>
+                    )}
                 </div>
-            </div>
-        </div>
+
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <p
+                            className={cn(
+                                "text-[11px] font-medium",
+                                isDarkMode ? "text-slate-400" : "text-slate-600"
+                            )}
+                        >
+                            Password Strength
+                        </p>
+                        <span
+                            className={cn(
+                                "text-xs font-bold",
+                                Object.values(validations).filter(Boolean).length >= 4
+                                    ? "text-emerald-400"
+                                    : Object.values(validations).filter(Boolean).length >= 2
+                                        ? "text-yellow-500"
+                                        : "text-slate-500"
+                            )}
+                        >
+                            {Object.values(validations).filter(Boolean).length >= 4
+                                ? "Strong"
+                                : Object.values(validations).filter(Boolean).length >= 2
+                                    ? "Medium"
+                                    : "Weak"}
+                        </span>
+                    </div>
+                    {/* Segmented Progress Bars */}
+                    <div className="flex gap-1.5">
+                        {[0, 1, 2, 3].map((index) => (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "h-1 flex-1 rounded-full transition-all duration-300",
+                                    Object.values(validations).filter(Boolean).length > index
+                                        ? "bg-emerald-500"
+                                        : isDarkMode
+                                            ? "bg-slate-700"
+                                            : "bg-slate-300"
+                                )}
+                            />
+                        ))}
+                    </div>
+                    {/* Validation Items - Two Columns */}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-1">
+                        {[
+                            { label: "Uppercase & Lowercase", valid: validations.hasUppercase && validations.hasLowercase },
+                            { label: "Number (0-9)", valid: validations.hasNumber },
+                            { label: "Special character", valid: validations.hasSpecial },
+                            { label: "At least 8 characters", valid: validations.minLength },
+                        ].map((requirement, index) => (
+                            <div key={index} className="flex items-center gap-1.5">
+                                <div
+                                    className={cn(
+                                        "w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0",
+                                        requirement.valid
+                                            ? "bg-emerald-500/20"
+                                            : isDarkMode
+                                                ? "bg-slate-700"
+                                                : "bg-slate-200"
+                                    )}
+                                >
+                                    {requirement.valid && (
+                                        <Check className="w-2.5 h-2.5 text-emerald-500" />
+                                    )}
+                                </div>
+                                <span
+                                    className={cn(
+                                        "text-[10px]",
+                                        requirement.valid
+                                            ? isDarkMode
+                                                ? "text-emerald-400"
+                                                : "text-emerald-600"
+                                            : isDarkMode
+                                                ? "text-slate-500"
+                                                : "text-slate-500"
+                                    )}
+                                >
+                                    {requirement.label}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="mt-7">
+                    <label
+                        htmlFor="confirmPassword"
+                        className={cn(
+                            "block text-[10px] font-semibold mb-1.5 uppercase tracking-wide",
+                            isDarkMode ? "text-slate-400" : "text-slate-600"
+                        )}
+                    >
+                        Confirm Password
+                    </label>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Shield
+                                className={cn(
+                                    "w-4 h-4",
+                                    isDarkMode ? "text-slate-500" : "text-slate-400"
+                                )}
+                            />
+                        </div>
+                        <input
+                            {...register("confirmPassword")}
+                            id="confirmPassword"
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Repeat password"
+                            className={cn(
+                                "w-full pl-10 pr-10 py-3 text-sm rounded-lg border transition-all duration-300 outline-none",
+                                "focus:ring-1 focus:ring-emerald-500/50",
+                                isDarkMode
+                                    ? "bg-slate-800/50 border-slate-700 text-white placeholder-slate-500"
+                                    : "bg-white/50 border-slate-300 text-slate-900 placeholder-slate-400",
+                                errors.confirmPassword && "border-red-500 focus:ring-red-500/50"
+                            )}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className={cn(
+                                "absolute inset-y-0 right-0 pr-3 flex items-center transition-colors",
+                                isDarkMode
+                                    ? "text-slate-500 hover:text-slate-300"
+                                    : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            {showConfirmPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                            ) : (
+                                <Eye className="w-4 h-4" />
+                            )}
+                        </button>
+                    </div>
+                    {errors.confirmPassword && (
+                        <p className="text-red-500 text-[10px] mt-1">
+                            {errors.confirmPassword.message}
+                        </p>
+                    )}
+                </div>
+                <div className="flex gap-3 pt-2 mt-6">
+                    <button
+                        type="button"
+                        onClick={onGoBack}
+                        className={cn(
+                            "px-4 py-3 w-[40%] rounded-lg cursor-pointer font-medium text-sm transition-all duration-300",
+                            "flex items-center justify-center gap-2",
+                            isDarkMode
+                                ? "bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700"
+                                : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                        )}
+                    >   <ArrowLeft className="w-4 h-4" />
+                        <span className="text-xs font-bold">Go Back</span>
+                    </button>
+
+                    {/* Submit Button */}
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className={cn(
+                            "flex-1 py-3 px-4 rounded-lg font-bold cursor-pointer text-sm text-white",
+                            "transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]",
+                            "flex items-center justify-center gap-2",
+                            "shadow-lg hover:shadow-xl relative overflow-hidden group",
+                            "bg-emerald-500 hover:bg-emerald-400",
+                            isSubmitting && "opacity-70 cursor-not-allowed"
+                        )}
+                    >
+                        <span className="relative z-10 flex items-center gap-2">
+                            {!isSubmitting && <Shield className="w-4 h-4" />}
+                            {isSubmitting ? "Setting up..." : "Complete Setup"}
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </>
     );
 }

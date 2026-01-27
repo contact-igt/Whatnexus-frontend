@@ -13,6 +13,7 @@ import WelcomeScreen from "./welcome-screen";
 import RejectionScreen from "./rejection-screen";
 import AlreadyActivatedScreen from "./already-activated-screen";
 import AlreadyRejectedScreen from "./already-rejected-screen";
+import ProgressStepper from "./progress-stepper";
 
 type ActivationState =
     | "pending"
@@ -20,6 +21,7 @@ type ActivationState =
     | "security-setup"
     | "success"
     | "rejected"
+    | "activated"
     | "already-activated"
     | "already-rejected";
 
@@ -31,12 +33,9 @@ export default function AccountActivation() {
     const token = searchParams.get("token");
     const urlStatus = searchParams.get("status") as ActivationState | null;
 
-    // Initialize state based on URL parameters
     const [currentState, setCurrentState] = useState<ActivationState>(() => {
-        // If status is provided in URL, use it
         if (urlStatus === "activated") return "already-activated";
         if (urlStatus === "rejected") return "already-rejected";
-        // Default to pending for new invitations
         return "pending";
     });
 
@@ -52,8 +51,6 @@ export default function AccountActivation() {
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
     };
-
-    // State transition handlers
     const handleActivate = () => {
         setCurrentState("security-setup");
     };
@@ -66,8 +63,28 @@ export default function AccountActivation() {
         setCurrentState("success");
     };
 
-    // Render the appropriate screen based on current state
-    const renderScreen = () => {
+    const handleGoBack = () => {
+        setCurrentState("pending");
+    };
+
+    const getCurrentStep = () => {
+        switch (currentState) {
+            case "pending":
+                return 1;
+            case "security-setup":
+                return 2;
+            case "success":
+                return 3;
+            default:
+                return 1;
+        }
+    };
+
+    // Check if we should show the unified flow (all 3 steps)
+    const isUnifiedFlow = ["pending", "security-setup", "success"].includes(currentState);
+
+    // Render the appropriate screen content (without wrapper)
+    const renderScreenContent = () => {
         switch (currentState) {
             case "pending":
                 return (
@@ -82,6 +99,7 @@ export default function AccountActivation() {
                 return (
                     <SecurityScreen
                         onSetupComplete={handleSetupComplete}
+                        onGoBack={handleGoBack}
                         email={invitationData.email}
                     />
                 );
@@ -133,7 +151,6 @@ export default function AccountActivation() {
                 isDarkMode ? "bg-slate-950" : "bg-slate-50"
             )}
         >
-            {/* Theme Toggle Button */}
             <button
                 onClick={toggleTheme}
                 className={cn(
@@ -233,9 +250,102 @@ export default function AccountActivation() {
                         Powered by Invictus Global Tech
                     </span>
                 </div> */}
-
+                <div className="flex flex-col items-center space-y-1 mb-4 font-sans animate-in fade-in slide-in-from-top-4 duration-700">
+                    <div className="flex items-center gap-2">
+                        <span
+                            className={cn(
+                                "text-xl font-bold tracking-tight",
+                                isDarkMode ? "text-white" : "text-slate-900"
+                            )}
+                        >
+                            WhatsNexus
+                        </span>
+                        <div
+                            className={cn(
+                                "px-1.5 py-0.5 mb-2 rounded-full border text-[9px] font-bold tracking-wide uppercase",
+                                isDarkMode
+                                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                    : "bg-emerald-50 border-emerald-200 text-emerald-600"
+                            )}
+                        >
+                            Beta
+                        </div>
+                    </div>
+                    <span
+                        className={cn(
+                            "text-[8px] font-bold tracking-[0.2em] mt-0.5 uppercase opacity-60",
+                            isDarkMode ? "text-slate-400" : "text-slate-500"
+                        )}
+                    >
+                        Powered by Invictus Global Tech
+                    </span>
+                </div>
                 {/* Dynamic Screen Content */}
-                {renderScreen()}
+                {isUnifiedFlow ? (
+                    <div className="w-full max-w-md mx-auto animate-in fade-in slide-in-from-bottom-6 duration-500 font-sans">
+                        {/* Main Card - Persistent across steps */}
+                        <div
+                            className={cn(
+                                "p-8 rounded-3xl backdrop-blur-xl mt-5 border transition-all w-100 mx-auto duration-300",
+                                "shadow-2xl relative overflow-hidden",
+                                isDarkMode
+                                    ? "bg-slate-900/95 border-slate-700/50"
+                                    : "bg-white/95 border-slate-200/50"
+                            )}
+                        >
+                            {/* Decorative gradient */}
+                            <div
+                                className={cn(
+                                    "absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-10 -translate-y-1/2 translate-x-1/2",
+                                    isDarkMode ? "bg-emerald-500" : "bg-emerald-400"
+                                )}
+                            />
+
+                            <div className="relative z-10">
+                                <div className="mb-8">
+                                    <ProgressStepper currentStep={getCurrentStep()} />
+                                </div>
+                                {renderScreenContent()}
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    renderScreenContent()
+                )}
+                <div className="flex mt-5 items-center justify-center gap-4 text-[10px] text-gray-500 font-sans">
+                    <a
+                        href="/privacy"
+                        className={cn(
+                            "hover:underline",
+                            isDarkMode ? "text-slate-500 hover:text-emerald-400" : "text-slate-500 hover:text-emerald-600"
+                        )}
+                    >
+                        Privacy Policy
+                    </a>
+                    <span>•</span>
+                    <a
+                        href="/terms"
+                        className={cn(
+                            "hover:underline",
+                            isDarkMode ? "text-slate-500 hover:text-emerald-400" : "text-slate-500 hover:text-emerald-600"
+                        )}
+                    >
+                        Terms of Service
+                    </a>
+                    <span>•</span>
+                    <a
+                        href="/help"
+                        className={cn(
+                            "hover:underline",
+                            isDarkMode ? "text-slate-500 hover:text-emerald-400" : "text-slate-500 hover:text-emerald-600"
+                        )}
+                    >
+                        Help Center
+                    </a>
+                </div>
+                <p className="text-center text-[10px] text-gray-500 mt-3 font-sans">
+                    By completing setup you agree to our <a href="/terms" className={cn("font-semibold", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>Terms of Service</a> and <a href="/privacy" className={cn("font-semibold", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>Privacy Policy</a>
+                </p>
             </div>
         </div>
     );
