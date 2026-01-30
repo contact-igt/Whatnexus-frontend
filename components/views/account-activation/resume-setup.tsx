@@ -4,47 +4,25 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
 import { Zap, Building2, Mail, UserRoundCheck } from "lucide-react";
-import { useAcceptInvitationQuery, useRejectInvitationQuery } from "@/hooks/useTenantActivationQuery";
-import { useAuth } from "@/redux/selectors/auth/authSelector";
 
-interface ActivationScreenProps {
+interface ResumeSetupScreenProps {
     onActivate: () => void;
-    onReject: () => void;
     invitationData: {
         company_name: string;
         email: string;
     };
 }
 
-export default function ActivationScreen({
+export default function ResumeSetupScreen({
     onActivate,
-    onReject,
     invitationData,
-}: ActivationScreenProps) {
+}: ResumeSetupScreenProps) {
     const { isDarkMode } = useTheme();
-    const {activationToken} = useAuth();
-    const {mutate: useAcceptInvitationMutate} = useAcceptInvitationQuery();
-    const {mutate: useRejectInvitationMutate} = useRejectInvitationQuery();
     const [isActivating, setIsActivating] = useState(false);
-    const [isRejecting, setIsRejecting] = useState(false);
 
     const handleActivate = () => {
         setIsActivating(true);
-        useAcceptInvitationMutate({token: activationToken ?? ""}, {
-            onSuccess: ()=>{
-                onActivate();
-            }
-        }
-        )
-    };
-
-    const handleReject = () => {
-        setIsRejecting(true);
-        useRejectInvitationMutate({token: activationToken ?? ""},{
-            onSuccess: ()=>{
-                onReject();
-            }
-        })
+        onActivate();
     };
 
     return (
@@ -55,7 +33,7 @@ export default function ActivationScreen({
                     isDarkMode ? "text-white" : "text-slate-900"
                 )}
             >
-                Account Activation
+                Resume Your Setup
             </h1>
             <p
                 className={cn(
@@ -63,12 +41,10 @@ export default function ActivationScreen({
                     isDarkMode ? "text-slate-400" : "text-slate-600"
                 )}
             >
-                Review your invitation details below
+                Your account activation is initiated. Finish the final steps.
             </p>
 
-            {/* Invitation Details */}
-            <div className="space-y-6 mb-7">
-                {/* Organization */}
+            <div className="space-y-2 mb-5">
                 <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
                         <div
@@ -108,7 +84,6 @@ export default function ActivationScreen({
                     </div>
                 </div>
 
-                {/* Email */}
                 <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
                         <div
@@ -142,13 +117,12 @@ export default function ActivationScreen({
                                 isDarkMode ? "text-white" : "text-slate-900"
                             )}
                         >
-                            {invitationData?.email}
+                            {invitationData.email}
                         </p>
                         <div className={cn(`flex-1 min-w-0 border-b-[0.1px] mt-4 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`)}></div>
                     </div>
                 </div>
 
-                {/* Invited By */}
                 {/* <div>
                     <div className="flex items-start gap-3">
                         <div className="flex-shrink-0">
@@ -199,23 +173,19 @@ export default function ActivationScreen({
                 </div> */}
             </div>
 
-            {/* Activate Button */}
             <button
                 onClick={handleActivate}
-                disabled={isActivating || isRejecting}
+                disabled={isActivating}
                 className={cn(
                     "group relative w-full py-3 pt-3.5 px-6 rounded-xl font-bold text-sm transition-all duration-300",
                     "transform hover:scale-[1.02] active:scale-[0.98]",
                     "shadow-lg hover:shadow-2xl overflow-hidden cursor-pointer",
                     "bg-emerald-500 hover:bg-emerald-400",
                     "text-white",
-                    (isActivating || isRejecting) && "opacity-70 cursor-not-allowed"
+                    (isActivating) && "opacity-70 cursor-not-allowed"
                 )}
             >
-                {/* Animated gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-
-                {/* Glow effect */}
                 <div className={cn(
                     "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
                     "bg-emerald-400/30 blur-xl"
@@ -225,31 +195,16 @@ export default function ActivationScreen({
                     {isActivating ? (
                         <>
                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span className="drop-shadow-sm">Activating...</span>
+                            <span className="drop-shadow-sm">Setting up...</span>
                         </>
                     ) : (
                         <>
                             <Zap className="w-4 h-4 fill-current drop-shadow-sm" />
-                            <span className="drop-shadow-sm">Activate Account</span>
+                            <span className="drop-shadow-sm">Continue to Setup</span>
                         </>
                     )}
                 </div>
             </button>
-
-            {/* Decline Link */}
-            <div className="mt-3 text-center">
-                <button
-                    onClick={handleReject}
-                    disabled={isActivating || isRejecting}
-                    className={cn(
-                        "text-[11px] font-medium transition-colors duration-200 hover:underline",
-                        isDarkMode ? "text-slate-500 cursor-pointer hover:text-red-400" : "text-slate-500 hover:text-red-700",
-                        (isActivating || isRejecting) && "opacity-50 cursor-not-allowed"
-                    )}
-                >
-                    {isRejecting ? "Declining..." : "Decline Invitation"}
-                </button>
-            </div>
         </>
     );
 }

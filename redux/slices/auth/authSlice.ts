@@ -13,7 +13,10 @@ interface AuthState {
   refreshToken: string | null;
   user: User | null;
   whatsappApiDetails: any | null;
+  activationToken: string | null;
   activeTabData: string;
+  activeStatus: any;
+  currentStatusDataState: any;
 }
 
 const initialState: AuthState = {
@@ -21,7 +24,10 @@ const initialState: AuthState = {
   refreshToken: null,
   user: null,
   whatsappApiDetails: null,
+  activationToken: null,
   activeTabData: 'dashboard',
+  activeStatus: 'pending',
+  currentStatusDataState: null,
 };
 
 const authSlice = createSlice({
@@ -42,15 +48,27 @@ const authSlice = createSlice({
     setWhatsAppApiDetails: (state, action: PayloadAction<{ apiDetails: any }>) => {
       state.whatsappApiDetails = action.payload;
     },
+    setActivationToken: (state, action: PayloadAction<string>) => {
+      state.activationToken = action.payload;
+    },
+    setCurrentStatusData: (state, action: PayloadAction<any>) => {
+      state.currentStatusDataState = action.payload;
+    },
+    setActiveStatus: (state, action: PayloadAction<any>) => {
+      state.activeStatus = action.payload;
+    },
     clearAuthData: (state) => {
       state.token = null;
       state.refreshToken = null;
       state.user = null;
       state.whatsappApiDetails = null;
+      state.activationToken = null;
       state.activeTabData = 'dashboard';
+      state.activeStatus = 'pending';
+      state.currentStatusDataState = null;
     },
   },
 });
 
-export const { setAuthData, clearAuthData, setWhatsAppApiDetails, setActiveTabData } = authSlice.actions;
+export const { setAuthData, clearAuthData, setWhatsAppApiDetails, setActiveTabData, setActivationToken, setCurrentStatusData, setActiveStatus } = authSlice.actions;
 export default authSlice.reducer;

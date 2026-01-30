@@ -18,9 +18,10 @@ import { ActionMenu } from '@/components/ui/action-menu';
 
 export interface Organization {
     id: string;
-    name: string;
-    email: string;
-    mobile: string;
+    company_name: string;
+    owner_name: string;
+    owner_email: string;
+    owner_mobile: string;
     address: string;
     subscriptionStatus: 'active' | 'expired' | 'trial';
     subscriptionPlan: 'basic' | 'pro' | 'enterprise';
@@ -32,7 +33,7 @@ export interface Organization {
     adminEmail: string;
     isActive: boolean;
     type: 'hospital' | 'clinic';
-    country_code: string;
+    owner_country_code: string;
     password?: string; // Optional in interface as it might not be returned always, but needed for creation
     whatsappConfig?: {
         wabaId: string;
@@ -243,7 +244,7 @@ export const OrganizationView = () => {
                                                         {org.name}
                                                     </p>
                                                     <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                        {org.email}
+                                                        {org.owner_email}
                                                     </p>
                                                 </div>
                                             </div>
@@ -255,7 +256,7 @@ export const OrganizationView = () => {
                                             {org.adminName}
                                         </p>
                                         <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                            {org.adminEmail ? org.adminEmail : org?.country_code + org?.mobile}
+                                            {org.adminEmail ? org.adminEmail : org?.owner_country_code + org?.owner_mobile}
                                         </p>
                                     </TableCell>
                                     <TableCell align="center">

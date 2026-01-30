@@ -75,7 +75,7 @@ export default function LoginPage() {
 
     return (
         <div className={cn(
-            "min-h-screen flex items-center justify-center p-4 transition-all duration-700 relative overflow-hidden",
+            "min-h-screen font-sans flex items-center justify-center p-4 transition-all duration-700 relative overflow-hidden",
             isDarkMode
                 ? "bg-slate-950"
                 : "bg-slate-50"

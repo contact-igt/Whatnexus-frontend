@@ -16,7 +16,6 @@ export const useLoginMutation = () => {
     return useMutation({
         mutationFn: (data: any) => login(data),
         onSuccess: (data, variables) => {
-            console.log(data)
             if (!data || data?.success == false) {
                 toast.error(data?.message || "Something went wrong")
                 return;
