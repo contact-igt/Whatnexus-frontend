@@ -86,7 +86,7 @@ export default function RejectionScreen({
                                 isDarkMode ? "text-slate-400" : "text-slate-600"
                             )}
                         >
-                            You have successfully declined the invitation. You are no longer associated with the organization or have access to its resources.
+                            You have declined the invitation. You are no longer associated with the organization or have access to its resources.
                         </p>
 
                         {/* Info Card */}

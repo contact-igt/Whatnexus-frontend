@@ -7,6 +7,8 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
 import { Lock, Eye, EyeOff, Shield, Check, ArrowLeft } from "lucide-react";
+import { useSetPasswordQuery } from "@/hooks/useTenantActivationQuery";
+import { useAuth } from "@/redux/selectors/auth/authSelector";
 
 const passwordSchema = z
     .object({
@@ -41,10 +43,11 @@ export default function SecurityScreen({
     email = "user@example.com",
 }: SecurityScreenProps) {
     const { isDarkMode } = useTheme();
+    const {activationToken} = useAuth();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const {mutate: setPasswordMutate, isPending: setPasswordPending} = useSetPasswordQuery();
     const {
         register,
         handleSubmit,
@@ -68,9 +71,11 @@ export default function SecurityScreen({
 
     const onSubmit = async (data: PasswordFormData) => {
         setIsSubmitting(true);
-        setTimeout(() => {
-            onSetupComplete();
-        }, 1200);
+        setPasswordMutate({token: activationToken ?? "", password: data.password}, {
+            onSuccess: () => {
+                onSetupComplete();  
+            }
+        })
     };
 
     return (
@@ -311,7 +316,7 @@ export default function SecurityScreen({
                     )}
                 </div>
                 <div className="flex gap-3 pt-2 mt-6">
-                    <button
+                    {/* <button
                         type="button"
                         onClick={onGoBack}
                         className={cn(
@@ -323,7 +328,7 @@ export default function SecurityScreen({
                         )}
                     >   <ArrowLeft className="w-4 h-4" />
                         <span className="text-xs font-bold">Go Back</span>
-                    </button>
+                    </button> */}
 
                     {/* Submit Button */}
                     <button

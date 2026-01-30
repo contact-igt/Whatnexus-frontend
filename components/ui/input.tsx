@@ -10,6 +10,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     error?: string;
     required?: boolean;
     icon?: LucideIcon;
+    wrapperClassName?: string;
 }
 
 export const Input = ({
@@ -19,10 +20,11 @@ export const Input = ({
     required,
     icon: Icon,
     className,
+    wrapperClassName,
     ...props
 }: InputProps) => {
     return (
-        <div className="w-full">
+        <div className={cn("w-full", wrapperClassName)}>
             {label && (
                 <label className={cn(
                     "text-xs font-semibold mb-2 block ml-1",
