@@ -11,6 +11,7 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 // import { socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { WeeklyChatSummaryModal } from '../weekly-chat-summary-modal';
+import { TemplateSelectionModal } from "@/components/ui/template-selection-modal";
 
 
 const getDateLabel = (dateStr: string) => {
@@ -73,6 +74,8 @@ export const HistoryView = () => {
     const [message, setMessage] = useState<string>("");
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isChatClosed, setIsChatClosed] = useState(true); // Simulating closed chat state
     const router = useRouter();
     const selectedChatRef = useRef<any>(null);
     const searchParams = useSearchParams();
@@ -144,6 +147,18 @@ export const HistoryView = () => {
         });
         setMessage("");
     }
+
+    const handleTemplateSelect = (template: any) => {
+        // Send template message
+        sendMessageMutate({
+            phone: selectedChat?.phone,
+            name: selectedChat?.name,
+            message: template.content,
+            contact_id: selectedChat?.contact_id,
+            phone_number_id: whatsappApiDetails?.phone_number_id
+        });
+        setIsChatClosed(false); // Reopen chat after sending template
+    };
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -638,46 +653,85 @@ export const HistoryView = () => {
                     </div>
 
                     <div className="p-6 shrink-0 relative">
-                        <div className="flex justify-start mb-2 space-x-2">
-                            <button
-                                onClick={suggestReply}
-                                disabled={isSuggesting}
-                                className={cn("flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
-                            >
-                                {isSuggesting ? (
-                                    <span className="animate-pulse">✨ Thinking...</span>
-                                ) : (
-                                    <>
-                                        <Wand2 size={12} />
-                                        <span>✨ Suggest Smart Reply</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                        <div className="relative group">
-                            <div className="absolute -inset-1 rounded-[1.5rem] blur opacity-10 transition-opacity duration-500 bg-gradient-to-r from-emerald-600 to-emerald-400 group-focus-within:opacity-40" />
-                            <div className={cn("relative border rounded-[1.3rem] p-2 flex items-end space-x-2 transition-all duration-300", isDarkMode ? 'bg-[#1A1A1B] border-white/5 group-focus-within:border-white/20' : 'bg-white border-slate-200 group-focus-within:border-emerald-300 shadow-xl')}>
-                                <button className="p-3 transition-all hover:scale-110 text-emerald-500 hover:bg-emerald-500/10 rounded-xl"><Plus size={18} /></button>
-                                <textarea
-                                    rows={1}
-                                    value={message}
-                                    onChange={handleInputChange}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            handleSendMessage();
-                                            setMessage("");
-                                        }
-                                    }}
-                                    placeholder="Type a neural response..."
-                                    className={cn("flex-1 bg-transparent border-none focus:ring-0 text-[13px] py-3 resize-none max-h-32 focus:outline-none transition-colors", isDarkMode ? 'text-white placeholder:text-white/20' : 'text-slate-900')}
-                                />
-                                <div className="flex items-center space-x-1 pb-1">
-                                    <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
-                                    <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all">{isPending ? <Loader2 className={cn("animate-spin", isDarkMode ? 'text-white/600' : 'text-slate-200')} size={16} /> : <Send size={16} />}</button>
+                        {isChatClosed ? (
+                            // Closed Chat State - Show Send Template Button
+                            <div className={cn(
+                                "flex items-center justify-between py-6 px-6 rounded-2xl border-2 border-dashed transition-all",
+                                isDarkMode
+                                    ? 'bg-white/[0.02] border-white/10'
+                                    : 'bg-slate-50/50 border-slate-200'
+                            )}>
+                                {/* <MessageSquareOff size={40} className={cn(
+                                    "mb-4 opacity-50",
+                                    isDarkMode ? 'text-white' : 'text-slate-400'
+                                )} /> */}
+                                <div className='flex flex-col items-start justify-center'>
+                                <h3 className={cn(
+                                    "text-sm font-bold mb-1",
+                                    isDarkMode ? 'text-white' : 'text-slate-900'
+                                )}>
+                                    Chat Conversation closed!
+                                </h3>
+                                <p className={cn(
+                                    "text-xs text-center max-w-xs",
+                                    isDarkMode ? 'text-white/50' : 'text-slate-500'
+                                )}>
+                                    Please send a template to initiate a chat conversation
+                                </p>
                                 </div>
+                                <button
+                                    onClick={() => setIsTemplateModalOpen(true)}
+                                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                >
+                                    <Send size={16} />
+                                    <span>Send Template</span>
+                                </button>
                             </div>
-                        </div>
+                        ) : (
+                            // Active Chat State - Show Normal Input
+                            <>
+                                <div className="flex justify-start mb-2 space-x-2">
+                                    <button
+                                        onClick={suggestReply}
+                                        disabled={isSuggesting}
+                                        className={cn("flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
+                                    >
+                                        {isSuggesting ? (
+                                            <span className="animate-pulse">✨ Thinking...</span>
+                                        ) : (
+                                            <>
+                                                <Wand2 size={12} />
+                                                <span>✨ Suggest Smart Reply</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                                <div className="relative group">
+                                    <div className="absolute -inset-1 rounded-[1.5rem] blur opacity-10 transition-opacity duration-500 bg-gradient-to-r from-emerald-600 to-emerald-400 group-focus-within:opacity-40" />
+                                    <div className={cn("relative border rounded-[1.3rem] p-2 flex items-end space-x-2 transition-all duration-300", isDarkMode ? 'bg-[#1A1A1B] border-white/5 group-focus-within:border-white/20' : 'bg-white border-slate-200 group-focus-within:border-emerald-300 shadow-xl')}>
+                                        <button className="p-3 transition-all hover:scale-110 text-emerald-500 hover:bg-emerald-500/10 rounded-xl"><Plus size={18} /></button>
+                                        <textarea
+                                            rows={1}
+                                            value={message}
+                                            onChange={handleInputChange}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                    e.preventDefault();
+                                                    handleSendMessage();
+                                                    setMessage("");
+                                                }
+                                            }}
+                                            placeholder="Type a neural response..."
+                                            className={cn("flex-1 bg-transparent border-none focus:ring-0 text-[13px] py-3 resize-none max-h-32 focus:outline-none transition-colors", isDarkMode ? 'text-white placeholder:text-white/20' : 'text-slate-900')}
+                                        />
+                                        <div className="flex items-center space-x-1 pb-1">
+                                            <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
+                                            <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all">{isPending ? <Loader2 className={cn("animate-spin", isDarkMode ? 'text-white/600' : 'text-slate-200')} size={16} /> : <Send size={16} />}</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </GlassCard>
             </div>
@@ -688,6 +742,14 @@ export const HistoryView = () => {
                 onClose={() => setIsWeeklySummaryOpen(false)}
                 chatName={selectedChat?.name || selectedChat?.phone}
                 chatPhone={selectedChat?.phone}
+                isDarkMode={isDarkMode}
+            />
+
+            {/* Template Selection Modal */}
+            <TemplateSelectionModal
+                isOpen={isTemplateModalOpen}
+                onClose={() => setIsTemplateModalOpen(false)}
+                onSelect={handleTemplateSelect}
                 isDarkMode={isDarkMode}
             />
         </div>

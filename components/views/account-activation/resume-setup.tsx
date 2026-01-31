@@ -117,7 +117,7 @@ export default function ResumeSetupScreen({
                                 isDarkMode ? "text-white" : "text-slate-900"
                             )}
                         >
-                            {invitationData.email}
+                            {invitationData?.email}
                         </p>
                         <div className={cn(`flex-1 min-w-0 border-b-[0.1px] mt-4 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`)}></div>
                     </div>

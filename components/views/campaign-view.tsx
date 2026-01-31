@@ -6,7 +6,7 @@ import { Megaphone, Plus, Search, RefreshCw, Users, Calendar, TrendingUp, Send }
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
-import { LaunchCampaignModal } from "@/components/ui/launch-campaign-modal";
+import { useRouter } from 'next/navigation';
 
 type TabType = 'all' | 'broadcast' | 'api' | 'scheduled' | 'qrscan';
 
@@ -72,10 +72,10 @@ const SAMPLE_CAMPAIGNS: Campaign[] = [
 
 export const CampaignView = () => {
     const { isDarkMode } = useTheme();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [campaigns, setCampaigns] = useState<Campaign[]>(SAMPLE_CAMPAIGNS);
-    const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
 
     const tabs: { id: TabType; label: string }[] = [
         { id: 'all', label: 'All' },
@@ -89,25 +89,6 @@ export const CampaignView = () => {
         if (activeTab === 'all') return true;
         return campaign.type.toLowerCase() === activeTab;
     });
-
-    const handleLaunchCampaign = (data: any) => {
-        const newCampaign: Campaign = {
-            id: (campaigns.length + 1).toString(),
-            name: data.name,
-            type: data.type,
-            createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            status: data.type === 'Scheduled' ? 'Scheduled' : 'Active',
-            audience: data.audienceCount,
-            sent: data.type === 'Broadcast' ? data.audienceCount : 0,
-            delivered: '-',
-            read: '-',
-            replied: '-'
-        };
-
-        // Add new campaign to the top of the list
-        // @ts-ignore
-        setCampaigns(prev => [newCampaign, ...prev]);
-    };
 
     return (
         <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
@@ -123,7 +104,7 @@ export const CampaignView = () => {
                 </div>
                 {/* <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}> */}
                 <button
-                    onClick={() => setIsLaunchModalOpen(true)}
+                    onClick={() => router.push('/compose-message')}
                     className="h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wide bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
                 >
                     <Plus size={16} />
@@ -296,14 +277,6 @@ export const CampaignView = () => {
                     </button>
                 </div>
             </div>
-
-
-            <LaunchCampaignModal
-                isOpen={isLaunchModalOpen}
-                onClose={() => setIsLaunchModalOpen(false)}
-                onLaunch={handleLaunchCampaign}
-                isDarkMode={isDarkMode}
-            />
         </div >
     );
 };

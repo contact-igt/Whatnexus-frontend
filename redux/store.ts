@@ -13,7 +13,7 @@ const persistConfig = {
 const authPersistConfig = {
   key: 'auth',
   storage: storageSession,
-  whitelist: ['activeStatus'], 
+  whitelist: ['activeStatus', 'currentStatusDataState'], 
 };
 
 const rootReducer = combineReducers({
