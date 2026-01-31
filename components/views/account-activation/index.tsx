@@ -17,7 +17,7 @@ import ActivationLoader from "./activation-loader";
 import ProgressStepper from "./progress-stepper";
 import { useTenantActivationCheckQuery } from "@/hooks/useTenantActivationQuery";
 import { useDispatch } from "react-redux";
-import { setActivationToken, setActiveStatus, setCurrentStatusData } from "@/redux/slices/auth/authSlice";
+import { resetActiveStatus, setActivationToken, setActiveStatus, setCurrentStatusData } from "@/redux/slices/auth/authSlice";
 import ResumeSetupScreen from "./resume-setup";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 
@@ -46,8 +46,9 @@ export default function AccountActivation() {
     const hasChecked = typeof window !== "undefined" && sessionKey && sessionStorage.getItem(sessionKey) === "true";
     console.log("hasChecked", hasChecked)
     const { data: currentStatusData, isLoading } = useTenantActivationCheckQuery(token ?? "", Boolean(hasChecked));
-    const [currentStatus, setCurrentStatus] = useState<ActivationStatus>(activeStatus ?? "pending");
+    // const [currentStatus, setCurrentStatus] = useState<ActivationStatus>(activeStatus ?? "pending");
     const inviteCurrentStatus = currentStatusData ? currentStatusData : currentStatusDataState;
+    console.log("currentStatusDataState", currentStatusDataState)
     // Mock invitation data (in production, fetch from API using token)
     // const [invitationData] = useState({
     //     organizationName: "Invictus Global Tech",
@@ -61,22 +62,19 @@ export default function AccountActivation() {
         setTheme(isDarkMode ? "light" : "dark");
     };
     const handleActivate = () => {
-        setCurrentStatus("security-setup");
         dispatch(setActiveStatus("security-setup"));
     };
 
     const handleReject = () => {
-        setCurrentStatus("rejected");
         dispatch(setActiveStatus("rejected"));
     };
 
     const handleSetupComplete = () => {
-        setCurrentStatus("success");
         dispatch(setActiveStatus("success"));
     };
 
     const handleGoBack = () => {
-        setCurrentStatus("pending");
+
         dispatch(setActiveStatus("pending"));
     };
 
@@ -87,14 +85,29 @@ export default function AccountActivation() {
     }, [token])
 
     useEffect(() => {
+        if (!token) {
+            console.log("test")
+            dispatch(resetActiveStatus());
+            return;
+        }
+        const key = `activation_session_started_${token}`;
+
+        if (!sessionStorage.getItem(key)) {
+            // new tab or new browser session
+            dispatch(resetActiveStatus());
+            sessionStorage.setItem(key, "true");
+        }
+    }, [dispatch, token]);
+
+    useEffect(() => {
         if (currentStatusData && sessionKey) {
             sessionStorage.setItem(sessionKey, "true");
             dispatch(setCurrentStatusData(currentStatusData))
         }
-    }, [currentStatusData, sessionKey]);
+    }, [currentStatusData, sessionKey, currentStatusDataState]);
 
     const getCurrentStep = () => {
-        switch (currentStatus) {
+        switch (activeStatus) {
             case "pending":
                 return 1;
             case "resume-setup":
@@ -112,31 +125,26 @@ export default function AccountActivation() {
         console.log("inviteCurrentStatus", inviteCurrentStatus)
         if (inviteCurrentStatus && !hasChecked) {
             if (inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "pending" && !inviteCurrentStatus?.is_password) {
-                setCurrentStatus("pending");
                 dispatch(setActiveStatus("pending"));
             }
             else if (inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "accepted" && !inviteCurrentStatus?.is_password) {
-                setCurrentStatus("resume-setup");
                 dispatch(setActiveStatus("resume-setup"));
             }
             else if (!inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "revoked") {
-                setCurrentStatus("rejected");
                 dispatch(setActiveStatus("rejected"));
             }
             else if (!inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "accepted" && inviteCurrentStatus?.is_password) {
-                setCurrentStatus("already-activated");
                 dispatch(setActiveStatus("already-activated"));
             }
             else if (!inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "pending") {
-                setCurrentStatus("expired");
                 dispatch(setActiveStatus("expired"));
             }
         }
-    }, [inviteCurrentStatus, hasChecked])
-    const isUnifiedFlow = ["pending", "security-setup", "success", "resume-setup"].includes(currentStatus);
+    }, [inviteCurrentStatus, hasChecked, currentStatusDataState])
+    const isUnifiedFlow = ["pending", "security-setup", "success", "resume-setup"].includes(activeStatus);
 
     const renderScreenContent = () => {
-        switch (currentStatus) {
+        switch (activeStatus) {
             case "pending":
                 return (
                     <ActivationScreen
@@ -202,7 +210,7 @@ export default function AccountActivation() {
                 );
         }
     };
-    console.log("currentStatus", currentStatus)
+    console.log("currentStatus", activeStatus)
     return (
         <div
             className={cn(

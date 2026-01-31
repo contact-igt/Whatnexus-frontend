@@ -1,6 +1,6 @@
 import { HistoryView } from "@/components/views/history/history-view";
 
 
-export default function ChatsPage() {
+export default function HistoryPage() {
   return <HistoryView />;
 }
