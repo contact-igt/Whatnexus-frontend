@@ -20,7 +20,7 @@ export const Sidebar = () => {
     const handleActiveTab = (tab: string) => {
         router.push(tab);
     }
-
+    console.log("user", user)
     return (
         <aside
             onMouseEnter={() => setIsExpanded(true)}
@@ -109,13 +109,13 @@ export const Sidebar = () => {
                     isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-900 text-white border-slate-700'
                 )}>
                     <div className={cn("shrink-0 flex items-center justify-center", isExpanded ? "w-8 h-8 rounded-lg bg-white/10" : "")}>
-                        {user?.username ? user?.username?.split("")[0].toUpperCase() : <User size={20} />}
+                        {user?.name ? user?.name?.split("")[0].toUpperCase() : <User size={20} />}
                     </div>
                     <span className={cn(
                         "whitespace-nowrap transition-all duration-300 font-semibold text-sm",
                         isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 absolute"
                     )}>
-                        {user?.username ? user?.username : user?.role}
+                        {user?.name ? user?.name : user?.role}
                     </span>
                 </div>
             </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { FileText, Plus, Search, RefreshCw, Eye, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { FileText, Plus, Search, RefreshCw, AlertCircle } from 'lucide-react';
+import { ActionMenu } from '@/components/ui/action-menu';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Template, TemplateStatus } from './template-types';
@@ -13,6 +14,8 @@ interface TemplateListPageProps {
     onCreateNew: () => void;
     onEdit: (template: Template) => void;
     onView: (template: Template) => void;
+    onSubmitTemplate: (template_id: string) => void;
+    onSyncTemplate: (template_id: string) => void;
     onDelete: (templateId: string) => void;
     onSync: () => void;
 }
@@ -22,6 +25,8 @@ type TabType = 'all' | 'draft' | 'pending' | 'approved' | 'action_required';
 export const TemplateListPage = ({
     isDarkMode,
     templates,
+    onSubmitTemplate,
+    onSyncTemplate,
     onCreateNew,
     onEdit,
     onView,
@@ -31,23 +36,24 @@ export const TemplateListPage = ({
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
+
     const tabs: { id: TabType; label: string; count?: number }[] = [
         { id: 'all', label: 'All', count: templates.length },
-        { id: 'draft', label: 'Draft', count: templates.filter(t => t.status === 'Draft').length },
-        { id: 'pending', label: 'Pending', count: templates.filter(t => t.status === 'Pending').length },
-        { id: 'approved', label: 'Approved', count: templates.filter(t => t.status === 'Approved').length },
-        { id: 'action_required', label: 'Action Required', count: templates.filter(t => t.status === 'Rejected').length },
+        { id: 'draft', label: 'Draft', count: templates.filter(t => t.status === 'draft').length },
+        { id: 'pending', label: 'Pending', count: templates.filter(t => t.status === 'pending').length },
+        { id: 'approved', label: 'Approved', count: templates.filter(t => t.status === 'approved').length },
+        { id: 'action_required', label: 'Action Required', count: templates.filter(t => t.status === 'rejected').length },
     ];
 
     const filteredTemplates = templates.filter(template => {
         // Tab filter
-        if (activeTab === 'draft' && template.status !== 'Draft') return false;
-        if (activeTab === 'pending' && template.status !== 'Pending') return false;
-        if (activeTab === 'approved' && template.status !== 'Approved') return false;
-        if (activeTab === 'action_required' && template.status !== 'Rejected') return false;
+        if (activeTab === 'draft' && template.status !== 'draft') return false;
+        if (activeTab === 'pending' && template.status !== 'pending') return false;
+        if (activeTab === 'approved' && template.status !== 'approved') return false;
+        if (activeTab === 'action_required' && template.status !== 'rejected') return false;
 
         // Search filter
-        if (searchQuery && !template.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        if (searchQuery && !template.template_name.toLowerCase().includes(searchQuery.toLowerCase())) {
             return false;
         }
 
@@ -151,7 +157,7 @@ export const TemplateListPage = ({
                                 <th className="px-6 py-4">Category</th>
                                 <th className="px-6 py-4 text-center">Status</th>
                                 <th className="px-6 py-4 text-center">Type</th>
-                                <th className="px-6 py-4 text-center">Health</th>
+                                {/* <th className="px-6 py-4 text-center">Health</th> */}
                                 <th className="px-6 py-4">Created At</th>
                                 <th className="px-6 py-4 text-center">Actions</th>
                             </tr>
@@ -159,10 +165,10 @@ export const TemplateListPage = ({
                         <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
                             {filteredTemplates.length > 0 ? (
                                 filteredTemplates.map((template) => (
-                                    <tr key={template.id} className="group transition-all hover:bg-emerald-500/5">
+                                    <tr key={template.template_id} className="group transition-all hover:bg-emerald-500/5">
                                         <td className="px-6 py-5">
                                             <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
-                                                {template.name}
+                                                {template?.template_name}
                                             </p>
                                         </td>
                                         <td className="px-6 py-5">
@@ -183,54 +189,36 @@ export const TemplateListPage = ({
                                         </td>
                                         <td className="px-6 py-5 text-center">
                                             <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                                {template.type}
+                                                {template.template_type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-5 text-center">
+                                        {/* <td className="px-6 py-5 text-center">
                                             <span className={cn(
                                                 "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
                                                 getHealthColor(template.health, isDarkMode)
                                             )}>
                                                 {template.health}
                                             </span>
-                                        </td>
+                                        </td> */}
                                         <td className="px-6 py-5">
                                             <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                {formatDate(template.createdAt)}
+                                                {formatDate(template.created_at)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => onView(template)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-colors",
-                                                        isDarkMode ? 'hover:bg-blue-500/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
-                                                    )}
-                                                    title="View"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => onEdit(template)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-colors",
-                                                        isDarkMode ? 'hover:bg-emerald-500/10 text-emerald-400' : 'hover:bg-emerald-50 text-emerald-600'
-                                                    )}
-                                                    title="Edit"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => onDelete(template.id)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-colors",
-                                                        isDarkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'
-                                                    )}
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                            <div className="flex items-center justify-center">
+                                                <ActionMenu
+                                                    isDarkMode={isDarkMode}
+                                                    isView={true}
+                                                    isEdit={true}
+                                                    isSubmitTemplate={template?.status === 'draft'}
+                                                    onSubmitTemplate={() => onSubmitTemplate(template?.template_id)}
+                                                    isSyncTemplate={template?.status === 'pending'}
+                                                    onSyncTemplate={() => onSyncTemplate(template?.template_id)}
+                                                    onView={() => onView(template)}
+                                                    onEdit={() => onEdit(template)}
+                                                    onDelete={() => onDelete(template.template_id)}
+                                                />
                                             </div>
                                         </td>
                                     </tr>

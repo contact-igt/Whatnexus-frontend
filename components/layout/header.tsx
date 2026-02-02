@@ -83,7 +83,7 @@ export const Header = () => {
                         >
 
                             <div className={cn("shrink-0 flex items-center justify-center")}>
-                                {user?.username?.split("")[0].toUpperCase()}
+                                {user?.name?.split("")[0].toUpperCase()}
                             </div>
                         </div>
                         {isProfileOpen && (

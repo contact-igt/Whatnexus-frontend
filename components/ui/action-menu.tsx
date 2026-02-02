@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle } from 'lucide-react';
+import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 interface ActionMenuProps {
@@ -13,52 +13,56 @@ interface ActionMenuProps {
     onWhatsAppConfig?: () => void;
     onView?: () => void;
     onEdit?: () => void;
+    isSubmitTemplate?: boolean;
+    onSubmitTemplate?: () => void;
+    isSyncTemplate?: boolean;
+    onSyncTemplate?: () => void;
     onDelete?: () => void;
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWhatsAppConfig, onView, onEdit, onDelete }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWhatsAppConfig, onView, onEdit, onDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate }: ActionMenuProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
+    // useEffect(() => {
+    //     const handleClickOutside = (event: MouseEvent) => {
+    //         if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+    //             setIsOpen(false);
+    //         }
+    //     };
 
-        let scrollableParents: HTMLElement[] = [];
+    //     let scrollableParents: HTMLElement[] = [];
 
-        const findScrollableParents = (node: HTMLElement | null) => {
-            const parents: HTMLElement[] = [];
-            let current = node;
-            while (current) {
-                const style = window.getComputedStyle(current);
-                if (/(auto|scroll)/.test(style.overflowY)) {
-                    parents.push(current);
-                }
-                current = current.parentElement;
-            }
-            return parents;
-        };
+    //     const findScrollableParents = (node: HTMLElement | null) => {
+    //         const parents: HTMLElement[] = [];
+    //         let current = node;
+    //         while (current) {
+    //             const style = window.getComputedStyle(current);
+    //             if (/(auto|scroll)/.test(style.overflowY)) {
+    //                 parents.push(current);
+    //             }
+    //             current = current.parentElement;
+    //         }
+    //         return parents;
+    //     };
 
-        if (isOpen) {
-            if (menuRef.current) {
-                scrollableParents = findScrollableParents(menuRef.current.parentElement);
-                scrollableParents.forEach(parent => {
-                    parent.style.setProperty('overflow-y', 'hidden', 'important');
-                });
-            }
-            document.addEventListener('mousedown', handleClickOutside);
-        }
+    //     if (isOpen) {
+    //         if (menuRef.current) {
+    //             scrollableParents = findScrollableParents(menuRef.current.parentElement);
+    //             scrollableParents.forEach(parent => {
+    //                 parent.style.setProperty('overflow-y', 'hidden', 'important');
+    //             });
+    //         }
+    //         document.addEventListener('mousedown', handleClickOutside);
+    //     }
 
-        return () => {
-            scrollableParents.forEach(parent => {
-                parent.style.removeProperty('overflow-y');
-            });
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isOpen]);
+    //     return () => {
+    //         scrollableParents.forEach(parent => {
+    //             parent.style.removeProperty('overflow-y');
+    //         });
+    //         document.removeEventListener('mousedown', handleClickOutside);
+    //     };
+    // }, [isOpen]);
 
     return (
         <div className="relative" ref={menuRef}>
@@ -135,6 +139,44 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWha
                                 <span>WhatsApp</span>
                             </button>
                         )}
+                        {
+                            onSubmitTemplate && isSubmitTemplate && (
+                                <button
+                                    onClick={() => {
+                                        onSubmitTemplate();
+                                        setIsOpen(false);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center text-start space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                        isDarkMode
+                                            ? 'text-white/70 hover:bg-white/5 hover:text-white'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    )}
+                                >
+                                    <Save className="w-4 h-4 sm:min-w-[14px] sm:min-h-[14px]" />
+                                    <span>Submit</span>
+                                </button>
+                            )
+                        }
+                        {
+                            onSyncTemplate && isSyncTemplate && (
+                                <button
+                                    onClick={() => {
+                                        onSyncTemplate();
+                                        setIsOpen(false);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center text-start space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                        isDarkMode
+                                            ? 'text-white/70 hover:bg-white/5 hover:text-white'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    )}
+                                >
+                                    <Save className="w-4 h-4 sm:min-w-[14px] sm:min-h-[14px]" />
+                                    <span>Sync</span>
+                                </button>
+                            )
+                        }
 
 
                         {onDelete && (
