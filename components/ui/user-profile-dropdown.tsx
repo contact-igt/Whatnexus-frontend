@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 interface UserProfileDropdownProps {
     isDarkMode: boolean;
     user: {
-        username?: string;
+        name?: string;
         email?: string;
     } | null;
     onClose: () => void;
@@ -30,7 +30,7 @@ export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: Use
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [onClose]);
 
-    const userInitials = user?.username?.split("")[0]?.toUpperCase();
+    const userInitials = user?.name?.split("")[0]?.toUpperCase();
 
     const menuItems = [
         {
@@ -88,7 +88,7 @@ export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: Use
                             "font-bold text-xs truncate",
                             isDarkMode ? 'text-white' : 'text-slate-900'
                         )}>
-                            {user?.username || "User"}
+                            {user?.name || "User"}
                         </p>
                         {user?.email && (
                             <div className="flex items-center gap-1 mt-0.5">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -14,7 +14,8 @@ import {
     InteractiveActionType,
     CTAButton,
     MessageStyle,
-    OptimizationGoal
+    OptimizationGoal,
+    HeaderType
 } from './template-types';
 import { validateTemplateName, generateId } from './template-utils';
 import { WhatsAppPreviewPanel } from './whatsapp-preview-panel';
@@ -23,12 +24,28 @@ import { InteractiveActionsSection } from './interactive-actions-section';
 import { AIGeneratorSection } from './ai-generator-section';
 import { toast } from 'sonner';
 import { callOpenAI } from '@/lib/openai';
+import { FileUpload } from '@/components/ui/file-upload';
 
 interface TemplateFormPageProps {
     templateId?: string;
     initialData?: Partial<TemplateFormData>;
     onBack: () => void;
-    onSave: (data: TemplateFormData) => void;
+    onSave: (data: any) => void;
+}
+
+interface FormValues {
+    category: TemplateCategory;
+    language: string;
+    templateName: string;
+    templateType: TemplateType;
+    headerType: HeaderType;
+    headerValue: string;
+    content: string;
+    footer: string;
+    variables: Record<string, string>;
+    interactiveActions: InteractiveActionType;
+    ctaButtons: CTAButton[];
+    quickReplies: string[];
 }
 
 export const TemplateFormPage = ({
@@ -38,21 +55,47 @@ export const TemplateFormPage = ({
     onSave
 }: TemplateFormPageProps) => {
     const { isDarkMode } = useTheme();
-    const [isSaving, setIsSaving] = useState(false);
 
-    const [category, setCategory] = useState<TemplateCategory>(initialData?.category || 'UTILITY');
-    const [language, setLanguage] = useState(initialData?.language || 'English');
-    const [templateName, setTemplateName] = useState(initialData?.name || '');
-    const [templateType, setTemplateType] = useState<TemplateType>(initialData?.type || 'TEXT');
-    const [content, setContent] = useState(initialData?.content || '');
-    const [footer, setFooter] = useState(initialData?.footer || '');
-    const [variables, setVariables] = useState<Record<string, string>>(initialData?.variables || {});
-    const [interactiveActions, setInteractiveActions] = useState<InteractiveActionType>(initialData?.interactiveActions || 'None');
-    const [ctaButtons, setCTAButtons] = useState<CTAButton[]>(initialData?.ctaButtons || []);
-    const [quickReplies, setQuickReplies] = useState<string[]>(initialData?.quickReplies || []);
+    const {
+        register,
+        handleSubmit,
+        watch,
+        setValue,
+        formState: { errors, isSubmitting }
+    } = useForm<FormValues>({
+        defaultValues: {
+            category: initialData?.category || 'UTILITY',
+            language: initialData?.language || 'English',
+            templateName: initialData?.name || '',
+            templateType: initialData?.type || 'TEXT',
+            headerType: initialData?.headerType || 'NONE',
+            headerValue: initialData?.headerValue || '',
+            content: initialData?.content || '',
+            footer: initialData?.footer || '',
+            variables: initialData?.variables || {},
+            interactiveActions: initialData?.interactiveActions || 'None',
+            ctaButtons: initialData?.ctaButtons || [],
+            quickReplies: initialData?.quickReplies || []
+        }
+    });
+
+    // Watch form values for preview
+    const category = watch('category');
+    const language = watch('language');
+    const templateName = watch('templateName');
+    const templateType = watch('templateType');
+    const headerType = watch('headerType');
+    const headerValue = watch('headerValue');
+    const content = watch('content');
+    const footer = watch('footer');
+    const variables = watch('variables');
+    const interactiveActions = watch('interactiveActions');
+    const ctaButtons = watch('ctaButtons');
+    const quickReplies = watch('quickReplies');
 
     const categories: TemplateCategory[] = ['UTILITY', 'MARKETING', 'AUTHENTICATION'];
     const templateTypes: TemplateType[] = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'];
+    const headerTypes: HeaderType[] = ['NONE', 'TEXT', 'MEDIA', 'DOCUMENT'];
     const languages = ['English', 'Hindi', 'Spanish', 'French', 'German'];
     const SYSTEM_TEMPLATE_PROMPT = `
 You are a WhatsApp Business Template Generator for Meta approval.
@@ -104,43 +147,94 @@ IMPORTANT:
 
     const handleAIGenerate = async (prompt: string, style: MessageStyle, goal: OptimizationGoal) => {
         const finalPrompt = `Selected Template Category: ${category} User request: ${prompt}`
-        const content = await callOpenAI(finalPrompt, SYSTEM_TEMPLATE_PROMPT);
-        setContent(content);
+        const generatedContent = await callOpenAI(finalPrompt, SYSTEM_TEMPLATE_PROMPT);
+        setValue('content', generatedContent);
         toast.success('Template generated successfully!');
     };
 
-    const handleSubmit = () => {
-        const nameValidation = validateTemplateName(templateName);
+    // Transform variables object to array format
+    const transformVariables = (vars: Record<string, string>) => {
+        return Object.entries(vars).map(([key, value]) => ({
+            key: `{{${key}}}`,
+            sample: value
+        }));
+    };
+
+    // Get language code from language name
+    const getLanguageCode = (lang: string): string => {
+        const langMap: Record<string, string> = {
+            'English': 'en',
+            'Hindi': 'hi',
+            'Spanish': 'es',
+            'French': 'fr',
+            'German': 'de'
+        };
+        return langMap[lang] || 'en';
+    };
+
+    const onSubmit = async (data: FormValues) => {
+        // Validate template name
+        const nameValidation = validateTemplateName(data.templateName);
         if (!nameValidation.valid) {
             toast.error(nameValidation.error || 'Invalid template name');
             return;
         }
 
-        if (!content.trim()) {
+        // Validate required content
+        if (!data.content.trim()) {
             toast.error('Template content is required');
             return;
         }
 
-        setIsSaving(true);
+        // Validate that body doesn't end with a variable
+        const trimmedContent = data.content.trim();
+        const endsWithVariablePattern = /\{\{\d+\}\}$/;
+        if (endsWithVariablePattern.test(trimmedContent)) {
+            toast.error('Body cannot end with a variable. Please add some text after the variable.');
+            return;
+        }
 
-        const formData: TemplateFormData = {
-            category,
-            language,
-            name: templateName,
-            type: templateType,
-            content,
-            footer,
-            variables,
-            interactiveActions,
-            ctaButtons,
-            quickReplies: quickReplies.filter(r => r.trim() !== '')
+        // Build API payload
+        const payload: any = {
+            template_name: data.templateName,
+            category: data.category.toLowerCase(),
+            language: getLanguageCode(data.language),
+            components: {
+                body: {
+                    text: data.content
+                }
+            }
         };
 
-        setTimeout(() => {
-            onSave(formData);
-            setIsSaving(false);
-            toast.success(templateId ? 'Template updated successfully!' : 'Template created successfully!');
-        }, 1000);
+        // Add header if provided
+        if (data.headerType !== 'NONE' && data.headerValue) {
+            const headerTypeMap: Record<string, string> = {
+                'TEXT': 'text',
+                'MEDIA': 'media',
+                'DOCUMENT': 'document'
+            };
+
+            payload.components.header = {
+                type: headerTypeMap[data.headerType] || 'text',
+                [data.headerType === 'TEXT' ? 'text' : 'url']: data.headerValue
+            };
+        }
+
+        // Add footer if provided
+        if (data.footer && data.footer.trim()) {
+            payload.components.footer = {
+                text: data.footer
+            };
+        }
+
+        // Add variables if any
+        if (Object.keys(data.variables).length > 0) {
+            payload.variables = transformVariables(data.variables);
+        }
+
+        // Call onSave with transformed payload
+        onSave(payload);
+        toast.success(templateId ? 'Template updated successfully!' : 'Template created successfully!');
     };
 
     return (
@@ -172,11 +266,11 @@ IMPORTANT:
                         </div>
                     </div>
                     <button
-                        onClick={handleSubmit}
-                        disabled={isSaving}
+                        onClick={handleSubmit(onSubmit)}
+                        disabled={isSubmitting}
                         className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isSaving ? (
+                        {isSubmitting ? (
                             <>
                                 <Loader2 size={16} className="animate-spin" />
                                 <span>Saving...</span>
@@ -184,7 +278,7 @@ IMPORTANT:
                         ) : (
                             <>
                                 <Save size={16} />
-                                <span>Submit</span>
+                                <span>Save</span>
                             </>
                         )}
                     </button>
@@ -209,7 +303,7 @@ IMPORTANT:
                                         label="Template Category"
                                         required
                                         value={category}
-                                        onChange={(value) => setCategory(value as TemplateCategory)}
+                                        onChange={(value) => setValue('category', value as TemplateCategory)}
                                         options={categories.map(cat => ({ value: cat, label: cat }))}
                                     />
                                     <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
@@ -224,7 +318,7 @@ IMPORTANT:
                                         label="Template Language"
                                         required
                                         value={language}
-                                        onChange={setLanguage}
+                                        onChange={(value) => setValue('language', value)}
                                         options={languages.map(lang => ({ value: lang, label: lang }))}
                                     />
                                     <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
@@ -249,8 +343,9 @@ IMPORTANT:
                                 required
                                 type="text"
                                 value={templateName}
-                                onChange={(e) => setTemplateName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                                onChange={(e) => setValue('templateName', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
                                 placeholder="e.g. app_verification_code"
+                                error={errors.templateName?.message}
                             />
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Name can only be in lowercase alphanumeric characters and underscores. Special characters and white-space are not allowed
@@ -264,12 +359,98 @@ IMPORTANT:
                                 label="Template Type"
                                 required
                                 value={templateType}
-                                onChange={(value) => setTemplateType(value as TemplateType)}
+                                onChange={(value) => setValue('templateType', value as TemplateType)}
                                 options={templateTypes.map(type => ({ value: type, label: type }))}
                             />
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Your template type should fall under one of these categories
                             </p>
+                        </div>
+
+                        {/* Template Header Section */}
+                        <div className="space-y-4">
+                            <h2 className={cn("text-xs font-bold tracking-wide", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                Template Header (Optional)
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Header Type */}
+                                <div>
+                                    <Select
+                                        isDarkMode={isDarkMode}
+                                        label="Header Type"
+                                        value={headerType}
+                                        onChange={(value) => {
+                                            setValue('headerType', value as HeaderType);
+                                            if (value === 'NONE') setValue('headerValue', '');
+                                        }}
+                                        options={headerTypes.map(type => ({
+                                            value: type,
+                                            label: type === 'NONE' ? 'None' : type.charAt(0) + type.slice(1).toLowerCase()
+                                        }))}
+                                    />
+                                    <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                        Select the type of header for your template
+                                    </p>
+                                </div>
+
+                                {/* Header Value - Conditional based on type */}
+                                {headerType === 'TEXT' && (
+                                    <div>
+                                        <Input
+                                            isDarkMode={isDarkMode}
+                                            label="Header Text"
+                                            type="text"
+                                            value={headerValue}
+                                            onChange={(e) => setValue('headerValue', e.target.value.slice(0, 60))}
+                                            placeholder="Enter header text"
+                                            maxLength={60}
+                                        />
+                                        <div className="flex justify-between mt-1">
+                                            <p className={cn("text-[10px] ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                Header text, up to 60 characters
+                                            </p>
+                                            <span className={cn("text-xs mr-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                {headerValue.length}/60
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {headerType === 'MEDIA' && (
+                                    <div>
+                                        <FileUpload
+                                            isDarkMode={isDarkMode}
+                                            label="Media File"
+                                            accept="image/*,video/*"
+                                            value={headerValue}
+                                            onChange={(file, preview) => setValue('headerValue', preview)}
+                                            placeholder="Upload image or video"
+                                            uploadType="image"
+                                        />
+                                        <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                            Upload an image or video for the header
+                                        </p>
+                                    </div>
+                                )}
+
+                                {headerType === 'DOCUMENT' && (
+                                    <div>
+                                        <FileUpload
+                                            isDarkMode={isDarkMode}
+                                            label="Document File"
+                                            accept=".pdf,.doc,.docx,.txt"
+                                            value={headerValue}
+                                            onChange={(file, preview) => setValue('headerValue', preview)}
+                                            placeholder="Upload document (PDF, DOC, etc.)"
+                                            uploadType="document"
+                                        />
+                                        <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                            Upload a document file for the header
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Template Content */}
@@ -279,11 +460,12 @@ IMPORTANT:
                                 label="Template Format"
                                 required
                                 value={content}
-                                onChange={(e) => setContent(e.target.value)}
+                                onChange={(e) => setValue('content', e.target.value)}
                                 placeholder="Enter your message in here..."
                                 rows={6}
                                 maxLength={1024}
                                 showCharCount
+                                error={errors.content?.message}
                             />
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Use text formatting: *bold*, _italic_, ~strikethrough~<br />
@@ -297,7 +479,7 @@ IMPORTANT:
                             isDarkMode={isDarkMode}
                             content={content}
                             variables={variables}
-                            onVariablesChange={setVariables}
+                            onVariablesChange={(vars) => setValue('variables', vars)}
                         />
 
                         {/* Footer */}
@@ -307,7 +489,7 @@ IMPORTANT:
                                 label="Template Footer (Optional)"
                                 type="text"
                                 value={footer}
-                                onChange={(e) => setFooter(e.target.value.slice(0, 60))}
+                                onChange={(e) => setValue('footer', e.target.value.slice(0, 60))}
                                 placeholder="Enter footer text here"
                                 maxLength={60}
                             />
@@ -325,11 +507,11 @@ IMPORTANT:
                         <InteractiveActionsSection
                             isDarkMode={isDarkMode}
                             actionType={interactiveActions}
-                            onActionTypeChange={setInteractiveActions}
+                            onActionTypeChange={(type) => setValue('interactiveActions', type)}
                             ctaButtons={ctaButtons}
-                            onCTAButtonsChange={setCTAButtons}
+                            onCTAButtonsChange={(buttons) => setValue('ctaButtons', buttons)}
                             quickReplies={quickReplies}
-                            onQuickRepliesChange={setQuickReplies}
+                            onQuickRepliesChange={(replies) => setValue('quickReplies', replies)}
                         />
                     </div>
 
@@ -338,6 +520,8 @@ IMPORTANT:
                         <WhatsAppPreviewPanel
                             isDarkMode={isDarkMode}
                             templateType={templateType}
+                            headerType={headerType}
+                            headerValue={headerValue}
                             content={content}
                             footer={footer}
                             variables={variables}
