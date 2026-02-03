@@ -17,7 +17,7 @@ export class templateApiData{
         return await _axios("post", `/whatsapp-template/${template_id}/resubmit`)
     }
     syncTemplateById = async(template_id: any)=>{
-        return await _axios("post", `/whatsapp-template/${template_id}/sync`)
+        return await _axios("get", `/whatsapp-template/${template_id}/sync`)
     }
     syncAllTemplate = async()=>{
         return await _axios("post", `/whatsapp-templates/sync`)

@@ -58,7 +58,9 @@ export function replaceVariables(
     result = result.replace(/\\n/g, '\n');
 
     Object.entries(values ?? {}).forEach(([key, value]) => {
-        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        console.log("test", key, value)
+        const escapedKey = value?.variable_key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        console.log("escapedKey", escapedKey)
         const regex = new RegExp(`\\{\\{${escapedKey}\\}\\}`, 'g');
 
         let replacement = `{{${key}}}`;

@@ -57,7 +57,7 @@ export const TemplatePreviewModal = ({
                         headerType={template?.components?.find((component: any) => component.component_type == "header")?.header_format || 'NONE'}
                         headerValue={template?.components?.find((component: any) => component.component_type == "header")?.text_content || ''}
                         content={template?.components?.find((component: any) => component.component_type == "body") || ''}
-                        footer={template?.footer || ''}
+                        footer={template?.components?.find((component: any) => component.component_type == "header")?.header_format || 'NONE'}
                         variables={template?.variables}
                         ctaButtons={template?.ctaButtons || []}
                         quickReplies={template?.quickReplies || []}

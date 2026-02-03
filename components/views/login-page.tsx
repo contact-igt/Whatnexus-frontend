@@ -11,6 +11,7 @@ import { useLoginMutation } from "@/hooks/useLoginQuery";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import Link from "next/link";
+import { useTenantUserLoginMutation } from "@/hooks/useTenantQuery";
 
 const loginSchema = z.object({
     email: z
@@ -37,7 +38,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
     const router = useRouter();
     const { token } = useAuth();
-    const { mutate: loginMutate, isPending: isLoading } = useLoginMutation();
+    console.log("token", token)
+    // const { mutate: loginMutate, isPending: isLoading } = useLoginMutation();
+    const { mutate: tenantLoginMutate, isPending: isLoading } = useTenantUserLoginMutation();
     const [showPassword, setShowPassword] = useState(false);
     const { theme, setTheme, isDarkMode } = useTheme();
 
@@ -61,7 +64,7 @@ export default function LoginPage() {
 
     const rememberMe = watch("rememberMe")
     const onSubmit = async (data: LoginFormData) => {
-        loginMutate(data, {
+        tenantLoginMutate(data, {
             onSuccess: () => {
                 router.push("/dashboard")
             }

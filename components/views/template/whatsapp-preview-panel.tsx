@@ -28,15 +28,18 @@ export const WhatsAppPreviewPanel = ({
     ctaButtons = [],
     quickReplies = []
 }: WhatsAppPreviewPanelProps) => {
-
+    console.log("variables", variables)
     // Replace variables and format text
     let processedContent = content;
     let formattedContent = content;
     if (content && Object.keys(variables).length > 0) {
         processedContent = replaceVariables(content, variables);
+        console.log("processedContent", processedContent);
         formattedContent = formatWhatsAppText(processedContent);
     }
-
+    console.log("content", content);
+    console.log("formattedContent", formattedContent);
+    console.log("footer", footer)
     const renderHeaderPlaceholder = () => {
         if (!headerType || headerType === 'NONE') return null;
 
@@ -285,7 +288,7 @@ export const WhatsAppPreviewPanel = ({
                             </div>
 
                             {/* CTA Buttons */}
-                            {ctaButtons.length > 0 && (
+                            {/* {ctaButtons.length > 0 && (
                                 <div className="mt-2 space-y-1">
                                     {ctaButtons.map((button) => (
                                         <button
@@ -304,10 +307,10 @@ export const WhatsAppPreviewPanel = ({
                                         </button>
                                     ))}
                                 </div>
-                            )}
+                            )} */}
 
                             {/* Quick Replies */}
-                            {quickReplies.length > 0 && (
+                            {/* {quickReplies.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {quickReplies.map((reply, index) => (
                                         <button
@@ -323,7 +326,7 @@ export const WhatsAppPreviewPanel = ({
                                         </button>
                                     ))}
                                 </div>
-                            )}
+                            )} */}
                         </div>
                     </div>
                 </div>

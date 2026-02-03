@@ -30,11 +30,13 @@ interface TableHeadProps {
     isDarkMode: boolean;
     children: ReactNode;
     align?: 'left' | 'center' | 'right';
+    width?: string;
 }
 
 interface TableCellProps {
     children: ReactNode;
     align?: 'left' | 'center' | 'right';
+    width?: string;
 }
 
 export const Table = ({ isDarkMode, children, className }: TableProps) => {
@@ -86,28 +88,34 @@ export const TableRow = ({ isDarkMode, children, isLast, onClick }: TableRowProp
     );
 };
 
-export const TableHead = ({ isDarkMode, children, align = 'left' }: TableHeadProps) => {
+export const TableHead = ({ isDarkMode, children, align = 'left', width }: TableHeadProps) => {
     return (
-        <th className={cn(
-            "px-6 py-4 text-xs font-semibold",
-            align === 'left' && "text-left",
-            align === 'center' && "text-center",
-            align === 'right' && "text-right",
-            isDarkMode ? "text-white/70" : "text-slate-700"
-        )}>
+        <th
+            className={cn(
+                "px-6 py-4 text-xs font-semibold",
+                align === 'left' && "text-left",
+                align === 'center' && "text-center",
+                align === 'right' && "text-right",
+                isDarkMode ? "text-white/70" : "text-slate-700"
+            )}
+            style={width ? { width } : undefined}
+        >
             {children}
         </th>
     );
 };
 
-export const TableCell = ({ children, align = 'left' }: TableCellProps) => {
+export const TableCell = ({ children, align = 'left', width }: TableCellProps) => {
     return (
-        <td className={cn(
-            "px-6 py-4",
-            align === 'left' && "text-left",
-            align === 'center' && "text-center",
-            align === 'right' && "text-right"
-        )}>
+        <td
+            className={cn(
+                "px-6 py-4",
+                align === 'left' && "text-left",
+                align === 'center' && "text-center",
+                align === 'right' && "text-right"
+            )}
+            style={width ? { width } : undefined}
+        >
             {children}
         </td>
     );
