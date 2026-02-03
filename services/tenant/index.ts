@@ -36,4 +36,8 @@ export class TenantApiData {
     testWhatsAppConnection = async (tenantId: string, data: any) => {
         return await _axios("post", `/tenant/${tenantId}/whatsapp-test`, data);
     };
+
+    tenantUserLogin = async (data: any)=>{
+        return await _axios("post", "/tenant-user/login", data)
+    }
 }

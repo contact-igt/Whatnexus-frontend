@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 interface UserProfileDropdownProps {
     isDarkMode: boolean;
     user: {
-        name?: string;
+        username?: string;
         email?: string;
     } | null;
     onClose: () => void;
@@ -18,7 +18,7 @@ interface UserProfileDropdownProps {
 export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: UserProfileDropdownProps) => {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
-
+    console.log("user2", user)
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -30,7 +30,7 @@ export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: Use
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [onClose]);
 
-    const userInitials = user?.name?.split("")[0]?.toUpperCase();
+    const userInitials = user?.username?.split("")[0]?.toUpperCase();
 
     const menuItems = [
         {
@@ -88,7 +88,7 @@ export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: Use
                             "font-bold text-xs truncate",
                             isDarkMode ? 'text-white' : 'text-slate-900'
                         )}>
-                            {user?.name || "User"}
+                            {user?.username || "User"}
                         </p>
                         {user?.email && (
                             <div className="flex items-center gap-1 mt-0.5">

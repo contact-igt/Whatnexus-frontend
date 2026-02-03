@@ -71,6 +71,28 @@ export const Sidebar = () => {
                 <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin']}><FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} /></RoleBasedWrapper>
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" route="/appointments" onClick={() => handleActiveTab('/appointments')} />
+                <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
+                    <FloatingDockDropdown
+                        isExpanded={isExpanded}
+                        isDarkMode={isDarkMode}
+                        icon={Users}
+                        label="Contacts"
+                        items={[
+                            {
+                                label: 'Contacts',
+                                route: '/contacts/contacts',
+                                icon: Users,
+                                onClick: () => handleActiveTab('/contacts/contacts'),
+                            },
+                            {
+                                label: 'Groups',
+                                route: '/contacts/groups',
+                                icon: MessageSquare,
+                                onClick: () => handleActiveTab('/contacts/groups'),
+                            }
+                        ]}
+                    />
+                </RoleBasedWrapper>
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Zap} label="Templates" route="/templates" onClick={() => handleActiveTab('/templates')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Stethoscope} label="Doctors" route="/doctors" onClick={() => handleActiveTab('/doctors')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Megaphone} label="Campaign" route="/campaign" onClick={() => handleActiveTab('/campaign')} />
@@ -109,13 +131,13 @@ export const Sidebar = () => {
                     isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-900 text-white border-slate-700'
                 )}>
                     <div className={cn("shrink-0 flex items-center justify-center", isExpanded ? "w-8 h-8 rounded-lg bg-white/10" : "")}>
-                        {user?.name ? user?.name?.split("")[0].toUpperCase() : <User size={20} />}
+                        {user?.username ? user?.username?.split("")[0].toUpperCase() : <User size={20} />}
                     </div>
                     <span className={cn(
                         "whitespace-nowrap transition-all duration-300 font-semibold text-sm",
                         isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 absolute"
                     )}>
-                        {user?.name ? user?.name : user?.role}
+                        {user?.username ? user?.username : user?.role}
                     </span>
                 </div>
             </div>

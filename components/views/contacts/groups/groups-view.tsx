@@ -1,0 +1,150 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useTheme } from "@/hooks/useTheme";
+import { ContactGroup, CreateGroupDto, UpdateGroupDto } from "@/types/contactGroup";
+import {
+    useGetAllGroupsQuery,
+    useCreateGroupMutation,
+    useUpdateGroupMutation,
+    useDeleteGroupMutation
+} from "@/hooks/useContactGroupQuery";
+import { GroupsHeader } from "./groupsHeader";
+import { GroupsList } from "./groupsList";
+import { CreateGroupModal } from "./createGroupModal";
+import { EditGroupModal } from "./editGroupModal";
+import { ConfirmationModal } from "@/components/ui/confirmationModal";
+
+export const GroupsView = () => {
+    const { isDarkMode } = useTheme();
+
+    // Modal States
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+    // Selected Group State
+    const [selectedGroup, setSelectedGroup] = useState<ContactGroup | null>(null);
+
+    // Search State
+    const [searchQuery, setSearchQuery] = useState("");
+
+    // React Query Hooks
+    const { data: groupsData, isLoading } = useGetAllGroupsQuery();
+    const { mutate: createGroup, isPending: isCreating } = useCreateGroupMutation();
+    const { mutate: updateGroup, isPending: isUpdating } = useUpdateGroupMutation();
+    const { mutate: deleteGroup, isPending: isDeleting } = useDeleteGroupMutation();
+
+    // Get groups from API response
+    const groups: ContactGroup[] = groupsData?.data || [];
+
+    // Filtered groups based on search
+    const filteredGroups = useMemo(() => {
+        if (!searchQuery.trim()) return groups;
+
+        const query = searchQuery.toLowerCase();
+        return groups.filter(group =>
+            group.name.toLowerCase().includes(query) ||
+            group.description?.toLowerCase().includes(query)
+        );
+    }, [groups, searchQuery]);
+
+    // Handlers
+    const handleCreateGroup = (data: CreateGroupDto) => {
+        createGroup(data, {
+            onSuccess: () => {
+                setIsCreateModalOpen(false);
+            }
+        });
+    };
+
+    const handleEditGroup = (groupId: string, data: UpdateGroupDto) => {
+        updateGroup({ groupId, data }, {
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+                setSelectedGroup(null);
+            }
+        });
+    };
+
+    const handleDeleteGroup = () => {
+        if (selectedGroup) {
+            deleteGroup(selectedGroup.id, {
+                onSuccess: () => {
+                    setIsDeleteModalOpen(false);
+                    setSelectedGroup(null);
+                }
+            });
+        }
+    };
+
+    const openEditModal = (group: ContactGroup) => {
+        setSelectedGroup(group);
+        setIsEditModalOpen(true);
+    };
+
+    const openDeleteModal = (group: ContactGroup) => {
+        setSelectedGroup(group);
+        setIsDeleteModalOpen(true);
+    };
+
+    return (
+        <div className="p-6">
+            {/* Header */}
+            <GroupsHeader
+                isDarkMode={isDarkMode}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onCreateGroup={() => setIsCreateModalOpen(true)}
+            />
+
+            {/* Groups List */}
+            <GroupsList
+                isDarkMode={isDarkMode}
+                groups={filteredGroups?.groups}
+                isLoading={isLoading}
+                onEdit={openEditModal}
+                onDelete={openDeleteModal}
+            />
+
+            {/* Create Group Modal */}
+            <CreateGroupModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSubmit={handleCreateGroup}
+                isDarkMode={isDarkMode}
+                isLoading={isCreating}
+            />
+
+            {/* Edit Group Modal */}
+            <EditGroupModal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedGroup(null);
+                }}
+                onSubmit={handleEditGroup}
+                group={selectedGroup}
+                isDarkMode={isDarkMode}
+                isLoading={isUpdating}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setSelectedGroup(null);
+                }}
+                onConfirm={handleDeleteGroup}
+                title="Delete Group"
+                message={`Are you sure you want to delete "${selectedGroup?.name}"? This will not delete the contacts, only the group.`}
+                isDarkMode={isDarkMode}
+                confirmText="Delete Group"
+                cancelText="Cancel"
+                isLoading={isDeleting}
+                variant="danger"
+            />
+        </div>
+    );
+};
