@@ -248,7 +248,7 @@ export const CampaignView = () => {
                                                 <span className={cn("text-xs font-medium capitalize", isDarkMode ? 'text-white/60' : 'text-slate-600')}>{campaign.campaign_type}</span>
                                             </td>
                                             <td className="px-6 py-5">
-                                                <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{formatCampaignDate(campaign.created_at)}</span>
+                                                <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{formatCampaignDate(campaign.createdAt)}</span>
                                             </td>
                                             <td className="px-6 py-5 text-center">
                                                 <span className={cn(
