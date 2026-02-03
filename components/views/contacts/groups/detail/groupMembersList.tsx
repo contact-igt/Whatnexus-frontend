@@ -116,10 +116,10 @@ export const GroupMembersList = ({
                 <Table isDarkMode={isDarkMode}>
                     <TableHeader isDarkMode={isDarkMode}>
                         <TableRow isDarkMode={isDarkMode}>
-                            <TableHead isDarkMode={isDarkMode}>S.No</TableHead>
-                            <TableHead isDarkMode={isDarkMode}>Contact Name</TableHead>
-                            <TableHead isDarkMode={isDarkMode}>Phone</TableHead>
-                            <TableHead isDarkMode={isDarkMode}>Email</TableHead>
+                            <TableHead isDarkMode={isDarkMode} width="300px"><span className="ml-3">S.No</span></TableHead>
+                            <TableHead isDarkMode={isDarkMode} width="400px">Contact Name</TableHead>
+                            <TableHead isDarkMode={isDarkMode} width="400px">Phone</TableHead>
+                            {/* <TableHead isDarkMode={isDarkMode}>Email</TableHead> */}
                             <TableHead isDarkMode={isDarkMode} align="center">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -130,15 +130,15 @@ export const GroupMembersList = ({
                                 isDarkMode={isDarkMode}
                                 isLast={index === filteredMembers.length - 1}
                             >
-                                <TableCell>
+                                <TableCell width="300px">
                                     <span className={cn(
-                                        "text-sm font-medium",
+                                        "text-sm font-medium px-5",
                                         isDarkMode ? 'text-white/70' : 'text-slate-600'
                                     )}>
                                         {index + 1}
                                     </span>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell width="400px">
                                     <div className="flex items-center space-x-3">
                                         {member.profile_pic ? (
                                             <img
@@ -162,7 +162,7 @@ export const GroupMembersList = ({
                                         </span>
                                     </div>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell width="400px">
                                     <div className="flex items-center space-x-2">
                                         <Phone className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
                                         <span className={cn(
@@ -173,7 +173,7 @@ export const GroupMembersList = ({
                                         </span>
                                     </div>
                                 </TableCell>
-                                <TableCell>
+                                {/* <TableCell>
                                     {member.email ? (
                                         <div className="flex items-center space-x-2">
                                             <Mail className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
@@ -192,8 +192,8 @@ export const GroupMembersList = ({
                                             —
                                         </span>
                                     )}
-                                </TableCell>
-                                <TableCell align="center">
+                                </TableCell> */}
+                                <TableCell align="center" width="200px">
                                     <button
                                         onClick={() => onRemoveMember(member)}
                                         className={cn(

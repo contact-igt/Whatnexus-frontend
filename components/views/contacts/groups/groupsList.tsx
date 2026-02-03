@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { ContactGroup } from "@/types/contactGroup";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ActionMenu } from "@/components/ui/action-menu";
-import { Users } from "lucide-react";
+import { Edit2Icon, EditIcon, TrashIcon, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface GroupsListProps {
@@ -82,10 +82,10 @@ export const GroupsList = ({
             <TableBody>
                 {groups?.map((group, index) => (
                     <TableRow
-                        key={group.id}
+                        key={group.group_id}
                         isDarkMode={isDarkMode}
                         isLast={index === groups.length - 1}
-                        onClick={() => router.push(`/contacts/groups/${group.id}`)}
+                        onClick={() => router.push(`/contacts/groups/${group.group_id}`)}
                     >
                         <TableCell width="80px">
                             <span className={cn(
@@ -147,10 +147,20 @@ export const GroupsList = ({
                                 isView={true}
                                 isEdit={true}
                                 isDelete={true}
-                                onView={() => router.push(`/contacts/groups/${group.id}`)}
+                                onView={() => router.push(`/contacts/groups/${group.group_id}`)}
                                 onEdit={() => onEdit(group)}
                                 onDelete={() => onDelete(group)}
                             />
+                            {/* <div className="flex items-center justify-center space-x-4">
+                                <EditIcon className={cn(
+                                    "text-sm font-medium",
+                                    isDarkMode ? 'text-white/70' : 'text-slate-600'
+                                )} size={18} />
+                                <TrashIcon className={cn(
+                                    "text-sm font-medium",
+                                    isDarkMode ? 'text-white/70' : 'text-slate-600'
+                                )} size={18} />
+                            </div> */}
                         </TableCell>
                     </TableRow>
                 ))}

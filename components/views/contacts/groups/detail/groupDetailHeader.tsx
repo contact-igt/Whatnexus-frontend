@@ -57,7 +57,7 @@ export const GroupDetailHeader = ({
                             "text-2xl font-bold mb-1",
                             isDarkMode ? 'text-white' : 'text-slate-900'
                         )}>
-                            {group.name}
+                            {group.group_name}
                         </h1>
                         {group.description && (
                             <p className={cn(

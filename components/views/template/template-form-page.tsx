@@ -43,12 +43,12 @@ const templateSchema = z.object({
         .min(1, "Template name is required")
         .regex(/^[a-z0-9_]+$/, "Name can only contain lowercase alphanumeric characters and underscores"),
     templateType: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT']),
-    headerType: z.enum(['NONE', 'TEXT', 'MEDIA', 'DOCUMENT']),
+    headerType: z.enum(['NONE', 'TEXT', 'text', 'MEDIA', 'media', 'DOCUMENT']),
     headerValue: z.string().optional(),
     content: z.string()
         .min(1, "Template content is required")
         .max(1024, "Content exceeds 1024 characters")
-        .refine(val => !/\{\{\d+\}\}$/.test(val.trim()), "Body cannot end with a variable. Please add some text after the variable."),
+        .refine(val => !val.trim().endsWith('}}'), "Body cannot end with a variable. Please add point or text after the variable."),
     footer: z.string().max(60, "Footer exceeds 60 characters").optional(),
     variables: z.record(z.string(), z.string().min(1, "Sample value is required")),
     // interactiveActions: z.enum(['None', 'CTA', 'QuickReplies', 'All']),
@@ -287,20 +287,24 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                     text: data.content
                 }
             },
-            variables: Object.entries(data?.variables)?.map(([key, value])=>({key:key, sample:value}))
+            variables: Object.entries(data?.variables)?.map(([key, value]) => ({ key: key, sample: value }))
         };
 
         // Add header if provided
         if (data.headerType !== 'NONE' && data.headerValue) {
             const headerTypeMap: Record<string, string> = {
                 'TEXT': 'text',
+                'text': 'text',
                 'MEDIA': 'media',
+                'media': 'media',
                 'DOCUMENT': 'document'
             };
 
+            const normalizedHeaderType = data.headerType.toUpperCase();
+
             payload.components.header = {
                 type: headerTypeMap[data.headerType] || 'text',
-                [data.headerType === 'TEXT' ? 'text' : 'url']: data.headerValue
+                [normalizedHeaderType === 'TEXT' ? 'text' : 'url']: data.headerValue
             };
         }
 

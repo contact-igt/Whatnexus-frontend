@@ -1,21 +1,22 @@
 export interface Contact {
-    id: string;
-    name: string;
+    contact_id: string;
+    tenant_id?: string;
     phone: string; // ⚠️ Phone is immutable after creation
+    name: string;
     email?: string;
     profile_pic?: string;
-    tags?: string[];
+    wa_id?: string;
     is_blocked: boolean;
-    createdAt: string;
-    updatedAt: string;
+    is_deleted?: boolean;
+    last_message_at?: string;
+    created_at: string;
+    updated_at?: string;
 }
 
 export interface CreateContactDto {
-    phone: string; // Required field
-    name?: string;
-    email?: string;
+    phone: string; // Required field - format: 91XXXXXXXXXX
+    name: string; // Required field
     profile_pic?: string;
-    tags?: string[];
 }
 
 export interface UpdateContactDto {
@@ -24,7 +25,6 @@ export interface UpdateContactDto {
     email?: string;
     profile_pic?: string;
     is_blocked?: boolean;
-    tags?: string[];
 }
 
 export interface ImportContactsDto {
@@ -32,13 +32,15 @@ export interface ImportContactsDto {
 }
 
 export interface ContactsResponse {
+    message: string;
     data: Contact[];
-    total: number;
-    page?: number;
-    limit?: number;
 }
 
 export interface ContactResponse {
+    message: string;
     data: Contact;
-    message?: string;
+}
+
+export interface DeleteContactResponse {
+    message: string;
 }

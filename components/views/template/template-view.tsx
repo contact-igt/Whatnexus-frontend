@@ -103,7 +103,7 @@ export const TemplateView = () => {
     const { data: templateData } = useGetAllTemplateQuery();
     const { data: templateDataById, isPending: getTemplateByIdLoading } = useGetTemplateByIdQuery(editTemplateById || previewTemplate?.template_id);
     const { mutate: createTemplateMutate, isPending: createTemplateLoading } = useCreateTemplateMutation();
-    const {mutate: updateTemplateMutate, isPending: updateTemplateLoading} = useUpdateTemplateMutation();
+    const { mutate: updateTemplateMutate, isPending: updateTemplateLoading } = useUpdateTemplateMutation();
     const { mutate: submitTemplateMutate, isPending: submitTemplateLoading } = useSubmitTemplateMutation();
     const { mutate: syncTemplateByIdMutate, isPending: syncTemplateLoading } = useSyncTemplateByIdMutation();
     const { mutate: syncAllTemplatesMutate, isPending: syncAllTemplatesLoading } = useSyncAllTemplateMutation();
@@ -185,12 +185,12 @@ export const TemplateView = () => {
 
     const handleSave = (formData: TemplateFormData) => {
         if (viewMode === 'edit' && editTemplateById) {
-            updateTemplateMutate({templateId: editTemplateById, data: formData},{
+            updateTemplateMutate({ templateId: editTemplateById, data: formData }, {
                 onSuccess: () => {
-                   setViewMode('list');
-                   setEditTemplateById(null);
+                    setViewMode('list');
+                    setEditTemplateById(null);
                 },
-                
+
             });
             toast.success('Template updated successfully!');
         } else {
@@ -245,6 +245,7 @@ export const TemplateView = () => {
                 templates={templateData?.data || []}
                 onCreateNew={handleCreateNew}
                 onEdit={handleEdit}
+                isLoading={submitTemplateLoading || reSubmitTemplateLoading || syncTemplateLoading || softDeleteTemplateLoading || permanentDeleteTemplateLoading || syncAllTemplatesLoading}
                 onSyncTemplate={handleSyncTemplate}
                 onSubmitTemplate={handleSubmitTemplate}
                 onResubmitTemplate={handleResubmitTemplate}

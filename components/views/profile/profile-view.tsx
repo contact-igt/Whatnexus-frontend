@@ -13,13 +13,13 @@ export const ProfileView = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [formData, setFormData] = useState({
         title: user?.title || '',
-        name: user?.name || '',
+        username: user?.username || '',
         email: user?.email || '',
         mobile: user?.mobile || '',
         role: user?.role || ''
     });
 
-    const userInitials = user?.name?.split("")[0].toUpperCase();
+    const userInitials = user?.username?.split("")[0].toUpperCase();
 
     const handleSave = () => {
         setIsEditMode(false);
@@ -28,7 +28,7 @@ export const ProfileView = () => {
     const handleCancel = () => {
         setFormData({
             title: user?.title || '',
-            name: user?.name || '',
+            username: user?.username || '',
             email: user?.email || '',
             mobile: user?.mobile || '',
             role: user?.role || ''
@@ -108,7 +108,7 @@ export const ProfileView = () => {
                                 "text-2xl font-black mb-1",
                                 isDarkMode ? 'text-white' : 'text-slate-900'
                             )}>
-                                {user?.name || "User"}
+                                {user?.username || "User"}
                             </h1>
                             <p className={cn(
                                 "text-sm flex items-center gap-2",
@@ -147,8 +147,8 @@ export const ProfileView = () => {
                                     )} />
                                     <input
                                         type="text"
-                                        value={formData.name}
-                                        onChange={(e) => handleInputChange('name', e.target.value)}
+                                        value={formData.username}
+                                        onChange={(e) => handleInputChange('username', e.target.value)}
                                         className={cn(
                                             "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
                                             isDarkMode
@@ -166,7 +166,7 @@ export const ProfileView = () => {
                                         : 'bg-slate-50 border-slate-200 text-slate-600'
                                 )}>
                                     <User size={16} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} />
-                                    {formData.name || "Not set"}
+                                    {formData.username || "Not set"}
                                 </div>
                             )}
                         </div>

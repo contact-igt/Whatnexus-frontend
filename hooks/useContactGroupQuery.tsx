@@ -23,10 +23,10 @@ export const useCreateGroupMutation = () => {
 };
 
 // Get All Groups
-export const useGetAllGroupsQuery = () => {
+export const useGetAllGroupsQuery = (params?: any) => {
     return useQuery({
-        queryKey: ['contact-groups'],
-        queryFn: () => contactGroupApis.getAllGroups(),
+        queryKey: ['contact-groups', params],
+        queryFn: () => contactGroupApis.getAllGroups(params),
     });
 };
 

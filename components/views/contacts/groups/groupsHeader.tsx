@@ -21,7 +21,19 @@ export const GroupsHeader = ({
 
     return (
         <div className="mb-6">
-            {/* Title and Back Button */}
+            {/* Back Button */}
+            <button
+                onClick={() => router.push('/contacts/contacts')}
+                className={cn(
+                    "flex items-center space-x-2 mb-4 text-sm font-medium transition-all",
+                    isDarkMode ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                )}
+            >
+                <ArrowLeft size={16} />
+                <span>Back to Contacts</span>
+            </button>
+
+            {/* Title and Actions */}
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <h1 className={cn(
@@ -37,18 +49,18 @@ export const GroupsHeader = ({
                         Organize your contacts into groups for better management
                     </p>
                 </div>
-                <button
-                    onClick={() => router.push('/contacts/contacts')}
-                    className={cn(
-                        "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border",
-                        isDarkMode
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    )}
-                >
-                    <ArrowLeft size={16} />
-                    <span>Back to Contacts</span>
-                </button>
+                <div>
+                    {/* Create Group Button */}
+                    <button
+                        onClick={onCreateGroup}
+                        className={cn(
+                            "flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+                        )}
+                    >
+                        <Plus size={18} />
+                        <span>Create Group</span>
+                    </button>
+                </div>
             </div>
 
             {/* Search and Actions */}
@@ -72,17 +84,6 @@ export const GroupsHeader = ({
                         )}
                     />
                 </div>
-
-                {/* Create Group Button */}
-                <button
-                    onClick={onCreateGroup}
-                    className={cn(
-                        "flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
-                    )}
-                >
-                    <Plus size={18} />
-                    <span>Create Group</span>
-                </button>
             </div>
         </div>
     );

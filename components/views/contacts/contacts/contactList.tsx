@@ -102,15 +102,15 @@ export const ContactList = ({
             <TableBody>
                 {contacts.map((contact, index) => (
                     <TableRow
-                        key={contact.id}
+                        key={contact?.contact_id}
                         isDarkMode={isDarkMode}
                         isLast={index === contacts.length - 1}
                     >
                         <TableCell align="center" width="300px">
                             <Checkbox
-                                checked={selectedContacts.includes(contact.id)}
-                                onCheckedChange={() => onSelectContact(contact.id)}
-                                aria-label={`Select ${contact.name}`}
+                                checked={selectedContacts.includes(contact?.contact_id)}
+                                onCheckedChange={() => onSelectContact(contact?.contact_id)}
+                                aria-label={`Select ${contact?.name}`}
                             />
                         </TableCell>
                         <TableCell width="400px">

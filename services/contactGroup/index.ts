@@ -6,8 +6,8 @@ export class contactGroupApiData {
         return await _axios("post", "/contact-group", data);
     };
 
-    getAllGroups = async () => {
-        return await _axios("get", "/contact-group/list");
+    getAllGroups = async (params?: any) => {
+        return await _axios("get", "/contact-group/list", null, undefined, params);
     };
 
     getGroupById = async (groupId: string) => {
