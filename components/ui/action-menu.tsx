@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save } from 'lucide-react';
+import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 interface ActionMenuProps {
@@ -22,9 +22,11 @@ interface ActionMenuProps {
     onSoftDelete?: () => void;
     isPermanentDelete?: boolean;
     onPermanentDelete?: () => void;
+    isExecute?: boolean;
+    onExecute?: () => void;
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute }: ActionMenuProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -206,7 +208,24 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                 )}
                             >
                                 <Trash2 size={14} />
-                                <span>Remove</span>
+                                <span className="flex-1 text-left">Remove</span>
+                            </button>
+                        )}
+                        {isExecute && onExecute && (
+                            <button
+                                onClick={() => {
+                                    onExecute();
+                                    setIsOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                    isDarkMode
+                                        ? 'text-emerald-400 hover:bg-emerald-500/10'
+                                        : 'text-emerald-500 hover:bg-emerald-50'
+                                )}
+                            >
+                                <Play size={14} />
+                                <span className="flex-1 text-left">Execute</span>
                             </button>
                         )}
                         {(!!isPermanentDelete && onPermanentDelete) && (
