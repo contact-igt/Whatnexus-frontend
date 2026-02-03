@@ -16,6 +16,7 @@ export const TemplatePreviewModal = ({
     isDarkMode,
     onClose
 }: TemplatePreviewModalProps) => {
+    console.log("template", template)
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -52,14 +53,14 @@ export const TemplatePreviewModal = ({
                 <div className="p-6">
                     <WhatsAppPreviewPanel
                         isDarkMode={isDarkMode}
-                        templateType={template.template_type}
-                        headerType={template.headerType || 'NONE'}
-                        headerValue={template.headerValue || ''}
-                        content={template.content}
-                        footer={template.footer || ''}
-                        variables={template.variables}
-                        ctaButtons={template.ctaButtons || []}
-                        quickReplies={template.quickReplies || []}
+                        templateType={template?.template_type}
+                        headerType={template?.components?.find((component: any) => component.component_type == "header")?.header_format || 'NONE'}
+                        headerValue={template?.components?.find((component: any) => component.component_type == "header")?.text_content || ''}
+                        content={template?.components?.find((component: any) => component.component_type == "body") || ''}
+                        footer={template?.footer || ''}
+                        variables={template?.variables}
+                        ctaButtons={template?.ctaButtons || []}
+                        quickReplies={template?.quickReplies || []}
                     />
                 </div>
             </div>

@@ -1,6 +1,8 @@
 "use client";
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -25,6 +27,7 @@ import { AIGeneratorSection } from './ai-generator-section';
 import { toast } from 'sonner';
 import { callOpenAI } from '@/lib/openai';
 import { FileUpload } from '@/components/ui/file-upload';
+import { useEffect } from 'react';
 
 interface TemplateFormPageProps {
     templateId?: string;
@@ -33,20 +36,33 @@ interface TemplateFormPageProps {
     onSave: (data: any) => void;
 }
 
-interface FormValues {
-    category: TemplateCategory;
-    language: string;
-    templateName: string;
-    templateType: TemplateType;
-    headerType: HeaderType;
-    headerValue: string;
-    content: string;
-    footer: string;
-    variables: Record<string, string>;
-    interactiveActions: InteractiveActionType;
-    ctaButtons: CTAButton[];
-    quickReplies: string[];
-}
+const templateSchema = z.object({
+    category: z.enum(['UTILITY', 'MARKETING', 'AUTHENTICATION']),
+    language: z.string().min(1, "Language is required"),
+    templateName: z.string()
+        .min(1, "Template name is required")
+        .regex(/^[a-z0-9_]+$/, "Name can only contain lowercase alphanumeric characters and underscores"),
+    templateType: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT']),
+    headerType: z.enum(['NONE', 'TEXT', 'MEDIA', 'DOCUMENT']),
+    headerValue: z.string().optional(),
+    content: z.string()
+        .min(1, "Template content is required")
+        .max(1024, "Content exceeds 1024 characters")
+        .refine(val => !/\{\{\d+\}\}$/.test(val.trim()), "Body cannot end with a variable. Please add some text after the variable."),
+    footer: z.string().max(60, "Footer exceeds 60 characters").optional(),
+    variables: z.record(z.string(), z.string().min(1, "Sample value is required")),
+    // interactiveActions: z.enum(['None', 'CTA', 'QuickReplies', 'All']),
+    // ctaButtons: z.array(
+    //     z.object({
+    //         type: z.enum(['URL', 'PHONE', 'QUICK_REPLY']),
+    //         label: z.string().min(1),
+    //         value: z.string().optional()
+    //     })
+    // ),
+    // quickReplies: z.array(z.string())
+});
+
+type FormValues = z.infer<typeof templateSchema>;
 
 export const TemplateFormPage = ({
     templateId,
@@ -56,28 +72,94 @@ export const TemplateFormPage = ({
 }: TemplateFormPageProps) => {
     const { isDarkMode } = useTheme();
 
+    // Get language name from code
+    const getLanguageName = (code: string): string => {
+        const codeMap: Record<string, string> = {
+            'en': 'English',
+            'hi': 'Hindi',
+            'es': 'Spanish',
+            'fr': 'French',
+            'de': 'German'
+        };
+        return codeMap[code] || code; // Return original if no match (e.g. already full name or unknown)
+    };
+
+    // Normalize variables from API (array) to Form (Record)
+    const normalizeVariables = (vars: any): Record<string, string> => {
+        if (!vars) return {};
+
+        // If it's already a record (not an array), return it
+        if (!Array.isArray(vars) && typeof vars === 'object') return vars;
+
+        // If it's an array, transform to Record
+        if (Array.isArray(vars)) {
+            const result: Record<string, string> = {};
+            vars.forEach((v: any, index: number) => {
+                // Try to find the key (variable name like "1", "2")
+                // APIs usually return { custom_variable_name: "1", sample_value: "John" }
+                // Or sometimes just ordered values.
+                // We'll trust the custom_variable_name if present, else use index+1 string
+                const key = v.custom_variable_name || String(index + 1);
+                // The value we want to edit is the sample value
+                const value = v.sample_value || v.value || '';
+                result[key] = value;
+            });
+            return result;
+        }
+
+        return {};
+    };
+
     const {
         register,
         handleSubmit,
         watch,
         setValue,
+        getValues,
+        reset,
+        control,
         formState: { errors, isSubmitting }
     } = useForm<FormValues>({
+        resolver: zodResolver(templateSchema),
         defaultValues: {
-            category: initialData?.category || 'UTILITY',
-            language: initialData?.language || 'English',
+            category: (initialData?.category?.toUpperCase() as TemplateCategory) || 'UTILITY',
+            language: getLanguageName(initialData?.language || '') || 'English',
             templateName: initialData?.name || '',
             templateType: initialData?.type || 'TEXT',
-            headerType: initialData?.headerType || 'NONE',
+            headerType: initialData?.headerType?.toUpperCase() as HeaderType || 'NONE',
             headerValue: initialData?.headerValue || '',
             content: initialData?.content || '',
             footer: initialData?.footer || '',
-            variables: initialData?.variables || {},
-            interactiveActions: initialData?.interactiveActions || 'None',
-            ctaButtons: initialData?.ctaButtons || [],
-            quickReplies: initialData?.quickReplies || []
+            variables: normalizeVariables(initialData?.variables),
+            // interactiveActions: initialData?.interactiveActions || 'None',
+            // ctaButtons: initialData?.ctaButtons || [],
+            // quickReplies: initialData?.quickReplies || []
         }
     });
+    console.log("initialData", initialData)
+    // Update form when initialData changes (e.g. when API data arrives)
+    useEffect(() => {
+        if (initialData) {
+            const currentValues = getValues();
+            // Only reset if we are switching templates or loading fresh data for the same template
+            // Checking if templateId matches is tricky here as it's not in FormValues.
+            // But initialData update usually means data refinement.
+            reset({
+                ...currentValues, // Keep current values (like UI state if any, though form state is separate)
+                // Actually we should overwrite with initialData, but maybe preserve dirty if user typed?
+                // For now, simpler: hard reset to fresh data to ensure we see what we edit.
+                category: (initialData.category?.toUpperCase() as TemplateCategory) || 'UTILITY',
+                language: getLanguageName(initialData.language || '') || 'English',
+                templateName: initialData.name || '',
+                templateType: initialData.type?.toUpperCase() as TemplateType || 'TEXT',
+                headerType: initialData.headerType?.toUpperCase() as HeaderType || 'NONE',
+                headerValue: initialData.headerValue || '',
+                content: initialData.content || '',
+                footer: initialData.footer || '',
+                variables: normalizeVariables(initialData.variables),
+            });
+        }
+    }, [initialData, reset]);
 
     // Watch form values for preview
     const category = watch('category');
@@ -89,10 +171,10 @@ export const TemplateFormPage = ({
     const content = watch('content');
     const footer = watch('footer');
     const variables = watch('variables');
-    const interactiveActions = watch('interactiveActions');
-    const ctaButtons = watch('ctaButtons');
-    const quickReplies = watch('quickReplies');
-
+    // const interactiveActions = watch('interactiveActions');
+    // const ctaButtons = watch('ctaButtons');
+    // const quickReplies = watch('quickReplies');
+    console.log("initialData", initialData)
     const categories: TemplateCategory[] = ['UTILITY', 'MARKETING', 'AUTHENTICATION'];
     const templateTypes: TemplateType[] = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'];
     const headerTypes: HeaderType[] = ['NONE', 'TEXT', 'MEDIA', 'DOCUMENT'];
@@ -145,13 +227,34 @@ IMPORTANT:
 - Avoid policy violations.
 `;
 
-    const handleAIGenerate = async (prompt: string, style: MessageStyle, goal: OptimizationGoal) => {
-        const finalPrompt = `Selected Template Category: ${category} User request: ${prompt}`
+    const handleAIGenerate = async (prompt: string, style: MessageStyle, goal: OptimizationGoal, aiCategory: string) => {
+        const finalPrompt = `Selected Template Category: ${aiCategory} 
+User request: ${prompt}
+Style: ${style}
+Optimization Goal: ${goal}
+${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'Focus on clear, functional, informational content.'}`;
+
         const generatedContent = await callOpenAI(finalPrompt, SYSTEM_TEMPLATE_PROMPT);
         setValue('content', generatedContent);
         toast.success('Template generated successfully!');
     };
+    console.log("content", content)
+    const handleAIGenerateTitle = async (prompt: string) => {
+        const titlePrompt = `Generate a suitable WhatsApp Template Name (internal name) based on this description: "${prompt}". 
+        Format rules: Lowercase alphanumeric and underscores only. No spaces. Max 30 chars. concise.
+        Example input: "Order confirmation message" -> Output: "order_confirmation"`;
 
+        const systemPrompt = "You are a naming assistant. Output ONLY the generated name string. No explanation.";
+
+        try {
+            const generatedTitle = await callOpenAI(titlePrompt, systemPrompt);
+            const cleanTitle = generatedTitle.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            setValue('templateName', cleanTitle);
+            toast.success('Template title generated successfully!');
+        } catch (error) {
+            toast.error('Failed to generate title');
+        }
+    };
     // Transform variables object to array format
     const transformVariables = (vars: Record<string, string>) => {
         return Object.entries(vars).map(([key, value]) => ({
@@ -173,37 +276,18 @@ IMPORTANT:
     };
 
     const onSubmit = async (data: FormValues) => {
-        // Validate template name
-        const nameValidation = validateTemplateName(data.templateName);
-        if (!nameValidation.valid) {
-            toast.error(nameValidation.error || 'Invalid template name');
-            return;
-        }
-
-        // Validate required content
-        if (!data.content.trim()) {
-            toast.error('Template content is required');
-            return;
-        }
-
-        // Validate that body doesn't end with a variable
-        const trimmedContent = data.content.trim();
-        const endsWithVariablePattern = /\{\{\d+\}\}$/;
-        if (endsWithVariablePattern.test(trimmedContent)) {
-            toast.error('Body cannot end with a variable. Please add some text after the variable.');
-            return;
-        }
-
         // Build API payload
         const payload: any = {
             template_name: data.templateName,
+            template_type: data.templateType.toLowerCase(),
             category: data.category.toLowerCase(),
             language: getLanguageCode(data.language),
             components: {
                 body: {
                     text: data.content
                 }
-            }
+            },
+            variables: Object.entries(data?.variables)?.map(([key, value])=>({key:key, sample:value}))
         };
 
         // Add header if provided
@@ -228,9 +312,9 @@ IMPORTANT:
         }
 
         // Add variables if any
-        if (Object.keys(data.variables).length > 0) {
-            payload.variables = transformVariables(data.variables);
-        }
+        // if (Object.keys(data.variables).length > 0) {
+        //     payload.variables = transformVariables(data.variables as Record<string, string>);
+        // }
 
         // Call onSave with transformed payload
         onSave(payload);
@@ -240,7 +324,7 @@ IMPORTANT:
     return (
         <div className="h-full overflow-y-auto">
             <div className={cn(
-                "s`ticky top-0 z-10 border-b backdrop-blur-xl",
+                "sticky top-0 z-10 border-b backdrop-blur-xl",
                 isDarkMode
                     ? 'bg-slate-950/80 border-white/10'
                     : 'bg-white/80 border-slate-200'
@@ -298,13 +382,20 @@ IMPORTANT:
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Category */}
                                 <div>
-                                    <Select
-                                        isDarkMode={isDarkMode}
-                                        label="Template Category"
-                                        required
-                                        value={category}
-                                        onChange={(value) => setValue('category', value as TemplateCategory)}
-                                        options={categories.map(cat => ({ value: cat, label: cat }))}
+                                    <Controller
+                                        name="category"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select
+                                                isDarkMode={isDarkMode}
+                                                label="Template Category"
+                                                required
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                options={categories.map(cat => ({ value: cat, label: cat }))}
+                                                error={errors.category?.message}
+                                            />
+                                        )}
                                     />
                                     <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                         Your template should fall under one of these categories
@@ -313,13 +404,23 @@ IMPORTANT:
 
                                 {/* Language */}
                                 <div>
-                                    <Select
-                                        isDarkMode={isDarkMode}
-                                        label="Template Language"
-                                        required
-                                        value={language}
-                                        onChange={(value) => setValue('language', value)}
-                                        options={languages.map(lang => ({ value: lang, label: lang }))}
+                                    <Controller
+                                        name="language"
+                                        control={control}
+                                        render={({ field }) => {
+                                            console.log("field", field)
+                                            return (
+                                                <Select
+                                                    isDarkMode={isDarkMode}
+                                                    label="Template Language"
+                                                    required
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    options={languages.map(lang => ({ value: lang, label: lang }))}
+                                                    error={errors.language?.message}
+                                                />
+                                            )
+                                        }}
                                     />
                                     <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                         You will need to specify the language in which message template is submitted
@@ -329,23 +430,30 @@ IMPORTANT:
                         </div>
 
                         {/* AI Generator */}
-                        <AIGeneratorSection
+                        {/* <AIGeneratorSection
                             isDarkMode={isDarkMode}
                             onGenerate={handleAIGenerate}
+                            onGenerateTitle={handleAIGenerateTitle}
                             generationsLeft={3}
-                        />
+                        /> */}
 
                         {/* Template Name */}
                         <div>
-                            <Input
-                                isDarkMode={isDarkMode}
-                                label="Template Name"
-                                required
-                                type="text"
-                                value={templateName}
-                                onChange={(e) => setValue('templateName', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                                placeholder="e.g. app_verification_code"
-                                error={errors.templateName?.message}
+                            <Controller
+                                name="templateName"
+                                control={control}
+                                render={({ field }) => (
+                                    <Input
+                                        {...field}
+                                        isDarkMode={isDarkMode}
+                                        label="Template Name"
+                                        required
+                                        type="text"
+                                        placeholder="e.g. app_verification_code"
+                                        onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                                        error={errors.templateName?.message}
+                                    />
+                                )}
                             />
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Name can only be in lowercase alphanumeric characters and underscores. Special characters and white-space are not allowed
@@ -354,13 +462,20 @@ IMPORTANT:
 
                         {/* Template Type */}
                         <div>
-                            <Select
-                                isDarkMode={isDarkMode}
-                                label="Template Type"
-                                required
-                                value={templateType}
-                                onChange={(value) => setValue('templateType', value as TemplateType)}
-                                options={templateTypes.map(type => ({ value: type, label: type }))}
+                            <Controller
+                                name="templateType"
+                                control={control}
+                                render={({ field }) => (
+                                    <Select
+                                        isDarkMode={isDarkMode}
+                                        label="Template Type"
+                                        required
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        options={templateTypes.map(type => ({ value: type, label: type }))}
+                                        error={errors.templateType?.message}
+                                    />
+                                )}
                             />
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Your template type should fall under one of these categories
@@ -376,18 +491,25 @@ IMPORTANT:
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Header Type */}
                                 <div>
-                                    <Select
-                                        isDarkMode={isDarkMode}
-                                        label="Header Type"
-                                        value={headerType}
-                                        onChange={(value) => {
-                                            setValue('headerType', value as HeaderType);
-                                            if (value === 'NONE') setValue('headerValue', '');
-                                        }}
-                                        options={headerTypes.map(type => ({
-                                            value: type,
-                                            label: type === 'NONE' ? 'None' : type.charAt(0) + type.slice(1).toLowerCase()
-                                        }))}
+                                    <Controller
+                                        name="headerType"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select
+                                                isDarkMode={isDarkMode}
+                                                label="Header Type"
+                                                value={field.value}
+                                                onChange={(value) => {
+                                                    field.onChange(value);
+                                                    setValue('headerValue', '');
+                                                }}
+                                                options={headerTypes.map(type => ({
+                                                    value: type,
+                                                    label: type === 'NONE' ? 'None' : type.charAt(0) + type.slice(1).toLowerCase()
+                                                }))}
+                                                error={errors.headerType?.message}
+                                            />
+                                        )}
                                     />
                                     <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                         Select the type of header for your template
@@ -397,21 +519,29 @@ IMPORTANT:
                                 {/* Header Value - Conditional based on type */}
                                 {headerType === 'TEXT' && (
                                     <div>
-                                        <Input
-                                            isDarkMode={isDarkMode}
-                                            label="Header Text"
-                                            type="text"
-                                            value={headerValue}
-                                            onChange={(e) => setValue('headerValue', e.target.value.slice(0, 60))}
-                                            placeholder="Enter header text"
-                                            maxLength={60}
+                                        <Controller
+                                            name="headerValue"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Input
+                                                    {...field}
+                                                    isDarkMode={isDarkMode}
+                                                    label="Header Text"
+                                                    type="text"
+                                                    placeholder="Enter header text"
+                                                    value={field.value || ''}
+                                                    onChange={(e) => field.onChange(e.target.value.slice(0, 60))}
+                                                    maxLength={60}
+                                                    error={errors.headerValue?.message}
+                                                />
+                                            )}
                                         />
                                         <div className="flex justify-between mt-1">
                                             <p className={cn("text-[10px] ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                                 Header text, up to 60 characters
                                             </p>
                                             <span className={cn("text-xs mr-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                {headerValue.length}/60
+                                                {(headerValue || '').length}/60
                                             </span>
                                         </div>
                                     </div>
@@ -419,14 +549,20 @@ IMPORTANT:
 
                                 {headerType === 'MEDIA' && (
                                     <div>
-                                        <FileUpload
-                                            isDarkMode={isDarkMode}
-                                            label="Media File"
-                                            accept="image/*,video/*"
-                                            value={headerValue}
-                                            onChange={(file, preview) => setValue('headerValue', preview)}
-                                            placeholder="Upload image or video"
-                                            uploadType="image"
+                                        <Controller
+                                            name="headerValue"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <FileUpload
+                                                    isDarkMode={isDarkMode}
+                                                    label="Media File"
+                                                    accept="image/*,video/*"
+                                                    value={field.value || ''}
+                                                    onChange={(file, preview) => field.onChange(preview)}
+                                                    placeholder="Upload image or video"
+                                                    uploadType="image"
+                                                />
+                                            )}
                                         />
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                             Upload an image or video for the header
@@ -436,14 +572,20 @@ IMPORTANT:
 
                                 {headerType === 'DOCUMENT' && (
                                     <div>
-                                        <FileUpload
-                                            isDarkMode={isDarkMode}
-                                            label="Document File"
-                                            accept=".pdf,.doc,.docx,.txt"
-                                            value={headerValue}
-                                            onChange={(file, preview) => setValue('headerValue', preview)}
-                                            placeholder="Upload document (PDF, DOC, etc.)"
-                                            uploadType="document"
+                                        <Controller
+                                            name="headerValue"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <FileUpload
+                                                    isDarkMode={isDarkMode}
+                                                    label="Document File"
+                                                    accept=".pdf,.doc,.docx,.txt"
+                                                    value={field.value || ''}
+                                                    onChange={(file, preview) => field.onChange(preview)}
+                                                    placeholder="Upload document (PDF, DOC, etc.)"
+                                                    uploadType="document"
+                                                />
+                                            )}
                                         />
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                             Upload a document file for the header
@@ -455,17 +597,22 @@ IMPORTANT:
 
                         {/* Template Content */}
                         <div>
-                            <Textarea
-                                isDarkMode={isDarkMode}
-                                label="Template Format"
-                                required
-                                value={content}
-                                onChange={(e) => setValue('content', e.target.value)}
-                                placeholder="Enter your message in here..."
-                                rows={6}
-                                maxLength={1024}
-                                showCharCount
-                                error={errors.content?.message}
+                            <Controller
+                                name="content"
+                                control={control}
+                                render={({ field }) => (
+                                    <Textarea
+                                        {...field}
+                                        isDarkMode={isDarkMode}
+                                        label="Template Format"
+                                        required
+                                        placeholder="Enter your message in here..."
+                                        rows={6}
+                                        maxLength={1024}
+                                        showCharCount
+                                        error={errors.content?.message}
+                                    />
+                                )}
                             />
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Use text formatting: *bold*, _italic_, ~strikethrough~<br />
@@ -478,33 +625,42 @@ IMPORTANT:
                         <VariableInputSection
                             isDarkMode={isDarkMode}
                             content={content}
-                            variables={variables}
-                            onVariablesChange={(vars) => setValue('variables', vars)}
+                            variables={variables as Record<string, string>}
+                            onVariablesChange={(vars) => setValue('variables', vars, { shouldValidate: !!errors.variables })}
+                            variableErrors={errors.variables as any}
                         />
 
                         {/* Footer */}
                         <div>
-                            <Input
-                                isDarkMode={isDarkMode}
-                                label="Template Footer (Optional)"
-                                type="text"
-                                value={footer}
-                                onChange={(e) => setValue('footer', e.target.value.slice(0, 60))}
-                                placeholder="Enter footer text here"
-                                maxLength={60}
+                            <Controller
+                                name="footer"
+                                control={control}
+                                render={({ field }) => (
+                                    <Input
+                                        {...field}
+                                        isDarkMode={isDarkMode}
+                                        label="Template Footer (Optional)"
+                                        type="text"
+                                        placeholder="Enter footer text here"
+                                        value={field.value || ''}
+                                        onChange={(e) => field.onChange(e.target.value.slice(0, 60))}
+                                        maxLength={60}
+                                        error={errors.footer?.message}
+                                    />
+                                )}
                             />
                             <div className="flex justify-between mt-1">
                                 <p className={cn("text-[10px] ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                     Your message content. Upto 60 characters are allowed
                                 </p>
                                 <span className={cn("text-xs mr-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                    {footer.length}/60
+                                    {(footer || '').length}/60
                                 </span>
                             </div>
                         </div>
 
                         {/* Interactive Actions */}
-                        <InteractiveActionsSection
+                        {/* <InteractiveActionsSection
                             isDarkMode={isDarkMode}
                             actionType={interactiveActions}
                             onActionTypeChange={(type) => setValue('interactiveActions', type)}
@@ -512,7 +668,7 @@ IMPORTANT:
                             onCTAButtonsChange={(buttons) => setValue('ctaButtons', buttons)}
                             quickReplies={quickReplies}
                             onQuickRepliesChange={(replies) => setValue('quickReplies', replies)}
-                        />
+                        /> */}
                     </div>
 
                     {/* Right Column - Preview */}
@@ -525,8 +681,8 @@ IMPORTANT:
                             content={content}
                             footer={footer}
                             variables={variables}
-                            ctaButtons={ctaButtons}
-                            quickReplies={quickReplies.filter(r => r.trim() !== '')}
+                        // ctaButtons={ctaButtons}
+                        // quickReplies={quickReplies.filter(r => r.trim() !== '')}
                         />
                     </div>
                 </div>

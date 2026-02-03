@@ -326,6 +326,7 @@ export const OrganizationView = () => {
                                             isDarkMode={isDarkMode}
                                             isView={true}
                                             isEdit={true}
+                                            isDelete={true}
                                             isWhatsAppConfig={true}
                                             onWhatsAppConfig={() => handleNavigateToWhatsApp(org)}
                                             onView={() => handleOpenModal('view', org)}
@@ -333,7 +334,7 @@ export const OrganizationView = () => {
                                             onDelete={() => handleDeleteClick(org)}
                                         />
                                     </TableCell>
-                                </TableRow>
+                                </TableRow> 
                             ))}
                         </TableBody>
                     </>

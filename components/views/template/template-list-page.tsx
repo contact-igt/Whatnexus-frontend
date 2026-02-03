@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Template, TemplateStatus } from './template-types';
 import { getStatusColor, getHealthColor, formatDate } from './template-utils';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+
+import { Modal } from '@/components/ui/modal';
 
 interface TemplateListPageProps {
     isDarkMode: boolean;
@@ -15,42 +18,60 @@ interface TemplateListPageProps {
     onEdit: (template: Template) => void;
     onView: (template: Template) => void;
     onSubmitTemplate: (template_id: string) => void;
+    onResubmitTemplate: (template_id: string) => void;
     onSyncTemplate: (template_id: string) => void;
-    onDelete: (templateId: string) => void;
+    onPermanentDelete: (template_id: string) => void;
+    onSoftDelete: (templateId: string) => void;
     onSync: () => void;
 }
 
-type TabType = 'all' | 'draft' | 'pending' | 'approved' | 'action_required';
+type TabType = 'all' | 'draft' | 'pending' | 'approved' | 'paused' | 'trash' | 'action_required';
 
 export const TemplateListPage = ({
     isDarkMode,
     templates,
+    onResubmitTemplate,
     onSubmitTemplate,
     onSyncTemplate,
+    onPermanentDelete,
     onCreateNew,
     onEdit,
     onView,
-    onDelete,
+    onSoftDelete,
     onSync
 }: TemplateListPageProps) => {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [deleteConfirmation, setDeleteConfirmation] = useState<{
+        isOpen: boolean;
+        templateId: string | null;
+        type: 'soft' | 'permanent';
+    }>({
+        isOpen: false,
+        templateId: null,
+        type: 'soft'
+    });
 
 
     const tabs: { id: TabType; label: string; count?: number }[] = [
         { id: 'all', label: 'All', count: templates.length },
-        { id: 'draft', label: 'Draft', count: templates.filter(t => t.status === 'draft').length },
-        { id: 'pending', label: 'Pending', count: templates.filter(t => t.status === 'pending').length },
-        { id: 'approved', label: 'Approved', count: templates.filter(t => t.status === 'approved').length },
-        { id: 'action_required', label: 'Action Required', count: templates.filter(t => t.status === 'rejected').length },
+        { id: 'draft', label: 'Draft', count: templates.filter((t: any) => t.status === 'draft').length },
+        { id: 'pending', label: 'Pending', count: templates.filter((t: any) => t.status === 'pending').length },
+        { id: 'approved', label: 'Approved', count: templates.filter((t: any) => t.status === 'approved').length },
+        { id: 'action_required', label: 'Action Required', count: templates.filter((t: any) => t.status === 'rejected').length },
+        { id: 'paused', label: 'Paused', count: templates.filter((t: any) => t.status === 'paused').length },
+        { id: 'trash', label: 'Trash', count: templates.filter((t: any) => t.status === 'deleted').length },
     ];
 
-    const filteredTemplates = templates.filter(template => {
+    const filteredTemplates = templates.filter((template: any) => {
         // Tab filter
         if (activeTab === 'draft' && template.status !== 'draft') return false;
         if (activeTab === 'pending' && template.status !== 'pending') return false;
         if (activeTab === 'approved' && template.status !== 'approved') return false;
         if (activeTab === 'action_required' && template.status !== 'rejected') return false;
+        if (activeTab === 'paused' && template.status !== 'paused') return false;
+        if (activeTab === 'trash' && template.status !== 'deleted') return false;
 
         // Search filter
         if (searchQuery && !template.template_name.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -59,6 +80,25 @@ export const TemplateListPage = ({
 
         return true;
     });
+
+    const handleDeleteClick = (templateId: string, type: 'soft' | 'permanent') => {
+        setDeleteConfirmation({
+            isOpen: true,
+            templateId,
+            type
+        });
+    };
+
+    const handleConfirmDelete = () => {
+        if (deleteConfirmation.templateId) {
+            if (deleteConfirmation.type === 'soft') {
+                onSoftDelete(deleteConfirmation.templateId);
+            } else {
+                onPermanentDelete(deleteConfirmation.templateId);
+            }
+        }
+        setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' });
+    };
 
     return (
         <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
@@ -153,12 +193,12 @@ export const TemplateListPage = ({
                     <table className="w-full text-left min-w-[1000px]">
                         <thead>
                             <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
-                                <th className="px-6 py-4">Template Name</th>
-                                <th className="px-6 py-4">Category</th>
+                                <th className="px-6 py-4 text-center">Template Name</th>
+                                <th className="px-6 py-4 text-center">Category</th>
                                 <th className="px-6 py-4 text-center">Status</th>
                                 <th className="px-6 py-4 text-center">Type</th>
                                 {/* <th className="px-6 py-4 text-center">Health</th> */}
-                                <th className="px-6 py-4">Created At</th>
+                                <th className="px-6 py-4 text-center">Created At</th>
                                 <th className="px-6 py-4 text-center">Actions</th>
                             </tr>
                         </thead>
@@ -166,12 +206,12 @@ export const TemplateListPage = ({
                             {filteredTemplates.length > 0 ? (
                                 filteredTemplates.map((template) => (
                                     <tr key={template.template_id} className="group transition-all hover:bg-emerald-500/5">
-                                        <td className="px-6 py-5">
+                                        <td className="px-6 py-5 text-center">
                                             <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
                                                 {template?.template_name}
                                             </p>
                                         </td>
-                                        <td className="px-6 py-5">
+                                        <td className="px-6 py-5 text-center">
                                             <span className={cn(
                                                 "text-xs font-medium px-2 py-1 rounded",
                                                 isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-600'
@@ -200,7 +240,7 @@ export const TemplateListPage = ({
                                                 {template.health}
                                             </span>
                                         </td> */}
-                                        <td className="px-6 py-5">
+                                        <td className="px-6 py-5 text-center">
                                             <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                                 {formatDate(template.created_at)}
                                             </span>
@@ -210,14 +250,18 @@ export const TemplateListPage = ({
                                                 <ActionMenu
                                                     isDarkMode={isDarkMode}
                                                     isView={true}
-                                                    isEdit={true}
-                                                    isSubmitTemplate={template?.status === 'draft'}
-                                                    onSubmitTemplate={() => onSubmitTemplate(template?.template_id)}
+                                                    isEdit={['draft', 'paused', 'rejected'].includes(template?.status)}
+                                                    isSubmitTemplate={['draft', 'paused', 'rejected'].includes(template?.status)}
+                                                    onSubmitTemplate={() => { (template?.status === 'paused' || template?.status === 'rejected') ? onResubmitTemplate(template?.template_id) : onSubmitTemplate(template?.template_id) }}
                                                     isSyncTemplate={template?.status === 'pending'}
                                                     onSyncTemplate={() => onSyncTemplate(template?.template_id)}
                                                     onView={() => onView(template)}
                                                     onEdit={() => onEdit(template)}
-                                                    onDelete={() => onDelete(template.template_id)}
+                                                    isDelete={['draft', 'paused', 'rejected', 'deleted'].includes(template?.status)}
+                                                    onDelete={() => handleDeleteClick(template.template_id, 'soft')}
+                                                    isPermanentDelete={template?.status === "deleted" && activeTab === 'trash' && user?.role === 'tenant_admin'}
+                                                    onPermanentDelete={() => handleDeleteClick(template.template_id, 'permanent')}
+                                                // onRestore={() => onRestore(template.template_id)}
                                                 />
                                             </div>
                                         </td>
@@ -246,6 +290,47 @@ export const TemplateListPage = ({
                     Showing {filteredTemplates.length} of {templates.length} templates
                 </p>
             </div>
+
+            <Modal
+                isOpen={deleteConfirmation.isOpen}
+                onClose={() => setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
+                title={deleteConfirmation.type === 'permanent' ? "Permanently Delete Template?" : "Delete Template?"}
+                description={
+                    deleteConfirmation.type === 'permanent'
+                        ? "Are you sure you want to permanently delete this template? This action cannot be undone."
+                        : "Are you sure you want to delete this template? It will be moved to the trash."
+                }
+                isDarkMode={isDarkMode}
+                className="max-w-md"
+                footer={
+                    <div className="flex items-center justify-end space-x-3">
+                        <button
+                            onClick={() => setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+                                isDarkMode
+                                    ? 'border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            )}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmDelete}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium text-white transition-all shadow-lg",
+                                isDarkMode
+                                    ? 'bg-red-500 hover:bg-red-600 border border-red-500/50'
+                                    : 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
+                            )}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                }
+            >
+                <div className="hidden"></div>
+            </Modal>
         </div>
     );
 };

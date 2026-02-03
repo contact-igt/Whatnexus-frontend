@@ -9,6 +9,7 @@ interface ActionMenuProps {
     isDarkMode: boolean;
     isView?: boolean;
     isEdit?: boolean;
+    isDelete?: boolean;
     isWhatsAppConfig?: boolean;
     onWhatsAppConfig?: () => void;
     onView?: () => void;
@@ -18,9 +19,12 @@ interface ActionMenuProps {
     isSyncTemplate?: boolean;
     onSyncTemplate?: () => void;
     onDelete?: () => void;
+    onSoftDelete?: () => void;
+    isPermanentDelete?: boolean;
+    onPermanentDelete?: () => void;
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWhatsAppConfig, onView, onEdit, onDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate }: ActionMenuProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -179,10 +183,27 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWha
                         }
 
 
-                        {onDelete && (
+                        {isDelete && onDelete && (
                             <button
                                 onClick={() => {
                                     onDelete();
+                                    setIsOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all mt-1",
+                                    isDarkMode
+                                        ? 'text-red-400 hover:bg-red-500/10'
+                                        : 'text-red-500 hover:bg-red-50'
+                                )}
+                            >
+                                <Trash2 size={14} />
+                                <span>Remove</span>
+                            </button>
+                        )}
+                        {(!!isPermanentDelete && onPermanentDelete) && (
+                            <button
+                                onClick={() => {
+                                    onPermanentDelete();
                                     setIsOpen(false);
                                 }}
                                 className={cn(

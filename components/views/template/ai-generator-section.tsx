@@ -8,23 +8,28 @@ import { MessageStyle, OptimizationGoal } from './template-types';
 
 interface AIGeneratorSectionProps {
     isDarkMode: boolean;
-    onGenerate: (prompt: string, style: MessageStyle, goal: OptimizationGoal) => Promise<void>;
+    onGenerate: (prompt: string, style: MessageStyle, goal: OptimizationGoal, category: string) => Promise<void>;
+    onGenerateTitle?: (prompt: string) => Promise<void>;
     generationsLeft?: number;
 }
 
 export const AIGeneratorSection = ({
     isDarkMode,
     onGenerate,
+    onGenerateTitle,
     generationsLeft = 3
 }: AIGeneratorSectionProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [prompt, setPrompt] = useState('');
     const [messageStyle, setMessageStyle] = useState<MessageStyle>('Normal');
     const [optimizationGoal, setOptimizationGoal] = useState<OptimizationGoal>('Click Rate');
+    const [aiCategory, setAiCategory] = useState<'Utility' | 'Marketing'>('Utility');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
 
     const messageStyles: MessageStyle[] = ['Normal', 'Poetic', 'Exciting', 'Funny'];
     const optimizationGoals: OptimizationGoal[] = ['Click Rate', 'Reply Rate'];
+    const aiCategories: string[] = ['Utility', 'Marketing'];
 
     const styleIcons: Record<MessageStyle, string> = {
         'Normal': '😊',
@@ -38,9 +43,20 @@ export const AIGeneratorSection = ({
 
         setIsGenerating(true);
         try {
-            await onGenerate(prompt, messageStyle, optimizationGoal);
+            await onGenerate(prompt, messageStyle, optimizationGoal, aiCategory);
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateTitle = async () => {
+        if (!prompt.trim() || isGeneratingTitle || !onGenerateTitle) return;
+
+        setIsGeneratingTitle(true);
+        try {
+            await onGenerateTitle(prompt);
+        } finally {
+            setIsGeneratingTitle(false);
         }
     };
 
@@ -96,13 +112,55 @@ export const AIGeneratorSection = ({
                             maxLength={1024}
                             showCharCount
                         />
-                        <div className="flex justify-end mt-1">
+                        <div className="flex justify-between mt-2">
+                            {/* Suitable Title Generator Button */}
+                            {onGenerateTitle && (
+                                <button
+                                    onClick={handleGenerateTitle}
+                                    disabled={!prompt.trim() || isGeneratingTitle}
+                                    className={cn(
+                                        "text-xs font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all",
+                                        isDarkMode
+                                            ? 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10'
+                                            : 'border-purple-200 text-purple-600 hover:bg-purple-50'
+                                    )}
+                                >
+                                    <Wand2 size={12} className={isGeneratingTitle ? 'animate-spin' : ''} />
+                                    {isGeneratingTitle ? 'Generating...' : 'Generate Suitable Title'}
+                                </button>
+                            )}
                             <button className={cn(
-                                "text-[10px] font-semibold flex items-center gap-1 hover:underline mr-1",
+                                "text-[10px] font-semibold flex items-center gap-1 hover:underline ml-auto",
                                 isDarkMode ? 'text-purple-400' : 'text-purple-600'
                             )}>
                                 📝 Previous prompts
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Template Category Select */}
+                    <div className="space-y-2">
+                        <label className={cn("text-xs font-semibold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                            Template Focus:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {aiCategories.map((cat) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setAiCategory(cat as 'Utility' | 'Marketing')}
+                                    className={cn(
+                                        "py-2 px-3 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                                        aiCategory === cat
+                                            ? 'bg-purple-500 text-white border-purple-500 shadow-lg shadow-purple-500/20'
+                                            : isDarkMode
+                                                ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                    )}
+                                >
+                                    {cat === 'Marketing' ? '📢' : '🛠️'}
+                                    <span>{cat}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
 

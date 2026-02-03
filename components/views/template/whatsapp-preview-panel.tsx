@@ -30,13 +30,17 @@ export const WhatsAppPreviewPanel = ({
 }: WhatsAppPreviewPanelProps) => {
 
     // Replace variables and format text
-    const processedContent = replaceVariables(content, variables);
-    const formattedContent = formatWhatsAppText(processedContent);
+    let processedContent = content;
+    let formattedContent = content;
+    if (content && Object.keys(variables).length > 0) {
+        processedContent = replaceVariables(content, variables);
+        formattedContent = formatWhatsAppText(processedContent);
+    }
 
     const renderHeaderPlaceholder = () => {
         if (!headerType || headerType === 'NONE') return null;
 
-        if (headerType === 'TEXT' && headerValue) {
+        if (headerType === 'text' && headerValue) {
             return (
                 <div className={cn(
                     "w-full px-4 pt-3 pb-2"
@@ -51,7 +55,7 @@ export const WhatsAppPreviewPanel = ({
             );
         }
 
-        if (headerType === 'MEDIA') {
+        if (headerType === 'media') {
             if (headerValue) {
                 // Check if it's a video (base64 starts with data:video or has video extension)
                 const isVideo = headerValue.startsWith('data:video') ||
