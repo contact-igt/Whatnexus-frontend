@@ -6,7 +6,7 @@ import { TemplateListPage } from './template-list-page';
 import { TemplateFormPage } from './template-form-page';
 import { TemplatePreviewModal } from './template-preview-modal';
 import { toast } from 'sonner';
-import { useCreateTemplateMutation, useGetAllTemplateQuery, usePermanentDeleteTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation } from '@/hooks/useTemplateQuery';
+import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation } from '@/hooks/useTemplateQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 
 // const SAMPLE_TEMPLATES: Template[] = [
@@ -93,31 +93,37 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 type ViewMode = 'list' | 'create' | 'edit';
 
 export const TemplateView = () => {
-    const {user} = useAuth();
+    const { user } = useAuth();
     const { isDarkMode } = useTheme();
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     // const [templates, setTemplates] = useState<Template[]>(SAMPLE_TEMPLATES);
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+    const [editTemplateById, setEditTemplateById] = useState<Template | null>(null);
     const { data: templateData } = useGetAllTemplateQuery();
+    const { data: templateDataById, isPending: getTemplateByIdLoading } = useGetTemplateByIdQuery(editTemplateById || previewTemplate?.template_id);
     const { mutate: createTemplateMutate, isPending: createTemplateLoading } = useCreateTemplateMutation();
+    const {mutate: updateTemplateMutate, isPending: updateTemplateLoading} = useUpdateTemplateMutation();
     const { mutate: submitTemplateMutate, isPending: submitTemplateLoading } = useSubmitTemplateMutation();
     const { mutate: syncTemplateByIdMutate, isPending: syncTemplateLoading } = useSyncTemplateByIdMutation();
-    const {mutate: syncAllTemplatesMutate, isPending: syncAllTemplatesLoading} = useSyncAllTemplateMutation();
-    const {mutate: softDeleteTemplateMutate, isPending: softDeleteTemplateLoading} = useSoftDeleteTemplateMutation();
-    const {mutate: permanentDeleteTemplateMutate, isPending: permanentDeleteTemplateLoading} = usePermanentDeleteTemplateMutation();
+    const { mutate: syncAllTemplatesMutate, isPending: syncAllTemplatesLoading } = useSyncAllTemplateMutation();
+    const { mutate: softDeleteTemplateMutate, isPending: softDeleteTemplateLoading } = useSoftDeleteTemplateMutation();
+    const { mutate: permanentDeleteTemplateMutate, isPending: permanentDeleteTemplateLoading } = usePermanentDeleteTemplateMutation();
+    const { mutate: reSubmitTemplateMutate, isPending: reSubmitTemplateLoading } = useResubmitTemplateMutation();
     // const {mutate: restoreTemplateMutate, isPending: restoreTemplateLoading} = useRestoreTemplateMutation();
     const handleCreateNew = () => {
         setSelectedTemplate(null);
+        setEditTemplateById(null);
+        setPreviewTemplate(null);
         setViewMode('create');
     };
-    console.log(user)
-    const handleEdit = (template: Template) => {
-        setSelectedTemplate(template);
+
+    const handleEdit = (template: any) => {
+        setEditTemplateById(template?.template_id);
         setViewMode('edit');
     };
 
-    const handleView = (template: Template) => {
+    const handleView = (template: any) => {
         setPreviewTemplate(template);
     };
 
@@ -136,6 +142,9 @@ export const TemplateView = () => {
         });
     }
 
+    const handleResubmitTemplate = (template_id: string) => {
+        reSubmitTemplateMutate(template_id);
+    }
     const handleSyncTemplate = (template_id: string) => {
         syncTemplateByIdMutate(template_id, {
             onSuccess: () => {
@@ -146,31 +155,17 @@ export const TemplateView = () => {
             }
         });
     }
-    const handleDelete = (templateId: string) => {
-        if(user?.role == "tenant_admin"){
-            permanentDeleteTemplateMutate(templateId, {
-                onSuccess: () => {
-                    toast.success('Template deleted successfully');
-                },
-                onError: (error: any) => {
-                    toast.error(error.message);
-                }
-            });
-        }else{
-            softDeleteTemplateMutate(templateId, {
-                onSuccess: () => {
-                    toast.success('Template deleted successfully');
-                },
-                onError: (error: any) => {
-                    toast.error(error.message);
-                }
-            });
-        }
+    const handleSoftDelete = (templateId: string) => {
+        softDeleteTemplateMutate(templateId);
         // if (confirm('Are you sure you want to delete this template?')) {
         //     setTemplates(templates.filter(t => t.id !== templateId));
         //     toast.success('Template deleted successfully');
         // }
     };
+
+    const handlePermanentDelete = (templateId: string) => {
+        permanentDeleteTemplateMutate(templateId);
+    }
 
     const handleSync = () => {
         syncAllTemplatesMutate(undefined, {
@@ -189,54 +184,53 @@ export const TemplateView = () => {
     };
 
     const handleSave = (formData: TemplateFormData) => {
-        if (viewMode === 'edit' && selectedTemplate) {
-            // Update existing template
-            const updatedTemplate: Template = {
-                ...selectedTemplate,
-                ...formData,
-                // updatedAt: new Date().toISOString(),
-            };
-            // setTemplates(templates.map(t => t.id === selectedTemplate.id ? updatedTemplate : t));
+        if (viewMode === 'edit' && editTemplateById) {
+            updateTemplateMutate({templateId: editTemplateById, data: formData},{
+                onSuccess: () => {
+                   setViewMode('list');
+                   setEditTemplateById(null);
+                },
+                
+            });
             toast.success('Template updated successfully!');
         } else {
-            // Create new template
-            // const newTemplate: Template = {
-            //     id: Date.now().toString(),
-            //     ...formData,
-            //     status: 'Draft',
-            //     health: 'High',
-            //     createdAt: new Date().toISOString(),
-            // };
-            createTemplateMutate((formData),{
-                onSuccess:()=>{
+            createTemplateMutate((formData), {
+                onSuccess: () => {
                     handleBack();
                 }
             })
-            // setTemplates([newTemplate, ...templates]);
-            // toast.success('Template created successfully!');
         }
     };
 
     // Render based on view mode
     if (viewMode === 'create' || viewMode === 'edit') {
-        const initialData: Partial<TemplateFormData> | undefined = selectedTemplate ? {
-            category: selectedTemplate.category,
-            language: selectedTemplate.language,
-            name: selectedTemplate.template_name,
-            type: selectedTemplate.template_type,
-            headerType: selectedTemplate.headerType,
-            headerValue: selectedTemplate.headerValue,
-            content: selectedTemplate.content,
-            footer: selectedTemplate.footer || '',
-            variables: selectedTemplate.variables,
-            interactiveActions: selectedTemplate.interactiveActions,
-            ctaButtons: selectedTemplate.ctaButtons || [],
-            quickReplies: selectedTemplate.quickReplies || [],
-        } : undefined;
+        const selectedTemplateData = templateDataById?.data;
+        const initialData: Partial<TemplateFormData> | undefined = selectedTemplateData ? {
+            category: selectedTemplateData.category,
+            language: selectedTemplateData.language,
+            name: selectedTemplateData.template_name || selectedTemplateData.name,
+            type: selectedTemplateData.template_type || selectedTemplateData.type,
 
+            // Handle Header
+            headerType: (selectedTemplateData.components.find((c: any) => c.component_type === "header")?.header_format || 'NONE'),
+
+            headerValue: (selectedTemplateData.components.find((c: any) => c.component_type === "header")?.text_content || ''),
+
+            // Handle Content (Body)
+            content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),
+
+            // Handle Footer
+            footer: (selectedTemplateData.components.find((c: any) => c.component_type === "footer")?.text_content || ''),
+
+            variables: selectedTemplateData.variables,
+            // interactiveActions: selectedTemplateData.interactive_actions,
+            // ctaButtons: selectedTemplateData.ctaButtons || [],
+            // quickReplies: selectedTemplateData.quickReplies || [],
+        } : undefined;
+        console.log("initialData1", initialData)
         return (
             <TemplateFormPage
-                templateId={selectedTemplate?.template_id}
+                templateId={selectedTemplateData?.template_id}
                 initialData={initialData}
                 onBack={handleBack}
                 onSave={handleSave}
@@ -253,15 +247,17 @@ export const TemplateView = () => {
                 onEdit={handleEdit}
                 onSyncTemplate={handleSyncTemplate}
                 onSubmitTemplate={handleSubmitTemplate}
+                onResubmitTemplate={handleResubmitTemplate}
                 onView={handleView}
-                onDelete={handleDelete}
+                onSoftDelete={handleSoftDelete}
+                onPermanentDelete={handlePermanentDelete}
                 onSync={handleSync}
             />
 
             {/* Preview Modal */}
             {previewTemplate && (
                 <TemplatePreviewModal
-                    template={previewTemplate}
+                    template={templateDataById?.data || previewTemplate}
                     isDarkMode={isDarkMode}
                     onClose={handleClosePreview}
                 />

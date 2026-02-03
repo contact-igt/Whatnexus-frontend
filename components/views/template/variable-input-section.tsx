@@ -11,16 +11,18 @@ interface VariableInputSectionProps {
     content: string;
     variables: Record<string, string>;
     onVariablesChange: (variables: Record<string, string>) => void;
+    variableErrors?: Record<string, any>;
 }
 
 export const VariableInputSection = ({
     isDarkMode,
     content,
     variables,
-    onVariablesChange
+    onVariablesChange,
+    variableErrors
 }: VariableInputSectionProps) => {
     const [detectedVars, setDetectedVars] = useState<string[]>([]);
-
+    console.log("content1", content)
     useEffect(() => {
         const vars = extractVariables(content);
         setDetectedVars(vars);
@@ -63,7 +65,8 @@ export const VariableInputSection = ({
         '4': '10 AM IST',
         '5': 'Example Value',
     };
-
+    console.log("variables", variables)
+    console.log("detectedVars", detectedVars)
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -84,25 +87,28 @@ export const VariableInputSection = ({
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                {detectedVars.map((varNum) => (
-                    <div key={varNum}>
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-mono text-xs">
-                                {`{{${varNum}}}`}
-                            </span>
-                            <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                Variable {varNum}
-                            </span>
+                {detectedVars.map((varNum) => {
+                    return (
+                        <div key={varNum}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-mono text-xs">
+                                    {`{{${varNum}}}`}
+                                </span>
+                                <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                    Variable {varNum}
+                                </span>
+                            </div>
+                            <Input
+                                isDarkMode={isDarkMode}
+                                type="text"
+                                value={variables[varNum] || ''}
+                                onChange={(e) => handleVariableChange(varNum, e.target.value)}
+                                placeholder={exampleValues[varNum] || `Enter value for {{${varNum}}}`}
+                                error={variableErrors?.[varNum]?.message}
+                            />
                         </div>
-                        <Input
-                            isDarkMode={isDarkMode}
-                            type="text"
-                            value={variables[varNum] || ''}
-                            onChange={(e) => handleVariableChange(varNum, e.target.value)}
-                            placeholder={exampleValues[varNum] || `Enter value for {{${varNum}}}`}
-                        />
-                    </div>
-                ))}
+                    )
+                })}
             </div>
         </div>
     );

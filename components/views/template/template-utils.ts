@@ -4,21 +4,74 @@ import { TemplateStatus, TemplateHealth, TemplateCategory } from './template-typ
  * Extract variables from template text in format {{1}}, {{2}}, etc.
  */
 export function extractVariables(text: string): string[] {
-    const regex = /\{\{(\d+)\}\}/g;
-    const matches = text.matchAll(regex);
+    // Match {{variable}} where variable contains letters, numbers, or underscores
+    const regex = /\{\{([\w]+)\}\}/g;
+    console.log("text", text)
+    const matches = text?.matchAll(regex);
     const variables = Array.from(matches, match => match[1]);
-    return Array.from(new Set(variables)).sort((a, b) => parseInt(a) - parseInt(b));
+
+    // Remove duplicates and sort
+    return Array.from(new Set(variables)).sort((a, b) => {
+        const isNumA = /^\d+$/.test(a);
+        const isNumB = /^\d+$/.test(b);
+
+        // Both are numbers: numeric sort
+        if (isNumA && isNumB) {
+            return parseInt(a) - parseInt(b);
+        }
+
+        // One is number, one is string: numbers first
+        if (isNumA) return -1;
+        if (isNumB) return 1;
+
+        // Both are strings: alphabetical sort
+        return a.localeCompare(b);
+    });
 }
 
 /**
  * Replace variables in text with provided values
  */
-export function replaceVariables(text: string, values: Record<string, string>): string {
-    let result = text;
-    Object.entries(values).forEach(([key, value]) => {
-        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-        result = result.replace(regex, value || `{{${key}}}`);
+export function replaceVariables(
+    text: string | { text_content?: string } | any,
+    values: Record<string | number, any>
+): string {
+    let content: string = '';
+
+    if (typeof text === 'string') {
+        content = text;
+    } else if (text && typeof text === 'object' && 'text_content' in text) {
+        content = text.text_content || '';
+    } else {
+        console.error('replaceVariables: Invalid text input', text);
+        return '';
+    }
+
+    if (typeof content !== 'string') {
+        console.error('replaceVariables: content is not a string', content);
+        return '';
+    }
+
+    let result: string = content;
+
+    // Convert literal "\n" to real newlines
+    result = result.replace(/\\n/g, '\n');
+
+    Object.entries(values ?? {}).forEach(([key, value]) => {
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\{\\{${escapedKey}\\}\\}`, 'g');
+
+        let replacement = `{{${key}}}`;
+
+        if (typeof value === 'string') {
+            replacement = value;
+        } else if (value && typeof value === 'object' && 'sample_value' in value) {
+            replacement = value.sample_value || '';
+        }
+
+        result = result?.replace(regex, replacement);
     });
+
     return result;
 }
 
@@ -71,12 +124,12 @@ export function validateTemplateName(name: string): { valid: boolean; error?: st
  */
 export function getStatusColor(status: TemplateStatus, isDarkMode: boolean): string {
     const colors = {
-        Draft: isDarkMode ? 'bg-slate-500/10 text-slate-400' : 'bg-slate-100 text-slate-600',
-        Pending: isDarkMode ? 'bg-yellow-500/10 text-yellow-400' : 'bg-yellow-100 text-yellow-600',
-        Approved: isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-100 text-emerald-600',
-        Rejected: isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-600',
+        draft: isDarkMode ? 'bg-slate-500/10 text-slate-400' : 'bg-slate-100 text-slate-600',
+        pending: isDarkMode ? 'bg-yellow-500/10 text-yellow-400' : 'bg-yellow-100 text-yellow-600',
+        approved: isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-100 text-emerald-600',
+        rejected: isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-600',
     };
-    return colors[status] || colors.Draft;
+    return colors[status] || colors.draft;
 }
 
 /**

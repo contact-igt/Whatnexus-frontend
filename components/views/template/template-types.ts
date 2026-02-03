@@ -2,7 +2,7 @@
 
 export type TemplateCategory = 'UTILITY' | 'MARKETING' | 'AUTHENTICATION';
 export type TemplateType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
-export type TemplateStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+export type TemplateStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'paused' | 'deleted';
 export type TemplateHealth = 'High' | 'Medium' | 'Low';
 export type InteractiveActionType = 'None' | 'CTA' | 'QuickReplies' | 'All';
 export type CTAType = 'URL' | 'PHONE' | 'COPY_CODE';
