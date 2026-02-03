@@ -1,23 +1,14 @@
-export interface ContactGroup {
-    group_id: string;
-    group_name: string;
-    description?: string;
-    tenant_id?: string;
-    created_at?: string;
-    members?: GroupMemberItem[];
-}
-
-export interface GroupMemberItem {
-    id: number;
-    contact: GroupMemberContact;
-}
-
 export interface GroupMemberContact {
     contact_id: string;
     name: string;
     phone: string;
     email?: string;
-    profile_pic?: string;
+    profile_pic?: string | null;
+}
+
+export interface GroupMemberItem {
+    id: number;
+    contact: GroupMemberContact;
 }
 
 // For display purposes - flattened member structure
@@ -27,6 +18,16 @@ export interface GroupMember {
     phone: string;
     email?: string;
     profile_pic?: string;
+}
+
+export interface ContactGroup {
+    group_id: string;
+    group_name: string;
+    description?: string;
+    tenant_id?: string;
+    created_at?: string;
+    members?: GroupMemberItem[];
+    total_contacts?: number; // Helper property if API adds it later
 }
 
 export interface CreateGroupDto {
