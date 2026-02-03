@@ -20,10 +20,10 @@ export const useCreateContactMutation = () => {
     });
 };
 
-export const useGetAllContactsQuery = () => {
+export const useGetAllContactsQuery = (params?: any) => {
     return useQuery({
-        queryKey: ['contacts'],
-        queryFn: () => contactApis.getAllContacts()
+        queryKey: ['contacts', params],
+        queryFn: () => contactApis.getAllContacts(params)
     });
 };
 

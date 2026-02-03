@@ -58,17 +58,23 @@ export function replaceVariables(
     result = result.replace(/\\n/g, '\n');
 
     Object.entries(values ?? {}).forEach(([key, value]) => {
-        console.log("test", key, value)
-        const escapedKey = value?.variable_key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        console.log("escapedKey", escapedKey)
+        // Determine the key to use for regex matching (prefers variable_key in object, fallback to entry key)
+        const keyForRegex = value?.variable_key || key;
+        const escapedKey = keyForRegex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`\\{\\{${escapedKey}\\}\\}`, 'g');
 
-        let replacement = `{{${key}}}`;
+        // Debug logging
+        console.log('replaceVariables Debug:', { key, value, keyForRegex, regex: regex.toString() });
+
+        // Default replacement is the placeholder itself (preserve if no value provided)
+        let replacement = `{{${keyForRegex}}}`;
 
         if (typeof value === 'string') {
-            replacement = value;
+            // If string is empty, keep default placeholder
+            replacement = value || replacement;
         } else if (value && typeof value === 'object' && 'sample_value' in value) {
-            replacement = value.sample_value || '';
+            // Use sample_value if present, otherwise keep the default placeholder
+            replacement = value.sample_value || replacement;
         }
 
         result = result?.replace(regex, replacement);
@@ -130,6 +136,8 @@ export function getStatusColor(status: TemplateStatus, isDarkMode: boolean): str
         pending: isDarkMode ? 'bg-yellow-500/10 text-yellow-400' : 'bg-yellow-100 text-yellow-600',
         approved: isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-100 text-emerald-600',
         rejected: isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-600',
+        paused: isDarkMode ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-100 text-orange-600',
+        deleted: isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-100 text-gray-600',
     };
     return colors[status] || colors.draft;
 }

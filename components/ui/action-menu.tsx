@@ -71,7 +71,10 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
     return (
         <div className="relative" ref={menuRef}>
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(!isOpen)
+                }}
                 className={cn(
                     "p-2 rounded-lg transition-all",
                     isOpen
@@ -92,7 +95,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                     <div className="p-1">
                         {onView && isView && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onView();
                                     setIsOpen(false);
                                 }}
@@ -110,7 +114,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
 
                         {onEdit && isEdit && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onEdit();
                                     setIsOpen(false);
                                 }}
@@ -128,7 +133,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
 
                         {onWhatsAppConfig && isWhatsAppConfig && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onWhatsAppConfig();
                                     setIsOpen(false);
                                 }}
@@ -146,7 +152,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                         {
                             onSubmitTemplate && isSubmitTemplate && (
                                 <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         onSubmitTemplate();
                                         setIsOpen(false);
                                     }}
@@ -165,7 +172,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                         {
                             onSyncTemplate && isSyncTemplate && (
                                 <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         onSyncTemplate();
                                         setIsOpen(false);
                                     }}
@@ -185,7 +193,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
 
                         {isDelete && onDelete && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onDelete();
                                     setIsOpen(false);
                                 }}
@@ -202,7 +211,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                         )}
                         {(!!isPermanentDelete && onPermanentDelete) && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onPermanentDelete();
                                     setIsOpen(false);
                                 }}

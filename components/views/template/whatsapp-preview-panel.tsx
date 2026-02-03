@@ -32,18 +32,20 @@ export const WhatsAppPreviewPanel = ({
     // Replace variables and format text
     let processedContent = content;
     let formattedContent = content;
+    console.log("variables", variables)
     if (content && Object.keys(variables).length > 0) {
         processedContent = replaceVariables(content, variables);
         console.log("processedContent", processedContent);
         formattedContent = formatWhatsAppText(processedContent);
     }
+    console.log("hh", headerType, headerValue)
     console.log("content", content);
     console.log("formattedContent", formattedContent);
     console.log("footer", footer)
     const renderHeaderPlaceholder = () => {
         if (!headerType || headerType === 'NONE') return null;
 
-        if (headerType === 'text' && headerValue) {
+        if ((headerType == 'TEXT' || headerType == 'text') && headerValue) {
             return (
                 <div className={cn(
                     "w-full px-4 pt-3 pb-2"

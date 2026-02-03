@@ -52,9 +52,9 @@ export const useSubmitTemplateMutation = () => {
         mutationFn: (template_id: any) => {
             return templateApis.submitTemplate(template_id)
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['templates'] });
-            queryClient.invalidateQueries({ queryKey: ['template', variables] });
+        onSuccess: async (data, variables) => {
+            await queryClient.invalidateQueries({ queryKey: ['templates'] });
+            await queryClient.invalidateQueries({ queryKey: ['template', variables] });
             toast.success(data?.message || 'Template submitted successfully!');
         },
         onError: (error: any) => {
@@ -69,9 +69,9 @@ export const useResubmitTemplateMutation = () => {
         mutationFn: (template_id: any) => {
             return templateApis.resubmitTemplate(template_id)
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['templates'] });
-            queryClient.invalidateQueries({ queryKey: ['template', variables] });
+        onSuccess: async (data, variables) => {
+            await queryClient.invalidateQueries({ queryKey: ['templates'] });
+            await queryClient.invalidateQueries({ queryKey: ['template', variables] });
             toast.success(data?.message || 'Template resubmitted successfully!');
         },
         onError: (error: any) => {
@@ -86,9 +86,9 @@ export const useSyncTemplateByIdMutation = () => {
         mutationFn: (template_id: any) => {
             return templateApis.syncTemplateById(template_id)
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['templates'] });
-            queryClient.invalidateQueries({ queryKey: ['template', variables] });
+        onSuccess: async (data, variables) => {
+            await queryClient.invalidateQueries({ queryKey: ['templates'] });
+            await queryClient.invalidateQueries({ queryKey: ['template', variables] });
             toast.success(data?.message || 'Template synced successfully!');
         },
         onError: (error: any) => {
@@ -103,8 +103,8 @@ export const useSyncAllTemplateMutation = () => {
         mutationFn: () => {
             return templateApis.syncAllTemplate()
         },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['templates'] });
+        onSuccess: async (data) => {
+            await queryClient.invalidateQueries({ queryKey: ['templates'] });
             toast.success(data?.message || 'Template synced successfully!');
         },
         onError: (error: any) => {

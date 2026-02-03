@@ -30,7 +30,7 @@ export const EditGroupModal = ({
     useEffect(() => {
         if (group) {
             setFormData({
-                name: group.name,
+                group_name: group.group_name,
                 description: group.description || ""
             });
         }
@@ -39,10 +39,10 @@ export const EditGroupModal = ({
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
 
-        if (formData.name && !formData.name.trim()) {
-            newErrors.name = "Group name cannot be empty";
-        } else if (formData.name && formData.name.length > 100) {
-            newErrors.name = "Group name must be less than 100 characters";
+        if (formData.group_name && !formData.group_name.trim()) {
+            newErrors.group_name = "Group name cannot be empty";
+        } else if (formData.group_name && formData.group_name.length > 100) {
+            newErrors.group_name = "Group name must be less than 100 characters";
         }
 
         if (formData.description && formData.description.length > 500) {
@@ -55,7 +55,7 @@ export const EditGroupModal = ({
 
     const handleSubmit = () => {
         if (group && validateForm()) {
-            onSubmit(group.id, formData);
+            onSubmit(group.group_id, formData);
             onClose();
         }
     };
@@ -67,7 +67,7 @@ export const EditGroupModal = ({
             isOpen={isOpen}
             onClose={onClose}
             title="Edit Group"
-            description={`Update details for ${group.name}`}
+            description={`Update details for ${group.group_name}`}
             isDarkMode={isDarkMode}
             className="max-w-xl"
             footer={
@@ -105,9 +105,9 @@ export const EditGroupModal = ({
                     label="Group Name"
                     type="text"
                     placeholder="Enter group name"
-                    value={formData.name || ""}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    error={errors.name}
+                    value={formData.group_name || ""}
+                    onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                    error={errors.group_name}
                     icon={Users}
                 />
 

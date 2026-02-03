@@ -6,8 +6,8 @@ export class contactApiData {
         return await _axios("post", "/contact", data);
     };
 
-    getAllContacts = async () => {
-        return await _axios("get", "/contacts");
+    getAllContacts = async (params?: any) => {
+        return await _axios("get", "/contacts", null, undefined, params);
     };
 
     getContactById = async (contactId: string) => {

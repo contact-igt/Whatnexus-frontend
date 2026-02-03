@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/modal';
 interface TemplateListPageProps {
     isDarkMode: boolean;
     templates: Template[];
+    isLoading: boolean;
     onCreateNew: () => void;
     onEdit: (template: Template) => void;
     onView: (template: Template) => void;
@@ -30,6 +31,7 @@ type TabType = 'all' | 'draft' | 'pending' | 'approved' | 'paused' | 'trash' | '
 export const TemplateListPage = ({
     isDarkMode,
     templates,
+    isLoading,
     onResubmitTemplate,
     onSubmitTemplate,
     onSyncTemplate,
@@ -190,11 +192,16 @@ export const TemplateListPage = ({
             {/* Templates Table */}
             <GlassCard isDarkMode={isDarkMode} className="p-0">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left min-w-[1000px]">
-                        <thead>
-                            <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
-                                <th className="px-6 py-4 text-center">Template Name</th>
-                                <th className="px-6 py-4 text-center">Category</th>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left min-w-[1000px]">
+                            <thead>
+                                <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
+                                    <th className="px-6 py-4 text-center">Template Name</th>
+                                    <th className="px-6 py-4 text-center">Category</th>
                                 <th className="px-6 py-4 text-center">Status</th>
                                 <th className="px-6 py-4 text-center">Type</th>
                                 {/* <th className="px-6 py-4 text-center">Health</th> */}
@@ -281,6 +288,7 @@ export const TemplateListPage = ({
                             )}
                         </tbody>
                     </table>
+                    )}
                 </div>
             </GlassCard>
 

@@ -47,7 +47,7 @@ export const ContactsHeader = ({
 
                 <div className="flex items-center space-x-3">
                     <button
-                        onClick={() => router.push('/contacts/group')}
+                        onClick={() => router.push('/contacts/groups')}
                         className={cn(
                             "flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border",
                             isDarkMode

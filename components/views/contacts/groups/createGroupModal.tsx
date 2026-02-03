@@ -23,7 +23,7 @@ export const CreateGroupModal = ({
     isLoading = false
 }: CreateGroupModalProps) => {
     const [formData, setFormData] = useState<CreateGroupDto>({
-        name: "",
+        group_name: "",
         description: ""
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -31,10 +31,10 @@ export const CreateGroupModal = ({
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
 
-        if (!formData.name.trim()) {
-            newErrors.name = "Group name is required";
-        } else if (formData.name.length > 100) {
-            newErrors.name = "Group name must be less than 100 characters";
+        if (!formData.group_name.trim()) {
+            newErrors.group_name = "Group name is required";
+        } else if (formData.group_name.length > 100) {
+            newErrors.group_name = "Group name must be less than 100 characters";
         }
 
         if (formData.description && formData.description.length > 500) {
@@ -54,7 +54,7 @@ export const CreateGroupModal = ({
 
     const handleReset = () => {
         setFormData({
-            name: "",
+            group_name: "",
             description: ""
         });
         setErrors({});
@@ -109,9 +109,9 @@ export const CreateGroupModal = ({
                     required
                     type="text"
                     placeholder="Enter group name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    error={errors.name}
+                    value={formData.group_name}
+                    onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                    error={errors.group_name}
                     icon={Users}
                 />
 

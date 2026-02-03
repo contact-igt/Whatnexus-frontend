@@ -8,7 +8,7 @@ export type InteractiveActionType = 'None' | 'CTA' | 'QuickReplies' | 'All';
 export type CTAType = 'URL' | 'PHONE' | 'COPY_CODE';
 export type MessageStyle = 'Normal' | 'Poetic' | 'Exciting' | 'Funny';
 export type OptimizationGoal = 'Click Rate' | 'Reply Rate';
-export type HeaderType = 'NONE' | 'TEXT' | 'MEDIA' | 'DOCUMENT';
+export type HeaderType = 'NONE' | 'TEXT' | 'text' | 'media' | 'MEDIA' | 'DOCUMENT';
 
 export interface Template {
     template_id: string;
@@ -26,6 +26,7 @@ export interface Template {
     interactiveActions: InteractiveActionType;
     ctaButtons?: CTAButton[];
     quickReplies?: string[];
+    components?: any[];
     created_at: string;
     updated_at?: string;
 }

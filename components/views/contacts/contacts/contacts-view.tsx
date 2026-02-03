@@ -51,12 +51,13 @@ export const ContactsView = () => {
 
         const query = searchQuery.toLowerCase();
         return contacts.filter(contact =>
-            contact.name.toLowerCase().includes(query) ||
-            contact.phone.toLowerCase().includes(query) ||
-            contact.email?.toLowerCase().includes(query) ||
-            contact.tags?.some(tag => tag.toLowerCase().includes(query))
+            (contact.name || "").toLowerCase().includes(query) ||
+            (contact.phone || "").toLowerCase().includes(query) ||
+            (contact.email || "").toLowerCase().includes(query)
         );
     }, [contacts, searchQuery]);
+
+
 
     // Handlers
     const handleAddContact = (data: CreateContactDto) => {
@@ -78,7 +79,7 @@ export const ContactsView = () => {
 
     const handleDeleteContact = () => {
         if (selectedContact) {
-            deleteContact(selectedContact.id, {
+            deleteContact(selectedContact.contact_id, {
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
                     setSelectedContact(null);
@@ -117,7 +118,7 @@ export const ContactsView = () => {
 
     const handleSelectAll = (selected: boolean) => {
         if (selected) {
-            setSelectedContacts(filteredContacts.map(c => c.id));
+            setSelectedContacts(filteredContacts.map(c => c.contact_id));
         } else {
             setSelectedContacts([]);
         }

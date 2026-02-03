@@ -26,9 +26,9 @@ export const AddContactModal = ({
     const [formData, setFormData] = useState<CreateContactDto>({
         phone: "", // Required field
         name: "",
-        email: "",
+        // email: "",
         profile_pic: "",
-        tags: []
+        // tags: []
     });
     const [tagInput, setTagInput] = useState("");
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,9 +49,9 @@ export const AddContactModal = ({
         }
 
         // Email validation (optional)
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = "Invalid email format";
-        }
+        // if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        //     newErrors.email = "Invalid email format";
+        // }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -68,30 +68,30 @@ export const AddContactModal = ({
         setFormData({
             phone: "",
             name: "",
-            email: "",
+            // email: "",
             profile_pic: "",
-            tags: []
+            // tags: []
         });
         setTagInput("");
         setErrors({});
     };
 
-    const handleAddTag = () => {
-        if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
-            setFormData({
-                ...formData,
-                tags: [...(formData.tags || []), tagInput.trim()]
-            });
-            setTagInput("");
-        }
-    };
+    // const handleAddTag = () => {
+    //     if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
+    //         setFormData({
+    //             ...formData,
+    //             tags: [...(formData.tags || []), tagInput.trim()]
+    //         });
+    //         setTagInput("");
+    //     }
+    // };
 
-    const handleRemoveTag = (tagToRemove: string) => {
-        setFormData({
-            ...formData,
-            tags: formData.tags?.filter(tag => tag !== tagToRemove) || []
-        });
-    };
+    // const handleRemoveTag = (tagToRemove: string) => {
+    //     setFormData({
+    //         ...formData,
+    //         tags: formData.tags?.filter(tag => tag !== tagToRemove) || []
+    //     });
+    // };
 
     const handleClose = () => {
         handleReset();

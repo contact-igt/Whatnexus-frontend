@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useTheme } from "@/hooks/useTheme";
+import { useDebounce } from "@/hooks/useDebounce";
 import { ContactGroup, CreateGroupDto, UpdateGroupDto } from "@/types/contactGroup";
 import {
     useGetAllGroupsQuery,
@@ -28,26 +29,23 @@ export const GroupsView = () => {
 
     // Search State
     const [searchQuery, setSearchQuery] = useState("");
+    const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
     // React Query Hooks
-    const { data: groupsData, isLoading } = useGetAllGroupsQuery();
+    const { data: groupsData, isLoading } = useGetAllGroupsQuery(
+        debouncedSearchQuery ? { search: debouncedSearchQuery } : undefined
+    );
     const { mutate: createGroup, isPending: isCreating } = useCreateGroupMutation();
     const { mutate: updateGroup, isPending: isUpdating } = useUpdateGroupMutation();
     const { mutate: deleteGroup, isPending: isDeleting } = useDeleteGroupMutation();
 
-    // Get groups from API response
-    const groups: ContactGroup[] = groupsData?.data || [];
+    // Get groups from API response - backend returns { message, data: { groups: [], totalItems, totalPages, currentPage } }
+    const groups: ContactGroup[] = groupsData?.data?.groups || [];
 
-    // Filtered groups based on search
-    const filteredGroups = useMemo(() => {
-        if (!searchQuery.trim()) return groups;
+    // Use groups directly (server-side search)
+    const filteredGroups = groups;
 
-        const query = searchQuery.toLowerCase();
-        return groups.filter(group =>
-            group.name.toLowerCase().includes(query) ||
-            group.description?.toLowerCase().includes(query)
-        );
-    }, [groups, searchQuery]);
+
 
     // Handlers
     const handleCreateGroup = (data: CreateGroupDto) => {
@@ -69,7 +67,7 @@ export const GroupsView = () => {
 
     const handleDeleteGroup = () => {
         if (selectedGroup) {
-            deleteGroup(selectedGroup.id, {
+            deleteGroup(selectedGroup.group_id, {
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
                     setSelectedGroup(null);
@@ -101,7 +99,7 @@ export const GroupsView = () => {
             {/* Groups List */}
             <GroupsList
                 isDarkMode={isDarkMode}
-                groups={filteredGroups?.groups}
+                groups={filteredGroups}
                 isLoading={isLoading}
                 onEdit={openEditModal}
                 onDelete={openDeleteModal}
@@ -138,7 +136,7 @@ export const GroupsView = () => {
                 }}
                 onConfirm={handleDeleteGroup}
                 title="Delete Group"
-                message={`Are you sure you want to delete "${selectedGroup?.name}"? This will not delete the contacts, only the group.`}
+                message={`Are you sure you want to delete "${selectedGroup?.group_name}"? This will not delete the contacts, only the group.`}
                 isDarkMode={isDarkMode}
                 confirmText="Delete Group"
                 cancelText="Cancel"

@@ -35,7 +35,7 @@ export const EditContactDrawer = ({
                 name: contact.name,
                 email: contact.email || "",
                 profile_pic: contact.profile_pic || "",
-                tags: contact.tags || [],
+                // tags: contact.tags || [],
                 is_blocked: contact.is_blocked
             });
         }
@@ -60,27 +60,27 @@ export const EditContactDrawer = ({
 
     const handleSubmit = () => {
         if (contact && validateForm()) {
-            onSubmit(contact.id, formData);
+            onSubmit(contact?.contact_id, formData);
             onClose();
         }
     };
 
-    const handleAddTag = () => {
-        if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
-            setFormData({
-                ...formData,
-                tags: [...(formData.tags || []), tagInput.trim()]
-            });
-            setTagInput("");
-        }
-    };
+    // const handleAddTag = () => {
+    //     if (tagInput.trim() && !formData?.tags?.includes(tagInput.trim())) {
+    //         setFormData({
+    //             ...formData,
+    //             tags: [...(formData?.tags || []), tagInput.trim()]
+    //         });
+    //         setTagInput("");
+    //     }
+    // };
 
-    const handleRemoveTag = (tagToRemove: string) => {
-        setFormData({
-            ...formData,
-            tags: formData.tags?.filter(tag => tag !== tagToRemove) || []
-        });
-    };
+    // const handleRemoveTag = (tagToRemove: string) => {
+    //     setFormData({
+    //         ...formData,
+    //         tags: formData.tags?.filter((tag: any) => tag !== tagToRemove) || []
+    //     });
+    // };
 
     const toggleBlockStatus = () => {
         setFormData({

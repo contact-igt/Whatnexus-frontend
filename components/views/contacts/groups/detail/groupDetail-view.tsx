@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTheme } from "@/hooks/useTheme";
-import { ContactGroup, GroupMember, UpdateGroupDto } from "@/types/contactGroup";
+import { ContactGroup, GroupMember, UpdateGroupDto, GroupMemberContact } from "@/types/contactGroup";
 import {
     useGetGroupByIdQuery,
     useGetAvailableContactsQuery,
@@ -45,9 +45,27 @@ export const GroupDetailView = () => {
     const { mutate: removeContactFromGroup, isPending: isRemovingContact } = useRemoveContactFromGroupMutation();
 
     // Extract data from API response
-    const group: ContactGroup | null = groupData?.data?.group || null;
-    const members: GroupMember[] = groupData?.data?.members || [];
-    const availableContacts: GroupMember[] = availableContactsData?.data || [];
+    // Extract data from API response
+    const group: ContactGroup | null = groupData?.data || null;
+    const membersData = group?.members || [];
+
+    // Flatten members structure for display
+    const members: GroupMember[] = membersData.map(item => ({
+        id: item.contact.contact_id,
+        name: item.contact.name,
+        phone: item.contact.phone,
+        email: item.contact.email,
+        profile_pic: item.contact.profile_pic
+    }));
+
+    // Available contacts mapping if needed, but the API returns GroupMemberContact[] directly for available contacts
+    const availableContacts: GroupMember[] = (availableContactsData?.data || []).map((contact: GroupMemberContact) => ({
+        id: contact.contact_id,
+        name: contact.name,
+        phone: contact.phone,
+        email: contact.email,
+        profile_pic: contact.profile_pic
+    }));
 
     // Handlers
     const handleEditGroup = (groupId: string, data: UpdateGroupDto) => {
@@ -60,7 +78,7 @@ export const GroupDetailView = () => {
 
     const handleDeleteGroup = () => {
         if (group) {
-            deleteGroup(group.id, {
+            deleteGroup(group.group_id, {
                 onSuccess: () => {
                     router.push('/contacts/groups');
                 }
@@ -157,7 +175,7 @@ export const GroupDetailView = () => {
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleDeleteGroup}
                 title="Delete Group"
-                message={`Are you sure you want to delete "${group.name}"? This will not delete the contacts, only the group.`}
+                message={`Are you sure you want to delete "${group.group_name}"? This will not delete the contacts, only the group.`}
                 isDarkMode={isDarkMode}
                 confirmText="Delete Group"
                 cancelText="Cancel"
