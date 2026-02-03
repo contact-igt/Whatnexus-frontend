@@ -83,7 +83,8 @@ export interface Campaign {
     read_count: number;
     replied_count: number;
     scheduled_at: string | null;
-    created_at: string;
+    createdAt: string; // API uses camelCase
+    updatedAt?: string; // API uses camelCase
     template: TemplateInfo;
 }
 

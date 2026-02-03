@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, Trash2, Filter } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, Trash2, ListFilter, Filter } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -274,20 +274,31 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                     <h2 className={cn("text-lg font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                         Recipients ({recipients.length})
                     </h2>
-                    <div className="flex items-center gap-2">
-                        <Filter size={14} className={cn(isDarkMode ? 'text-white/40' : 'text-slate-400')} />
+                    <div className="flex items-center gap-3">
+                        <ListFilter size={16} className={cn(isDarkMode ? 'text-white/60' : 'text-slate-500')} />
                         <select
                             value={filters.recipientStatus || ''}
                             onChange={(e) => filters.setRecipientStatus(e.target.value as RecipientStatus || undefined)}
+                            style={{
+                                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+                                color: isDarkMode ? '#ffffff' : '#334155',
+                            }}
                             className={cn(
-                                "px-3 py-2 rounded-lg border text-xs font-semibold transition-all outline-none",
+                                "px-4 py-2 rounded-xl border text-xs font-semibold transition-all outline-none cursor-pointer",
                                 isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white'
-                                    : 'bg-white border-slate-200 text-slate-700'
+                                    ? 'border-white/10 hover:bg-white/10 focus:border-emerald-500/50'
+                                    : 'border-slate-200 hover:bg-slate-50 focus:border-emerald-500'
                             )}
                         >
                             {recipientStatusOptions.map(option => (
-                                <option key={option.label} value={option.value || ''}>
+                                <option
+                                    key={option.label}
+                                    value={option.value || ''}
+                                    style={{
+                                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                                        color: isDarkMode ? '#ffffff' : '#334155',
+                                    }}
+                                >
                                     {option.label}
                                 </option>
                             ))}
