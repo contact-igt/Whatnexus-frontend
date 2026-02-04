@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -60,11 +60,10 @@ export const AddContactModal = ({
     const handleSubmit = () => {
         if (validateForm()) {
             onSubmit(formData);
-            handleReset();
         }
     };
 
-    const handleReset = () => {
+    const handleReset = useCallback(() => {
         setFormData({
             phone: "",
             name: "",
@@ -74,8 +73,15 @@ export const AddContactModal = ({
         });
         setTagInput("");
         setErrors({});
-    };
+    }, []);
 
+    useEffect(() => {
+        if (!isOpen) {
+            handleReset();
+        }
+    }, [isOpen, handleReset]);
+
+    
     // const handleAddTag = () => {
     //     if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
     //         setFormData({
@@ -94,7 +100,6 @@ export const AddContactModal = ({
     // };
 
     const handleClose = () => {
-        handleReset();
         onClose();
     };
 
@@ -105,7 +110,7 @@ export const AddContactModal = ({
             title="Add New Contact"
             description="Fill in the details to add a new contact"
             isDarkMode={isDarkMode}
-            className="max-w-xl"
+            className="max-w-xl font-sans"
             footer={
                 <div className="flex items-center justify-end space-x-3">
                     <button

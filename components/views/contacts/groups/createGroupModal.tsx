@@ -72,7 +72,7 @@ export const CreateGroupModal = ({
             title="Create New Group"
             description="Create an empty group to organize your contacts"
             isDarkMode={isDarkMode}
-            className="max-w-xl"
+            className="max-w-xl font-sans"
             footer={
                 <div className="flex items-center justify-end space-x-3">
                     <button

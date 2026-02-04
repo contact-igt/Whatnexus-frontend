@@ -71,7 +71,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
     // }, [isOpen]);
 
     return (
-        <div className="relative" ref={menuRef}>
+        <div className="relative font-sans" ref={menuRef}>
             <button
                 onClick={(e) => {
                     e.stopPropagation();

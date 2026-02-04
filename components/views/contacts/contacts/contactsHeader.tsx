@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Search, Plus, Upload, Users } from "lucide-react";
+import { Search, Plus, Upload, Users, Import, Download, FileDown, ArrowDownToLine, ArrowUpToLine, DownloadIcon, UploadIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
@@ -11,6 +11,8 @@ interface ContactsHeaderProps {
     onSearchChange: (query: string) => void;
     onAddContact: () => void;
     onImportCSV: () => void;
+    onExportCSV: () => void;
+    onDownloadSample: () => void;
     selectedCount: number;
     onBulkDelete?: () => void;
 }
@@ -21,10 +23,23 @@ export const ContactsHeader = ({
     onSearchChange,
     onAddContact,
     onImportCSV,
+    onExportCSV,
+    onDownloadSample,
     selectedCount,
     onBulkDelete
 }: ContactsHeaderProps) => {
     const router = useRouter();
+
+    // const downloadSampleCSV = () => {
+    //     const csvContent = "name,phone,email,tags\nJohn Doe,+1234567890,john@example.com,VIP;Customer\nJane Smith,+0987654321,jane@example.com,Lead";
+    //     const blob = new Blob([csvContent], { type: 'text/csv' });
+    //     const url = window.URL.createObjectURL(blob);
+    //     const a = document.createElement('a');
+    //     a.href = url;
+    //     a.download = 'contacts_sample.csv';
+    //     a.click();
+    //     window.URL.revokeObjectURL(url);
+    // };
 
     return (
         <div className="space-y-4 mb-6">
@@ -58,7 +73,18 @@ export const ContactsHeader = ({
                         <Users size={16} />
                         <span>Manage Groups</span>
                     </button>
-
+                    <button
+                        onClick={onDownloadSample}
+                        className={cn(
+                            "flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border",
+                            isDarkMode
+                                ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                        )}
+                    >
+                        <DownloadIcon size={16} />
+                        <span>Sample CSV file</span>
+                    </button>
                     <button
                         onClick={onImportCSV}
                         className={cn(
@@ -68,10 +94,21 @@ export const ContactsHeader = ({
                                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                         )}
                     >
-                        <Upload size={16} />
+                        <DownloadIcon size={16} />
                         <span>Import CSV</span>
                     </button>
-
+                    <button
+                        onClick={onExportCSV}
+                        className={cn(
+                            "flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border",
+                            isDarkMode
+                                ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                        )}
+                    >
+                        <UploadIcon size={16} />
+                        <span>Export CSV</span>
+                    </button>
                     <button
                         onClick={onAddContact}
                         className="flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-500/20"

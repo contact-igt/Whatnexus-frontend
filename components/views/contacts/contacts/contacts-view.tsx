@@ -11,6 +11,7 @@ import {
     useDeleteContactMutation,
     useImportContactsMutation
 } from "@/hooks/useContactQuery";
+import { handleCSVDownloadData } from "@/hooks/useExportDataToExcel";
 import { ContactsHeader } from "./contactsHeader";
 import { ContactList } from "./contactList";
 import { AddContactModal } from "./addContactModal";
@@ -108,6 +109,27 @@ export const ContactsView = () => {
         });
     };
 
+    const handleExportCSV = () => {
+        // Prepare data for export
+        const dataToExport = contacts.map(contact => ({
+            name: contact.name,
+            phone: contact.phone,
+            // tags: contact.tags?.join(';') || '' // Include if tags are used
+        }));
+        handleCSVDownloadData(dataToExport, 'contacts_export');
+    };
+
+    const handleDownloadSample = () => {
+        const sampleData = [
+            { name: "Aarav Patel", phone: "+919876543210" },
+            { name: "Priya Sharma", phone: "+919988776655" },
+            { name: "Rahul Singh", phone: "+919123456789" },
+            { name: "Ananya Gupta", phone: "+919898989898" },
+            { name: "Vikram Kumar", phone: "+919012345678" }
+        ];
+        handleCSVDownloadData(sampleData, 'contacts_sample');
+    };
+
     const handleSelectContact = (contactId: string) => {
         setSelectedContacts(prev =>
             prev.includes(contactId)
@@ -141,7 +163,7 @@ export const ContactsView = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-6 font-sans overflow-y-auto h-full">
             {/* Header */}
             <ContactsHeader
                 isDarkMode={isDarkMode}
@@ -149,6 +171,8 @@ export const ContactsView = () => {
                 onSearchChange={setSearchQuery}
                 onAddContact={() => setIsAddModalOpen(true)}
                 onImportCSV={() => setIsImportModalOpen(true)}
+                onExportCSV={handleExportCSV}
+                onDownloadSample={handleDownloadSample}
                 selectedCount={selectedContacts.length}
                 onBulkDelete={selectedContacts.length > 0 ? () => setIsBulkDeleteModalOpen(true) : undefined}
             />

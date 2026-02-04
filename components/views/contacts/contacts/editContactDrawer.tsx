@@ -98,6 +98,7 @@ export const EditContactDrawer = ({
             title="Edit Contact"
             description={`Update details for ${contact.name}`}
             isDarkMode={isDarkMode}
+            className="font-sans"
             footer={
                 <div className="flex items-center justify-end space-x-3">
                     <button

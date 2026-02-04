@@ -200,46 +200,46 @@ export const TemplateListPage = ({
                         <table className="w-full text-left min-w-[1000px]">
                             <thead>
                                 <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
-                                    <th className="px-6 py-4 text-center">Template Name</th>
+                                    <th className="px-6 py-4">Template Name</th>
                                     <th className="px-6 py-4 text-center">Category</th>
-                                <th className="px-6 py-4 text-center">Status</th>
-                                <th className="px-6 py-4 text-center">Type</th>
-                                {/* <th className="px-6 py-4 text-center">Health</th> */}
-                                <th className="px-6 py-4 text-center">Created At</th>
-                                <th className="px-6 py-4 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                            {filteredTemplates.length > 0 ? (
-                                filteredTemplates.map((template) => (
-                                    <tr key={template.template_id} className="group transition-all hover:bg-emerald-500/5">
-                                        <td className="px-6 py-5 text-center">
-                                            <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
-                                                {template?.template_name}
-                                            </p>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn(
-                                                "text-xs font-medium px-2 py-1 rounded",
-                                                isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-600'
-                                            )}>
-                                                {template.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn(
-                                                "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                                                getStatusColor(template.status, isDarkMode)
-                                            )}>
-                                                {template.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                                {template.template_type}
-                                            </span>
-                                        </td>
-                                        {/* <td className="px-6 py-5 text-center">
+                                    <th className="px-6 py-4 text-center">Status</th>
+                                    <th className="px-6 py-4 text-center">Type</th>
+                                    {/* <th className="px-6 py-4 text-center">Health</th> */}
+                                    <th className="px-6 py-4 text-center">Created At</th>
+                                    <th className="px-6 py-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
+                                {filteredTemplates.length > 0 ? (
+                                    filteredTemplates.map((template) => (
+                                        <tr key={template.template_id} className="group transition-all hover:bg-emerald-500/5">
+                                            <td className="px-6 py-5 w-50">
+                                                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
+                                                    {template?.template_name}
+                                                </p>
+                                            </td>
+                                            <td className="px-2 py-5 text-center">
+                                                <span className={cn(
+                                                    "text-xs font-medium px-2 py-1 rounded",
+                                                    isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-600'
+                                                )}>
+                                                    {template.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn(
+                                                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
+                                                    getStatusColor(template.status, isDarkMode)
+                                                )}>
+                                                    {template.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                                    {template.template_type}
+                                                </span>
+                                            </td>
+                                            {/* <td className="px-6 py-5 text-center">
                                             <span className={cn(
                                                 "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
                                                 getHealthColor(template.health, isDarkMode)
@@ -247,47 +247,47 @@ export const TemplateListPage = ({
                                                 {template.health}
                                             </span>
                                         </td> */}
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                {formatDate(template.created_at)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center justify-center">
-                                                <ActionMenu
-                                                    isDarkMode={isDarkMode}
-                                                    isView={true}
-                                                    isEdit={['draft', 'paused', 'rejected'].includes(template?.status)}
-                                                    isSubmitTemplate={['draft', 'paused', 'rejected'].includes(template?.status)}
-                                                    onSubmitTemplate={() => { (template?.status === 'paused' || template?.status === 'rejected') ? onResubmitTemplate(template?.template_id) : onSubmitTemplate(template?.template_id) }}
-                                                    isSyncTemplate={template?.status === 'pending'}
-                                                    onSyncTemplate={() => onSyncTemplate(template?.template_id)}
-                                                    onView={() => onView(template)}
-                                                    onEdit={() => onEdit(template)}
-                                                    isDelete={['draft', 'paused', 'rejected', 'deleted'].includes(template?.status)}
-                                                    onDelete={() => handleDeleteClick(template.template_id, 'soft')}
-                                                    isPermanentDelete={template?.status === "deleted" && activeTab === 'trash' && user?.role === 'tenant_admin'}
-                                                    onPermanentDelete={() => handleDeleteClick(template.template_id, 'permanent')}
-                                                // onRestore={() => onRestore(template.template_id)}
-                                                />
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                    {formatDate(template.created_at)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center justify-center">
+                                                    <ActionMenu
+                                                        isDarkMode={isDarkMode}
+                                                        isView={true}
+                                                        isEdit={['draft', 'paused', 'rejected'].includes(template?.status)}
+                                                        isSubmitTemplate={['draft', 'paused', 'rejected'].includes(template?.status)}
+                                                        onSubmitTemplate={() => { (template?.status === 'paused' || template?.status === 'rejected') ? onResubmitTemplate(template?.template_id) : onSubmitTemplate(template?.template_id) }}
+                                                        isSyncTemplate={template?.status === 'pending'}
+                                                        onSyncTemplate={() => onSyncTemplate(template?.template_id)}
+                                                        onView={() => onView(template)}
+                                                        onEdit={() => onEdit(template)}
+                                                        isDelete={['draft', 'paused', 'rejected', 'deleted'].includes(template?.status)}
+                                                        onDelete={() => handleDeleteClick(template.template_id, 'soft')}
+                                                        isPermanentDelete={template?.status === "deleted" && activeTab === 'trash' && user?.role === 'tenant_admin'}
+                                                        onPermanentDelete={() => handleDeleteClick(template.template_id, 'permanent')}
+                                                    // onRestore={() => onRestore(template.template_id)}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <AlertCircle size={32} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
+                                                <p className={cn("text-sm", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                                    {searchQuery ? 'No templates found matching your search' : 'No templates found'}
+                                                </p>
                                             </div>
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <AlertCircle size={32} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
-                                            <p className={cn("text-sm", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                                {searchQuery ? 'No templates found matching your search' : 'No templates found'}
-                                            </p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                )}
+                            </tbody>
+                        </table>
                     )}
                 </div>
             </GlassCard>

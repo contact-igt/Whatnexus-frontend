@@ -87,7 +87,7 @@ export const GroupsView = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto h-full font-sans">
             {/* Header */}
             <GroupsHeader
                 isDarkMode={isDarkMode}

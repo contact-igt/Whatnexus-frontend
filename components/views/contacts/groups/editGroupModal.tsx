@@ -69,7 +69,7 @@ export const EditGroupModal = ({
             title="Edit Group"
             description={`Update details for ${group.group_name}`}
             isDarkMode={isDarkMode}
-            className="max-w-xl"
+            className="max-w-xl font-sans"
             footer={
                 <div className="flex items-center justify-end space-x-3">
                     <button
