@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Upload, User, Mail, Phone, Tag, X } from "lucide-react";
 import { CreateContactDto } from "@/types/contact";
@@ -30,7 +31,8 @@ export const AddContactModal = ({
         profile_pic: "",
         // tags: []
     });
-    const [tagInput, setTagInput] = useState("");
+    const [countryCode, setCountryCode] = useState("+91");
+    // const [tagInput, setTagInput] = useState("");
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const validateForm = () => {
@@ -44,8 +46,8 @@ export const AddContactModal = ({
         // Phone is required (per API spec)
         if (!formData.phone.trim()) {
             newErrors.phone = "Phone number is required";
-        } else if (!/^\+?[\d\s-()]+$/.test(formData.phone)) {
-            newErrors.phone = "Invalid phone number format";
+        } else if (!/^\d+$/.test(formData.phone)) {
+            newErrors.phone = "Phone number must contain only digits";
         }
 
         // Email validation (optional)
@@ -59,7 +61,10 @@ export const AddContactModal = ({
 
     const handleSubmit = () => {
         if (validateForm()) {
-            onSubmit(formData);
+            onSubmit({
+                ...formData,
+                phone: `${countryCode}${formData.phone}`
+            });
         }
     };
 
@@ -71,7 +76,8 @@ export const AddContactModal = ({
             profile_pic: "",
             // tags: []
         });
-        setTagInput("");
+        setCountryCode("+91");
+        // setTagInput("");
         setErrors({});
     }, []);
 
@@ -81,7 +87,7 @@ export const AddContactModal = ({
         }
     }, [isOpen, handleReset]);
 
-    
+
     // const handleAddTag = () => {
     //     if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
     //         setFormData({
@@ -175,17 +181,33 @@ export const AddContactModal = ({
                 </div> */}
 
                 {/* Phone - Required Field */}
-                <Input
-                    isDarkMode={isDarkMode}
-                    label="Phone Number"
-                    required
-                    type="tel"
-                    placeholder="Enter phone number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    error={errors.phone}
-                    icon={Phone}
-                />
+                <div className="grid grid-cols-3 gap-4">
+                    <Select
+                        isDarkMode={isDarkMode}
+                        label="Country Code"
+                        value={countryCode}
+                        onChange={(value) => setCountryCode(value)}
+                        options={[
+                            { value: '+91', label: 'India (+91)' },
+                            { value: '+1', label: 'USA (+1)' },
+                            { value: '+44', label: 'UK (+44)' },
+                            { value: '+971', label: 'UAE (+971)' }
+                        ]}
+                        className="col-span-1"
+                    />
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Phone Number"
+                        required
+                        type="tel"
+                        placeholder="98765 43210"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        error={errors.phone}
+                        icon={Phone}
+                        wrapperClassName="col-span-2"
+                    />
+                </div>
 
                 {/* Name - Optional Field */}
                 <Input
@@ -224,14 +246,14 @@ export const AddContactModal = ({
                         <div className="relative flex-1">
                             <Tag className={cn(
                                 "absolute left-3 top-1/2 -translate-y-1/2",
-                                isDarkMode ? "text-white/30" : "text-slate-400"
+                                "text-slate-400"
                             )} size={16} />
                             <input
                                 type="text"
                                 placeholder="Add a tag"
-                                value={tagInput}
-                                onChange={(e) => setTagInput(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                                // value={tagInput}
+                                // onChange={(e) => setTagInput(e.target.value)}
+                                // onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
                                 className={cn(
                                     "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                     isDarkMode
@@ -241,7 +263,7 @@ export const AddContactModal = ({
                             />
                         </div>
                         <button
-                            onClick={handleAddTag}
+                            // onClick={handleAddTag}
                             type="button"
                             className={cn(
                                 "px-4 py-2.5 rounded-xl text-sm font-medium transition-all border",
@@ -253,30 +275,6 @@ export const AddContactModal = ({
                             Add
                         </button>
                     </div>
-                    {formData.tags && formData.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            {formData.tags.map((tag, index) => (
-                                <span
-                                    key={index}
-                                    className={cn(
-                                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border",
-                                        isDarkMode
-                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    )}
-                                >
-                                    {tag}
-                                    <button
-                                        onClick={() => handleRemoveTag(tag)}
-                                        type="button"
-                                        className="ml-1 hover:bg-black/10 rounded-full p-0.5"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                    )}
                 </div> */}
             </div>
         </Modal>

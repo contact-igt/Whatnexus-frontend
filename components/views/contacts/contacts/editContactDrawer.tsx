@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Upload, User, Mail, Phone, Tag, X, Shield, ShieldOff } from "lucide-react";
 import { Contact, UpdateContactDto } from "@/types/contact";
@@ -26,7 +27,8 @@ export const EditContactDrawer = ({
     isLoading = false
 }: EditContactDrawerProps) => {
     const [formData, setFormData] = useState<UpdateContactDto>({});
-    const [tagInput, setTagInput] = useState("");
+    const [displayPhone, setDisplayPhone] = useState({ code: '+91', number: '' });
+    // const [tagInput, setTagInput] = useState("");
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -38,6 +40,18 @@ export const EditContactDrawer = ({
                 // tags: contact.tags || [],
                 is_blocked: contact.is_blocked
             });
+
+            // Parse phone number for display
+            const phone = contact.phone || '';
+            let code = '+91';
+            let number = phone;
+
+            if (phone.startsWith('+91')) { code = '+91'; number = phone.slice(3); }
+            else if (phone.startsWith('+1')) { code = '+1'; number = phone.slice(2); }
+            else if (phone.startsWith('+44')) { code = '+44'; number = phone.slice(3); }
+            else if (phone.startsWith('+971')) { code = '+971'; number = phone.slice(4); }
+
+            setDisplayPhone({ code, number });
         }
     }, [contact]);
 
@@ -215,35 +229,34 @@ export const EditContactDrawer = ({
                 />
 
                 {/* Phone - READ ONLY (Cannot be edited per API spec) */}
-                <div>
-                    <label className={cn(
-                        "text-xs font-semibold mb-2 block ml-1",
-                        isDarkMode ? 'text-white/70' : 'text-slate-700'
-                    )}>
-                        Phone Number
-                        <span className={cn(
-                            "ml-2 text-xs font-normal",
-                            isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
-                        )}>🔒 Cannot be edited</span>
-                    </label>
-                    <div className="relative">
-                        <Phone className={cn(
-                            "absolute left-3 top-1/2 -translate-y-1/2",
-                            isDarkMode ? "text-white/30" : "text-slate-400"
-                        )} size={16} />
-                        <input
-                            type="tel"
-                            value={contact.phone}
-                            disabled
-                            readOnly
-                            className={cn(
-                                "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all cursor-not-allowed",
-                                isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white/50'
-                                    : 'bg-slate-100 border-slate-200 text-slate-500'
-                            )}
-                        />
-                    </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                    <Select
+                        isDarkMode={isDarkMode}
+                        label="Country Code"
+                        value={displayPhone.code}
+                        onChange={() => { }} // Read only
+                        disabled={true}
+                        options={[
+                            { value: '+91', label: 'India (+91)' },
+                            { value: '+1', label: 'USA (+1)' },
+                            { value: '+44', label: 'UK (+44)' },
+                            { value: '+971', label: 'UAE (+971)' }
+                        ]}
+                        className="col-span-1 opacity-70"
+                    />
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Phone Number"
+                        type="tel"
+                        value={displayPhone.number}
+                        disabled
+                        readOnly
+                        placeholder="Phone Number"
+                        onChange={() => { }}
+                        icon={Phone}
+                        wrapperClassName="col-span-2 opacity-70"
+                    />
                 </div>
 
                 {/* Email */}
@@ -270,14 +283,14 @@ export const EditContactDrawer = ({
                         <div className="relative flex-1">
                             <Tag className={cn(
                                 "absolute left-3 top-1/2 -translate-y-1/2",
-                                isDarkMode ? "text-white/30" : "text-slate-400"
+                                "text-slate-400"
                             )} size={16} />
                             <input
                                 type="text"
                                 placeholder="Add a tag"
-                                value={tagInput}
-                                onChange={(e) => setTagInput(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                                // value={tagInput}
+                                // onChange={(e) => setTagInput(e.target.value)}
+                                // onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
                                 className={cn(
                                     "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                     isDarkMode
@@ -287,7 +300,7 @@ export const EditContactDrawer = ({
                             />
                         </div>
                         <button
-                            onClick={handleAddTag}
+                            // onClick={handleAddTag}
                             type="button"
                             className={cn(
                                 "px-4 py-2.5 rounded-xl text-sm font-medium transition-all border",
@@ -299,30 +312,6 @@ export const EditContactDrawer = ({
                             Add
                         </button>
                     </div>
-                    {formData.tags && formData.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            {formData.tags.map((tag, index) => (
-                                <span
-                                    key={index}
-                                    className={cn(
-                                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border",
-                                        isDarkMode
-                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    )}
-                                >
-                                    {tag}
-                                    <button
-                                        onClick={() => handleRemoveTag(tag)}
-                                        type="button"
-                                        className="ml-1 hover:bg-black/10 rounded-full p-0.5"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                    )}
                 </div> */}
             </div>
         </Drawer>

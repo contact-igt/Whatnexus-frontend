@@ -6,7 +6,8 @@ import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Organization } from "./organization-view";
-import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation } from "@/hooks/useTenantQuery";
 
 interface OrganizationModalProps {
@@ -83,7 +84,14 @@ export const OrganizationModal = ({
         const newErrors: Record<string, string> = {};
         if (!formData.company_name?.trim()) newErrors.company_name = "Organization name is required";
         if (!formData.owner_name?.trim()) newErrors.owner_name = "Owner name is required";
-        if (!formData.owner_email?.trim()) newErrors.owner_email = "Email is required";
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.owner_email?.trim()) {
+            newErrors.owner_email = "Email is required";
+        } else if (!emailRegex.test(formData.owner_email)) {
+            newErrors.owner_email = "Invalid email address";
+        }
+
         // if (!formData.adminName?.trim()) newErrors.adminName = "Admin name is required";
         // if (!formData.adminEmail?.trim()) newErrors.adminEmail = "Admin email is required";
         // if (mode === 'create' && !formData.password?.trim()) newErrors.password = "Password is required";
@@ -104,11 +112,18 @@ export const OrganizationModal = ({
     const handleSubmit = () => {
         if (validate()) {
             if (mode === 'create') {
-                createTenantMutate(formData);
+                createTenantMutate(formData, {
+                    onSuccess: () => {
+                        onClose();
+                    }
+                });
             } else if (mode === 'edit' && organization?.id) {
-                updateTenantMutate({ id: organization.id, data: formData });
+                updateTenantMutate({ id: organization.id, data: formData }, {
+                    onSuccess: () => {
+                        onClose();
+                    }
+                });
             }
-            onClose();
         }
     };
 
@@ -121,26 +136,36 @@ export const OrganizationModal = ({
             title={mode === 'create' ? "Add Organization" : mode === 'edit' ? "Edit Organization" : "Organization Details"}
             description={mode === 'create' ? "Register a new hospital or clinic" : "View and manage organization details"}
             isDarkMode={isDarkMode}
+            className="font-sans"
             footer={
                 !isView && (
-                    <div className="flex justify-end space-x-3 pt-4">
+                    <div className="flex justify-end font-sans space-x-3 pt-4">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                            disabled={isCreateTenantPending || isUpdateTenantPending}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+                            disabled={isCreateTenantPending || isUpdateTenantPending}
+                            className={cn(
+                                "px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
                         >
-                            {mode === 'create' ? 'Register Organization' : 'Save Changes'}
+                            {(isCreateTenantPending || isUpdateTenantPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {mode === 'create'
+                                ? (isCreateTenantPending ? 'Registering...' : 'Register Organization')
+                                : (isUpdateTenantPending ? 'Saving...' : 'Save Changes')}
                         </button>
                     </div>
                 )
             }
         >
-            <div className="space-y-6">
+            <div className="space-y-6 font-sans">
                 {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                     {/* <div className="col-span-full">

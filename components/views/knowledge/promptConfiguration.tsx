@@ -193,8 +193,8 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
         }
     };
 
-    const handleToggleActive = (id: string, isActive: string) => {
-        activatePromptMutate({ id, data: { is_active: isActive == "true" ? "false" : "true" } });
+    const handleToggleActive = (id: string, isActive: boolean) => {
+        activatePromptMutate({ id, data: { is_active: isActive ? 0 : 1 } });
     };
 
     const handleLocalDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -467,8 +467,8 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
-                                                disabled={promptsData?.data?.every((prompt: any) => prompt?.is_active == "false") ? false : prompt.is_active == "true" ? false : true}
-                                                checked={prompt.is_active == "true" ? true : false}
+                                                disabled={promptsData?.data?.every((prompt: any) => prompt?.is_active == 0) ? false : prompt.is_active == 1 ? false : true}
+                                                checked={prompt.is_active == 1 ? true : false}
                                                 onChange={() => handleToggleActive(prompt.id, prompt.is_active)}
                                             />
                                             <div className={cn(
@@ -480,7 +480,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                                 <div className={cn(
                                                     "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
                                                     "peer-checked:translate-x-5",
-                                                    prompt.is_active == "true" ? "translate-x-5" : "translate-x-0"
+                                                    prompt.is_active == 1 ? "translate-x-5" : "translate-x-0"
                                                 )} />
                                             </div>
                                         </label>

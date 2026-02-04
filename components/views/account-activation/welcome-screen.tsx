@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -70,6 +71,22 @@ export default function WelcomeScreen({
                 Welcome to the future of conversations! Your account is fully set up and ready to revolutionize your workflow.
             </p>
 
+            {/* Verification Token Notice */}
+            <div className={cn(
+                "mb-8 p-4 rounded-xl border text-center relative overflow-hidden",
+                isDarkMode
+                    ? "bg-blue-500/10 border-blue-500/30 text-blue-200"
+                    : "bg-blue-50 border-blue-200 text-blue-700"
+            )}>
+                <div className={cn(
+                    "absolute inset-0 opacity-10",
+                    isDarkMode ? "bg-blue-500" : "bg-blue-400"
+                )} />
+                <p className="relative z-10 text-sm font-medium">
+                    We have sent a verification token to your email for the WhatsApp Business API connection.
+                </p>
+            </div>
+
             {/* CTA Button */}
             <button
                 onClick={handleGoToDashboard}
@@ -94,15 +111,6 @@ export default function WelcomeScreen({
                     <ArrowRight className="w-5 h-5 transition-transform duration-300" />
                 </span>
             </button>
-            {/* Footer Text */}
-            {/* <p
-                className={cn(
-                    "text-center text-[10px] mt-6 uppercase tracking-wider font-semibold",
-                    isDarkMode ? "text-slate-500" : "text-slate-500"
-                )}
-            >
-                🎉 System Status: All Systems Operational
-            </p> */}
         </>
     );
 }
