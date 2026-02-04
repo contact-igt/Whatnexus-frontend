@@ -4,6 +4,7 @@
 import { cn } from "@/lib/utils";
 import { ChevronDown, Check } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface SelectProps {
     isDarkMode: boolean;
@@ -31,20 +32,56 @@ export const Select = ({
     disabled
 }: SelectProps) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const selectedOption = options.find(opt => opt.value === value);
 
+    const toggleOpen = () => {
+        if (disabled) return;
+        if (isOpen) {
+            setIsOpen(false);
+        } else {
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                setPosition({
+                    top: rect.bottom + window.scrollY + 5,
+                    left: rect.left + window.scrollX,
+                    width: rect.width
+                });
+            }
+            setIsOpen(true);
+        }
+    };
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+            if (
+                containerRef.current &&
+                !containerRef.current.contains(event.target as Node) &&
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node)
+            ) {
                 setIsOpen(false);
             }
         };
 
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        const handleScroll = () => {
+            if (isOpen) setIsOpen(false);
+        };
+
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+            window.addEventListener('scroll', handleScroll, true);
+            window.addEventListener('resize', handleScroll);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('resize', handleScroll);
+        };
+    }, [isOpen]);
 
     const handleSelect = (optionValue: string) => {
         onChange?.(optionValue);
@@ -52,7 +89,7 @@ export const Select = ({
     };
 
     return (
-        <div className={cn("w-full relative", className)} ref={containerRef}>
+        <div className={cn("w-full relative", className)}>
             {label && (
                 <label className={cn(
                     "text-xs font-semibold mb-2 block ml-1",
@@ -64,6 +101,7 @@ export const Select = ({
             )}
 
             <div
+                ref={containerRef}
                 className={cn(
                     "w-full px-4 py-2.5 rounded-xl text-sm border transition-all flex items-center justify-between cursor-pointer",
                     isDarkMode
@@ -73,7 +111,7 @@ export const Select = ({
                     error && 'border-red-500 ring-red-500/30',
                     disabled && 'opacity-60 cursor-not-allowed pointer-events-none'
                 )}
-                onClick={() => !disabled && setIsOpen(!isOpen)}
+                onClick={toggleOpen}
             >
                 <span className={cn(!selectedOption && (isDarkMode ? "text-white/30" : "text-slate-400"))}>
                     {selectedOption ? selectedOption.label : placeholder}
@@ -88,13 +126,22 @@ export const Select = ({
                 />
             </div>
 
-            {isOpen && (
-                <div className={cn(
-                    "absolute z-50 w-full mt-2 rounded-xl border shadow-xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100",
-                    isDarkMode
-                        ? "bg-[#1c1c21] border-white/10"
-                        : "bg-white border-slate-200"
-                )}>
+            {isOpen && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={{
+                        top: position.top,
+                        left: position.left,
+                        width: position.width,
+                        position: 'absolute'
+                    }}
+                    className={cn(
+                        "z-[9999] mt-2 rounded-xl border shadow-xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100",
+                        isDarkMode
+                            ? "bg-[#1c1c21] border-white/10"
+                            : "bg-white border-slate-200"
+                    )}
+                >
                     {options.map((option) => (
                         <div
                             key={option.value}
@@ -113,7 +160,8 @@ export const Select = ({
                             )}
                         </div>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
 
             {error && (
