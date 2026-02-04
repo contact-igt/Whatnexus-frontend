@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Type, AlignLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { extractTextFromFile } from '@/utils/ocr';
@@ -15,7 +15,6 @@ import { Settings } from './settings';
 import { useTheme } from '@/hooks/useTheme';
 
 type TabType = 'data-sources' | 'prompts' | 'settings';
-
 
 export const KnowledgeView = () => {
     const {isDarkMode} = useTheme();
@@ -59,7 +58,7 @@ export const KnowledgeView = () => {
     const knowledgeTabs = [
         { value: "data-sources", label: "Data Sources" },
         { value: "prompts", label: "Prompts" },
-        { value: "settings", label: "Settings" }
+        // { value: "settings", label: "Settings" }
     ];
 
     useEffect(() => {

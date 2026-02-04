@@ -1,6 +1,6 @@
 
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX, MessageCircle } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
@@ -210,21 +210,61 @@ export const ChatView = () => {
     }, [chatList?.data, phoneParam]);
 
     const isSearching = messageSearchText.trim().length > 0;
-    const updatedMessageData =
-        newMessage.length > 0
-            ? [...(messagesData?.data ?? []), ...newMessage]
-            : messagesData?.data ?? [];
+    const updatedMessageData = useMemo(() => {
+        const dbMessages = messagesData?.data ?? [];
+        const socketMessages = newMessage;
+
+        // Create Sets for O(1) lookups
+        const dbIds = new Set(dbMessages.map((m: any) => m.id).filter(Boolean));
+
+        // Improve composite key to be less strict on timestamp milliseconds
+        // Use ISO string up to minutes: YYYY-MM-DDTHH:MM
+        const getCompositeKey = (msg: any) => {
+            const date = new Date(msg.created_at || msg.timestamp);
+            if (isNaN(date.getTime())) return `${msg.message?.trim()}:${msg.sender}:nodate`;
+
+            const minuteTime = date.toISOString().slice(0, 16); // "2024-02-04T10:29"
+            const content = msg.message?.trim() || "";
+            return `${content}:${msg.sender}:${minuteTime}`;
+        };
+
+        const dbCompositeKeys = new Set(dbMessages.map(getCompositeKey));
+
+        const filteredSocketMessages = socketMessages.filter((msg: any) => {
+            // 1. If socket msg has ID, and it exists in DB -> Duplicate
+            if (msg.id && dbIds.has(msg.id)) return false;
+
+            // 2. Fallback: Check content + sender + minute-precision timestamp
+            const key = getCompositeKey(msg);
+            if (dbCompositeKeys.has(key)) return false;
+
+            return true;
+        });
+
+        // Also deduplicate within socket messages themselves
+        const uniqueSocketMessages = [];
+        const socketKeys = new Set();
+
+        for (const msg of filteredSocketMessages) {
+            const key = getCompositeKey(msg);
+            const idKey = msg.id ? `id:${msg.id}` : null;
+
+            if (!socketKeys.has(key) && (!idKey || !socketKeys.has(idKey))) {
+                uniqueSocketMessages.push(msg);
+                socketKeys.add(key);
+                if (idKey) socketKeys.add(idKey);
+            }
+        }
+
+        return [...dbMessages, ...uniqueSocketMessages];
+    }, [messagesData?.data, newMessage]);
     const displayMessages = isSearching
         ? filteredMessage ?? []
         : updatedMessageData ?? [];
     const groupedMessages = groupMessagesByDate(displayMessages);
     const groupedEntries = Object.entries(groupedMessages);
 
-    useEffect(() => {
-        bottomRef?.current?.scrollIntoView({
-            behavior: "smooth",
-        })
-    }, [groupedMessages])
+
 
     const suggestReply = async () => {
         try {
@@ -324,8 +364,11 @@ export const ChatView = () => {
         };
     }, []);
 
+    // Optimized scroll effect for new messages
+    // We add a separate div at the end to ensure we always have a target
     useEffect(() => {
-        if (groupedEntries?.length > 0) {
+        if (groupedEntries?.length > 0 || newMessage.length > 0) {
+            // Small timeout to allow render
             setTimeout(() => {
                 bottomRef?.current?.scrollIntoView({
                     behavior: "smooth",
@@ -333,7 +376,7 @@ export const ChatView = () => {
                 });
             }, 100);
         }
-    }, [selectedChat?.phone, groupedEntries?.length]);
+    }, [groupedEntries?.length, newMessage.length, selectedChat?.phone]);
     console.log("filteredChat", filteredChats)
     if (!whatsappApiDetails?.phone_number_id) {
         return (
@@ -652,8 +695,10 @@ export const ChatView = () => {
                                         </button>
                                     </div>
                                 )}
+                                <div ref={bottomRef} className="h-4" />
                             </div>
                         </>
+
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
                             <div className={cn("w-24 h-24 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform -rotate-6 transition-all", isDarkMode ? "bg-emerald-500/5 border-2 border-emerald-500/20" : "bg-emerald-50 border-2 border-emerald-200")}>
