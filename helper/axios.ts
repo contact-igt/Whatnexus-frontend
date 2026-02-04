@@ -18,22 +18,28 @@ export const _axios = async (
   params?: any
 ) => {
   const env = process.env.NEXT_PUBLIC_ENV;
-  const APIURL = 
-  env === "ngrok" ?  process.env.NEXT_PUBLIC_NGROK_URL :
-     env === "production"
-    ? process.env.NEXT_PUBLIC_PRODUCTION_API_URL
-    : env === "development"
-    ? process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL
-    : process.env.NEXT_PUBLIC_LOCALHOST_API_URL;
+  const APIURL =
+    env === "ngrok" ? process.env.NEXT_PUBLIC_NGROK_URL :
+      env === "production"
+        ? process.env.NEXT_PUBLIC_PRODUCTION_API_URL
+        : env === "development"
+          ? process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL
+          : process.env.NEXT_PUBLIC_LOCALHOST_API_URL;
 
   const endpoint = `${APIURL}${url}`;
   const state: RootState = store.getState();
   const activeTab = state?.auth?.activeTabData;
-  const token = activeTab == "chats" ? process.env.META_ACCESS_TOKEN : state?.auth?.token;
+  const loginToken = state?.auth?.token;
+  const metaToken = state?.auth?.whatsappApiDetails?.accessToken;
 
-  if (token) {
+  console.log(`[Axios] Request to ${url}`);
+  console.log(`[Axios] Active Tab: ${activeTab}`);
+  console.log(`[Axios] Login Token Found: ${!!loginToken}`);
+  console.log(`[Axios] Meta Token Found: ${!!metaToken}`);
+
+  if (loginToken) {
     try {
-      const decoded = jwtDecode<JwtPayload>(token);
+      const decoded = jwtDecode<JwtPayload>(loginToken);
       const currentTime = Math.floor(Date.now() / 1000);
 
       if (decoded.exp < currentTime) {
@@ -42,7 +48,7 @@ export const _axios = async (
         throw new Error("Token expired");
       }
     } catch (e) {
-      console.error("Invalid token:", e);
+      console.error("Invalid login token:", e);
       store.dispatch(clearAuthData());
       throw e;
     }
@@ -54,7 +60,8 @@ export const _axios = async (
     const res = await axios({
       headers: {
         ...(isFormData ? {} : { "Content-Type": contentType }),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(loginToken ? { Authorization: `Bearer ${loginToken}` } : {}),
+        ...(activeTab === "chats" && metaToken ? { "x-meta-token": metaToken } : {}),
         "ngrok-skip-browser-warning": true,
       },
       method: method,

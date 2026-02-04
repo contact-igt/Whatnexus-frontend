@@ -21,7 +21,7 @@ export const useLoginMutation = () => {
                 return;
             }
             dispatch(setAuthData({
-                token: variables.rememberMe === true ? data?.tokens?.refreshToken : data?.tokens?.accessToken,
+                token: data?.tokens?.accessToken,
                 refreshToken: data?.tokens?.refreshToken,
                 user: data?.user
             }))

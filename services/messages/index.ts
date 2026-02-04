@@ -33,4 +33,8 @@ export class MessagesApiData {
   chatSuggest = async (data: any) => {
     return await _axios("post", "/chats/suggest", data)
   }
+
+  sendTemplateMessage = async (data: { phone: string; contact_id: string; template_id: string; components?: any[] }) => {
+    return await _axios("post", "/chats/send-template", data);
+  };
 }

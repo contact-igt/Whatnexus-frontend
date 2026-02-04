@@ -101,3 +101,28 @@ export const useChatSuggestMutation = () => {
         },
     });
 }
+
+export const useSendTemplateMessageMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { phone: string; contact_id: string; template_id: string; components?: any[] }) => {
+            return MessagesApis.sendTemplateMessage(data);
+        },
+        onSuccess: (data: any, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["messages", variables.phone],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            toast.success(data?.message || 'Template message sent successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to send template message');
+        },
+    });
+};
