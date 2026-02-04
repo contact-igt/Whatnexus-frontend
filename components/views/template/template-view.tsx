@@ -90,7 +90,7 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 //     },
 // ];
 
-type ViewMode = 'list' | 'create' | 'edit';
+type ViewMode = 'list' | 'create' | 'edit' | 'view';
 
 export const TemplateView = () => {
     const { user } = useAuth();
@@ -124,7 +124,8 @@ export const TemplateView = () => {
     };
 
     const handleView = (template: any) => {
-        setPreviewTemplate(template);
+        setEditTemplateById(template?.template_id);
+        setViewMode('view');
     };
 
     const handleClosePreview = () => {
@@ -203,7 +204,7 @@ export const TemplateView = () => {
     };
 
     // Render based on view mode
-    if (viewMode === 'create' || viewMode === 'edit') {
+    if (viewMode === 'create' || viewMode === 'edit' || viewMode === 'view') {
         const selectedTemplateData = templateDataById?.data;
         const initialData: Partial<TemplateFormData> | undefined = selectedTemplateData ? {
             category: selectedTemplateData.category,
@@ -234,6 +235,7 @@ export const TemplateView = () => {
                 initialData={initialData}
                 onBack={handleBack}
                 onSave={handleSave}
+                isViewMode={viewMode === 'view'}
             />
         );
     }

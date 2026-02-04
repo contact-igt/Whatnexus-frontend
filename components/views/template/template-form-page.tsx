@@ -34,6 +34,7 @@ interface TemplateFormPageProps {
     initialData?: Partial<TemplateFormData>;
     onBack: () => void;
     onSave: (data: any) => void;
+    isViewMode?: boolean;
 }
 
 const templateSchema = z.object({
@@ -68,7 +69,8 @@ export const TemplateFormPage = ({
     templateId,
     initialData,
     onBack,
-    onSave
+    onSave,
+    isViewMode = false
 }: TemplateFormPageProps) => {
     const { isDarkMode } = useTheme();
 
@@ -346,30 +348,32 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                         </button>
                         <div>
                             <h1 className={cn("text-xl font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                {templateId ? 'Edit Template' : 'New Template Message'}
+                                {isViewMode ? 'View Template' : templateId ? 'Edit Template' : 'New Template Message'}
                             </h1>
                             <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
                                 {templateName || 'Untitled Template'}
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleSubmit(onSubmit)}
-                        disabled={isSubmitting}
-                        className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 size={16} className="animate-spin" />
-                                <span>Saving...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Save size={16} />
-                                <span>Save</span>
-                            </>
-                        )}
-                    </button>
+                    {!isViewMode && (
+                        <button
+                            onClick={handleSubmit(onSubmit)}
+                            disabled={isSubmitting}
+                            className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    <span>Saving...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Save size={16} />
+                                    <span>Save</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -398,6 +402,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                                 onChange={field.onChange}
                                                 options={categories.map(cat => ({ value: cat, label: cat }))}
                                                 error={errors.category?.message}
+                                                disabled={isViewMode}
                                             />
                                         )}
                                     />
@@ -422,6 +427,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                                     onChange={field.onChange}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
+                                                    disabled={isViewMode}
                                                 />
                                             )
                                         }}
@@ -434,12 +440,14 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                         </div>
 
                         {/* AI Generator */}
-                        <AIGeneratorSection
-                            isDarkMode={isDarkMode}
-                            onGenerate={handleAIGenerate}
-                            onGenerateTitle={handleAIGenerateTitle}
-                            generationsLeft={3}
-                        />
+                        {!isViewMode && (
+                            <AIGeneratorSection
+                                isDarkMode={isDarkMode}
+                                onGenerate={handleAIGenerate}
+                                onGenerateTitle={handleAIGenerateTitle}
+                                generationsLeft={3}
+                            />
+                        )}
 
                         {/* Template Name */}
                         <div>
@@ -456,6 +464,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                         placeholder="e.g. app_verification_code"
                                         onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
                                         error={errors.templateName?.message}
+                                        disabled={isViewMode}
                                     />
                                 )}
                             />
@@ -478,6 +487,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                         onChange={field.onChange}
                                         options={templateTypes.map(type => ({ value: type, label: type }))}
                                         error={errors.templateType?.message}
+                                        disabled={isViewMode}
                                     />
                                 )}
                             />
@@ -512,6 +522,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                                     label: type === 'NONE' ? 'None' : type.charAt(0) + type.slice(1).toLowerCase()
                                                 }))}
                                                 error={errors.headerType?.message}
+                                                disabled={isViewMode}
                                             />
                                         )}
                                     />
@@ -537,6 +548,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                                     onChange={(e) => field.onChange(e.target.value.slice(0, 60))}
                                                     maxLength={60}
                                                     error={errors.headerValue?.message}
+                                                    disabled={isViewMode}
                                                 />
                                             )}
                                         />
@@ -565,6 +577,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                                     onChange={(file, preview) => field.onChange(preview)}
                                                     placeholder="Upload image or video"
                                                     uploadType="image"
+                                                    disabled={isViewMode}
                                                 />
                                             )}
                                         />
@@ -588,6 +601,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                                     onChange={(file, preview) => field.onChange(preview)}
                                                     placeholder="Upload document (PDF, DOC, etc.)"
                                                     uploadType="document"
+                                                    disabled={isViewMode}
                                                 />
                                             )}
                                         />
@@ -615,6 +629,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                         maxLength={1024}
                                         showCharCount
                                         error={errors.content?.message}
+                                        disabled={isViewMode}
                                     />
                                 )}
                             />
@@ -632,6 +647,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                             variables={variables as Record<string, string>}
                             onVariablesChange={(vars) => setValue('variables', vars, { shouldValidate: !!errors.variables })}
                             variableErrors={errors.variables as any}
+                            disabled={isViewMode}
                         />
 
                         {/* Footer */}
@@ -650,6 +666,7 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                                         onChange={(e) => field.onChange(e.target.value.slice(0, 60))}
                                         maxLength={60}
                                         error={errors.footer?.message}
+                                        disabled={isViewMode}
                                     />
                                 )}
                             />

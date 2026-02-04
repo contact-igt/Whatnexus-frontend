@@ -12,6 +12,7 @@ interface VariableInputSectionProps {
     variables: Record<string, string>;
     onVariablesChange: (variables: Record<string, string>) => void;
     variableErrors?: Record<string, any>;
+    disabled?: boolean;
 }
 
 export const VariableInputSection = ({
@@ -19,7 +20,8 @@ export const VariableInputSection = ({
     content,
     variables,
     onVariablesChange,
-    variableErrors
+    variableErrors,
+    disabled
 }: VariableInputSectionProps) => {
     const [detectedVars, setDetectedVars] = useState<string[]>([]);
     console.log("content1", content)
@@ -105,6 +107,7 @@ export const VariableInputSection = ({
                                 onChange={(e) => handleVariableChange(varNum, e.target.value)}
                                 placeholder={exampleValues[varNum] || `Enter value for {{${varNum}}}`}
                                 error={variableErrors?.[varNum]?.message}
+                                disabled={disabled}
                             />
                         </div>
                     )
