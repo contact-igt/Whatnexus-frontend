@@ -1,7 +1,9 @@
 
 "use client";
 
+
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
@@ -28,55 +30,62 @@ interface ActionMenuProps {
 
 export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute }: ActionMenuProps) => {
     const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+    const menuRef = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // useEffect(() => {
-    //     const handleClickOutside = (event: MouseEvent) => {
-    //         if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-    //             setIsOpen(false);
-    //         }
-    //     };
+    const toggleOpen = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isOpen) {
+            setIsOpen(false);
+        } else {
+            if (menuRef.current) {
+                const rect = menuRef.current.getBoundingClientRect();
+                setPosition({
+                    top: rect.bottom + window.scrollY + 5,
+                    left: rect.right + window.scrollX - 144 // 144px is approx width (w-36)
+                });
+            }
+            setIsOpen(true);
+        }
+    };
 
-    //     let scrollableParents: HTMLElement[] = [];
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node) &&
+                menuRef.current &&
+                !menuRef.current.contains(event.target as Node)
+            ) {
+                setIsOpen(false);
+            }
+        };
 
-    //     const findScrollableParents = (node: HTMLElement | null) => {
-    //         const parents: HTMLElement[] = [];
-    //         let current = node;
-    //         while (current) {
-    //             const style = window.getComputedStyle(current);
-    //             if (/(auto|scroll)/.test(style.overflowY)) {
-    //                 parents.push(current);
-    //             }
-    //             current = current.parentElement;
-    //         }
-    //         return parents;
-    //     };
+        const handleScroll = () => {
+            if (isOpen) setIsOpen(false); // Close on scroll to avoid position drift
+        };
 
-    //     if (isOpen) {
-    //         if (menuRef.current) {
-    //             scrollableParents = findScrollableParents(menuRef.current.parentElement);
-    //             scrollableParents.forEach(parent => {
-    //                 parent.style.setProperty('overflow-y', 'hidden', 'important');
-    //             });
-    //         }
-    //         document.addEventListener('mousedown', handleClickOutside);
-    //     }
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            window.addEventListener('scroll', handleScroll, true); // true for capture to catch all scrolls
+            window.addEventListener('resize', handleScroll);
+        }
 
-    //     return () => {
-    //         scrollableParents.forEach(parent => {
-    //             parent.style.removeProperty('overflow-y');
-    //         });
-    //         document.removeEventListener('mousedown', handleClickOutside);
-    //     };
-    // }, [isOpen]);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('resize', handleScroll);
+        };
+    }, [isOpen]);
+
+    // Recalculate position if we can (optional, but closing on scroll is safer)
 
     return (
-        <div className="relative font-sans" ref={menuRef}>
+        <>
             <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setIsOpen(!isOpen)
-                }}
+                ref={menuRef}
+                onClick={toggleOpen}
                 className={cn(
                     "p-2 rounded-lg transition-all",
                     isOpen
@@ -87,13 +96,21 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                 <MoreHorizontal size={16} />
             </button>
 
-            {isOpen && (
-                <div className={cn(
-                    "absolute right-0 mt-2 w-34 rounded-xl border shadow-xl z-[100] animate-in fade-in zoom-in-95 duration-200",
-                    isDarkMode
-                        ? 'bg-[#1c1c21] border-white/10'
-                        : 'bg-white border-slate-200'
-                )}>
+            {isOpen && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={{
+                        top: position.top,
+                        left: position.left,
+                        position: 'absolute' // "absolute" in body relative to document
+                    }}
+                    className={cn(
+                        "w-36 rounded-xl border shadow-xl z-[9999] animate-in fade-in zoom-in-95 duration-200",
+                        isDarkMode
+                            ? 'bg-[#1c1c21] border-white/10'
+                            : 'bg-white border-slate-200'
+                    )}
+                >
                     <div className="p-1">
                         {onView && isView && (
                             <button
@@ -247,8 +264,9 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                             </button>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-        </div>
+        </>
     );
 };
