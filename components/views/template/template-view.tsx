@@ -226,7 +226,7 @@ export const TemplateView = () => {
 
             // Handle Footer
             footer: (selectedTemplateData.components.find((c: any) => c.component_type === "footer")?.text_content || ''),
-
+            previous_content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),
             variables: selectedTemplateData.variables,
             // interactiveActions: selectedTemplateData.interactive_actions,
             // ctaButtons: selectedTemplateData.ctaButtons || [],

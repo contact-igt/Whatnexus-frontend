@@ -188,7 +188,7 @@ export const WhatsAppConnectionView = () => {
             )}
 
 
-            {WhatsAppConnectionData?.data?.id && <>
+            {!WhatsAppConnectionData?.data?.id && <>
                 <div className={cn(
                     "p-8 rounded-xl border backdrop-blur-xl",
                     isDarkMode

@@ -1,37 +1,40 @@
 import { _axios } from "@/helper/axios"
 
-export class templateApiData{
-    createTemplate = async(data: any)=>{
+export class templateApiData {
+    createTemplate = async (data: any) => {
         return await _axios("post", "/whatsapp-template", data)
     }
-    updateTemplate = async(templateId: string, data: any)=>{
+    updateTemplate = async (templateId: string, data: any) => {
         return await _axios("put", `/whatsapp-template/${templateId}`, data)
     }
-    getAllTemplate = async()=>{
+    getAllTemplate = async () => {
         return await _axios("get", "/whatsapp-templates")
     }
-    submitTemplate = async(template_id: any)=>{
+    submitTemplate = async (template_id: any) => {
         return await _axios("post", `/whatsapp-template/${template_id}/submit`)
     }
-    resubmitTemplate = async(template_id: any)=>{
+    resubmitTemplate = async (template_id: any) => {
         return await _axios("post", `/whatsapp-template/${template_id}/resubmit`)
     }
-    syncTemplateById = async(template_id: any)=>{
+    syncTemplateById = async (template_id: any) => {
         return await _axios("get", `/whatsapp-template/${template_id}/sync`)
     }
-    syncAllTemplate = async()=>{
+    syncAllTemplate = async () => {
         return await _axios("post", `/whatsapp-templates/sync`)
     }
-    softDeleteTemplate = async(template_id: any)=>{
+    softDeleteTemplate = async (template_id: any) => {
         return await _axios("delete", `/whatsapp-template/${template_id}/soft`)
     }
-    permanentDeleteTemplate = async(template_id: any)=>{
+    permanentDeleteTemplate = async (template_id: any) => {
         return await _axios("delete", `/whatsapp-template/${template_id}/permanent`)
     }
-    restoreTemplate = async(template_id: any)=>{
+    restoreTemplate = async (template_id: any) => {
         return await _axios("post", `/whatsapp-template/${template_id}/restore`)
     }
-    getTemplateById = async(template_id: any)=>{
+    getTemplateById = async (template_id: any) => {
         return await _axios("get", `/whatsapp-template/${template_id}`)
+    }
+    generateAiTemplate = async (data: any) => {
+        return await _axios("post", "/whatsapp-template/generate-ai", data)
     }
 }

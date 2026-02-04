@@ -51,6 +51,7 @@ export interface TemplateFormData {
     headerType: HeaderType;
     headerValue: string;
     content: string;
+    previous_content: string;
     footer: string;
     variables: Record<string, string>;
     interactiveActions: InteractiveActionType;
