@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
-import { Upload, FileText, Download, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, FileText, Download, AlertCircle, CheckCircle, UploadIcon, DownloadIcon } from "lucide-react";
 
 interface ImportContactsModalProps {
     isOpen: boolean;
@@ -84,7 +84,7 @@ export const ImportContactsModal = ({
     };
 
     const downloadSampleCSV = () => {
-        const csvContent = "name,phone,email,tags\nJohn Doe,+1234567890,john@example.com,VIP;Customer\nJane Smith,+0987654321,jane@example.com,Lead";
+        const csvContent = "name,phone\nAarav Patel,+919876543210\nPriya Sharma,+919988776655\nRahul Singh,+919123456789\nAnanya Gupta,+919898989898\nVikram Kumar,+919012345678";
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -101,7 +101,7 @@ export const ImportContactsModal = ({
             title="Import Contacts from CSV"
             description="Upload a CSV file to bulk import contacts"
             isDarkMode={isDarkMode}
-            className="max-w-2xl"
+            className="max-w-2xl font-sans"
             footer={
                 <div className="flex items-center justify-between">
                     <button
@@ -113,7 +113,7 @@ export const ImportContactsModal = ({
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         )}
                     >
-                        <Download size={14} />
+                        <Upload size={14} />
                         <span>Download Sample CSV</span>
                     </button>
                     <div className="flex items-center space-x-3">
@@ -207,7 +207,7 @@ export const ImportContactsModal = ({
                                         "p-3 rounded-full mb-4",
                                         isDarkMode ? 'bg-white/5' : 'bg-slate-100'
                                     )}>
-                                        <Upload className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={32} />
+                                        <DownloadIcon className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={32} />
                                     </div>
                                     <p className={cn(
                                         "text-sm font-medium mb-1",

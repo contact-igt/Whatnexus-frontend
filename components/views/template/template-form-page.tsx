@@ -434,12 +434,12 @@ ${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'F
                         </div>
 
                         {/* AI Generator */}
-                        {/* <AIGeneratorSection
+                        <AIGeneratorSection
                             isDarkMode={isDarkMode}
                             onGenerate={handleAIGenerate}
                             onGenerateTitle={handleAIGenerateTitle}
                             generationsLeft={3}
-                        /> */}
+                        />
 
                         {/* Template Name */}
                         <div>

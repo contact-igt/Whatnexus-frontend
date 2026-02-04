@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings, Megaphone, Timer, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings, Megaphone, Timer, MessageCircle, Group } from 'lucide-react';
 import { FloatingDockItem } from "@/components/ui/floating-dock-item";
 import { FloatingDockDropdown } from "@/components/ui/floating-dock-dropdown";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ export const Sidebar = () => {
             <nav className="flex-1 flex flex-col space-y-6 px-4 overflow-y-auto no-scrollbar">
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={LayoutDashboard} label="Neural Hub" route="/dashboard" onClick={() => handleActiveTab('/dashboard')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" route="/leads" onClick={() => handleActiveTab('/leads')} />
-                <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
+                <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
                     <FloatingDockDropdown
                         isExpanded={isExpanded}
                         isDarkMode={isDarkMode}
@@ -87,7 +87,7 @@ export const Sidebar = () => {
                             {
                                 label: 'Groups',
                                 route: '/contacts/groups',
-                                icon: MessageSquare,
+                                icon: Group,
                                 onClick: () => handleActiveTab('/contacts/groups'),
                             }
                         ]}

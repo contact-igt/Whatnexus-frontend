@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Contact } from "@/types/contact";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TablePagination } from "@/components/ui/table";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -33,7 +33,18 @@ export const ContactList = ({
     onEdit,
     onDelete
 }: ContactListProps) => {
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 7;
+
+    // Reset to first page when contacts change (e.g. search)
+    // Note: We might want a useEffect here if contacts prop changes significantly, 
+    // but for now simple slicing is enough, assuming key/search changes remount or update props.
+
     const allSelected = contacts.length > 0 && selectedContacts.length === contacts.length;
+
+    const totalPages = Math.ceil(contacts.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentContacts = contacts.slice(startIndex, startIndex + itemsPerPage);
 
     if (isLoading) {
         return (
@@ -80,83 +91,85 @@ export const ContactList = ({
     }
 
     return (
-        <Table isDarkMode={isDarkMode}>
-            <TableHeader isDarkMode={isDarkMode}>
-                <TableRow isDarkMode={isDarkMode}>
-                    <TableHead isDarkMode={isDarkMode} align="center" width="60px">
-                        <Checkbox
-                            checked={allSelected}
-                            onCheckedChange={onSelectAll}
-                            aria-label="Select all"
-                        />
-                    </TableHead>
-                    <TableHead isDarkMode={isDarkMode} width="80px">S.No</TableHead>
-                    <TableHead isDarkMode={isDarkMode} width="auto">Contact Name</TableHead>
-                    <TableHead isDarkMode={isDarkMode} width="200px">Phone</TableHead>
-                    {/* <TableHead isDarkMode={isDarkMode}>Email</TableHead>
+        <div>
+            <div>
+                <Table isDarkMode={isDarkMode}>
+                    <TableHeader isDarkMode={isDarkMode}>
+                        <TableRow isDarkMode={isDarkMode}>
+                            <TableHead isDarkMode={isDarkMode} align="center" width="60px">
+                                <Checkbox
+                                    checked={allSelected}
+                                    onCheckedChange={onSelectAll}
+                                    aria-label="Select all"
+                                />
+                            </TableHead>
+                            <TableHead isDarkMode={isDarkMode} width="80px">S.No</TableHead>
+                            <TableHead isDarkMode={isDarkMode} width="auto">Contact Name</TableHead>
+                            <TableHead isDarkMode={isDarkMode} width="200px">Phone</TableHead>
+                            {/* <TableHead isDarkMode={isDarkMode}>Email</TableHead>
                     <TableHead isDarkMode={isDarkMode}>Tags</TableHead>
                     <TableHead isDarkMode={isDarkMode}>Status</TableHead> */}
-                    <TableHead isDarkMode={isDarkMode} align="center" width="100px">Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {contacts.map((contact, index) => (
-                    <TableRow
-                        key={contact?.contact_id}
-                        isDarkMode={isDarkMode}
-                        isLast={index === contacts.length - 1}
-                    >
-                        <TableCell align="center" width="300px">
-                            <Checkbox
-                                checked={selectedContacts.includes(contact?.contact_id)}
-                                onCheckedChange={() => onSelectContact(contact?.contact_id)}
-                                aria-label={`Select ${contact?.name}`}
-                            />
-                        </TableCell>
-                        <TableCell width="400px">
-                            <span className={cn(
-                                "text-sm font-medium space-x-2",
-                                isDarkMode ? 'text-white/70' : 'text-slate-600'
-                            )}>
-                                {index + 1}
-                            </span>
-                        </TableCell>
-                        <TableCell width="500px">
-                            <div className="flex items-center space-x-3">
-                                {contact.profile_pic ? (
-                                    <img
-                                        src={contact.profile_pic}
-                                        alt={contact.name}
-                                        className="w-8 h-8 rounded-full object-cover"
+                            <TableHead isDarkMode={isDarkMode} align="center" width="100px">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {currentContacts.map((contact, index) => (
+                            <TableRow
+                                key={contact?.contact_id}
+                                isDarkMode={isDarkMode}
+                                isLast={index === currentContacts.length - 1}
+                            >
+                                <TableCell align="center" width="250px">
+                                    <Checkbox
+                                        checked={selectedContacts.includes(contact?.contact_id)}
+                                        onCheckedChange={() => onSelectContact(contact?.contact_id)}
+                                        aria-label={`Select ${contact?.name}`}
                                     />
-                                ) : (
-                                    <div className={cn(
-                                        "w-8 h-8 rounded-full flex items-center justify-center",
-                                        isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                                </TableCell>
+                                <TableCell width="400px">
+                                    <span className={cn(
+                                        "text-sm font-medium space-x-2",
+                                        isDarkMode ? 'text-white/70' : 'text-slate-600'
                                     )}>
-                                        <User className="text-emerald-500" size={16} />
+                                        {startIndex + index + 1}
+                                    </span>
+                                </TableCell>
+                                <TableCell width="500px">
+                                    <div className="flex items-center space-x-3">
+                                        {contact.profile_pic ? (
+                                            <img
+                                                src={contact.profile_pic}
+                                                alt={contact.name}
+                                                className="w-8 h-8 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-full flex items-center justify-center",
+                                                isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                                            )}>
+                                                <User className="text-emerald-500" size={16} />
+                                            </div>
+                                        )}
+                                        <span className={cn(
+                                            "text-sm font-medium",
+                                            isDarkMode ? 'text-white' : 'text-slate-900'
+                                        )}>
+                                            {contact.name || "Patient"}
+                                        </span>
                                     </div>
-                                )}
-                                <span className={cn(
-                                    "text-sm font-medium",
-                                    isDarkMode ? 'text-white' : 'text-slate-900'
-                                )}>
-                                    {contact.name}
-                                </span>
-                            </div>
-                        </TableCell>
-                        <TableCell width="400px">
-                            <div className="flex items-center space-x-3">
-                                <Phone className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
-                                <span className={cn(
-                                    "text-sm",
-                                    isDarkMode ? 'text-white/70' : 'text-slate-600'
-                                )}>
-                                    {contact.phone}
-                                </span>
-                            </div>
-                        </TableCell>
-                        {/* <TableCell>
+                                </TableCell>
+                                <TableCell width="400px">
+                                    <div className="flex items-center space-x-3">
+                                        <Phone className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
+                                        <span className={cn(
+                                            "text-sm",
+                                            isDarkMode ? 'text-white/70' : 'text-slate-600'
+                                        )}>
+                                            {contact.phone}
+                                        </span>
+                                    </div>
+                                </TableCell>
+                                {/* <TableCell>
                             {contact.email ? (
                                 <div className="flex items-center space-x-2">
                                     <Mail className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
@@ -211,20 +224,32 @@ export const ContactList = ({
                                 </Badge>
                             )}
                         </TableCell> */}
-                        <TableCell align="center" width="300px">
-                            <ActionMenu
-                                isDarkMode={isDarkMode}
-                                isView={true}
-                                isEdit={true}
-                                isDelete={true}
-                                onView={() => onView(contact)}
-                                onEdit={() => onEdit(contact)}
-                                onDelete={() => onDelete(contact)}
-                            />
-                        </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                                <TableCell align="center" width="300px">
+                                    <ActionMenu
+                                        isDarkMode={isDarkMode}
+                                        isView={false}
+                                        isEdit={true}
+                                        isDelete={true}
+                                        // onView={() => onView(contact)}
+                                        onEdit={() => onEdit(contact)}
+                                        onDelete={() => onDelete(contact)}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+
+            <TablePagination
+                isDarkMode={isDarkMode}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                startIndex={startIndex}
+                endIndex={startIndex + itemsPerPage}
+                totalItems={contacts.length}
+            />
+        </div>
     );
 };

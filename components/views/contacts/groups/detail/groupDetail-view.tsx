@@ -140,7 +140,7 @@ export const GroupDetailView = () => {
     }
 
     return (
-        <div className="p-6">
+        <div className="p-6 font-sans">
             {/* Header */}
             <GroupDetailHeader
                 isDarkMode={isDarkMode}

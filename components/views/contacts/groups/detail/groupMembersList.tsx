@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { GroupMember } from "@/types/contactGroup";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TablePagination } from "@/components/ui/table";
 import { User, Mail, Phone, Search, X } from "lucide-react";
 
 interface GroupMembersListProps {
@@ -20,22 +20,38 @@ export const GroupMembersList = ({
     onRemoveMember
 }: GroupMembersListProps) => {
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
-    // Filtered members based on search
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300); // 300ms debounce delay
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Filtered members based on debounced search
     const filteredMembers = useMemo(() => {
-        if (!searchQuery.trim()) return members;
+        if (!debouncedSearchQuery.trim()) return members;
 
-        const query = searchQuery.toLowerCase();
+        const query = debouncedSearchQuery.toLowerCase();
         return members.filter(member =>
-            member.name.toLowerCase().includes(query) ||
-            member.phone.toLowerCase().includes(query) ||
+            member.name?.toLowerCase().includes(query) ||
+            member.phone?.toLowerCase().includes(query) ||
             member.email?.toLowerCase().includes(query)
         );
-    }, [members, searchQuery]);
+    }, [members, debouncedSearchQuery]);
+
+    const totalPages = Math.ceil(filteredMembers.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentMembers = filteredMembers.slice(startIndex, startIndex + itemsPerPage);
 
     if (isLoading) {
         return (
-            <div className="space-y-3">
+            <div className="space-y-3 font-sans">
                 {[...Array(5)].map((_, i) => (
                     <div
                         key={i}
@@ -63,7 +79,10 @@ export const GroupMembersList = ({
                             type="text"
                             placeholder="Search members..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className={cn(
                                 "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                 isDarkMode
@@ -113,67 +132,69 @@ export const GroupMembersList = ({
                     </p>
                 </div>
             ) : (
-                <Table isDarkMode={isDarkMode}>
-                    <TableHeader isDarkMode={isDarkMode}>
-                        <TableRow isDarkMode={isDarkMode}>
-                            <TableHead isDarkMode={isDarkMode} width="300px"><span className="ml-3">S.No</span></TableHead>
-                            <TableHead isDarkMode={isDarkMode} width="400px">Contact Name</TableHead>
-                            <TableHead isDarkMode={isDarkMode} width="400px">Phone</TableHead>
-                            {/* <TableHead isDarkMode={isDarkMode}>Email</TableHead> */}
-                            <TableHead isDarkMode={isDarkMode} align="center">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredMembers.map((member, index) => (
-                            <TableRow
-                                key={member.id}
-                                isDarkMode={isDarkMode}
-                                isLast={index === filteredMembers.length - 1}
-                            >
-                                <TableCell width="300px">
-                                    <span className={cn(
-                                        "text-sm font-medium px-5",
-                                        isDarkMode ? 'text-white/70' : 'text-slate-600'
-                                    )}>
-                                        {index + 1}
-                                    </span>
-                                </TableCell>
-                                <TableCell width="400px">
-                                    <div className="flex items-center space-x-3">
-                                        {member.profile_pic ? (
-                                            <img
-                                                src={member.profile_pic}
-                                                alt={member.name}
-                                                className="w-8 h-8 rounded-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className={cn(
-                                                "w-8 h-8 rounded-full flex items-center justify-center",
-                                                isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                <div>
+                    <div>
+                        <Table isDarkMode={isDarkMode}>
+                            <TableHeader isDarkMode={isDarkMode}>
+                                <TableRow isDarkMode={isDarkMode}>
+                                    <TableHead isDarkMode={isDarkMode} width="300px"><span className="ml-3">S.No</span></TableHead>
+                                    <TableHead isDarkMode={isDarkMode} width="400px">Contact Name</TableHead>
+                                    <TableHead isDarkMode={isDarkMode} width="400px">Phone</TableHead>
+                                    {/* <TableHead isDarkMode={isDarkMode}>Email</TableHead> */}
+                                    <TableHead isDarkMode={isDarkMode} align="center">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {currentMembers.map((member, index) => (
+                                    <TableRow
+                                        key={member.id}
+                                        isDarkMode={isDarkMode}
+                                        isLast={index === currentMembers.length - 1}
+                                    >
+                                        <TableCell width="300px">
+                                            <span className={cn(
+                                                "text-sm font-medium pl-10 px-4",
+                                                isDarkMode ? 'text-white/70' : 'text-slate-600'
                                             )}>
-                                                <User className="text-emerald-500" size={16} />
+                                                {startIndex + index + 1}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell width="400px">
+                                            <div className="flex items-center space-x-3">
+                                                {member.profile_pic ? (
+                                                    <img
+                                                        src={member.profile_pic}
+                                                        alt={member.name}
+                                                        className="w-8 h-8 rounded-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className={cn(
+                                                        "w-8 h-8 rounded-full flex items-center justify-center",
+                                                        isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                                                    )}>
+                                                        <User className="text-emerald-500" size={16} />
+                                                    </div>
+                                                )}
+                                                <span className={cn(
+                                                    "text-sm font-medium",
+                                                    isDarkMode ? 'text-white' : 'text-slate-900'
+                                                )}>
+                                                    {member.name || "Patient"}
+                                                </span>
                                             </div>
-                                        )}
-                                        <span className={cn(
-                                            "text-sm font-medium",
-                                            isDarkMode ? 'text-white' : 'text-slate-900'
-                                        )}>
-                                            {member.name}
-                                        </span>
-                                    </div>
-                                </TableCell>
-                                <TableCell width="400px">
-                                    <div className="flex items-center space-x-2">
-                                        <Phone className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
-                                        <span className={cn(
-                                            "text-sm",
-                                            isDarkMode ? 'text-white/70' : 'text-slate-600'
-                                        )}>
-                                            {member.phone}
-                                        </span>
-                                    </div>
-                                </TableCell>
-                                {/* <TableCell>
+                                        </TableCell>
+                                        <TableCell width="400px">
+                                            <div className="flex items-center space-x-2">
+                                                <Phone className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
+                                                <span className={cn(
+                                                    "text-sm",
+                                                    isDarkMode ? 'text-white/70' : 'text-slate-600'
+                                                )}>
+                                                    {member.phone}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        {/* <TableCell>
                                     {member.email ? (
                                         <div className="flex items-center space-x-2">
                                             <Mail className={isDarkMode ? 'text-white/30' : 'text-slate-400'} size={14} />
@@ -193,24 +214,37 @@ export const GroupMembersList = ({
                                         </span>
                                     )}
                                 </TableCell> */}
-                                <TableCell align="center" width="200px">
-                                    <button
-                                        onClick={() => onRemoveMember(member)}
-                                        className={cn(
-                                            "p-1.5 rounded-lg transition-all",
-                                            isDarkMode
-                                                ? 'text-red-400 hover:bg-red-500/20'
-                                                : 'text-red-600 hover:bg-red-50'
-                                        )}
-                                        title="Remove from group"
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                                        <TableCell align="center" width="200px">
+                                            <button
+                                                onClick={() => onRemoveMember(member)}
+                                                className={cn(
+                                                    "p-1.5 rounded-lg transition-all",
+                                                    isDarkMode
+                                                        ? 'text-red-400 hover:bg-red-500/20'
+                                                        : 'text-red-600 hover:bg-red-50'
+                                                )}
+                                                title="Remove from group"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    <TablePagination
+                        isDarkMode={isDarkMode}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        startIndex={startIndex}
+                        endIndex={startIndex + itemsPerPage}
+                        totalItems={filteredMembers.length}
+                    />
+                </div>
             )}
         </div>
     );
