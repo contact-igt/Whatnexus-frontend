@@ -9,7 +9,7 @@ import { toast } from "sonner";
 const { login } = new authApis();
 
 
-export const useLoginMutation = () => {
+export const useManagementLoginMutation = () => {
     const queryClient = useQueryClient();
     const dispatch = useDispatch();
     const router = useRouter();

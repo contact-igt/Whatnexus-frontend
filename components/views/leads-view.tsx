@@ -12,6 +12,8 @@ import dayjs from "@/utils/dayjs";
 import { useTheme } from '@/hooks/useTheme';
 import { useLeadIntelligenceQuery, useSummarizeLeadMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsapp-connection-placeholder';
 
 type SummaryResponse = {
     data: {
@@ -21,7 +23,14 @@ type SummaryResponse = {
 
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
+    const { whatsappApiDetails } = useAuth();
+    console.log("whatsappApiDetails", whatsappApiDetails);
     const router = useRouter();
+
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
+
     const { data: leadIntelligenceData, isLoading, isError } = useLeadIntelligenceQuery();
     const summarizeLeadMutation = useSummarizeLeadMutation();
     const [analyzingId, setAnalyzingId] = useState<string | null>(null);
@@ -284,7 +293,7 @@ export const LeadsView = () => {
                                                                 : "hover:bg-white/10 hover:text-emerald-500 text-slate-400"
                                                         )}
                                                     >
-                                                        {summarizingId === lead.id ? (
+                                                        {summarizingId === lead.contact_id ? (
                                                             <Loader2 size={16} className="animate-spin" />
                                                         ) : (
                                                             <ClipboardList size={16} />

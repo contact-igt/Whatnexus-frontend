@@ -76,7 +76,7 @@ export const Sidebar = () => {
                     />
                 </RoleBasedWrapper>
                 {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={MessageSquare} label="Shared Inbox" route="/chats" onClick={() => handleActiveTab('/chats')} urgent={true} /> */}
-                <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin']}><FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} /></RoleBasedWrapper>
+                {/* <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin']}><FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} /></RoleBasedWrapper> */}
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" route="/appointments" onClick={() => handleActiveTab('/appointments')} />
                 <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
@@ -105,10 +105,10 @@ export const Sidebar = () => {
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Stethoscope} label="Doctors" route="/doctors" onClick={() => handleActiveTab('/doctors')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Megaphone} label="Campaign" route="/campaign" onClick={() => handleActiveTab('/campaign')} />
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" route="/knowledge" onClick={() => handleActiveTab('/knowledge')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Brain} label="AI Logic" route="/logic" onClick={() => handleActiveTab('/logic')} />
-                <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
+                {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Brain} label="AI Logic" route="/logic" onClick={() => handleActiveTab('/logic')} /> */}
+                {/* <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
                     <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Smartphone} label="Governance" route="/system" onClick={() => handleActiveTab('/system')} />
-                </RoleBasedWrapper>
+                </RoleBasedWrapper> */}
                 <RoleBasedWrapper allowedRoles={['super_admin']}>
                     <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Building2} label="Organizations" route="/organizations" onClick={() => handleActiveTab('/organizations')} />
                 </RoleBasedWrapper>

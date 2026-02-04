@@ -38,6 +38,21 @@ export const useGetAllLiveChatsQuery = () => {
     return { data, isLoading, isError };
 };
 
+export const useGetAllHistoryChatsQuery = () => {
+
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ['historychats'],
+        queryFn: () => MessagesApis.getAllHistoryChats(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    if (isError) {
+        toast.error('Failed to load messages');
+    }
+
+    return { data, isLoading, isError };
+};
+
 export const useMessagesByPhoneQuery = (phone_number: string) => {
     const { data, isLoading, isError } = useQuery({
         queryKey: ['messages', phone_number],
@@ -111,7 +126,7 @@ export const useSendTemplateMessageMutation = () => {
         },
         onSuccess: (data: any, variables) => {
             queryClient.invalidateQueries({
-                queryKey: ["messages", variables.phone],
+                queryKey: ["historychats"],
             });
             queryClient.invalidateQueries({
                 queryKey: ["chats"],

@@ -140,7 +140,7 @@ export const GroupDetailView = () => {
     }
 
     return (
-        <div className="p-6 font-sans">
+        <div className="p-6 overflow-y-auto h-full font-sans">
             {/* Header */}
             <GroupDetailHeader
                 isDarkMode={isDarkMode}

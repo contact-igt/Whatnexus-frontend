@@ -19,6 +19,11 @@ export class MessagesApiData {
 
   };
 
+  getAllHistoryChats = async () => {
+    return await _axios("get", "/history-chats")
+
+  };
+
   addMessage = async (data: SendMessageData) => {
     return await _axios("post", "/chats/send", data);
   };

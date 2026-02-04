@@ -226,7 +226,7 @@ export const WhatsappConnectionList = ({
                             </>
                         ) : (
                             <>
-                                <button
+                                {/* <button
                                     onClick={() => handleDeleteClick(WhatsAppConnectionData.data.id)}
                                     className={cn(
                                         "flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border",
@@ -237,7 +237,7 @@ export const WhatsappConnectionList = ({
                                 >
                                     <Trash2 size={16} />
                                     <span>Delete</span>
-                                </button>
+                                </button> */}
                                 <button
                                     onClick={() => handleEditMode(WhatsAppConnectionData.data)}
                                     className={cn(

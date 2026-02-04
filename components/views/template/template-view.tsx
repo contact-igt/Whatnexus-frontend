@@ -8,6 +8,7 @@ import { TemplatePreviewModal } from './template-preview-modal';
 import { toast } from 'sonner';
 import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation } from '@/hooks/useTemplateQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsapp-connection-placeholder';
 
 // const SAMPLE_TEMPLATES: Template[] = [
 //     {
@@ -93,7 +94,10 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 type ViewMode = 'list' | 'create' | 'edit' | 'view';
 
 export const TemplateView = () => {
-    const { user } = useAuth();
+    const { user, whatsappApiDetails } = useAuth();
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
     const { isDarkMode } = useTheme();
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     // const [templates, setTemplates] = useState<Template[]>(SAMPLE_TEMPLATES);
