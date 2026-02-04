@@ -9,6 +9,8 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from "@/hooks/useTheme";
+import { useDispatch } from 'react-redux';
+import { setActiveTabData } from '@/redux/slices/auth/authSlice';
 import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
 
 export const Sidebar = () => {
@@ -16,8 +18,14 @@ export const Sidebar = () => {
     const router = useRouter();
     const { isDarkMode } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);
+    const dispatch = useDispatch();
 
     const handleActiveTab = (tab: string) => {
+        if (tab.includes('live-chats')) {
+            dispatch(setActiveTabData('chats'));
+        } else {
+            dispatch(setActiveTabData('dashboard'));
+        }
         router.push(tab);
     }
     console.log("user", user)

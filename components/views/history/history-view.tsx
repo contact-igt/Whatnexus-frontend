@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX, MessageCircle } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
-import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
+import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useSendTemplateMessageMutation, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-// import { socket } from "@/utils/socket";
+import { socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { WeeklyChatSummaryModal } from '../weekly-chat-summary-modal';
-import { TemplateSelectionModal } from "@/components/ui/template-selection-modal";
+import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign/template-selection-modal";
+import { TemplateVariableModal } from './template-variable-modal';
 
 
 const getDateLabel = (dateStr: string) => {
@@ -59,6 +60,7 @@ export const HistoryView = () => {
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
+    const { mutate: sendTemplateMutate, isPending: isSendingTemplate } = useSendTemplateMessageMutation();
     const [chatSearchText, setChatSearchText] = useState("");
     const [selectedChat, setSelectedChat] = useState<any>(null);
     const {
@@ -75,6 +77,8 @@ export const HistoryView = () => {
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
+    const [selectedTemplateForVariables, setSelectedTemplateForVariables] = useState<ProcessedTemplate | null>(null);
     const [isChatClosed, setIsChatClosed] = useState(true); // Simulating closed chat state
     const router = useRouter();
     const selectedChatRef = useRef<any>(null);
@@ -148,16 +152,38 @@ export const HistoryView = () => {
         setMessage("");
     }
 
-    const handleTemplateSelect = (template: any) => {
-        // Send template message
-        sendMessageMutate({
+    const handleTemplateSelect = (template: ProcessedTemplate) => {
+        // Check for variables in header or body
+        const hasHeaderVars = template.headerText && /\{\{\d+\}\}/.test(template.headerText);
+        const hasBodyVars = template.variables > 0 || (template.description && /\{\{\d+\}\}/.test(template.description));
+
+        if (hasHeaderVars || hasBodyVars) {
+            // Open variable modal
+            setSelectedTemplateForVariables(template);
+            setIsVariableModalOpen(true);
+        } else {
+            // No variables, send immediately
+            sendTemplateMutate({
+                phone: selectedChat?.phone,
+                contact_id: selectedChat?.contact_id,
+                template_id: template.id,
+                components: []
+            });
+            setIsChatClosed(false);
+        }
+    };
+
+    const handleSendWithVariables = (components: any[]) => {
+        if (!selectedTemplateForVariables) return;
+
+        sendTemplateMutate({
             phone: selectedChat?.phone,
-            name: selectedChat?.name,
-            message: template.content,
             contact_id: selectedChat?.contact_id,
-            phone_number_id: whatsappApiDetails?.phone_number_id
+            template_id: selectedTemplateForVariables.id,
+            components: components
         });
-        setIsChatClosed(false); // Reopen chat after sending template
+        setIsChatClosed(false);
+        setSelectedTemplateForVariables(null);
     };
 
     useEffect(() => {
@@ -315,26 +341,34 @@ export const HistoryView = () => {
         });
     };
 
-    // useEffect(() => {
-    //     if (!user?.tenant_id) return;
+    useEffect(() => {
+        if (!user?.tenant_id) return;
 
-    //     if (!socket.connected) {
-    //         socket.connect();
-    //     }
+        if (!socket.connected) {
+            socket.connect();
+        }
 
-    //     socket.on("connect", () => {
-    //         console.log("✅ Dashboard connected:", socket.id);
-    //         socket.emit("join-tenant", user.tenant_id);
-    //     });
+        socket.on("connect", () => {
+            console.log("✅ Dashboard connected:", socket.id);
+            socket.emit("join-tenant", user.tenant_id);
+        });
 
-    //     socket.off("new-message"); // ⬅️ prevent duplicates
-    //     socket.on("new-message", handleIncomingMessage);
+        socket.off("new-message"); // ⬅️ prevent duplicates
+        socket.on("new-message", handleIncomingMessage);
 
-    //     return () => {
-    //         socket.off("new-message", handleIncomingMessage);
-    //         socket.off("connect");
-    //     };
-    // }, []);
+        socket.on("session-activated", (data: any) => {
+            console.log("✅ Session Activated:", data);
+            // Optionally redirect to live chats or refresh list
+            // router.push(`/shared-inbox/live-chats?phone=${data.phone}`);
+            // For now, we'll just invalidate queries to refresh the list
+        });
+
+        return () => {
+            socket.off("new-message", handleIncomingMessage);
+            socket.off("session-activated");
+            socket.off("connect");
+        };
+    }, []);
 
     useEffect(() => {
         if (groupedEntries?.length > 0) {
@@ -666,18 +700,18 @@ export const HistoryView = () => {
                                     isDarkMode ? 'text-white' : 'text-slate-400'
                                 )} /> */}
                                 <div className='flex flex-col items-start justify-center'>
-                                <h3 className={cn(
-                                    "text-sm font-bold mb-1",
-                                    isDarkMode ? 'text-white' : 'text-slate-900'
-                                )}>
-                                    Chat Conversation closed!
-                                </h3>
-                                <p className={cn(
-                                    "text-xs text-center max-w-xs",
-                                    isDarkMode ? 'text-white/50' : 'text-slate-500'
-                                )}>
-                                    Please send a template to initiate a chat conversation
-                                </p>
+                                    <h3 className={cn(
+                                        "text-sm font-bold mb-1",
+                                        isDarkMode ? 'text-white' : 'text-slate-900'
+                                    )}>
+                                        Chat Conversation closed!
+                                    </h3>
+                                    <p className={cn(
+                                        "text-xs text-center max-w-xs",
+                                        isDarkMode ? 'text-white/50' : 'text-slate-500'
+                                    )}>
+                                        Please send a template to initiate a chat conversation
+                                    </p>
                                 </div>
                                 <button
                                     onClick={() => setIsTemplateModalOpen(true)}
@@ -750,7 +784,16 @@ export const HistoryView = () => {
                 isOpen={isTemplateModalOpen}
                 onClose={() => setIsTemplateModalOpen(false)}
                 onSelect={handleTemplateSelect}
+            />
+
+            {/* Template Variable Input Modal */}
+            <TemplateVariableModal
+                isOpen={isVariableModalOpen}
+                onClose={() => setIsVariableModalOpen(false)}
+                template={selectedTemplateForVariables}
+                onSend={handleSendWithVariables}
                 isDarkMode={isDarkMode}
+                isPending={isSendingTemplate}
             />
         </div>
     );

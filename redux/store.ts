@@ -13,7 +13,7 @@ const persistConfig = {
 const authPersistConfig = {
   key: 'auth',
   storage: storageSession,
-  whitelist: ['activeStatus', 'currentStatusDataState'], 
+  whitelist: ['activeStatus', 'currentStatusDataState', 'token', 'refreshToken', 'user', 'whatsappApiDetails'],
 };
 
 const rootReducer = combineReducers({
