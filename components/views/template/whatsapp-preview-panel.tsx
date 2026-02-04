@@ -31,16 +31,13 @@ export const WhatsAppPreviewPanel = ({
     console.log("variables", variables)
     // Replace variables and format text
     let processedContent = content;
-    let formattedContent = content;
-    console.log("variables", variables)
+
+    // Always replace variables if they exist
     if (content && Object.keys(variables).length > 0) {
         processedContent = replaceVariables(content, variables);
-        console.log("processedContent", processedContent);
-        formattedContent = formatWhatsAppText(processedContent);
     }
     console.log("hh", headerType, headerValue)
     console.log("content", content);
-    console.log("formattedContent", formattedContent);
     console.log("footer", footer)
     const renderHeaderPlaceholder = () => {
         if (!headerType || headerType === 'NONE') return null;
@@ -236,15 +233,23 @@ export const WhatsAppPreviewPanel = ({
                                 {renderMediaPlaceholder()}
 
                                 {/* Content */}
-                                <div className="p-3 space-y-2">
+                                <div className="p-3 space-y-0.5">
                                     {content ? (
                                         <div
                                             className={cn(
-                                                "text-[13px] leading-relaxed whitespace-pre-wrap break-words",
+                                                "text-[13px] leading-relaxed break-words",
                                                 isDarkMode ? 'text-white' : 'text-slate-900'
                                             )}
-                                            dangerouslySetInnerHTML={{ __html: formattedContent }}
-                                        />
+                                        >
+                                            {processedContent.split('\n').map((line, i) => (
+                                                <p
+                                                    key={i}
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: formatWhatsAppText(line) || '<br>'
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
                                     ) : (
                                         <p className={cn(
                                             "text-[13px] italic",

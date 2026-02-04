@@ -26,6 +26,7 @@ import { InteractiveActionsSection } from './interactive-actions-section';
 import { AIGeneratorSection } from './ai-generator-section';
 import { toast } from 'sonner';
 import { callOpenAI } from '@/lib/openai';
+import { useGenerateAiTemplateMutation } from '@/hooks/useTemplateQuery';
 import { FileUpload } from '@/components/ui/file-upload';
 import { useEffect } from 'react';
 
@@ -50,6 +51,7 @@ const templateSchema = z.object({
         .min(1, "Template content is required")
         .max(1024, "Content exceeds 1024 characters")
         .refine(val => !val.trim().endsWith('}}'), "Body cannot end with a variable. Please add point or text after the variable."),
+    previous_content: z.string().optional(),
     footer: z.string().max(60, "Footer exceeds 60 characters").optional(),
     variables: z.record(z.string(), z.string().min(1, "Sample value is required")),
     // interactiveActions: z.enum(['None', 'CTA', 'QuickReplies', 'All']),
@@ -131,6 +133,7 @@ export const TemplateFormPage = ({
             headerType: initialData?.headerType?.toUpperCase() as HeaderType || 'NONE',
             headerValue: initialData?.headerValue || '',
             content: initialData?.content || '',
+            previous_content: initialData?.previous_content || '',
             footer: initialData?.footer || '',
             variables: normalizeVariables(initialData?.variables),
             // interactiveActions: initialData?.interactiveActions || 'None',
@@ -157,6 +160,7 @@ export const TemplateFormPage = ({
                 headerType: initialData.headerType?.toUpperCase() as HeaderType || 'NONE',
                 headerValue: initialData.headerValue || '',
                 content: initialData.content || '',
+                previous_content: initialData.previous_content || '',
                 footer: initialData.footer || '',
                 variables: normalizeVariables(initialData.variables),
             });
@@ -171,6 +175,7 @@ export const TemplateFormPage = ({
     const headerType = watch('headerType');
     const headerValue = watch('headerValue');
     const content = watch('content');
+    const previous_content = watch('previous_content');
     const footer = watch('footer');
     const variables = watch('variables');
     // const interactiveActions = watch('interactiveActions');
@@ -229,16 +234,36 @@ IMPORTANT:
 - Avoid policy violations.
 `;
 
+    const { mutateAsync: generateTemplate } = useGenerateAiTemplateMutation();
     const handleAIGenerate = async (prompt: string, style: MessageStyle, goal: OptimizationGoal, aiCategory: string) => {
-        const finalPrompt = `Selected Template Category: ${aiCategory} 
-User request: ${prompt}
-Style: ${style}
-Optimization Goal: ${goal}
-${aiCategory === 'Marketing' ? 'Focus on persuasive copy. Highlight value.' : 'Focus on clear, functional, informational content.'}`;
+        try {
+            const payload: any = {
+                prompt,
+                focus: aiCategory,
+                style,
+                optimization: goal,
+                ...(previous_content && { previous_content })
+            };
+            console.log("payload", payload)
+            const data = await generateTemplate(payload);
 
-        const generatedContent = await callOpenAI(finalPrompt, SYSTEM_TEMPLATE_PROMPT);
-        setValue('content', generatedContent);
-        toast.success('Template generated successfully!');
+            if (data?.data?.content) {
+                setValue('content', data.data.content);
+                toast.success('Template generated successfully!');
+            } else {
+                toast.error('No content generated');
+            }
+        } catch (error: any) {
+            console.error('AI Generation error:', error);
+            // toast.error(error.message || 'Failed to generate template'); 
+            // Error toast is already handled in the mutation hook, but we can keep it simple or let the hook handle it.
+            // The hook has onError toast. So we might not need one here unless we want specific control.
+            // However, AIGeneratorSection expects a promise rejection to stop loading state? 
+            // Actually AIGeneratorSection just waits for the promise. `mutateAsync` throws on error by default.
+            // So if `generateTemplate` fails, it throws, we catch it here.
+            // But the hook ALREADY showed a toast.
+            // We can just log it here.
+        }
     };
     console.log("content", content)
     const handleAIGenerateTitle = async (prompt: string) => {

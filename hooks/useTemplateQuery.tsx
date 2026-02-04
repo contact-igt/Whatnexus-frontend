@@ -168,3 +168,11 @@ export const useGetTemplateByIdQuery = (template_id: any) => {
         enabled: !!template_id
     })
 }
+
+export const useGenerateAiTemplateMutation = () => {
+    return useMutation({
+        mutationFn: (data: any) => {
+            return templateApis.generateAiTemplate(data)
+        }
+    })
+}

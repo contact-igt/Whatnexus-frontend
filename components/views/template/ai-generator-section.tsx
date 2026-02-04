@@ -49,16 +49,16 @@ export const AIGeneratorSection = ({
         }
     };
 
-    const handleGenerateTitle = async () => {
-        if (!prompt.trim() || isGeneratingTitle || !onGenerateTitle) return;
+    // const handleGenerateTitle = async () => {
+    //     if (!prompt.trim() || isGeneratingTitle || !onGenerateTitle) return;
 
-        setIsGeneratingTitle(true);
-        try {
-            await onGenerateTitle(prompt);
-        } finally {
-            setIsGeneratingTitle(false);
-        }
-    };
+    //     setIsGeneratingTitle(true);
+    //     try {
+    //         await onGenerateTitle(prompt);
+    //     } finally {
+    //         setIsGeneratingTitle(false);
+    //     }
+    // };
 
     return (
         <div className={cn(
@@ -114,7 +114,7 @@ export const AIGeneratorSection = ({
                         />
                         <div className="flex justify-between mt-2">
                             {/* Suitable Title Generator Button */}
-                            {onGenerateTitle && (
+                            {/* {onGenerateTitle && (
                                 <button
                                     onClick={handleGenerateTitle}
                                     disabled={!prompt.trim() || isGeneratingTitle}
@@ -128,13 +128,13 @@ export const AIGeneratorSection = ({
                                     <Wand2 size={12} className={isGeneratingTitle ? 'animate-spin' : ''} />
                                     {isGeneratingTitle ? 'Generating...' : 'Generate Suitable Title'}
                                 </button>
-                            )}
-                            <button className={cn(
+                            )} */}
+                            {/* <button className={cn(
                                 "text-[10px] font-semibold flex items-center gap-1 hover:underline ml-auto",
                                 isDarkMode ? 'text-purple-400' : 'text-purple-600'
                             )}>
                                 📝 Previous prompts
-                            </button>
+                            </button> */}
                         </div>
                     </div>
 
@@ -231,7 +231,7 @@ export const AIGeneratorSection = ({
                         <span>
                             {isGenerating
                                 ? 'Generating...'
-                                : `Generate (${generationsLeft} free generations left)`
+                                : `Generate`
                             }
                         </span>
                     </button>
