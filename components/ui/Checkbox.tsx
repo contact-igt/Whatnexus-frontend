@@ -26,7 +26,7 @@ export const Checkbox = ({
             disabled={disabled}
             onClick={() => !disabled && onCheckedChange(!checked)}
             className={cn(
-                "w-4 h-4 rounded border-2 flex items-center justify-center transition-all",
+                "w-4 h-4 rounded cursor-pointer border-2 flex items-center justify-center transition-all",
                 checked
                     ? "bg-emerald-500 border-emerald-500"
                     : "bg-transparent border-slate-300 hover:border-emerald-500",

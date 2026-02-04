@@ -8,6 +8,6 @@ export interface user{
 
 export class authApis{
     login = async(data: user)=>{
-        return await _axios("post", `/tenant-user/login`, data);
+        return await _axios("post", `/management/login`, data);
     }
 }

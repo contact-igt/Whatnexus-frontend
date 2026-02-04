@@ -13,6 +13,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { RoleBasedWrapper } from '@/components/ui/role-based-wrapper';
 import { Select } from '../../ui/select';
 import { Input } from '../../ui/input';
+import { useCreateTenantUserMutation, useTenantUserQuery } from '@/hooks/useTenantUserQuery';
 
 const formSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -32,13 +33,14 @@ export const TeamManagementView = () => {
         },
         resolver: zodResolver(formSchema)
     })
-    const { data: managementData, isLoading } = useManagementQuery();
-    const { mutate: createManagementMutate, isPending: createManagementLoading } = useCreateManagementMutation();
+    // const { data: managementData, isLoading } = useManagementQuery();
+    const {data: tenantUserData, isLoading} = useTenantUserQuery();
+    const { mutate: createTenantUserMutate, isPending: createManagementLoading } = useCreateTenantUserMutation();
 
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
     const onSubmit = (data: FormData) => {
-        createManagementMutate(data, {
+        createTenantUserMutate(data, {
             onSuccess: () => {
                 reset();
                 setIsInviteModalOpen(false);
@@ -50,7 +52,7 @@ export const TeamManagementView = () => {
         e.stopPropagation();
         await handleSubmit(onSubmit)(e);
     };
-    const filteredManagementUsers  = managementData?.data?.filter((user: any)=> user.role !== "super_admin" )
+    const filteredManagementUsers  = tenantUserData?.data?.filter((user: any)=> user.role !== "super_admin" )
     return (
         <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
             <div className="flex justify-between items-end border-b border-white/5 pb-6">
@@ -58,7 +60,7 @@ export const TeamManagementView = () => {
                     <h1 className={cn("text-4xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Agent Matrix</h1>
                     <p className={cn("font-medium text-sm mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Manage shared inbox permissions and neural layer overrides.</p>
                 </div>
-                <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
+                <RoleBasedWrapper allowedRoles={['tenant_admin', 'super_admin']}>
                     <button
                         onClick={() => setIsInviteModalOpen(true)}
                         className="h-12 px-6 rounded-xl bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-500/20 flex items-center space-x-2"

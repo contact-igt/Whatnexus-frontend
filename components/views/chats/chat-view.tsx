@@ -11,6 +11,7 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { WeeklyChatSummaryModal } from '../weekly-chat-summary-modal';
+import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsapp-connection-placeholder';
 
 const getDateLabel = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -45,6 +46,9 @@ const formattedTime = (dateString: any) => {
 
 export const ChatView = () => {
     const { user, whatsappApiDetails } = useAuth();
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
@@ -439,256 +443,288 @@ export const ChatView = () => {
                     </div>
                 )}
 
-                <GlassCard isDarkMode={isDarkMode} className="p-3 px-6 border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between shrink-0 rounded-xl">
-                    <div className="flex items-center space-x-6">
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Controller</span>
-                            <div className="flex items-center space-x-2">
-                                <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm shadow-blue-500/30">JD</div>
-                                {/* <span className={cn("text-xs font-bold uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-700')}>{selectedContact?.assignedTo ? AGENTS.find(a => a.id === selectedContact?.assignedTo)?.name : 'Unassigned'}</span> */}
-                            </div>
-                        </div>
-                        <div className="h-6 w-px bg-white/10" />
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 mb-0.5">State</span>
-                            <div className="flex items-center space-x-1.5">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Active Monitor</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <button className={cn("px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border", isDarkMode ? 'bg-black/40 text-white/70 border-white/5 hover:bg-black/60' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50')}>Silence AI</button>
-                        <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Claim Lead</button>
-                    </div>
-                </GlassCard>
-
-                <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
-                    <div className="px-6 py-4 border-b border-white/5 shrink-0">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-3">
-                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
-                                <div>
-                                    <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.name ? selectedChat?.name : selectedChat?.phone}</h3>
-                                    <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
+                {selectedChat && (
+                    <GlassCard isDarkMode={isDarkMode} className="p-3 px-6 border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between shrink-0 rounded-xl">
+                        <div className="flex items-center space-x-6">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Controller</span>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm shadow-blue-500/30">JD</div>
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-1">
-                                <button
-                                    onClick={() => {
-                                        setIsSearchVisible(!isSearchVisible);
-                                        if (!isSearchVisible) {
-                                            setMessageSearchText('');
-                                        }
-                                    }}
-                                    className={cn(
-                                        "p-2 rounded-lg transition-all",
-                                        isSearchVisible
-                                            ? 'bg-emerald-500/10 text-emerald-500'
-                                            : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500'
-                                    )}
-                                    title="Search Messages"
-                                >
-                                    <Search size={18} />
-                                </button>
-                                <button
-                                    onClick={summarizeChat}
-                                    disabled={isSummarizing}
-                                    className={cn("p-2 rounded-lg transition-all", isSummarizing ? 'animate-pulse text-emerald-500 bg-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500')}
-                                    title="Neural Chat Summary"
-                                >
-                                    <ClipboardList size={18} />
-                                </button>
-                                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
-                                <button
-                                    onClick={() => setIsWeeklySummaryOpen(true)}
-                                    className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors"
-                                    title="Weekly Summary"
-                                >
-                                    <HistoryIcon size={18} />
-                                </button>
+                            <div className="h-6 w-px bg-white/10" />
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 mb-0.5">State</span>
+                                <div className="flex items-center space-x-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Active Monitor</span>
+                                </div>
                             </div>
                         </div>
-                        {/* Message Search Bar - Conditionally Visible */}
-                        {isSearchVisible && (
-                            <div className="relative group animate-in slide-in-from-top-2 fade-in duration-200">
-                                <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", messageSearchText ? 'text-emerald-500' : (isDarkMode ? 'text-white/20' : 'text-slate-400'), 'group-focus-within:text-emerald-500')} size={14} />
-                                <input
-                                    onChange={handleMessageSearch}
-                                    value={messageSearchText}
-                                    type="text"
-                                    placeholder="Search in conversation..."
-                                    autoFocus
-                                    className={cn(
-                                        "w-full border rounded-xl py-2 pl-10 pr-20 text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20",
-                                        isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'
-                                    )}
-                                />
-                                {messageSearchText && (
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md", isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
-                                            {filteredMessage?.length || 0} {filteredMessage?.length === 1 ? 'match' : 'matches'}
-                                        </span>
+                        <div className="flex items-center space-x-2">
+                            <button className={cn("px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border", isDarkMode ? 'bg-black/40 text-white/70 border-white/5 hover:bg-black/60' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50')}>Silence AI</button>
+                            <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Claim Lead</button>
+                        </div>
+                    </GlassCard>
+                )}
+
+                <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
+                    {selectedChat ? (
+                        <>
+                            <div className="px-6 py-4 border-b border-white/5 shrink-0">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
+                                        <div>
+                                            <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.name ? selectedChat?.name : selectedChat?.phone}</h3>
+                                            <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
                                         <button
-                                            onClick={() => setMessageSearchText('')}
-                                            className={cn("p-1 rounded-lg transition-all", isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-600')}
+                                            onClick={() => {
+                                                setIsSearchVisible(!isSearchVisible);
+                                                if (!isSearchVisible) {
+                                                    setMessageSearchText('');
+                                                }
+                                            }}
+                                            className={cn(
+                                                "p-2 rounded-lg transition-all",
+                                                isSearchVisible
+                                                    ? 'bg-emerald-500/10 text-emerald-500'
+                                                    : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500'
+                                            )}
+                                            title="Search Messages"
                                         >
-                                            <X size={14} />
+                                            <Search size={18} />
+                                        </button>
+                                        <button
+                                            onClick={summarizeChat}
+                                            disabled={isSummarizing}
+                                            className={cn("p-2 rounded-lg transition-all", isSummarizing ? 'animate-pulse text-emerald-500 bg-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500')}
+                                            title="Neural Chat Summary"
+                                        >
+                                            <ClipboardList size={18} />
+                                        </button>
+                                        <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
+                                        <button
+                                            onClick={() => setIsWeeklySummaryOpen(true)}
+                                            className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors"
+                                            title="Weekly Summary"
+                                        >
+                                            <HistoryIcon size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                                {/* Message Search Bar - Conditionally Visible */}
+                                {isSearchVisible && (
+                                    <div className="relative group animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", messageSearchText ? 'text-emerald-500' : (isDarkMode ? 'text-white/20' : 'text-slate-400'), 'group-focus-within:text-emerald-500')} size={14} />
+                                        <input
+                                            onChange={handleMessageSearch}
+                                            value={messageSearchText}
+                                            type="text"
+                                            placeholder="Search in conversation..."
+                                            autoFocus
+                                            className={cn(
+                                                "w-full border rounded-xl py-2 pl-10 pr-20 text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:focus:ring-emerald-500/20",
+                                                isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                            )}
+                                        />
+                                        {messageSearchText && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md", isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
+                                                    {filteredMessage?.length || 0} {filteredMessage?.length === 1 ? 'match' : 'matches'}
+                                                </span>
+                                                <button
+                                                    onClick={() => setMessageSearchText('')}
+                                                    className={cn("p-1 rounded-lg transition-all", isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-600')}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+                                {isMessagesLoading ? (
+                                    <div className="space-y-6">
+                                        {Array.from({ length: 3 }).map((_, i) => (
+                                            <div key={i} className="space-y-4">
+                                                <div className="flex justify-start">
+                                                    <div className={cn("w-[60%] h-16 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+                                                </div>
+                                                <div className="flex justify-end">
+                                                    <div className={cn("w-[60%] h-12 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : isSearching && filteredMessage?.length === 0 ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
+                                        <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform rotate-12 transition-all", isDarkMode ? "bg-white/5 border border-white/10" : "bg-slate-50 border border-slate-200")}>
+                                            <SearchX size={40} className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-400")} />
+                                        </div>
+                                        <div className="text-center space-y-2">
+                                            <h3 className={cn("text-lg font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                No matches found
+                                            </h3>
+                                            <p className={cn("text-xs font-medium uppercase tracking-wider max-w-[200px]", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                                                Try different keywords
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : groupedEntries?.length > 0 ? (
+                                    groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
+                                        <div key={index}>
+                                            <div className="flex justify-center my-6 sticky top-0 z-10">
+                                                <span className={cn(
+                                                    "px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-sm backdrop-blur-md border transition-all",
+                                                    isDarkMode
+                                                        ? "bg-[#1A1A1B]/80 text-white/80 border-white/10 shadow-black/20"
+                                                        : "bg-white/80 text-slate-600 border-slate-200 shadow-slate-200/50"
+                                                )}>
+                                                    {dateLabel}
+                                                </span>
+                                            </div>
+                                            {msgs.map((msg: any, msgIndex: number) => {
+                                                const highlightText = (text: string, search: string) => {
+                                                    if (!search.trim()) return text;
+                                                    const parts = text.split(new RegExp(`(${search})`, 'gi'));
+                                                    return parts.map((part, i) =>
+                                                        part.toLowerCase() === search.toLowerCase()
+                                                            ? <mark key={i} className="bg-yellow-400 text-slate-900 px-0.5 rounded font-semibold">{part}</mark>
+                                                            : part
+                                                    );
+                                                };
+
+                                                return (
+                                                    <div key={msg.id || msgIndex} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", msg.sender === 'user' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${msgIndex * 10}ms`, animationFillMode: 'both' }}>
+                                                        <div className="max-w-[70%] group">
+                                                            <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
+                                                                msg.sender === 'bot'
+                                                                    ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
+                                                                    : msg.sender === 'user'
+                                                                        ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
+                                                                        : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
+                                                            )}>
+                                                                {msg.sender === 'bot' && (
+                                                                    <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
+                                                                        <Sparkles size={10} className="animate-pulse" />
+                                                                        <span>AI Receptionist Layer</span>
+                                                                    </div>
+                                                                )}
+                                                                {messageSearchText ? highlightText(msg.message, messageSearchText) : msg.message}
+                                                            </div>
+                                                            <p className={cn("text-[9px] font-bold uppercase tracking-wide my-2 opacity-40", msg.sender === 'user' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{formattedTime(msg.created_at)}</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )
+                                    )) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-center px-8">
+                                        <div className={cn("p-4 rounded-2xl mb-4", isDarkMode ? 'bg-white/5 text-white/50' : 'bg-slate-100 text-slate-400')}>
+                                            <MessageSquareText size={40} />
+                                        </div>
+                                        <h3 className={cn("text-lg font-bold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            No messages yet
+                                        </h3>
+                                        <p className={cn("text-sm mb-6 max-w-md", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                            Start the conversation by sending a message or let the AI receptionist handle incoming inquiries.
+                                        </p>
+                                        <button
+                                            onClick={suggestReply}
+                                            disabled={isSuggesting}
+                                            className={cn("flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
+                                        >
+                                            {isSuggesting ? (
+                                                <span className="animate-pulse">✨ Thinking...</span>
+                                            ) : (
+                                                <>
+                                                    <Wand2 size={16} />
+                                                    <span>✨ Suggest Smart Reply</span>
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 )}
                             </div>
-                        )}
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
-                        {isMessagesLoading ? (
-                            <div className="space-y-6">
-                                {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="space-y-4">
-                                        <div className="flex justify-start">
-                                            <div className={cn("w-[60%] h-16 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
-                                        </div>
-                                        <div className="flex justify-end">
-                                            <div className={cn("w-[60%] h-12 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
-                                        </div>
-                                    </div>
-                                ))}
+                        </>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
+                            <div className={cn("w-24 h-24 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform -rotate-6 transition-all", isDarkMode ? "bg-emerald-500/5 border-2 border-emerald-500/20" : "bg-emerald-50 border-2 border-emerald-200")}>
+                                <MessageCircle size={48} className={cn("opacity-60", isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
                             </div>
-                        ) : isSearching && filteredMessage?.length === 0 ? (
-                            <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
-                                <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform rotate-12 transition-all", isDarkMode ? "bg-white/5 border border-white/10" : "bg-slate-50 border border-slate-200")}>
-                                    <SearchX size={40} className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-400")} />
-                                </div>
-                                <div className="text-center space-y-2">
-                                    <h3 className={cn("text-lg font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
-                                        No matches found
-                                    </h3>
-                                    <p className={cn("text-xs font-medium uppercase tracking-wider max-w-[200px]", isDarkMode ? "text-white/40" : "text-slate-400")}>
-                                        Try different keywords
-                                    </p>
-                                </div>
+                            <div className="text-center space-y-3">
+                                <h3 className={cn("text-xl font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                                    No conversation selected
+                                </h3>
+                                <p className={cn("text-sm font-medium max-w-[280px] leading-relaxed", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                    Select a chat from the sidebar to view messages and start the conversation
+                                </p>
                             </div>
-                        ) : groupedEntries?.length > 0 ? (
-                            groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
-                                <div key={index}>
-                                    <div className="flex justify-center my-6 sticky top-0 z-10">
-                                        <span className={cn(
-                                            "px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-sm backdrop-blur-md border transition-all",
-                                            isDarkMode
-                                                ? "bg-[#1A1A1B]/80 text-white/80 border-white/10 shadow-black/20"
-                                                : "bg-white/80 text-slate-600 border-slate-200 shadow-slate-200/50"
-                                        )}>
-                                            {dateLabel}
-                                        </span>
-                                    </div>
-                                    {msgs.map((msg: any, msgIndex: number) => {
-                                        const highlightText = (text: string, search: string) => {
-                                            if (!search.trim()) return text;
-                                            const parts = text.split(new RegExp(`(${search})`, 'gi'));
-                                            return parts.map((part, i) =>
-                                                part.toLowerCase() === search.toLowerCase()
-                                                    ? <mark key={i} className="bg-yellow-400 text-slate-900 px-0.5 rounded font-semibold">{part}</mark>
-                                                    : part
-                                            );
-                                        };
-
-                                        return (
-                                            <div key={msg.id || msgIndex} className={cn("flex animate-in slide-in-from-bottom-2 fade-in duration-300", msg.sender === 'user' ? 'justify-start' : 'justify-end')} style={{ animationDelay: `${msgIndex * 10}ms`, animationFillMode: 'both' }}>
-                                                <div className="max-w-[70%] group">
-                                                    <div className={cn("p-3.5 rounded-[1.2rem] text-[13px] leading-relaxed transition-all shadow-sm",
-                                                        msg.sender === 'bot'
-                                                            ? (isDarkMode ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium' : 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-medium shadow-emerald-100')
-                                                            : msg.sender === 'user'
-                                                                ? (isDarkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-200')
-                                                                : (isDarkMode ? 'bg-blue-600 text-white font-medium' : 'bg-slate-900 text-white font-medium')
-                                                    )}>
-                                                        {msg.sender === 'bot' && (
-                                                            <div className="flex items-center space-x-1.5 mb-2 text-[9px] font-bold uppercase tracking-wide opacity-80 border-b border-white/20 pb-1.5">
-                                                                <Sparkles size={10} className="animate-pulse" />
-                                                                <span>AI Receptionist Layer</span>
-                                                            </div>
-                                                        )}
-                                                        {messageSearchText ? highlightText(msg.message, messageSearchText) : msg.message}
-                                                    </div>
-                                                    <p className={cn("text-[9px] font-bold uppercase tracking-wide my-2 opacity-40", msg.sender === 'user' ? 'text-left' : 'text-right', isDarkMode ? 'text-white' : 'text-slate-900')}>{formattedTime(msg.created_at)}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    <div ref={bottomRef} />
-                                </div>
-                            ))
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
-                                <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform -rotate-6 transition-all", isDarkMode ? "bg-white/5 border border-white/10" : "bg-slate-50 border border-slate-200")}>
-                                    <MessageSquareDashed size={40} className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-400")} />
-                                </div>
-                                <div className="text-center space-y-2">
-                                    <h3 className={cn("text-lg font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
-                                        No messages yet
-                                    </h3>
-                                    <p className={cn("text-xs font-medium uppercase tracking-wider", isDarkMode ? "text-white/40" : "text-slate-400")}>
-                                        Start the conversation
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="p-6 shrink-0 relative">
-                        <div className="flex justify-start mb-2 space-x-2">
-                            <button
-                                onClick={suggestReply}
-                                disabled={isSuggesting}
-                                className={cn("flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
-                            >
-                                {isSuggesting ? (
-                                    <span className="animate-pulse">✨ Thinking...</span>
-                                ) : (
-                                    <>
-                                        <Wand2 size={12} />
-                                        <span>✨ Suggest Smart Reply</span>
-                                    </>
-                                )}
-                            </button>
                         </div>
-                        <div className="relative group">
-                            <div className="absolute -inset-1 rounded-[1.5rem] blur opacity-10 transition-opacity duration-500 bg-gradient-to-r from-emerald-600 to-emerald-400 group-focus-within:opacity-40" />
-                            <div className={cn("relative border rounded-[1.3rem] p-2 flex items-end space-x-2 transition-all duration-300", isDarkMode ? 'bg-[#1A1A1B] border-white/5 group-focus-within:border-white/20' : 'bg-white border-slate-200 group-focus-within:border-emerald-300 shadow-xl')}>
-                                <button className="p-3 transition-all hover:scale-110 text-emerald-500 hover:bg-emerald-500/10 rounded-xl"><Plus size={18} /></button>
-                                <textarea
-                                    rows={1}
-                                    value={message}
-                                    onChange={handleInputChange}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            handleSendMessage();
-                                            setMessage("");
-                                        }
-                                    }}
-                                    placeholder="Type a neural response..."
-                                    className={cn("flex-1 bg-transparent border-none focus:ring-0 text-[13px] py-3 resize-none max-h-32 focus:outline-none transition-colors", isDarkMode ? 'text-white placeholder:text-white/20' : 'text-slate-900')}
-                                />
-                                <div className="flex items-center space-x-1 pb-1">
-                                    <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
-                                    <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all">{isPending ? <Loader2 className={cn("animate-spin", isDarkMode ? 'text-white/600' : 'text-slate-200')} size={16} /> : <Send size={16} />}</button>
+                    )}
+
+                    {selectedChat && (
+                        <div className="p-6 shrink-0 relative">
+                            <div className="flex justify-start mb-2 space-x-2">
+                                <button
+                                    onClick={suggestReply}
+                                    disabled={isSuggesting}
+                                    className={cn("flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
+                                >
+                                    {isSuggesting ? (
+                                        <span className="animate-pulse">✨ Thinking...</span>
+                                    ) : (
+                                        <>
+                                            <Wand2 size={12} />
+                                            <span>✨ Suggest Smart Reply</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            <div className="relative group">
+                                <div className="absolute -inset-1 rounded-[1.5rem] blur opacity-10 transition-opacity duration-500 bg-gradient-to-r from-emerald-600 to-emerald-400 group-focus-within:opacity-40" />
+                                <div className={cn("relative border rounded-[1.3rem] p-2 flex items-end space-x-2 transition-all duration-300", isDarkMode ? 'bg-[#1A1A1B] border-white/5 group-focus-within:border-white/20' : 'bg-white border-slate-200 group-focus-within:border-emerald-300 shadow-xl')}>
+                                    <button className="p-3 transition-all hover:scale-110 text-emerald-500 hover:bg-emerald-500/10 rounded-xl"><Plus size={18} /></button>
+                                    <textarea
+                                        rows={1}
+                                        value={message}
+                                        onChange={handleInputChange}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                handleSendMessage();
+                                                setMessage("");
+                                            }
+                                        }}
+                                        placeholder="Type a neural response..."
+                                        className={cn("flex-1 bg-transparent border-none focus:ring-0 text-[13px] py-3 resize-none max-h-32 focus:outline-none transition-colors", isDarkMode ? 'text-white placeholder:text-white/20' : 'text-slate-900')}
+                                    />
+                                    <div className="flex items-center space-x-1 pb-1">
+                                        <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
+                                        <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all">{isPending ? <Loader2 className={cn("animate-spin", isDarkMode ? 'text-white/600' : 'text-slate-200')} size={16} /> : <Send size={16} />}</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </GlassCard>
-            </div>
+            </div >
 
             {/* Weekly Summary Modal */}
-            <WeeklyChatSummaryModal
+            < WeeklyChatSummaryModal
                 isOpen={isWeeklySummaryOpen}
                 onClose={() => setIsWeeklySummaryOpen(false)}
                 chatName={selectedChat?.name || selectedChat?.phone}
                 chatPhone={selectedChat?.phone}
                 isDarkMode={isDarkMode}
             />
-        </div>
+        </div >
     );
 };

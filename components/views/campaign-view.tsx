@@ -7,6 +7,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsapp-connection-placeholder';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import type { CampaignStatus } from '@/services/campaign/campaign.types';
 import {
@@ -22,6 +24,10 @@ import { campaignService } from "@/services/campaign/campaign.service";
 type TabType = 'all' | 'broadcast' | 'api' | 'scheduled' | 'immediate';
 
 export const CampaignView = () => {
+    const { whatsappApiDetails } = useAuth();
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
     const { isDarkMode } = useTheme();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('all');

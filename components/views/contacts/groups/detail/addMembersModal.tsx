@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Search, User, Phone, Mail, CheckSquare, Square } from "lucide-react";
 import { GroupMember } from "@/types/contactGroup";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface AddMembersModalProps {
     isOpen: boolean;
@@ -28,18 +29,19 @@ export const AddMembersModal = ({
 }: AddMembersModalProps) => {
     const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     // Filtered contacts based on search
     const filteredContacts = useMemo(() => {
-        if (!searchQuery.trim()) return availableContacts;
+        if (!debouncedSearchQuery.trim()) return availableContacts;
 
-        const query = searchQuery.toLowerCase();
+        const query = debouncedSearchQuery.toLowerCase();
         return availableContacts.filter(contact =>
-            contact.name.toLowerCase().includes(query) ||
-            contact.phone.toLowerCase().includes(query) ||
-            contact.email?.toLowerCase().includes(query)
+            (contact.name || '').toLowerCase().includes(query) ||
+            (contact.phone || '').toLowerCase().includes(query) ||
+            (contact.email || '').toLowerCase().includes(query)
         );
-    }, [availableContacts, searchQuery]);
+    }, [availableContacts, debouncedSearchQuery]);
 
     const handleToggleContact = (contactId: string) => {
         setSelectedContactIds(prev =>
@@ -209,14 +211,16 @@ export const AddMembersModal = ({
                                         isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'
                                     )}
                                 >
-                                    <Checkbox
-                                        checked={selectedContactIds.includes(contact.id)}
-                                        onCheckedChange={() => handleToggleContact(contact.id)}
-                                    />
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <Checkbox
+                                            checked={selectedContactIds.includes(contact.id)}
+                                            onCheckedChange={() => handleToggleContact(contact.id)}
+                                        />
+                                    </div>
                                     {contact.profile_pic ? (
                                         <img
                                             src={contact.profile_pic}
-                                            alt={contact.name}
+                                            alt={contact.name || 'Patient'}
                                             className="w-10 h-10 rounded-full object-cover"
                                         />
                                     ) : (
@@ -232,7 +236,7 @@ export const AddMembersModal = ({
                                             "text-sm font-medium truncate",
                                             isDarkMode ? 'text-white' : 'text-slate-900'
                                         )}>
-                                            {contact.name}
+                                            {contact.name || 'Patient'}
                                         </p>
                                         <div className="flex items-center space-x-3 mt-0.5">
                                             <div className="flex items-center space-x-1">

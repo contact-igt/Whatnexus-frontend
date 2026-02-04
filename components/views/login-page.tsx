@@ -7,8 +7,8 @@ import { z } from "zod";
 import { useTheme } from "@/hooks/useTheme";
 import { Eye, EyeOff, Mail, Lock, LogIn, Sun, Moon, Check, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLoginMutation } from "@/hooks/useLoginQuery";
-import { useRouter } from "next/navigation";
+import { useManagementLoginMutation } from "@/hooks/useLoginQuery";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import Link from "next/link";
 import { useTenantUserLoginMutation } from "@/hooks/useTenantQuery";
@@ -38,9 +38,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
     const router = useRouter();
     const { token } = useAuth();
-    console.log("token", token)
-    // const { mutate: loginMutate, isPending: isLoading } = useLoginMutation();
-    const { mutate: tenantLoginMutate, isPending: isLoading } = useTenantUserLoginMutation();
+    const pathname = usePathname();
+    console.log("pathname", pathname)
+    const { mutate: loginMutate, isPending: isManagementLoading } = useManagementLoginMutation();
+    const { mutate: tenantLoginMutate, isPending: isTenantLoading } = useTenantUserLoginMutation();
     const [showPassword, setShowPassword] = useState(false);
     const { theme, setTheme, isDarkMode } = useTheme();
 
@@ -64,11 +65,19 @@ export default function LoginPage() {
 
     const rememberMe = watch("rememberMe")
     const onSubmit = async (data: LoginFormData) => {
-        tenantLoginMutate(data, {
-            onSuccess: () => {
-                router.push("/dashboard")
-            }
-        })
+        if (pathname == "/management/login") {
+            loginMutate(data, {
+                onSuccess: () => {
+                    router.push("/dashboard")
+                }
+            })
+        } else {
+            tenantLoginMutate(data, {
+                onSuccess: () => {
+                    router.push("/dashboard")
+                }
+            })
+        }
     };
     useEffect(() => {
         if (token) {
@@ -195,13 +204,13 @@ export default function LoginPage() {
                             ? "text-emerald-400"
                             : "text-emerald-600"
                     )}>
-                        Welcome Back
+                        {pathname === '/management/login' ? 'Management Portal' : 'Welcome Back'}
                     </h1>
                     <p className={cn(
                         "text-sm",
                         isDarkMode ? "text-slate-400" : "text-slate-600"
                     )}>
-                        Sign in to your AI Receptionist Hub
+                        {pathname === '/management/login' ? 'Secure access for administrators' : 'Sign in to your AI Receptionist Hub'}
                     </p>
                 </div>
 
@@ -353,7 +362,7 @@ export default function LoginPage() {
                     {/* Submit Button */}
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isTenantLoading || isManagementLoading}
                         className={cn(
                             "w-full py-3.5 px-4 rounded-xl font-semibold text-white",
                             "transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]",
@@ -364,14 +373,14 @@ export default function LoginPage() {
                             isDarkMode
                                 ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50"
                                 : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30",
-                            isLoading && "opacity-70 cursor-not-allowed"
+                            (isTenantLoading || isManagementLoading) && "opacity-70 cursor-not-allowed"
                         )}
                         style={{ animationDelay: "500ms" }}
                     >
                         {/* Button shine effect */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                         <span className="relative z-10 flex items-center gap-2">
-                            {isLoading ? (
+                            {(isTenantLoading || isManagementLoading) ? (
                                 <>
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                     <span>Signing in...</span>

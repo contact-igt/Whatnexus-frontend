@@ -75,3 +75,17 @@ export const _axios = async (
     throw err;
   }
 };
+
+// Helper function to get the current webhook base URL
+export const getWebhookBaseURL = (): string => {
+  const env = process.env.NEXT_PUBLIC_ENV;
+  const baseURL =
+    env === "ngrok" ? process.env.NEXT_PUBLIC_NGROK_URL :
+      env === "production"
+        ? process.env.NEXT_PUBLIC_PRODUCTION_API_URL
+        : env === "development"
+          ? process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL
+          : process.env.NEXT_PUBLIC_LOCALHOST_API_URL;
+
+  return baseURL || "";
+};
