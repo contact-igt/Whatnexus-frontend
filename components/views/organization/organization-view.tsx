@@ -19,6 +19,7 @@ import { ActionMenu } from '@/components/ui/action-menu';
 
 export interface Organization {
     id: string;
+    tenant_id: string;
     company_name: string;
     owner_name: string;
     owner_email: string;
@@ -106,9 +107,9 @@ export const OrganizationView = () => {
         setIsModalOpen(true);
     };
 
-    const handleNavigateToWhatsApp = (org: any) => {
-        console.log("Navigate to WhatsApp", org.id)
-        router.push(`/whatsapp-settings?tenantId=${org.id}`);
+    const handleNavigateToWhatsApp = (org: Organization) => {
+        console.log("Navigate to WhatsApp", org.tenant_id)
+        router.push(`/whatsapp-settings?tenantId=${org.tenant_id}`);
     }
     const handleDeleteClick = (org: Organization) => {
         setOrgToDelete(org);
@@ -117,7 +118,7 @@ export const OrganizationView = () => {
 
     const handleConfirmDelete = () => {
         if (orgToDelete) {
-            deleteMutate(orgToDelete.id);
+            deleteMutate(orgToDelete.tenant_id);
             setIsDeleteModalOpen(false);
             setOrgToDelete(null);
         }
@@ -161,11 +162,11 @@ export const OrganizationView = () => {
         );
     };
 
-    const handleToggleActive = (id: string, status: string) => {
+    const handleToggleActive = (tenantId: string, status: string) => {
         const data = {
             status: status == "active" ? "inactive" : "active"
         }
-        updateTenantStatusMutate({ id, data });
+        updateTenantStatusMutate({ tenantId, data });
     }
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
@@ -317,7 +318,7 @@ export const OrganizationView = () => {
                                                 type="checkbox"
                                                 className="sr-only peer"
                                                 checked={org.status == "active" ? true : false}
-                                                onChange={() => handleToggleActive(org.id, org.status)}
+                                                onChange={() => handleToggleActive(org.tenant_id, org.status)}
                                             />
                                             <div className={cn(
                                                 "w-11 h-6 rounded-full peer transition-all",

@@ -14,14 +14,14 @@ export class TenantApiData {
         return await _axios("get", "/tenants");
     };
 
-    updateTenant = async (id: string, data: any) => {
-        return await _axios("put", `/tenant/${id}`, data);
+    updateTenant = async (tenantId: string, data: any) => {
+        return await _axios("put", `/tenant/${tenantId}`, data);
     };
-    updateTenantStatus = async (id: string, data: any) => {
-        return await _axios("put", `/tenant-status/${id}?status=${data?.status}`)
+    updateTenantStatus = async (tenantId: string, data: any) => {
+        return await _axios("put", `/tenant-status/${tenantId}?status=${data?.status}`)
     }
-    deleteTenant = async (id: string) => {
-        return await _axios("delete", `/tenant/${id}`)
+    deleteTenant = async (tenantId: string) => {
+        return await _axios("delete", `/tenant/${tenantId}`)
     }
 
     // WhatsApp Configuration APIs
@@ -37,7 +37,7 @@ export class TenantApiData {
         return await _axios("post", `/tenant/${tenantId}/whatsapp-test`, data);
     };
 
-    tenantUserLogin = async (data: any)=>{
+    tenantUserLogin = async (data: any) => {
         return await _axios("post", "/tenant-user/login", data)
     }
 }

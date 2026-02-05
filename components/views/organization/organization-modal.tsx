@@ -74,7 +74,8 @@ export const OrganizationModal = ({
     }, [organization, mode, isOpen]);
 
     const handleChange = (field: keyof Organization, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        const sanitizedValue = field === 'owner_mobile' ? value.replace(/\D/g, '') : value;
+        setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
@@ -118,7 +119,7 @@ export const OrganizationModal = ({
                     }
                 });
             } else if (mode === 'edit' && organization?.id) {
-                updateTenantMutate({ id: organization.id, data: formData }, {
+                updateTenantMutate({ tenantId: organization.tenant_id, data: formData }, {
                     onSuccess: () => {
                         onClose();
                     }
