@@ -30,8 +30,8 @@ export const useUpdateTenantMutation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => {
-            return TenantApis.updateTenant(id, data);
+        mutationFn: ({ tenantId, data }: { tenantId: string; data: any }) => {
+            return TenantApis.updateTenant(tenantId, data);
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
@@ -46,8 +46,8 @@ export const useUpdateTenantMutation = () => {
 export const useTenantStatusMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string, data: any }) => {
-            return TenantApis.updateTenantStatus(id, data);
+        mutationFn: ({ tenantId, data }: { tenantId: string, data: any }) => {
+            return TenantApis.updateTenantStatus(tenantId, data);
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
@@ -95,8 +95,8 @@ export const useDeleteTenantMutation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => {
-            return TenantApis.deleteTenant(id);
+        mutationFn: (tenantId: string) => {
+            return TenantApis.deleteTenant(tenantId);
         },
         onSuccess: (response: any, variables: any) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
@@ -120,7 +120,7 @@ export const useTenantUserLoginMutation = () => {
             return TenantApis.tenantUserLogin(data);
         },
         onSuccess: (response: any, variables: any) => {
-              dispatch(setAuthData({
+            dispatch(setAuthData({
                 token: variables.rememberMe === true ? response?.tokens?.refreshToken : response?.tokens?.accessToken,
                 refreshToken: response?.tokens?.refreshToken,
                 user: response?.user

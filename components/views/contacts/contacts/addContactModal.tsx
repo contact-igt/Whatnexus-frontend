@@ -202,7 +202,7 @@ export const AddContactModal = ({
                         type="tel"
                         placeholder="98765 43210"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                         error={errors.phone}
                         icon={Phone}
                         wrapperClassName="col-span-2"
