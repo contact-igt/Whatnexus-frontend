@@ -17,7 +17,7 @@ export interface GroupMember {
     name: string;
     phone: string;
     email?: string;
-    profile_pic?: string;
+    profile_pic?: string | null;
 }
 
 export interface ContactGroup {
