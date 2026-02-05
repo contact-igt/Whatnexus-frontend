@@ -12,6 +12,7 @@ interface FileUploadProps {
     onChange: (file: File | null, preview: string) => void;
     placeholder?: string;
     uploadType: 'image' | 'video' | 'document';
+    disabled?: boolean;
 }
 
 export const FileUpload = ({
@@ -21,7 +22,8 @@ export const FileUpload = ({
     value,
     onChange,
     placeholder = "Click to upload or drag and drop",
-    uploadType
+    uploadType,
+    disabled = false
 }: FileUploadProps) => {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,21 +107,23 @@ export const FileUpload = ({
             )}
 
             <div
-                onClick={handleClick}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
+                onClick={() => !disabled && handleClick()}
+                onDrop={(e) => !disabled && handleDrop(e)}
+                onDragOver={(e) => !disabled && handleDragOver(e)}
+                onDragLeave={() => !disabled && handleDragLeave()}
                 className={cn(
-                    "relative w-full rounded-xl border-2 border-dashed transition-all cursor-pointer overflow-hidden",
-                    isDragging && "border-emerald-500 bg-emerald-500/5",
-                    !isDragging && isDarkMode && "border-white/20 hover:border-emerald-500/50 bg-white/5",
-                    !isDragging && !isDarkMode && "border-slate-300 hover:border-emerald-500 bg-slate-50"
+                    "relative w-full rounded-xl border-2 border-dashed transition-all overflow-hidden",
+                    disabled ? "cursor-not-allowed opacity-60 grayscale-[0.5]" : "cursor-pointer",
+                    isDragging && !disabled && "border-emerald-500 bg-emerald-500/5",
+                    !isDragging && isDarkMode && (disabled ? "border-white/10 bg-white/5" : "border-white/20 hover:border-emerald-500/50 bg-white/5"),
+                    !isDragging && !isDarkMode && (disabled ? "border-slate-200 bg-slate-50" : "border-slate-300 hover:border-emerald-500 bg-slate-50")
                 )}
             >
                 <input
                     ref={fileInputRef}
                     type="file"
                     accept={accept}
+                    disabled={disabled}
                     onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
                     className="hidden"
                 />
@@ -165,17 +169,19 @@ export const FileUpload = ({
                             </div>
                         )}
 
-                        <button
-                            onClick={handleRemove}
-                            className={cn(
-                                "absolute top-2 right-2 p-1.5 rounded-full transition-all",
-                                isDarkMode
-                                    ? "bg-black/60 hover:bg-black/80 text-white"
-                                    : "bg-white/90 hover:bg-white text-slate-900 shadow-lg"
-                            )}
-                        >
-                            <X size={16} />
-                        </button>
+                        {!disabled && (
+                            <button
+                                onClick={handleRemove}
+                                className={cn(
+                                    "absolute top-2 right-2 p-1.5 rounded-full transition-all",
+                                    isDarkMode
+                                        ? "bg-black/60 hover:bg-black/80 text-white"
+                                        : "bg-white/90 hover:bg-white text-slate-900 shadow-lg"
+                                )}
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-8 px-4">

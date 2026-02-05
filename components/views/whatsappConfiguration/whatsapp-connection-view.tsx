@@ -134,7 +134,7 @@ export const WhatsAppConnectionView = () => {
                             WhatsApp Business API
                         </h1>
                         <p className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                            Configure WhatsApp Business API for <span className="font-semibold">{organization?.name || "City Hospital"}</span>
+                            Configure WhatsApp Business API for <span className="font-semibold">{organization?.company_name || "City Hospital"}</span>
                         </p>
                     </div>
 
