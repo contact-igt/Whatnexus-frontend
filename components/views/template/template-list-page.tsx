@@ -1,58 +1,106 @@
 "use client";
 
 import { useState } from 'react';
-import { FileText, Plus, Search, RefreshCw, Eye, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { FileText, Plus, Search, RefreshCw, AlertCircle } from 'lucide-react';
+import { ActionMenu } from '@/components/ui/action-menu';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Template, TemplateStatus } from './template-types';
 import { getStatusColor, getHealthColor, formatDate } from './template-utils';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+
+import { Modal } from '@/components/ui/modal';
 
 interface TemplateListPageProps {
     isDarkMode: boolean;
     templates: Template[];
+    isLoading: boolean;
     onCreateNew: () => void;
     onEdit: (template: Template) => void;
     onView: (template: Template) => void;
-    onDelete: (templateId: string) => void;
+    onSubmitTemplate: (template_id: string) => void;
+    onResubmitTemplate: (template_id: string) => void;
+    onSyncTemplate: (template_id: string) => void;
+    onPermanentDelete: (template_id: string) => void;
+    onSoftDelete: (templateId: string) => void;
     onSync: () => void;
 }
 
-type TabType = 'all' | 'draft' | 'pending' | 'approved' | 'action_required';
+type TabType = 'all' | 'draft' | 'pending' | 'approved' | 'paused' | 'trash' | 'action_required';
 
 export const TemplateListPage = ({
     isDarkMode,
     templates,
+    isLoading,
+    onResubmitTemplate,
+    onSubmitTemplate,
+    onSyncTemplate,
+    onPermanentDelete,
     onCreateNew,
     onEdit,
     onView,
-    onDelete,
+    onSoftDelete,
     onSync
 }: TemplateListPageProps) => {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [deleteConfirmation, setDeleteConfirmation] = useState<{
+        isOpen: boolean;
+        templateId: string | null;
+        type: 'soft' | 'permanent';
+    }>({
+        isOpen: false,
+        templateId: null,
+        type: 'soft'
+    });
+
 
     const tabs: { id: TabType; label: string; count?: number }[] = [
         { id: 'all', label: 'All', count: templates.length },
-        { id: 'draft', label: 'Draft', count: templates.filter(t => t.status === 'Draft').length },
-        { id: 'pending', label: 'Pending', count: templates.filter(t => t.status === 'Pending').length },
-        { id: 'approved', label: 'Approved', count: templates.filter(t => t.status === 'Approved').length },
-        { id: 'action_required', label: 'Action Required', count: templates.filter(t => t.status === 'Rejected').length },
+        { id: 'draft', label: 'Draft', count: templates.filter((t: any) => t.status === 'draft').length },
+        { id: 'pending', label: 'Pending', count: templates.filter((t: any) => t.status === 'pending').length },
+        { id: 'approved', label: 'Approved', count: templates.filter((t: any) => t.status === 'approved').length },
+        { id: 'action_required', label: 'Action Required', count: templates.filter((t: any) => t.status === 'rejected').length },
+        { id: 'paused', label: 'Paused', count: templates.filter((t: any) => t.status === 'paused').length },
+        { id: 'trash', label: 'Trash', count: templates.filter((t: any) => t.status === 'deleted').length },
     ];
 
-    const filteredTemplates = templates.filter(template => {
+    const filteredTemplates = templates.filter((template: any) => {
         // Tab filter
-        if (activeTab === 'draft' && template.status !== 'Draft') return false;
-        if (activeTab === 'pending' && template.status !== 'Pending') return false;
-        if (activeTab === 'approved' && template.status !== 'Approved') return false;
-        if (activeTab === 'action_required' && template.status !== 'Rejected') return false;
+        if (activeTab === 'draft' && template.status !== 'draft') return false;
+        if (activeTab === 'pending' && template.status !== 'pending') return false;
+        if (activeTab === 'approved' && template.status !== 'approved') return false;
+        if (activeTab === 'action_required' && template.status !== 'rejected') return false;
+        if (activeTab === 'paused' && template.status !== 'paused') return false;
+        if (activeTab === 'trash' && template.status !== 'deleted') return false;
 
         // Search filter
-        if (searchQuery && !template.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        if (searchQuery && !template.template_name.toLowerCase().includes(searchQuery.toLowerCase())) {
             return false;
         }
 
         return true;
     });
+
+    const handleDeleteClick = (templateId: string, type: 'soft' | 'permanent') => {
+        setDeleteConfirmation({
+            isOpen: true,
+            templateId,
+            type
+        });
+    };
+
+    const handleConfirmDelete = () => {
+        if (deleteConfirmation.templateId) {
+            if (deleteConfirmation.type === 'soft') {
+                onSoftDelete(deleteConfirmation.templateId);
+            } else {
+                onPermanentDelete(deleteConfirmation.templateId);
+            }
+        }
+        setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' });
+    };
 
     return (
         <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
@@ -144,111 +192,103 @@ export const TemplateListPage = ({
             {/* Templates Table */}
             <GlassCard isDarkMode={isDarkMode} className="p-0">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left min-w-[1000px]">
-                        <thead>
-                            <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
-                                <th className="px-6 py-4">Template Name</th>
-                                <th className="px-6 py-4">Category</th>
-                                <th className="px-6 py-4 text-center">Status</th>
-                                <th className="px-6 py-4 text-center">Type</th>
-                                <th className="px-6 py-4 text-center">Health</th>
-                                <th className="px-6 py-4">Created At</th>
-                                <th className="px-6 py-4 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                            {filteredTemplates.length > 0 ? (
-                                filteredTemplates.map((template) => (
-                                    <tr key={template.id} className="group transition-all hover:bg-emerald-500/5">
-                                        <td className="px-6 py-5">
-                                            <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
-                                                {template.name}
-                                            </p>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <span className={cn(
-                                                "text-xs font-medium px-2 py-1 rounded",
-                                                isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-600'
-                                            )}>
-                                                {template.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn(
-                                                "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                                                getStatusColor(template.status, isDarkMode)
-                                            )}>
-                                                {template.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                                {template.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left min-w-[1000px]">
+                            <thead>
+                                <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
+                                    <th className="px-6 py-4">Template Name</th>
+                                    <th className="px-6 py-4 text-center">Category</th>
+                                    <th className="px-6 py-4 text-center">Status</th>
+                                    <th className="px-6 py-4 text-center">Type</th>
+                                    {/* <th className="px-6 py-4 text-center">Health</th> */}
+                                    <th className="px-6 py-4 text-center">Created At</th>
+                                    <th className="px-6 py-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
+                                {filteredTemplates.length > 0 ? (
+                                    filteredTemplates.map((template) => (
+                                        <tr key={template.template_id} className="group transition-all hover:bg-emerald-500/5">
+                                            <td className="px-6 py-5 w-50">
+                                                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
+                                                    {template?.template_name}
+                                                </p>
+                                            </td>
+                                            <td className="px-2 py-5 text-center">
+                                                <span className={cn(
+                                                    "text-xs font-medium px-2 py-1 rounded",
+                                                    isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-600'
+                                                )}>
+                                                    {template.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn(
+                                                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
+                                                    getStatusColor(template.status, isDarkMode)
+                                                )}>
+                                                    {template.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                                    {template.template_type}
+                                                </span>
+                                            </td>
+                                            {/* <td className="px-6 py-5 text-center">
                                             <span className={cn(
                                                 "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
                                                 getHealthColor(template.health, isDarkMode)
                                             )}>
                                                 {template.health}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                {formatDate(template.createdAt)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => onView(template)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-colors",
-                                                        isDarkMode ? 'hover:bg-blue-500/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
-                                                    )}
-                                                    title="View"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => onEdit(template)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-colors",
-                                                        isDarkMode ? 'hover:bg-emerald-500/10 text-emerald-400' : 'hover:bg-emerald-50 text-emerald-600'
-                                                    )}
-                                                    title="Edit"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => onDelete(template.id)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-colors",
-                                                        isDarkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'
-                                                    )}
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                        </td> */}
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                    {formatDate(template.created_at)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center justify-center">
+                                                    <ActionMenu
+                                                        isDarkMode={isDarkMode}
+                                                        isView={true}
+                                                        isEdit={['draft', 'paused', 'rejected'].includes(template?.status)}
+                                                        isSubmitTemplate={['draft', 'paused', 'rejected'].includes(template?.status)}
+                                                        onSubmitTemplate={() => { (template?.status === 'paused' || template?.status === 'rejected') ? onResubmitTemplate(template?.template_id) : onSubmitTemplate(template?.template_id) }}
+                                                        isSyncTemplate={template?.status === 'pending'}
+                                                        onSyncTemplate={() => onSyncTemplate(template?.template_id)}
+                                                        onView={() => onView(template)}
+                                                        onEdit={() => onEdit(template)}
+                                                        isDelete={['draft', 'paused', 'rejected', 'deleted'].includes(template?.status)}
+                                                        onDelete={() => handleDeleteClick(template.template_id, 'soft')}
+                                                        isPermanentDelete={template?.status === "deleted" && activeTab === 'trash' && user?.role === 'tenant_admin'}
+                                                        onPermanentDelete={() => handleDeleteClick(template.template_id, 'permanent')}
+                                                    // onRestore={() => onRestore(template.template_id)}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <AlertCircle size={32} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
+                                                <p className={cn("text-sm", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                                    {searchQuery ? 'No templates found matching your search' : 'No templates found'}
+                                                </p>
                                             </div>
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <AlertCircle size={32} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
-                                            <p className={cn("text-sm", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                                {searchQuery ? 'No templates found matching your search' : 'No templates found'}
-                                            </p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                )}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </GlassCard>
 
@@ -258,6 +298,47 @@ export const TemplateListPage = ({
                     Showing {filteredTemplates.length} of {templates.length} templates
                 </p>
             </div>
+
+            <Modal
+                isOpen={deleteConfirmation.isOpen}
+                onClose={() => setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
+                title={deleteConfirmation.type === 'permanent' ? "Permanently Delete Template?" : "Delete Template?"}
+                description={
+                    deleteConfirmation.type === 'permanent'
+                        ? "Are you sure you want to permanently delete this template? This action cannot be undone."
+                        : "Are you sure you want to delete this template? It will be moved to the trash."
+                }
+                isDarkMode={isDarkMode}
+                className="max-w-md"
+                footer={
+                    <div className="flex items-center justify-end space-x-3">
+                        <button
+                            onClick={() => setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+                                isDarkMode
+                                    ? 'border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            )}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmDelete}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium text-white transition-all shadow-lg",
+                                isDarkMode
+                                    ? 'bg-red-500 hover:bg-red-600 border border-red-500/50'
+                                    : 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
+                            )}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                }
+            >
+                <div className="hidden"></div>
+            </Modal>
         </div>
     );
 };

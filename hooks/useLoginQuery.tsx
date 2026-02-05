@@ -9,20 +9,19 @@ import { toast } from "sonner";
 const { login } = new authApis();
 
 
-export const useLoginMutation = () => {
+export const useManagementLoginMutation = () => {
     const queryClient = useQueryClient();
     const dispatch = useDispatch();
     const router = useRouter();
     return useMutation({
         mutationFn: (data: any) => login(data),
         onSuccess: (data, variables) => {
-            console.log(data)
             if (!data || data?.success == false) {
                 toast.error(data?.message || "Something went wrong")
                 return;
             }
             dispatch(setAuthData({
-                token: variables.rememberMe === true ? data?.tokens?.refreshToken : data?.tokens?.accessToken,
+                token: data?.tokens?.accessToken,
                 refreshToken: data?.tokens?.refreshToken,
                 user: data?.user
             }))

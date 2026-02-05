@@ -155,7 +155,7 @@ export const ProfileView = () => {
                                                 ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10'
                                                 : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white'
                                         )}
-                                        placeholder="Enter username"
+                                        placeholder="Enter name"
                                     />
                                 </div>
                             ) : (

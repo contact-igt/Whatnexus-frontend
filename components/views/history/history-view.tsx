@@ -1,16 +1,19 @@
 
 "use client";
 import { useEffect, useRef, useState } from 'react';
-import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX, MessageCircle } from 'lucide-react';
+import { Search, Brain, X, ClipboardList, Info, History as HistoryIcon, Wand2, Plus, Mic, Send, Sparkles, User, Loader2, MessageSquareOff, MessageSquareDashed, SearchX, MessageCircle, MessageSquareText } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
-import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
+import { useAddMessageMutation, useChatSuggestMutation, useGetAllChatsQuery, useGetAllHistoryChatsQuery, useMessagesByPhoneQuery, useSendTemplateMessageMutation, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { WeeklyChatSummaryModal } from '../weekly-chat-summary-modal';
+import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign/template-selection-modal";
+import { TemplateVariableModal } from './template-variable-modal';
+import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsapp-connection-placeholder';
 
 
 const getDateLabel = (dateStr: string) => {
@@ -46,18 +49,22 @@ const formattedTime = (dateString: any) => {
 
 export const HistoryView = () => {
     const { user, whatsappApiDetails } = useAuth();
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
     const {
-        data: chatList,
+        data: chatHistoryList,
         isLoading: isChatsLoading,
         isError: isChatsError,
-    } = useGetAllChatsQuery();
-    const [filteredChats, setFilteredChats] = useState(chatList?.data);
+    } = useGetAllHistoryChatsQuery();
+    const [filteredChats, setFilteredChats] = useState(chatHistoryList?.data);
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
+    const { mutate: sendTemplateMutate, isPending: isSendingTemplate } = useSendTemplateMessageMutation();
     const [chatSearchText, setChatSearchText] = useState("");
     const [selectedChat, setSelectedChat] = useState<any>(null);
     const {
@@ -73,6 +80,10 @@ export const HistoryView = () => {
     const [message, setMessage] = useState<string>("");
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
+    const [selectedTemplateForVariables, setSelectedTemplateForVariables] = useState<ProcessedTemplate | null>(null);
+    const [isChatClosed, setIsChatClosed] = useState(true); // Simulating closed chat state
     const router = useRouter();
     const selectedChatRef = useRef<any>(null);
     const searchParams = useSearchParams();
@@ -99,24 +110,22 @@ export const HistoryView = () => {
             contact_id: chat?.contact_id,
             name: chat?.name ?? chat.phone,
         });
-        if (selectedChat?.phone !== chat?.phone) {
-            setMessage("");
-            setChatSummary(null);
-        }
+        setMessage("");
+        setChatSummary(null);
         router.replace(`?phone=${chat.phone}`, { scroll: false });
     };
 
     useEffect(() => {
         if (!selectedChat?.phone) return;
-        if (!chatList?.data?.length) return;
+        if (!chatHistoryList?.data?.length) return;
 
-        const hasUnreadUserMessages = chatList.data.some(
+        const hasUnreadUserMessages = chatHistoryList.data.some(
             (msg: any) => msg.seen === "false"
         );
         if (hasUnreadUserMessages) {
             updateSeenMutate(selectedChat?.phone);
         }
-    }, [selectedChat?.phone, chatList?.data]);
+    }, [selectedChat?.phone, chatHistoryList?.data]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {
@@ -145,10 +154,48 @@ export const HistoryView = () => {
         setMessage("");
     }
 
+    const handleTemplateSelect = (template: ProcessedTemplate) => {
+        // Check for variables in header or body
+        const hasHeaderVars = template.headerText && /\{\{\d+\}\}/.test(template.headerText);
+        const hasBodyVars = template.variables > 0 || (template.description && /\{\{\d+\}\}/.test(template.description));
+
+        if (hasHeaderVars || hasBodyVars) {
+            // Open variable modal
+            setSelectedTemplateForVariables(template);
+            setIsVariableModalOpen(true);
+        } else {
+            // No variables, send immediately
+            sendTemplateMutate({
+                phone: selectedChat?.phone,
+                contact_id: selectedChat?.contact_id,
+                template_id: template.id,
+                components: []
+            });
+            setIsChatClosed(false);
+            setSelectedChat(null);
+            setMessage("");
+        }
+    };
+
+    const handleSendWithVariables = (components: any[]) => {
+        if (!selectedTemplateForVariables) return;
+
+        sendTemplateMutate({
+            phone: selectedChat?.phone,
+            contact_id: selectedChat?.contact_id,
+            template_id: selectedTemplateForVariables.id,
+            components: components
+        });
+        setIsChatClosed(false);
+        setSelectedChat(null);
+        setMessage("");
+        setSelectedTemplateForVariables(null);
+    };
+
     useEffect(() => {
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();
-            let filtered = chatList?.data;
+            let filtered = chatHistoryList?.data;
             if (value) {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
@@ -161,7 +208,7 @@ export const HistoryView = () => {
         }, 200);
 
         return () => clearTimeout(timer);
-    }, [chatSearchText, chatList, chatFilter])
+    }, [chatSearchText, chatHistoryList, chatFilter])
 
     useEffect(() => {
         const value = messageSearchText?.trim().toLowerCase();
@@ -179,9 +226,9 @@ export const HistoryView = () => {
     }, [messageSearchText, selectedChat, messagesData]);
 
     useEffect(() => {
-        if (!chatList?.data?.length) return;
+        if (!chatHistoryList?.data?.length) return;
         if (phoneParam) {
-            const chatFromUrl = chatList.data.find(
+            const chatFromUrl = chatHistoryList.data.find(
                 (c: any) => String(c.phone) === String(phoneParam)
             );
 
@@ -194,17 +241,9 @@ export const HistoryView = () => {
                 return;
             }
         }
-        const firstChat = chatList.data[0];
-
-        setSelectedChat({
-            phone: firstChat.phone,
-            contact_id: firstChat.contact_id,
-            name: firstChat.name ?? firstChat.phone,
-        });
-
-        router.replace(`?phone=${firstChat.phone}`, { scroll: false });
-
-    }, [chatList?.data, phoneParam]);
+        // Don't auto-select first chat - let user click to select
+        setSelectedChat(null);
+    }, [chatHistoryList?.data, phoneParam]);
 
     const isSearching = messageSearchText.trim().length > 0;
     const updatedMessageData =
@@ -315,8 +354,16 @@ export const HistoryView = () => {
         socket.off("new-message"); // ⬅️ prevent duplicates
         socket.on("new-message", handleIncomingMessage);
 
+        socket.on("session-activated", (data: any) => {
+            console.log("✅ Session Activated:", data);
+            // Optionally redirect to live chats or refresh list
+            // router.push(`/shared-inbox/live-chats?phone=${data.phone}`);
+            // For now, we'll just invalidate queries to refresh the list
+        });
+
         return () => {
             socket.off("new-message", handleIncomingMessage);
+            socket.off("session-activated");
             socket.off("connect");
         };
     }, []);
@@ -440,110 +487,131 @@ export const HistoryView = () => {
                     </div>
                 )}
 
-                <GlassCard isDarkMode={isDarkMode} className="p-3 px-6 border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between shrink-0 rounded-xl">
-                    <div className="flex items-center space-x-6">
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Controller</span>
-                            <div className="flex items-center space-x-2">
-                                <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm shadow-blue-500/30">JD</div>
-                                {/* <span className={cn("text-xs font-bold uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-700')}>{selectedContact?.assignedTo ? AGENTS.find(a => a.id === selectedContact?.assignedTo)?.name : 'Unassigned'}</span> */}
-                            </div>
-                        </div>
-                        <div className="h-6 w-px bg-white/10" />
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 mb-0.5">State</span>
-                            <div className="flex items-center space-x-1.5">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Active Monitor</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <button className={cn("px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border", isDarkMode ? 'bg-black/40 text-white/70 border-white/5 hover:bg-black/60' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50')}>Silence AI</button>
-                        <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Claim Lead</button>
-                    </div>
-                </GlassCard>
-
-                <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
-                    <div className="px-6 py-4 border-b border-white/5 shrink-0">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-3">
-                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
-                                <div>
-                                    <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.name ? selectedChat?.name : selectedChat?.phone}</h3>
-                                    <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
+                {selectedChat && (
+                    <GlassCard isDarkMode={isDarkMode} className="p-3 px-6 border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between shrink-0 rounded-xl">
+                        <div className="flex items-center space-x-6">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Controller</span>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm shadow-blue-500/30">JD</div>
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-1">
-                                <button
-                                    onClick={() => {
-                                        setIsSearchVisible(!isSearchVisible);
-                                        if (!isSearchVisible) {
-                                            setMessageSearchText('');
-                                        }
-                                    }}
-                                    className={cn(
-                                        "p-2 rounded-lg transition-all",
-                                        isSearchVisible
-                                            ? 'bg-emerald-500/10 text-emerald-500'
-                                            : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500'
-                                    )}
-                                    title="Search Messages"
-                                >
-                                    <Search size={18} />
-                                </button>
-                                <button
-                                    onClick={summarizeChat}
-                                    disabled={isSummarizing}
-                                    className={cn("p-2 rounded-lg transition-all", isSummarizing ? 'animate-pulse text-emerald-500 bg-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500')}
-                                    title="Neural Chat Summary"
-                                >
-                                    <ClipboardList size={18} />
-                                </button>
-                                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
-                                <button
-                                    onClick={() => setIsWeeklySummaryOpen(true)}
-                                    className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors"
-                                    title="Weekly Summary"
-                                >
-                                    <HistoryIcon size={18} />
-                                </button>
+                            <div className="h-6 w-px bg-white/10" />
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 mb-0.5">State</span>
+                                <div className="flex items-center space-x-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Active Monitor</span>
+                                </div>
                             </div>
                         </div>
-                        {/* Message Search Bar - Conditionally Visible */}
-                        {isSearchVisible && (
-                            <div className="relative group animate-in slide-in-from-top-2 fade-in duration-200">
-                                <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", messageSearchText ? 'text-emerald-500' : (isDarkMode ? 'text-white/20' : 'text-slate-400'), 'group-focus-within:text-emerald-500')} size={14} />
-                                <input
-                                    onChange={handleMessageSearch}
-                                    value={messageSearchText}
-                                    type="text"
-                                    placeholder="Search in conversation..."
-                                    autoFocus
-                                    className={cn(
-                                        "w-full border rounded-xl py-2 pl-10 pr-20 text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20",
-                                        isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'
-                                    )}
-                                />
-                                {messageSearchText && (
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md", isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
-                                            {filteredMessage?.length || 0} {filteredMessage?.length === 1 ? 'match' : 'matches'}
-                                        </span>
+                        <div className="flex items-center space-x-2">
+                            <button className={cn("px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border", isDarkMode ? 'bg-black/40 text-white/70 border-white/5 hover:bg-black/60' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50')}>Silence AI</button>
+                            <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Claim Lead</button>
+                        </div>
+                    </GlassCard>
+                )}
+
+                <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
+                    {selectedChat ? (
+                        <>
+                            <div className="px-6 py-4 border-b border-white/5 shrink-0">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border", isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100')}>{selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={16} />}</div>
+                                        <div>
+                                            <h3 className={cn("font-bold text-sm tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedChat?.name ? selectedChat?.name : selectedChat?.phone}</h3>
+                                            <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wide mt-0.5">Qualified Lead • Meta Ads</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
                                         <button
-                                            onClick={() => setMessageSearchText('')}
-                                            className={cn("p-1 rounded-lg transition-all", isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-600')}
+                                            onClick={() => {
+                                                setIsSearchVisible(!isSearchVisible);
+                                                if (!isSearchVisible) {
+                                                    setMessageSearchText('');
+                                                }
+                                            }}
+                                            className={cn(
+                                                "p-2 rounded-lg transition-all",
+                                                isSearchVisible
+                                                    ? 'bg-emerald-500/10 text-emerald-500'
+                                                    : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500'
+                                            )}
+                                            title="Search Messages"
                                         >
-                                            <X size={14} />
+                                            <Search size={18} />
                                         </button>
+                                        <button
+                                            onClick={summarizeChat}
+                                            disabled={isSummarizing}
+                                            className={cn("p-2 rounded-lg transition-all", isSummarizing ? 'animate-pulse text-emerald-500 bg-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-emerald-500')}
+                                            title="Neural Chat Summary"
+                                        >
+                                            <ClipboardList size={18} />
+                                        </button>
+                                        <button className="p-2 hover:bg-white/5 rounded-lg text-slate-400"><Info size={18} /></button>
+                                        <button
+                                            onClick={() => setIsWeeklySummaryOpen(true)}
+                                            className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors"
+                                            title="Weekly Summary"
+                                        >
+                                            <HistoryIcon size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                                {/* Message Search Bar - Conditionally Visible */}
+                                {isSearchVisible && (
+                                    <div className="relative group animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors", messageSearchText ? 'text-emerald-500' : (isDarkMode ? 'text-white/20' : 'text-slate-400'), 'group-focus-within:text-emerald-500')} size={14} />
+                                        <input
+                                            onChange={handleMessageSearch}
+                                            value={messageSearchText}
+                                            type="text"
+                                            placeholder="Search in conversation..."
+                                            autoFocus
+                                            className={cn(
+                                                "w-full border rounded-xl py-2 pl-10 pr-20 text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20",
+                                                isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                            )}
+                                        />
+                                        {messageSearchText && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md", isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
+                                                    {filteredMessage?.length || 0} {filteredMessage?.length === 1 ? 'match' : 'matches'}
+                                                </span>
+                                                <button
+                                                    onClick={() => setMessageSearchText('')}
+                                                    className={cn("p-1 rounded-lg transition-all", isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-600')}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
-                        )}
-                    </div>
+                        </>
+                    ) :
+                        ""
+                    }
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
-                        {isMessagesLoading ? (
+                        {!selectedChat ? (
+                            <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
+                                <div className={cn("w-24 h-24 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform -rotate-6 transition-all", isDarkMode ? "bg-emerald-500/5 border-2 border-emerald-500/20" : "bg-emerald-50 border-2 border-emerald-200")}>
+                                    <MessageCircle size={48} className={cn("opacity-60", isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
+                                </div>
+                                <div className="text-center space-y-3">
+                                    <h3 className={cn("text-xl font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                                        No conversation selected
+                                    </h3>
+                                    <p className={cn("text-sm font-medium max-w-[280px] leading-relaxed", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                        Select a chat from the sidebar to view messages and start the conversation
+                                    </p>
+                                </div>
+                            </div>
+                        ) : isMessagesLoading ? (
                             <div className="space-y-6">
                                 {Array.from({ length: 3 }).map((_, i) => (
                                     <div key={i} className="space-y-4">
@@ -621,63 +689,116 @@ export const HistoryView = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center h-full pb-20 animate-in fade-in zoom-in-95 duration-500">
-                                <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl transform -rotate-6 transition-all", isDarkMode ? "bg-white/5 border border-white/10" : "bg-slate-50 border border-slate-200")}>
-                                    <MessageSquareDashed size={40} className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-400")} />
+                            <div className="flex flex-col items-center justify-center h-full text-center px-8">
+                                <div className={cn("p-4 rounded-2xl mb-4", isDarkMode ? 'bg-white/5 text-white/50' : 'bg-slate-100 text-slate-400')}>
+                                    <MessageSquareText size={40} />
                                 </div>
-                                <div className="text-center space-y-2">
-                                    <h3 className={cn("text-lg font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
-                                        No messages yet
-                                    </h3>
-                                    <p className={cn("text-xs font-medium uppercase tracking-wider", isDarkMode ? "text-white/40" : "text-slate-400")}>
-                                        Start the conversation
-                                    </p>
-                                </div>
+                                <h3 className={cn("text-lg font-bold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                    No messages yet
+                                </h3>
+                                <p className={cn("text-sm mb-6 max-w-md", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                    Start the conversation by sending a message or let the AI receptionist handle incoming inquiries.
+                                </p>
+                                <button
+                                    onClick={suggestReply}
+                                    disabled={isSuggesting}
+                                    className={cn("flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
+                                >
+                                    {isSuggesting ? (
+                                        <span className="animate-pulse">✨ Thinking...</span>
+                                    ) : (
+                                        <>
+                                            <Wand2 size={16} />
+                                            <span>✨ Suggest Smart Reply</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         )}
                     </div>
 
                     <div className="p-6 shrink-0 relative">
-                        <div className="flex justify-start mb-2 space-x-2">
-                            <button
-                                onClick={suggestReply}
-                                disabled={isSuggesting}
-                                className={cn("flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
-                            >
-                                {isSuggesting ? (
-                                    <span className="animate-pulse">✨ Thinking...</span>
-                                ) : (
-                                    <>
-                                        <Wand2 size={12} />
-                                        <span>✨ Suggest Smart Reply</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                        <div className="relative group">
-                            <div className="absolute -inset-1 rounded-[1.5rem] blur opacity-10 transition-opacity duration-500 bg-gradient-to-r from-emerald-600 to-emerald-400 group-focus-within:opacity-40" />
-                            <div className={cn("relative border rounded-[1.3rem] p-2 flex items-end space-x-2 transition-all duration-300", isDarkMode ? 'bg-[#1A1A1B] border-white/5 group-focus-within:border-white/20' : 'bg-white border-slate-200 group-focus-within:border-emerald-300 shadow-xl')}>
-                                <button className="p-3 transition-all hover:scale-110 text-emerald-500 hover:bg-emerald-500/10 rounded-xl"><Plus size={18} /></button>
-                                <textarea
-                                    rows={1}
-                                    value={message}
-                                    onChange={handleInputChange}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            handleSendMessage();
-                                            setMessage("");
-                                        }
-                                    }}
-                                    placeholder="Type a neural response..."
-                                    className={cn("flex-1 bg-transparent border-none focus:ring-0 text-[13px] py-3 resize-none max-h-32 focus:outline-none transition-colors", isDarkMode ? 'text-white placeholder:text-white/20' : 'text-slate-900')}
-                                />
-                                <div className="flex items-center space-x-1 pb-1">
-                                    <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
-                                    <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all">{isPending ? <Loader2 className={cn("animate-spin", isDarkMode ? 'text-white/600' : 'text-slate-200')} size={16} /> : <Send size={16} />}</button>
+                        {selectedChat && (
+                            isChatClosed ? (
+                                // Closed Chat State - Show Send Template Button
+                                <div className={cn(
+                                    "flex items-center justify-between py-6 px-6 rounded-2xl border-2 border-dashed transition-all",
+                                    isDarkMode
+                                        ? 'bg-white/[0.02] border-white/10'
+                                        : 'bg-slate-50/50 border-slate-200'
+                                )}>
+                                    {/* <MessageSquareOff size={40} className={cn(
+                                    "mb-4 opacity-50",
+                                    isDarkMode ? 'text-white' : 'text-slate-400'
+                                )} /> */}
+                                    <div className='flex flex-col items-start justify-center'>
+                                        <h3 className={cn(
+                                            "text-sm font-bold mb-1",
+                                            isDarkMode ? 'text-white' : 'text-slate-900'
+                                        )}>
+                                            Chat Conversation closed!
+                                        </h3>
+                                        <p className={cn(
+                                            "text-xs text-center max-w-xs",
+                                            isDarkMode ? 'text-white/50' : 'text-slate-500'
+                                        )}>
+                                            Please send a template to initiate a chat conversation
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsTemplateModalOpen(true)}
+                                        className="bg-emerald-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                    >
+                                        <Send size={16} />
+                                        <span>Send Template</span>
+                                    </button>
                                 </div>
-                            </div>
-                        </div>
+                            ) : (
+                                // Active Chat State - Show Normal Input
+                                <>
+                                    <div className="flex justify-start mb-2 space-x-2">
+                                        <button
+                                            onClick={suggestReply}
+                                            disabled={isSuggesting}
+                                            className={cn("flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all", isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95', isDarkMode ? 'bg-white/5 text-emerald-400 border border-white/10' : 'bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm')}
+                                        >
+                                            {isSuggesting ? (
+                                                <span className="animate-pulse">✨ Thinking...</span>
+                                            ) : (
+                                                <>
+                                                    <Wand2 size={12} />
+                                                    <span>✨ Suggest Smart Reply</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <div className="relative group">
+                                        <div className="absolute -inset-1 rounded-[1.5rem] blur opacity-10 transition-opacity duration-500 bg-gradient-to-r from-emerald-600 to-emerald-400 group-focus-within:opacity-40" />
+                                        <div className={cn("relative border rounded-[1.3rem] p-2 flex items-end space-x-2 transition-all duration-300", isDarkMode ? 'bg-[#1A1A1B] border-white/5 group-focus-within:border-white/20' : 'bg-white border-slate-200 group-focus-within:border-emerald-300 shadow-xl')}>
+                                            <button className="p-3 transition-all hover:scale-110 text-emerald-500 hover:bg-emerald-500/10 rounded-xl"><Plus size={18} /></button>
+                                            <textarea
+                                                rows={1}
+                                                value={message}
+                                                onChange={handleInputChange}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        handleSendMessage();
+                                                        setMessage("");
+                                                    }
+                                                }}
+                                                placeholder="Type a neural response..."
+                                                className={cn("flex-1 bg-transparent border-none focus:ring-0 text-[13px] py-3 resize-none max-h-32 focus:outline-none transition-colors", isDarkMode ? 'text-white placeholder:text-white/20' : 'text-slate-900')}
+                                            />
+                                            <div className="flex items-center space-x-1 pb-1">
+                                                <button className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-500 transition-colors"><Mic size={18} /></button>
+                                                <button disabled={message.length === 0 || isPending} onClick={handleSendMessage} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all">{isPending ? <Loader2 className={cn("animate-spin", isDarkMode ? 'text-white/600' : 'text-slate-200')} size={16} /> : <Send size={16} />}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )
+                        )}
                     </div>
                 </GlassCard>
             </div>
@@ -689,6 +810,23 @@ export const HistoryView = () => {
                 chatName={selectedChat?.name || selectedChat?.phone}
                 chatPhone={selectedChat?.phone}
                 isDarkMode={isDarkMode}
+            />
+
+            {/* Template Selection Modal */}
+            <TemplateSelectionModal
+                isOpen={isTemplateModalOpen}
+                onClose={() => setIsTemplateModalOpen(false)}
+                onSelect={handleTemplateSelect}
+            />
+
+            {/* Template Variable Input Modal */}
+            <TemplateVariableModal
+                isOpen={isVariableModalOpen}
+                onClose={() => setIsVariableModalOpen(false)}
+                template={selectedTemplateForVariables}
+                onSend={handleSendWithVariables}
+                isDarkMode={isDarkMode}
+                isPending={isSendingTemplate}
             />
         </div>
     );

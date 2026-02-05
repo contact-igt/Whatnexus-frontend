@@ -2,112 +2,95 @@
 "use client";
 
 import { useState } from 'react';
-import { Megaphone, Plus, Search, RefreshCw, Users, Calendar, TrendingUp, Send } from 'lucide-react';
+import { Megaphone, Plus, Search, RefreshCw, Users, TrendingUp, Send, X } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
-import { LaunchCampaignModal } from "@/components/ui/launch-campaign-modal";
-import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsapp-connection-placeholder';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import type { CampaignStatus } from '@/services/campaign/campaign.types';
+import {
+    formatCampaignDate,
+    calculatePercentage,
+    getCampaignStatusColor
+} from '@/utils/campaign.utils';
+import { CreateCampaignModal } from '@/components/campaign/create-campaign-modal';
+import { ActionMenu } from "@/components/ui/action-menu";
+import { ConfirmationModal } from "@/components/ui/confirmationModal";
+import { campaignService } from "@/services/campaign/campaign.service";
 
-type TabType = 'all' | 'broadcast' | 'api' | 'scheduled' | 'qrscan';
-
-interface Campaign {
-    id: string;
-    name: string;
-    type: string;
-    createdAt: string;
-    status: string;
-    audience: number;
-    sent?: number;
-    delivered?: string;
-    read?: string;
-    replied?: string;
-}
-
-const SAMPLE_CAMPAIGNS: Campaign[] = [
-    {
-        id: '1',
-        name: 'Appointment Reminders - January',
-        type: 'Broadcast',
-        createdAt: 'Jan 10, 2026',
-        status: 'Completed',
-        audience: 1250,
-        sent: 1250,
-        delivered: '98%',
-        read: '85%',
-        replied: '12%'
-    },
-    {
-        id: '2',
-        name: 'Health Checkup Campaign',
-        type: 'Broadcast',
-        createdAt: 'Jan 8, 2026',
-        status: 'Completed',
-        audience: 850,
-        sent: 850,
-        delivered: '97%',
-        read: '78%',
-        replied: '8%'
-    },
-    {
-        id: '3',
-        name: 'Lab Results Notification',
-        type: 'API',
-        createdAt: 'Jan 7, 2026',
-        status: 'Active',
-        audience: 320,
-        sent: 320,
-        delivered: '99%',
-        read: '92%',
-        replied: '5%'
-    },
-    {
-        id: '4',
-        name: 'Prescription Refill Reminder',
-        type: 'Scheduled',
-        createdAt: 'Jan 15, 2026',
-        status: 'Scheduled',
-        audience: 450,
-    },
-];
+type TabType = 'all' | 'broadcast' | 'api' | 'scheduled' | 'immediate';
 
 export const CampaignView = () => {
+    const { whatsappApiDetails } = useAuth();
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
     const { isDarkMode } = useTheme();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [campaigns, setCampaigns] = useState<Campaign[]>(SAMPLE_CAMPAIGNS);
-    const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [deletingCampaignId, setDeletingCampaignId] = useState<string | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+
+    // Use the custom hook for campaign data
+    const { campaigns, loading, error, refetch, pagination, filters } = useCampaigns();
+
+    const handleCampaignSuccess = (campaignId: string) => {
+        refetch(); // Refresh the campaign list
+        router.push(`/campaign/${campaignId}`); // Navigate to the new campaign
+    };
 
     const tabs: { id: TabType; label: string }[] = [
         { id: 'all', label: 'All' },
         { id: 'broadcast', label: 'Broadcast' },
         { id: 'api', label: 'API' },
         { id: 'scheduled', label: 'Scheduled' },
-        { id: 'qrscan', label: 'QRScan' },
+        { id: 'immediate', label: 'Immediate' },
     ];
 
+    // Filter campaigns by active tab and search query
     const filteredCampaigns = campaigns.filter(campaign => {
-        if (activeTab === 'all') return true;
-        return campaign.type.toLowerCase() === activeTab;
+        const matchesTab = activeTab === 'all' || campaign.campaign_type.toLowerCase() === activeTab;
+        const matchesSearch = campaign.campaign_name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesTab && matchesSearch;
     });
 
-    const handleLaunchCampaign = (data: any) => {
-        const newCampaign: Campaign = {
-            id: (campaigns.length + 1).toString(),
-            name: data.name,
-            type: data.type,
-            createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            status: data.type === 'Scheduled' ? 'Scheduled' : 'Active',
-            audience: data.audienceCount,
-            sent: data.type === 'Broadcast' ? data.audienceCount : 0,
-            delivered: '-',
-            read: '-',
-            replied: '-'
-        };
+    // Handle row click to navigate to details
+    const handleCampaignClick = (campaignId: string) => {
+        router.push(`/campaign/${campaignId}`);
+    };
 
-        // Add new campaign to the top of the list
-        // @ts-ignore
-        setCampaigns(prev => [newCampaign, ...prev]);
+    const handleDeleteCampaign = async () => {
+        if (!deletingCampaignId) return;
+        try {
+            setActionLoading(true);
+            await campaignService.deleteCampaign(deletingCampaignId);
+            refetch(); // Refresh list
+            setIsDeleteModalOpen(false);
+            setDeletingCampaignId(null);
+        } catch (err) {
+            console.error("Failed to delete campaign", err);
+            alert("Failed to delete campaign. Please try again.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleExecuteCampaign = async (id: string) => {
+        try {
+            // Optimistic update or loading state could be better, but refetch works
+            await campaignService.executeCampaign(id);
+            refetch();
+            // Optional: Success message
+        } catch (err) {
+            console.error("Failed to execute campaign", err);
+            alert("Failed to execute campaign.");
+        }
     };
 
     return (
@@ -124,7 +107,7 @@ export const CampaignView = () => {
                 </div>
                 {/* <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}> */}
                 <button
-                    onClick={() => setIsLaunchModalOpen(true)}
+                    onClick={() => setIsCreateModalOpen(true)}
                     className="h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wide bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
                 >
                     <Plus size={16} />
@@ -162,22 +145,36 @@ export const CampaignView = () => {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search by campaign name"
                         className={cn(
-                            "w-full pl-12 pr-4 py-3 rounded-xl border text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all",
+                            "w-full pl-12 pr-12 py-3 rounded-xl border text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all",
                             isDarkMode
                                 ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
                                 : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
                         )}
                     />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className={cn(
+                                "absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all hover:bg-white/10",
+                                isDarkMode ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-700'
+                            )}
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
                 <button
+                    onClick={() => refetch()}
+                    disabled={loading}
                     className={cn(
                         "px-6 py-3 rounded-xl border text-sm font-semibold transition-all duration-200 flex items-center gap-2",
                         isDarkMode
                             ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50',
+                        loading && 'opacity-50 cursor-not-allowed'
                     )}
                 >
-                    <RefreshCw size={16} />
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     Refresh
                 </button>
             </div>
@@ -201,109 +198,204 @@ export const CampaignView = () => {
                 ))}
             </div>
 
-            <GlassCard isDarkMode={isDarkMode} className="p-0">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left min-w-[900px]">
-                        <thead>
-                            <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
-                                <th className="px-6 py-4">Campaign</th>
-                                <th className="px-6 py-4">Type</th>
-                                <th className="px-6 py-4">Created At</th>
-                                <th className="px-6 py-4 text-center">Status</th>
-                                <th className="px-6 py-4 text-center">Audience</th>
-                                <th className="px-6 py-4 text-center">Delivered</th>
-                                <th className="px-6 py-4 text-center">Read</th>
-                                <th className="px-6 py-4 text-center">Replied</th>
-                            </tr>
-                        </thead>
-                        <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                            {filteredCampaigns.length > 0 ? (
-                                filteredCampaigns.map((campaign) => (
-                                    <tr key={campaign.id} className="group transition-all hover:bg-emerald-500/5">
-                                        <td className="px-6 py-5">
-                                            <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>{campaign.name}</p>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>{campaign.type}</span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{campaign.createdAt}</span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn(
-                                                "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                                                campaign.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                    campaign.status === 'Active' ? 'bg-blue-500/10 text-blue-500 animate-pulse' :
-                                                        'bg-yellow-500/10 text-yellow-500'
-                                            )}>
-                                                {campaign.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <Users size={12} className={cn(isDarkMode ? 'text-white/40' : 'text-slate-400')} />
-                                                <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white' : 'text-slate-700')}>
-                                                    {campaign.audience.toLocaleString()}
+            {/* Error State */}
+            {error && (
+                <GlassCard isDarkMode={isDarkMode} className="p-6 bg-red-500/5 border-red-500/20">
+                    <p className="text-red-500 text-sm">{error}</p>
+                    <button
+                        onClick={() => refetch()}
+                        className="mt-3 px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-all"
+                    >
+                        Try Again
+                    </button>
+                </GlassCard>
+            )}
+
+            {/* Loading State */}
+            {loading && !error && (
+                <GlassCard isDarkMode={isDarkMode} className="p-12">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                        <RefreshCw size={32} className="animate-spin text-emerald-500" />
+                        <p className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Loading campaigns...</p>
+                    </div>
+                </GlassCard>
+            )}
+
+            {/* Campaign Table */}
+            {!loading && !error && (
+                <GlassCard isDarkMode={isDarkMode} className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left min-w-[900px]">
+                            <thead>
+                                <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
+                                    <th className="px-6 py-4">Campaign</th>
+                                    <th className="px-6 py-4">Type</th>
+                                    <th className="px-6 py-4">Created At</th>
+                                    <th className="px-6 py-4 text-center">Status</th>
+                                    <th className="px-6 py-4 text-center">Audience</th>
+                                    <th className="px-6 py-4 text-center">Delivered</th>
+                                    <th className="px-6 py-4 text-center">Read</th>
+                                    <th className="px-6 py-4 text-center">Replied</th>
+                                    <th className="px-6 py-4 text-center w-[50px]">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
+                                {filteredCampaigns.length > 0 ? (
+                                    filteredCampaigns.map((campaign) => (
+                                        <tr
+                                            key={campaign.campaign_id}
+                                            onClick={() => handleCampaignClick(campaign.campaign_id)}
+                                            className="group transition-all hover:bg-emerald-500/5 cursor-pointer"
+                                        >
+                                            <td className="px-6 py-5">
+                                                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>{campaign.campaign_name}</p>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className={cn("text-xs font-medium capitalize", isDarkMode ? 'text-white/60' : 'text-slate-600')}>{campaign.campaign_type}</span>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{formatCampaignDate(campaign.createdAt)}</span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn(
+                                                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
+                                                    getCampaignStatusColor(campaign.status)
+                                                )}>
+                                                    {campaign.status}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Users size={12} className={cn(isDarkMode ? 'text-white/40' : 'text-slate-400')} />
+                                                    <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white' : 'text-slate-700')}>
+                                                        {campaign.total_audience.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn("text-xs font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>
+                                                    {calculatePercentage(campaign.delivered_count, campaign.total_audience)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn("text-xs font-semibold", isDarkMode ? 'text-blue-400' : 'text-blue-600')}>
+                                                    {calculatePercentage(campaign.read_count, campaign.total_audience)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <span className={cn("text-xs font-semibold", isDarkMode ? 'text-purple-400' : 'text-purple-600')}>
+                                                    {calculatePercentage(campaign.replied_count, campaign.total_audience)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <div onClick={(e) => e.stopPropagation()}>
+                                                    <ActionMenu
+                                                        isDarkMode={isDarkMode}
+                                                        isView={true}
+                                                        onView={() => handleCampaignClick(campaign.campaign_id)}
+                                                        isDelete={['draft', 'scheduled', 'failed', 'completed'].includes(campaign.status)}
+                                                        onDelete={() => {
+                                                            setDeletingCampaignId(campaign.campaign_id);
+                                                            setIsDeleteModalOpen(true);
+                                                        }}
+                                                        isExecute={['draft', 'scheduled'].includes(campaign.status)}
+                                                        onExecute={() => handleExecuteCampaign(campaign.campaign_id)}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-16 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-4">
+                                                <div className={cn(
+                                                    "w-16 h-16 rounded-full flex items-center justify-center",
+                                                    isDarkMode ? 'bg-white/5' : 'bg-slate-100'
+                                                )}>
+                                                    <Megaphone size={28} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                                        {searchQuery ? 'No campaigns match your search' : 'No campaigns yet'}
+                                                    </p>
+                                                    <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                                        {searchQuery ? 'Try adjusting your search terms' : 'Launch your first campaign to get started'}
+                                                    </p>
+                                                </div>
+                                                {!searchQuery && (
+                                                    <button
+                                                        onClick={() => setIsCreateModalOpen(true)}
+                                                        className="mt-2 px-4 py-2 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-all flex items-center gap-2"
+                                                    >
+                                                        <Plus size={14} />
+                                                        Create Campaign
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn("text-xs font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>
-                                                {campaign.delivered || '-'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn("text-xs font-semibold", isDarkMode ? 'text-blue-400' : 'text-blue-600')}>
-                                                {campaign.read || '-'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={cn("text-xs font-semibold", isDarkMode ? 'text-purple-400' : 'text-purple-600')}>
-                                                {campaign.replied || '-'}
-                                            </span>
-                                        </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={8} className="px-6 py-12 text-center">
-                                        <p className={cn("text-sm", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                            No campaigns found
-                                        </p>
-                                    </td>
-                                </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </GlassCard>
+            )}
+
+            {!loading && !error && (
+                <div className="flex items-center justify-between">
+                    <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                        Showing {filteredCampaigns.length} of {pagination.totalCampaigns} campaigns
+                    </p>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => pagination.setPage(pagination.currentPage - 1)}
+                            disabled={pagination.currentPage === 1}
+                            className={cn(
+                                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                pagination.currentPage === 1
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-white/10',
+                                isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                             )}
-                        </tbody>
-                    </table>
+                        >
+                            Previous
+                        </button>
+                        <span className={cn("px-3 py-1.5 text-xs font-semibold", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                            Page {pagination.currentPage} of {pagination.totalPages}
+                        </span>
+                        <button
+                            onClick={() => pagination.setPage(pagination.currentPage + 1)}
+                            disabled={pagination.currentPage >= pagination.totalPages}
+                            className={cn(
+                                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                pagination.currentPage >= pagination.totalPages
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-white/10',
+                                isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                            )}
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
-            </GlassCard>
+            )}
 
-            <div className="flex items-center justify-between">
-                <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                    Showing {filteredCampaigns.length} of {campaigns.length} campaigns
-                </p>
-                <div className="flex gap-2">
-                    <button className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                        isDarkMode ? 'bg-white/5 text-white/40 hover:bg-white/10' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                    )}>
-                        Previous
-                    </button>
-                    <button className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                        isDarkMode ? 'bg-white/5 text-white/40 hover:bg-white/10' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                    )}>
-                        Next
-                    </button>
-                </div>
-            </div>
+            {/* Create Campaign Modal */}
+            <CreateCampaignModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={handleCampaignSuccess}
+            />
 
-
-            <LaunchCampaignModal
-                isOpen={isLaunchModalOpen}
-                onClose={() => setIsLaunchModalOpen(false)}
-                onLaunch={handleLaunchCampaign}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDeleteCampaign}
+                title="Delete Campaign"
+                message="Are you sure you want to delete this campaign? This action cannot be undone."
                 isDarkMode={isDarkMode}
+                isLoading={actionLoading}
             />
         </div >
     );

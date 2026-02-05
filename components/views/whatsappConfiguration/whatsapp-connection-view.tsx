@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, MessageCircle, CheckCircle2, XCircle, Eye, EyeOff, Loader2, Shield, Phone, Key, Smartphone, Building2, Users, Hospital } from 'lucide-react';
+import { ArrowLeft, MessageCircle, CheckCircle2, XCircle, Eye, EyeOff, Loader2, Shield, Phone, Key, Smartphone, Building2, Users, Hospital, Copy, Check, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Organization } from "../organization/organization-view";
@@ -12,7 +12,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useGetWhatsappConfigQuery, useSaveWhatsAppConfigMutation, useStatusWhatsAppConfigQuery, useTestWhatsAppConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 import { WhatsappConnectionList } from './whatsappConnectionList';
-
+import { getWebhookBaseURL } from '@/helper/axios';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 interface WhatsAppConfig {
     waba_id: string;
     phone_number_id: string;
@@ -55,6 +56,7 @@ export const WhatsAppConnectionView = () => {
             access_token: '',
         }
     })
+    const { user } = useAuth();
     const { data: WhatsAppConnectionData, isLoading: isWhatsappLoading } = useGetWhatsappConfigQuery();
     const { mutate: saveWhatsConfigMutate, isPending: isSaveLoading } = useSaveWhatsAppConfigMutation();
     const { mutate: testWhatsConfigMutate, isPending: isTestLoading } = useTestWhatsAppConfigQuery();
@@ -64,6 +66,8 @@ export const WhatsAppConnectionView = () => {
     const [organization, setOrganization] = useState<Organization | null>(null);
 
     const [showAccessToken, setShowAccessToken] = useState(false);
+    const [copiedWebhook, setCopiedWebhook] = useState(false);
+    const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const pathname = usePathname();
     const router = useRouter();
     const isHideBack = pathname === '/settings/whatsapp-settings';
@@ -108,7 +112,7 @@ export const WhatsAppConnectionView = () => {
 
     const onSubmit = (data: any) => {
         console.log("datafunc", data)
-        saveWhatsConfigMutate({data});
+        saveWhatsConfigMutate({ data });
     }
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1000px] mx-auto no-scrollbar pb-32">
@@ -348,22 +352,298 @@ export const WhatsAppConnectionView = () => {
                     </div>
                 </div>
 
-                <div className={cn(
-                    "p-6 rounded-xl border backdrop-blur-xl",
-                    isDarkMode
-                        ? "bg-blue-500/5 border-blue-500/20"
-                        : "bg-blue-50 border-blue-200"
-                )}>
-                    <h3 className={cn("font-semibold mb-3", isDarkMode ? "text-white" : "text-slate-900")}>
-                        How to get your credentials
-                    </h3>
-                    <ul className={cn("space-y-2 text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
-                        <li>• Visit the <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Meta Business Suite</a></li>
-                        <li>• Navigate to WhatsApp Business API settings</li>
-                        <li>• Copy your WABA ID and Phone Number ID</li>
-                        <li>• Generate a permanent access token from your Meta App</li>
-                        <li>• Enter the credentials above and test the connection</li>
-                    </ul>
+                {/* Comprehensive Setup Instructions */}
+                <div className="space-y-4">
+                    {/* Webhook Configuration */}
+                    <div className={cn(
+                        "p-6 rounded-xl border backdrop-blur-xl",
+                        isDarkMode
+                            ? "bg-emerald-500/5 border-emerald-500/20"
+                            : "bg-emerald-50 border-emerald-200"
+                    )}>
+                        <div className="flex items-start space-x-3 mb-4">
+                            <div className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                                isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
+                            )}>
+                                <Key className="text-emerald-500" size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className={cn("font-semibold mb-1", isDarkMode ? "text-white" : "text-slate-900")}>
+                                    Webhook Configuration
+                                </h3>
+                                <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                    Copy this URL and configure it in your Meta Business account
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className={cn("text-xs font-medium mb-1.5 block", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                    Webhook URL
+                                </label>
+                                <div className="flex items-center space-x-2">
+                                    <div className={cn(
+                                        "flex-1 px-4 py-3 rounded-lg border font-mono text-sm",
+                                        isDarkMode
+                                            ? "bg-white/5 border-white/10 text-white"
+                                            : "bg-white border-slate-200 text-slate-900"
+                                    )}>
+                                        {getWebhookBaseURL()}/webhook
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${getWebhookBaseURL()}/webhook`);
+                                            setCopiedWebhook(true);
+                                            setTimeout(() => setCopiedWebhook(false), 2000);
+                                        }}
+                                        className={cn(
+                                            "p-3 rounded-lg transition-all",
+                                            isDarkMode
+                                                ? "bg-white/5 hover:bg-white/10 text-white/70 hover:text-white"
+                                                : "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900"
+                                        )}
+                                    >
+                                        {copiedWebhook ? <Check size={18} /> : <Copy size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+                            {/* 
+                            <div>
+                                <label className={cn("text-xs font-medium mb-1.5 block", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                    Verify Token (Optional)
+                                </label>
+                                <div className={cn(
+                                    "px-4 py-3 rounded-lg border font-mono text-sm",
+                                    isDarkMode
+                                        ? "bg-white/5 border-white/10 text-white/50"
+                                        : "bg-white border-slate-200 text-slate-500"
+                                )}>
+                                    your_verify_token_here
+                                </div>
+                            </div> */}
+                        </div>
+                    </div>
+
+                    {/* Step-by-Step Guide */}
+                    <div className={cn(
+                        "p-6 rounded-xl border backdrop-blur-xl",
+                        isDarkMode
+                            ? "bg-blue-500/5 border-blue-500/20"
+                            : "bg-blue-50 border-blue-200"
+                    )}>
+                        <div className="flex items-start space-x-3 mb-4">
+                            <div className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                                isDarkMode ? "bg-blue-500/20" : "bg-blue-100"
+                            )}>
+                                <Building2 className="text-blue-500" size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className={cn("font-semibold mb-1", isDarkMode ? "text-white" : "text-slate-900")}>
+                                    Meta Business Setup Guide
+                                </h3>
+                                <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                    Follow these steps to configure WhatsApp Business API
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {/* Step 1 */}
+                            <div className={cn(
+                                "rounded-lg border overflow-hidden",
+                                isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200"
+                            )}>
+                                <button
+                                    onClick={() => setExpandedSection(expandedSection === 'step1' ? null : 'step1')}
+                                    className={cn(
+                                        "w-full px-4 py-3 flex items-center justify-between transition-colors",
+                                        isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50"
+                                    )}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                            isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                        )}>
+                                            1
+                                        </div>
+                                        <span className={cn("font-medium text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Create Meta Business Account
+                                        </span>
+                                    </div>
+                                    {expandedSection === 'step1' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {expandedSection === 'step1' && (
+                                    <div className={cn("px-4 pb-4 pt-2 space-y-2 text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                        <p>• Visit <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline inline-flex items-center">Meta Business Suite <ExternalLink size={12} className="ml-1" /></a></p>
+                                        <p>• Create a new business account or select an existing one</p>
+                                        <p>• Ensure you have admin access to the account</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Step 2 */}
+                            <div className={cn(
+                                "rounded-lg border overflow-hidden",
+                                isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200"
+                            )}>
+                                <button
+                                    onClick={() => setExpandedSection(expandedSection === 'step2' ? null : 'step2')}
+                                    className={cn(
+                                        "w-full px-4 py-3 flex items-center justify-between transition-colors",
+                                        isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50"
+                                    )}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                            isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                        )}>
+                                            2
+                                        </div>
+                                        <span className={cn("font-medium text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Set Up WhatsApp Business API
+                                        </span>
+                                    </div>
+                                    {expandedSection === 'step2' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {expandedSection === 'step2' && (
+                                    <div className={cn("px-4 pb-4 pt-2 space-y-2 text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                        <p>• Go to <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline inline-flex items-center">Meta for Developers <ExternalLink size={12} className="ml-1" /></a></p>
+                                        <p>• Create a new app or select an existing one</p>
+                                        <p>• Add WhatsApp product to your app</p>
+                                        <p>• Navigate to WhatsApp → Getting Started</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Step 3 */}
+                            <div className={cn(
+                                "rounded-lg border overflow-hidden",
+                                isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200"
+                            )}>
+                                <button
+                                    onClick={() => setExpandedSection(expandedSection === 'step3' ? null : 'step3')}
+                                    className={cn(
+                                        "w-full px-4 py-3 flex items-center justify-between transition-colors",
+                                        isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50"
+                                    )}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                            isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                        )}>
+                                            3
+                                        </div>
+                                        <span className={cn("font-medium text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Get Your Credentials
+                                        </span>
+                                    </div>
+                                    {expandedSection === 'step3' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {expandedSection === 'step3' && (
+                                    <div className={cn("px-4 pb-4 pt-2 space-y-2 text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                        <p>• <strong>WABA ID:</strong> Found in WhatsApp → API Setup → WhatsApp Business Account ID</p>
+                                        <p>• <strong>Phone Number ID:</strong> Found in WhatsApp → API Setup → Phone Number ID</p>
+                                        <p>• <strong>Access Token:</strong> Generate from App Settings → Basic → Generate Token</p>
+                                        <p className="text-amber-500">⚠️ Make sure to generate a permanent access token, not a temporary one</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Step 4 */}
+                            <div className={cn(
+                                "rounded-lg border overflow-hidden",
+                                isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200"
+                            )}>
+                                <button
+                                    onClick={() => setExpandedSection(expandedSection === 'step4' ? null : 'step4')}
+                                    className={cn(
+                                        "w-full px-4 py-3 flex items-center justify-between transition-colors",
+                                        isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50"
+                                    )}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                            isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                        )}>
+                                            4
+                                        </div>
+                                        <span className={cn("font-medium text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Configure Webhook
+                                        </span>
+                                    </div>
+                                    {expandedSection === 'step4' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {expandedSection === 'step4' && (
+                                    <div className={cn("px-4 pb-4 pt-2 space-y-2 text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                        <p className="text-emerald-500 font-semibold">📧 Check your Email ( {user?.email} ) for the Verify Token that were sent to you</p>
+                                        <p>• In Meta Developer Console, go to WhatsApp → Configuration</p>
+                                        <p>• Click "Edit" next to Webhook</p>
+                                        <div>• <strong>Callback URL:</strong> Use this URL:
+                                            <div className={cn("inline-flex items-center space-x-2 mt-1 px-2 py-1 rounded border ml-2", isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200")}>
+                                                <code className="text-xs font-mono">{getWebhookBaseURL()}/webhook</code>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(`${getWebhookBaseURL()}/webhook`);
+                                                        setCopiedWebhook(true);
+                                                        setTimeout(() => setCopiedWebhook(false), 2000);
+                                                    }}
+                                                    className={cn("p-1 rounded transition-colors", isDarkMode ? "hover:bg-white/10 text-white/50 hover:text-white" : "hover:bg-slate-200 text-slate-400 hover:text-slate-700")}
+                                                >
+                                                    {copiedWebhook ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p>• <strong>Verify Token:</strong> Use the verify token from your Email</p>
+                                        <p>• Click "Verify and Save"</p>
+                                        <p>• Subscribe to webhook fields: <code className={cn("px-1.5 py-0.5 rounded text-xs", isDarkMode ? "bg-white/10" : "bg-slate-200")}>messages</code>, <code className={cn("px-1.5 py-0.5 rounded text-xs", isDarkMode ? "bg-white/10" : "bg-slate-200")}>message_status</code></p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Step 5 */}
+                            <div className={cn(
+                                "rounded-lg border overflow-hidden",
+                                isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200"
+                            )}>
+                                <button
+                                    onClick={() => setExpandedSection(expandedSection === 'step5' ? null : 'step5')}
+                                    className={cn(
+                                        "w-full px-4 py-3 flex items-center justify-between transition-colors",
+                                        isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50"
+                                    )}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                            isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                        )}>
+                                            5
+                                        </div>
+                                        <span className={cn("font-medium text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Connect Phone Number
+                                        </span>
+                                    </div>
+                                    {expandedSection === 'step5' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {expandedSection === 'step5' && (
+                                    <div className={cn("px-4 pb-4 pt-2 space-y-2 text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                        <p>• In WhatsApp → API Setup, click "Add Phone Number"</p>
+                                        <p>• Enter your business phone number</p>
+                                        <p>• Verify the phone number via SMS or call</p>
+                                        <p>• Once verified, the phone number will be linked to your Meta app</p>
+                                        <p>• Copy the Phone Number ID and use it in the form above</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </>}
         </div>

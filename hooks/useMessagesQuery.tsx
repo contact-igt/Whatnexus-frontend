@@ -38,6 +38,21 @@ export const useGetAllLiveChatsQuery = () => {
     return { data, isLoading, isError };
 };
 
+export const useGetAllHistoryChatsQuery = () => {
+
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ['historychats'],
+        queryFn: () => MessagesApis.getAllHistoryChats(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    if (isError) {
+        toast.error('Failed to load messages');
+    }
+
+    return { data, isLoading, isError };
+};
+
 export const useMessagesByPhoneQuery = (phone_number: string) => {
     const { data, isLoading, isError } = useQuery({
         queryKey: ['messages', phone_number],
@@ -101,3 +116,28 @@ export const useChatSuggestMutation = () => {
         },
     });
 }
+
+export const useSendTemplateMessageMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { phone: string; contact_id: string; template_id: string; components?: any[] }) => {
+            return MessagesApis.sendTemplateMessage(data);
+        },
+        onSuccess: (data: any, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["historychats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            toast.success(data?.message || 'Template message sent successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to send template message');
+        },
+    });
+};

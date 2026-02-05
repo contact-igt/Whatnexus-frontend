@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import { TenantApiData } from "@/services/tenant";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setAuthData } from "@/redux/slices/auth/authSlice";
 
 const TenantApis = new TenantApiData();
 
@@ -27,8 +30,8 @@ export const useUpdateTenantMutation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => {
-            return TenantApis.updateTenant(id, data);
+        mutationFn: ({ tenantId, data }: { tenantId: string; data: any }) => {
+            return TenantApis.updateTenant(tenantId, data);
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
@@ -43,8 +46,8 @@ export const useUpdateTenantMutation = () => {
 export const useTenantStatusMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string, data: any }) => {
-            return TenantApis.updateTenantStatus(id, data);
+        mutationFn: ({ tenantId, data }: { tenantId: string, data: any }) => {
+            return TenantApis.updateTenantStatus(tenantId, data);
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
@@ -92,10 +95,10 @@ export const useDeleteTenantMutation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => {
-            return TenantApis.deleteTenant(id);
+        mutationFn: (tenantId: string) => {
+            return TenantApis.deleteTenant(tenantId);
         },
-        onSuccess: (response) => {
+        onSuccess: (response: any, variables: any) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
             toast.success(response?.data?.message || response?.message || 'Organization deleted successfully');
         },
@@ -104,3 +107,31 @@ export const useDeleteTenantMutation = () => {
         },
     });
 };
+
+
+// ================= Tenant User ==================
+
+export const useTenantUserLoginMutation = () => {
+    const router = useRouter();
+    const dispatch = useDispatch();
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => {
+            return TenantApis.tenantUserLogin(data);
+        },
+        onSuccess: (response: any, variables: any) => {
+            dispatch(setAuthData({
+                token: variables.rememberMe === true ? response?.tokens?.refreshToken : response?.tokens?.accessToken,
+                refreshToken: response?.tokens?.refreshToken,
+                user: response?.user
+            }))
+            queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            toast.success(response?.data?.message || response?.message || 'Tenant user login successful');
+            router.replace("/dashboard");
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to login tenant user');
+        },
+    })
+}
+

@@ -701,6 +701,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         isDarkMode={isDarkMode}
                                         isView={source?.type == "text" || source?.type == "file"}
                                         isEdit={source?.type == "text" || source?.type == "file"}
+                                        isDelete={source?.type == "text" || source?.type == "file"}
                                         onView={() => handleView(source, 'knowledge')}
                                         onEdit={() => handleEdit(source, 'knowledge')}
                                         onDelete={() => handleDeleteClick(source, 'knowledge')}
@@ -841,6 +842,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         isDarkMode={isDarkMode}
                                         isView={source?.type == "text" || source?.type == "file"}
                                         isEdit={source?.type == "text" || source?.type == "file"}
+                                        isDelete={source?.type == "text" || source?.type == "file"}
                                         onView={() => handleView(source, 'knowledge')}
                                         onEdit={() => handleEdit(source, 'knowledge')}
                                         onDelete={() => handleDeleteClick(source, 'knowledge')}

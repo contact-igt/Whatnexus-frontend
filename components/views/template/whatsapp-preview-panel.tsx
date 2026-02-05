@@ -1,13 +1,15 @@
 "use client";
 
-import { MessageCircle, Image as ImageIcon, Video, FileText, Check } from 'lucide-react';
+import { MessageCircle, Image as ImageIcon, Video, FileText, Check, Type } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TemplateType, CTAButton } from './template-types';
+import { TemplateType, CTAButton, HeaderType } from './template-types';
 import { replaceVariables, formatWhatsAppText } from './template-utils';
 
 interface WhatsAppPreviewPanelProps {
     isDarkMode: boolean;
     templateType: TemplateType;
+    headerType?: HeaderType;
+    headerValue?: string;
     content: string;
     footer?: string;
     variables: Record<string, string>;
@@ -18,16 +20,117 @@ interface WhatsAppPreviewPanelProps {
 export const WhatsAppPreviewPanel = ({
     isDarkMode,
     templateType,
+    headerType = 'NONE',
+    headerValue = '',
     content,
     footer,
     variables,
     ctaButtons = [],
     quickReplies = []
 }: WhatsAppPreviewPanelProps) => {
-
+    console.log("variables", variables)
     // Replace variables and format text
-    const processedContent = replaceVariables(content, variables);
-    const formattedContent = formatWhatsAppText(processedContent);
+    let processedContent = content;
+
+    // Always replace variables if they exist
+    if (content && Object.keys(variables).length > 0) {
+        processedContent = replaceVariables(content, variables);
+    }
+    console.log("hh", headerType, headerValue)
+    console.log("content", content);
+    console.log("footer", footer)
+    const renderHeaderPlaceholder = () => {
+        if (!headerType || headerType === 'NONE') return null;
+
+        if ((headerType == 'TEXT' || headerType == 'text') && headerValue) {
+            return (
+                <div className={cn(
+                    "w-full px-4 pt-3 pb-2"
+                )}>
+                    <p className={cn(
+                        "text-base font-semibold leading-tight",
+                        isDarkMode ? 'text-white' : 'text-slate-900'
+                    )}>
+                        {headerValue}
+                    </p>
+                </div>
+            );
+        }
+
+        if (headerType === 'media') {
+            if (headerValue) {
+                // Check if it's a video (base64 starts with data:video or has video extension)
+                const isVideo = headerValue.startsWith('data:video') ||
+                    headerValue.match(/\.(mp4|webm|ogg)$/i);
+
+                return (
+                    <div className="w-full">
+                        {isVideo ? (
+                            <video
+                                src={headerValue}
+                                className="w-full max-h-64 object-cover rounded-t-xl"
+                                controls
+                            />
+                        ) : (
+                            <img
+                                src={headerValue}
+                                alt="Header media"
+                                className="w-full max-h-64 object-cover rounded-t-xl"
+                            />
+                        )}
+                    </div>
+                );
+            }
+            return (
+                <div className={cn("w-full h-40 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-500/10 to-purple-500/10")}>
+                    <ImageIcon size={48} className="text-blue-400" />
+                    <span className="text-xs font-semibold text-blue-400">Media Header</span>
+                </div>
+            );
+        }
+
+        if (headerType === 'DOCUMENT') {
+            if (headerValue) {
+                return (
+                    <div className={cn(
+                        "w-full px-4 py-3 border-b",
+                        isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'
+                    )}>
+                        <div className="flex items-center gap-3">
+                            <div className={cn(
+                                "p-2.5 rounded-lg",
+                                isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
+                            )}>
+                                <FileText size={20} className="text-purple-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                    "text-sm font-medium",
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                )}>
+                                    Document.pdf
+                                </p>
+                                <p className={cn(
+                                    "text-xs",
+                                    isDarkMode ? "text-white/50" : "text-slate-500"
+                                )}>
+                                    PDF Document
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            return (
+                <div className={cn("w-full h-32 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-purple-500/10 to-pink-500/10")}>
+                    <FileText size={48} className="text-purple-400" />
+                    <span className="text-xs font-semibold text-purple-400">Document Header</span>
+                </div>
+            );
+        }
+
+        return null;
+    };
 
     const renderMediaPlaceholder = () => {
         if (templateType === 'TEXT') return null;
@@ -123,19 +226,30 @@ export const WhatsAppPreviewPanel = ({
                                 "rounded-2xl rounded-tr-sm overflow-hidden shadow-lg relative",
                                 isDarkMode ? 'bg-[#005c4b]' : 'bg-[#dcf8c6]'
                             )}>
+                                {/* Header Placeholder */}
+                                {renderHeaderPlaceholder()}
+
                                 {/* Media Placeholder */}
                                 {renderMediaPlaceholder()}
 
                                 {/* Content */}
-                                <div className="p-3 space-y-2">
+                                <div className="p-3 space-y-0.5">
                                     {content ? (
                                         <div
                                             className={cn(
-                                                "text-[13px] leading-relaxed whitespace-pre-wrap break-words",
+                                                "text-[13px] leading-relaxed break-words",
                                                 isDarkMode ? 'text-white' : 'text-slate-900'
                                             )}
-                                            dangerouslySetInnerHTML={{ __html: formattedContent }}
-                                        />
+                                        >
+                                            {processedContent.split('\n').map((line, i) => (
+                                                <p
+                                                    key={i}
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: formatWhatsAppText(line) || '<br>'
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
                                     ) : (
                                         <p className={cn(
                                             "text-[13px] italic",
@@ -181,7 +295,7 @@ export const WhatsAppPreviewPanel = ({
                             </div>
 
                             {/* CTA Buttons */}
-                            {ctaButtons.length > 0 && (
+                            {/* {ctaButtons.length > 0 && (
                                 <div className="mt-2 space-y-1">
                                     {ctaButtons.map((button) => (
                                         <button
@@ -200,10 +314,10 @@ export const WhatsAppPreviewPanel = ({
                                         </button>
                                     ))}
                                 </div>
-                            )}
+                            )} */}
 
                             {/* Quick Replies */}
-                            {quickReplies.length > 0 && (
+                            {/* {quickReplies.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {quickReplies.map((reply, index) => (
                                         <button
@@ -219,7 +333,7 @@ export const WhatsAppPreviewPanel = ({
                                         </button>
                                     ))}
                                 </div>
-                            )}
+                            )} */}
                         </div>
                     </div>
                 </div>

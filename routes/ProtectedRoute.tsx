@@ -7,6 +7,7 @@ const ProtectedRoute = ({ children }: { children: any }) => {
     const { token } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    console.log("token", token);
     useEffect(() => {
         if (!token) {
             router.replace(`/login?from=${encodeURIComponent(pathname)}`)

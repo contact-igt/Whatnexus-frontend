@@ -1,69 +1,91 @@
 
 "use client";
 
+
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 interface ActionMenuProps {
     isDarkMode: boolean;
     isView?: boolean;
     isEdit?: boolean;
+    isDelete?: boolean;
     isWhatsAppConfig?: boolean;
     onWhatsAppConfig?: () => void;
     onView?: () => void;
     onEdit?: () => void;
+    isSubmitTemplate?: boolean;
+    onSubmitTemplate?: () => void;
+    isSyncTemplate?: boolean;
+    onSyncTemplate?: () => void;
     onDelete?: () => void;
+    onSoftDelete?: () => void;
+    isPermanentDelete?: boolean;
+    onPermanentDelete?: () => void;
+    isExecute?: boolean;
+    onExecute?: () => void;
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWhatsAppConfig, onView, onEdit, onDelete }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute }: ActionMenuProps) => {
     const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+    const menuRef = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const toggleOpen = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isOpen) {
+            setIsOpen(false);
+        } else {
+            if (menuRef.current) {
+                const rect = menuRef.current.getBoundingClientRect();
+                setPosition({
+                    top: rect.bottom + window.scrollY + 5,
+                    left: rect.right + window.scrollX - 144 // 144px is approx width (w-36)
+                });
+            }
+            setIsOpen(true);
+        }
+    };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node) &&
+                menuRef.current &&
+                !menuRef.current.contains(event.target as Node)
+            ) {
                 setIsOpen(false);
             }
         };
 
-        let scrollableParents: HTMLElement[] = [];
-
-        const findScrollableParents = (node: HTMLElement | null) => {
-            const parents: HTMLElement[] = [];
-            let current = node;
-            while (current) {
-                const style = window.getComputedStyle(current);
-                if (/(auto|scroll)/.test(style.overflowY)) {
-                    parents.push(current);
-                }
-                current = current.parentElement;
-            }
-            return parents;
+        const handleScroll = () => {
+            if (isOpen) setIsOpen(false); // Close on scroll to avoid position drift
         };
 
         if (isOpen) {
-            if (menuRef.current) {
-                scrollableParents = findScrollableParents(menuRef.current.parentElement);
-                scrollableParents.forEach(parent => {
-                    parent.style.setProperty('overflow-y', 'hidden', 'important');
-                });
-            }
             document.addEventListener('mousedown', handleClickOutside);
+            window.addEventListener('scroll', handleScroll, true); // true for capture to catch all scrolls
+            window.addEventListener('resize', handleScroll);
         }
 
         return () => {
-            scrollableParents.forEach(parent => {
-                parent.style.removeProperty('overflow-y');
-            });
             document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('resize', handleScroll);
         };
     }, [isOpen]);
 
+    // Recalculate position if we can (optional, but closing on scroll is safer)
+
     return (
-        <div className="relative" ref={menuRef}>
+        <>
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                ref={menuRef}
+                onClick={toggleOpen}
                 className={cn(
                     "p-2 rounded-lg transition-all",
                     isOpen
@@ -74,17 +96,26 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWha
                 <MoreHorizontal size={16} />
             </button>
 
-            {isOpen && (
-                <div className={cn(
-                    "absolute right-0 mt-2 w-34 rounded-xl border shadow-xl z-[100] animate-in fade-in zoom-in-95 duration-200",
-                    isDarkMode
-                        ? 'bg-[#1c1c21] border-white/10'
-                        : 'bg-white border-slate-200'
-                )}>
+            {isOpen && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={{
+                        top: position.top,
+                        left: position.left,
+                        position: 'absolute' // "absolute" in body relative to document
+                    }}
+                    className={cn(
+                        "w-36 rounded-xl border shadow-xl z-[9999] animate-in fade-in zoom-in-95 duration-200",
+                        isDarkMode
+                            ? 'bg-[#1c1c21] border-white/10'
+                            : 'bg-white border-slate-200'
+                    )}
+                >
                     <div className="p-1">
                         {onView && isView && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onView();
                                     setIsOpen(false);
                                 }}
@@ -102,7 +133,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWha
 
                         {onEdit && isEdit && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onEdit();
                                     setIsOpen(false);
                                 }}
@@ -120,7 +152,8 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWha
 
                         {onWhatsAppConfig && isWhatsAppConfig && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     onWhatsAppConfig();
                                     setIsOpen(false);
                                 }}
@@ -135,12 +168,88 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWha
                                 <span>WhatsApp</span>
                             </button>
                         )}
+                        {
+                            onSubmitTemplate && isSubmitTemplate && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSubmitTemplate();
+                                        setIsOpen(false);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center text-start space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                        isDarkMode
+                                            ? 'text-white/70 hover:bg-white/5 hover:text-white'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    )}
+                                >
+                                    <Save className="w-4 h-4 sm:min-w-[14px] sm:min-h-[14px]" />
+                                    <span>Submit</span>
+                                </button>
+                            )
+                        }
+                        {
+                            onSyncTemplate && isSyncTemplate && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSyncTemplate();
+                                        setIsOpen(false);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center text-start space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                        isDarkMode
+                                            ? 'text-white/70 hover:bg-white/5 hover:text-white'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    )}
+                                >
+                                    <Save className="w-4 h-4 sm:min-w-[14px] sm:min-h-[14px]" />
+                                    <span>Sync</span>
+                                </button>
+                            )
+                        }
 
 
-                        {onDelete && (
+                        {isDelete && onDelete && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete();
+                                    setIsOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all mt-1",
+                                    isDarkMode
+                                        ? 'text-red-400 hover:bg-red-500/10'
+                                        : 'text-red-500 hover:bg-red-50'
+                                )}
+                            >
+                                <Trash2 size={14} />
+                                <span className="flex-1 text-left">Remove</span>
+                            </button>
+                        )}
+                        {isExecute && onExecute && (
                             <button
                                 onClick={() => {
-                                    onDelete();
+                                    onExecute();
+                                    setIsOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                    isDarkMode
+                                        ? 'text-emerald-400 hover:bg-emerald-500/10'
+                                        : 'text-emerald-500 hover:bg-emerald-50'
+                                )}
+                            >
+                                <Play size={14} />
+                                <span className="flex-1 text-left">Execute</span>
+                            </button>
+                        )}
+                        {(!!isPermanentDelete && onPermanentDelete) && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPermanentDelete();
                                     setIsOpen(false);
                                 }}
                                 className={cn(
@@ -155,8 +264,9 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isWhatsAppConfig, onWha
                             </button>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-        </div>
+        </>
     );
 };

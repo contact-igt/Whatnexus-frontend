@@ -10,16 +10,16 @@ export interface WhatsappConfigData {
 
 export class whatsappConfigApiData {
     getWhatsAppConfig = async () => {
-        return await _axios("get", "/whatsapp-accounts");
+        return await _axios("get", "/whatsapp-account");
     }
     saveWhatsappConfig = async(data: whatsappConfigApiData)=>{
         console.log("data", data)
-        return await _axios("post", "/whatsapp-account", data);
+        return await _axios("post", "/whatsapp-account/manual", data);
     }
     testWhatsAppConfig = async () => {
-        return await _axios("get", "/whatsapp-account/test-connect");
+        return await _axios("post", "/whatsapp-account/test");
     }
     updateStatusWhatsappConfig = async (id: string, status: any) => {
-        return await _axios("put", `/whatsapp-account/status?status=${status}`)
+        return await _axios("post", `/whatsapp-account/activate`)
     }
 }

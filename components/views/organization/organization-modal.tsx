@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Organization } from "./organization-view";
-import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation } from "@/hooks/useTenantQuery";
 
 interface OrganizationModalProps {
@@ -28,9 +28,10 @@ export const OrganizationModal = ({
     isDarkMode
 }: OrganizationModalProps) => {
     const [formData, setFormData] = useState<Partial<Organization>>({
-        name: '',
-        email: '',
-        mobile: '',
+        company_name: '',
+        owner_name: '',
+        owner_email: '',
+        owner_mobile: '',
         address: '',
         subscriptionStatus: 'trial',
         subscriptionPlan: 'basic',
@@ -39,7 +40,7 @@ export const OrganizationModal = ({
         adminEmail: '',
         isActive: true,
         type: 'hospital',
-        country_code: '+91',
+        owner_country_code: '+91',
         password: ''
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -53,9 +54,10 @@ export const OrganizationModal = ({
             setFormData(organization);
         } else {
             setFormData({
-                name: '',
-                email: '',
-                mobile: '',
+                company_name: '',
+                owner_name: '',
+                owner_email: '',
+                owner_mobile: '',
                 address: '',
                 subscriptionStatus: 'trial',
                 subscriptionPlan: 'basic',
@@ -64,7 +66,7 @@ export const OrganizationModal = ({
                 adminEmail: '',
                 isActive: true,
                 type: 'hospital',
-                country_code: '+91',
+                owner_country_code: '+91',
                 password: ''
             });
         }
@@ -72,7 +74,8 @@ export const OrganizationModal = ({
     }, [organization, mode, isOpen]);
 
     const handleChange = (field: keyof Organization, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        const sanitizedValue = field === 'owner_mobile' ? value.replace(/\D/g, '') : value;
+        setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
@@ -80,19 +83,27 @@ export const OrganizationModal = ({
 
     const validate = () => {
         const newErrors: Record<string, string> = {};
-        if (!formData.name?.trim()) newErrors.name = "Organization name is required";
-        if (!formData.email?.trim()) newErrors.email = "Email is required";
+        if (!formData.company_name?.trim()) newErrors.company_name = "Organization name is required";
+        if (!formData.owner_name?.trim()) newErrors.owner_name = "Owner name is required";
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.owner_email?.trim()) {
+            newErrors.owner_email = "Email is required";
+        } else if (!emailRegex.test(formData.owner_email)) {
+            newErrors.owner_email = "Invalid email address";
+        }
+
         // if (!formData.adminName?.trim()) newErrors.adminName = "Admin name is required";
         // if (!formData.adminEmail?.trim()) newErrors.adminEmail = "Admin email is required";
         // if (mode === 'create' && !formData.password?.trim()) newErrors.password = "Password is required";
-        if (!formData.country_code) newErrors.country_code = "Country code is required";
+        if (!formData.owner_country_code) newErrors.owner_country_code = "Country code is required";
 
-        if (!formData.mobile?.trim()) {
-            newErrors.mobile = "mobile number is required";
-        } else if (!/^\d+$/.test(formData.mobile)) {
-            newErrors.mobile = "mobile number must contain only digits";
-        } else if (formData.mobile.length < 10 || formData.mobile.length > 12) {
-            newErrors.mobile = "mobile number must be between 10 and 12 digits";
+        if (!formData.owner_mobile?.trim()) {
+            newErrors.owner_mobile = "mobile number is required";
+        } else if (!/^\d+$/.test(formData.owner_mobile)) {
+            newErrors.owner_mobile = "mobile number must contain only digits";
+        } else if (formData.owner_mobile.length < 10 || formData.owner_mobile.length > 12) {
+            newErrors.owner_mobile = "mobile number must be between 10 and 12 digits";
         }
 
         setErrors(newErrors);
@@ -102,11 +113,18 @@ export const OrganizationModal = ({
     const handleSubmit = () => {
         if (validate()) {
             if (mode === 'create') {
-                createTenantMutate(formData);
+                createTenantMutate(formData, {
+                    onSuccess: () => {
+                        onClose();
+                    }
+                });
             } else if (mode === 'edit' && organization?.id) {
-                updateTenantMutate({ id: organization.id, data: formData });
+                updateTenantMutate({ tenantId: organization.tenant_id, data: formData }, {
+                    onSuccess: () => {
+                        onClose();
+                    }
+                });
             }
-            onClose();
         }
     };
 
@@ -119,26 +137,36 @@ export const OrganizationModal = ({
             title={mode === 'create' ? "Add Organization" : mode === 'edit' ? "Edit Organization" : "Organization Details"}
             description={mode === 'create' ? "Register a new hospital or clinic" : "View and manage organization details"}
             isDarkMode={isDarkMode}
+            className="font-sans"
             footer={
                 !isView && (
-                    <div className="flex justify-end space-x-3 pt-4">
+                    <div className="flex justify-end font-sans space-x-3 pt-4">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                            disabled={isCreateTenantPending || isUpdateTenantPending}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+                            disabled={isCreateTenantPending || isUpdateTenantPending}
+                            className={cn(
+                                "px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
                         >
-                            {mode === 'create' ? 'Register Organization' : 'Save Changes'}
+                            {(isCreateTenantPending || isUpdateTenantPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {mode === 'create'
+                                ? (isCreateTenantPending ? 'Registering...' : 'Register Organization')
+                                : (isUpdateTenantPending ? 'Saving...' : 'Save Changes')}
                         </button>
                     </div>
                 )
             }
         >
-            <div className="space-y-6">
+            <div className="space-y-6 font-sans">
                 {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                     {/* <div className="col-span-full">
@@ -153,52 +181,66 @@ export const OrganizationModal = ({
                         label="Organization Name"
                         icon={Building2}
                         placeholder="e.g. City Eye Hospital"
-                        value={formData.name}
-                        onChange={(e) => handleChange('name', e.target.value)}
-                        error={errors.name}
+                        value={formData.company_name}
+                        onChange={(e) => handleChange('company_name', e.target.value)}
+                        error={errors.company_name}
                         disabled={isView}
                         required
                     />
-
+                    <Input
+                        autoComplete="new-password"
+                        isDarkMode={isDarkMode}
+                        label="Organization Owner"
+                        icon={Building2}
+                        placeholder="e.g. Hospital"
+                        value={formData.owner_name}
+                        onChange={(e) => handleChange('owner_name', e.target.value)}
+                        error={errors.owner_name}
+                        disabled={isView}
+                        required
+                    />
                     <Input
                         autoComplete="new-password"
                         isDarkMode={isDarkMode}
                         label="Email Address"
                         icon={Mail}
                         placeholder="contact@hospital.com"
-                        value={formData.email}
-                        onChange={(e) => handleChange('email', e.target.value)}
-                        error={errors.email}
+                        value={formData.owner_email}
+                        onChange={(e) => handleChange('owner_email', e.target.value)}
+                        error={errors.owner_email}
                         disabled={isView}
                         required
                     />
-                    <Select
-                        isDarkMode={isDarkMode}
-                        label="Country Code"
-                        value={formData.country_code || '+91'}
-                        onChange={(value) => handleChange('country_code', value)}
-                        options={[
-                            { value: '+91', label: 'India (+91)' },
-                            { value: '+1', label: 'USA (+1)' },
-                            { value: '+44', label: 'UK (+44)' },
-                            { value: '+971', label: 'UAE (+971)' }
-                        ]}
-                        disabled={isView}
-                        error={errors.country_code}
-                        required
-                    />
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="mobile Number"
-                        icon={Phone}
-                        placeholder="+91 98765 43210"
-                        value={formData.mobile}
-                        onChange={(e) => handleChange('mobile', e.target.value)}
-                        disabled={isView}
-                        error={errors.mobile}
-                        required
-                    />
-
+                    <div className="grid grid-cols-3 gap-4">
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="Country Code"
+                            value={formData.owner_country_code || '+91'}
+                            onChange={(value) => handleChange('owner_country_code', value)}
+                            options={[
+                                { value: '+91', label: 'India (+91)' },
+                                { value: '+1', label: 'USA (+1)' },
+                                { value: '+44', label: 'UK (+44)' },
+                                { value: '+971', label: 'UAE (+971)' }
+                            ]}
+                            disabled={isView}
+                            className="col-span-1"
+                            error={errors.country_code}
+                            required
+                        />
+                        <Input
+                            isDarkMode={isDarkMode}
+                            label="Mobile Number"
+                            icon={Phone}
+                            placeholder="+91 98765 43210"
+                            value={formData.owner_mobile}
+                            wrapperClassName="col-span-2"
+                            onChange={(e) => handleChange('owner_mobile', e.target.value)}
+                            disabled={isView}
+                            error={errors.owner_mobile}
+                            required
+                        />
+                    </div>
                     <Select
                         isDarkMode={isDarkMode}
                         label="Type"
@@ -212,7 +254,7 @@ export const OrganizationModal = ({
                         required
                     />
 
-                    {mode === 'create' && (
+                    {/* {mode === 'create' && (
                         <Input
                             autoComplete="new-password"
                             isDarkMode={isDarkMode}
@@ -225,7 +267,7 @@ export const OrganizationModal = ({
                             error={errors.password}
                             required
                         />
-                    )}
+                    )} */}
 
                     {/* <Select
                         isDarkMode={isDarkMode}
