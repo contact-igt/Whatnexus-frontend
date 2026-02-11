@@ -15,67 +15,72 @@ import { Select } from '../../ui/select';
 import { Input } from '../../ui/input';
 import { useCreateTenantUserMutation, useTenantUserQuery, useSoftDeleteTenantUserMutation, useUpdateTenantUserMutation, usePermanentDeleteTenantUserMutation, useGetTenantUserByIdQuery } from '@/hooks/useTenantUserQuery';
 import { ActionMenu } from '@/components/ui/action-menu';
-import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { DataTable, ColumnDef } from '@/components/ui/data-table';
+import { ConfirmationModal } from '@/components/ui/confirmationModal';
+import { Pagination } from '@/components/ui/pagination';
 
 type TabType = 'active' | 'trash';
 
+// Invite Form Schema
 const inviteFormSchema = z.object({
-    username: z.string().min(2, { message: "Username must be at least 2 characters." }),
+    username: z.string().min(2, { message: "Name must be at least 2 characters." }),
     email: z.string().email({ message: "Invalid email address." }),
-    country_code: z.string().min(1, { message: "Country code is required." }),
-    mobile: z.string().min(7, { message: "Mobile number must be at least 7 digits." }),
-    role: z.enum(['doctor', 'staff', 'agent'], { message: "Invalid role selected." }),
+    country_code: z.string().min(2, { message: "Country code must be at least 2 characters." }),
+    mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
+    role: z.enum(["staff", "agent", "doctor"], { message: "Role is required." }),
 });
 
+// Edit Form Schema
 const editFormSchema = z.object({
-    username: z.string().min(2, { message: "Username must be at least 2 characters." }),
-    country_code: z.string().min(1, { message: "Country code is required." }),
-    mobile: z.string().min(7, { message: "Mobile number must be at least 7 digits." }),
-    role: z.enum(['doctor', 'staff', 'agent']).optional(),
+    username: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
+    country_code: z.string().min(2, { message: "Country code must be at least 2 characters." }).optional(),
+    mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }).optional(),
+    role: z.enum(["staff", "agent", "doctor"], { message: "Role is required." }).optional(),
 });
 
 type InviteFormData = z.infer<typeof inviteFormSchema>;
 type EditFormData = z.infer<typeof editFormSchema>;
 
 export const TeamManagementView = () => {
-    const { isDarkMode } = useTheme();
     const { user } = useAuth();
+    const { isDarkMode } = useTheme();
     const [activeTab, setActiveTab] = useState<TabType>('active');
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [userToDelete, setUserToDelete] = useState<any>(null);
 
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 7;
+
+    // Modal states
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isPermanentDeleteModalOpen, setIsPermanentDeleteModalOpen] = useState(false);
+
+    // Data and mutations
+    const { data: tenantUserData, isLoading } = useTenantUserQuery();
+    const { data: userDetails, isLoading: userDetailsLoading } = useGetTenantUserByIdQuery(selectedUser?.tenant_user_id || "");
+    const { mutate: createTenantUserMutate, isPending: createLoading } = useCreateTenantUserMutation();
+    const { mutate: deleteTenantUserMutate, isPending: deleteLoading } = useSoftDeleteTenantUserMutation();
+    const { mutate: updateTenantUserMutate, isPending: updateLoading } = useUpdateTenantUserMutation();
+    const { mutate: permanentDeleteMutate, isPending: permanentDeleteLoading } = usePermanentDeleteTenantUserMutation();
+
     // Invite form
     const { control: inviteControl, register: inviteRegister, handleSubmit: inviteHandleSubmit, formState: { errors: inviteErrors }, reset: inviteReset } = useForm<InviteFormData>({
         defaultValues: {
-            "role": "staff",
-            "country_code": "+91",
-            "mobile": "",
+            country_code: "+91",
+            role: "staff",
         },
         resolver: zodResolver(inviteFormSchema)
     });
 
     // Edit form
-    const { control: editControl, register: editRegister, handleSubmit: editHandleSubmit, formState: { errors: editErrors }, reset: editReset, setValue } = useForm<EditFormData>({
+    const { control: editControl, register: editRegister, handleSubmit: editHandleSubmit, formState: { errors: editErrors }, reset: editReset } = useForm<EditFormData>({
         resolver: zodResolver(editFormSchema)
     });
-
-    // Data and mutations
-    const { data: tenantUserData, isLoading } = useTenantUserQuery();
-    const { mutate: createTenantUserMutate, isPending: createLoading } = useCreateTenantUserMutation();
-    const { mutate: updateTenantUserMutate, isPending: updateLoading } = useUpdateTenantUserMutation();
-    const { mutate: deleteTenantUserMutate, isPending: deleteLoading } = useSoftDeleteTenantUserMutation();
-    const { mutate: permanentDeleteMutate, isPending: permanentDeleteLoading } = usePermanentDeleteTenantUserMutation();
-    const { data: userDetails, isLoading: isDetailsLoading } = useGetTenantUserByIdQuery(selectedUser?.tenant_user_id || "");
-
-    // Modal states
-    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isPermanentDeleteModalOpen, setIsPermanentDeleteModalOpen] = useState(false);
-
-
 
     const filteredUsers = tenantUserData?.data?.users?.filter((user: any) => user.role !== "super_admin" && user.role !== "tenant_admin") || [];
 
@@ -84,6 +89,18 @@ export const TeamManagementView = () => {
     const deletedUsers = filteredUsers.filter((user: any) => user.status === 'deleted' || user.is_deleted === true);
 
     const displayUsers = activeTab === 'active' ? activeUsers : deletedUsers;
+
+    const currentDisplayUsers = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return displayUsers.slice(startIndex, startIndex + itemsPerPage);
+    }, [displayUsers, currentPage]);
+
+    const totalPages = Math.ceil(displayUsers.length / itemsPerPage);
+
+    // Reset page on tab change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab]);
 
     // Form handlers
     const onInviteSubmit = (data: InviteFormData) => {
@@ -328,7 +345,7 @@ export const TeamManagementView = () => {
                     </div>
                     <DataTable
                         columns={columns}
-                        data={displayUsers || []}
+                        data={currentDisplayUsers || []}
                         isLoading={isLoading}
                         isDarkMode={isDarkMode}
                         emptyState={
@@ -351,6 +368,17 @@ export const TeamManagementView = () => {
                         }
                     />
                 </GlassCard>
+
+                {displayUsers.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={displayUsers.length}
+                        itemsPerPage={itemsPerPage}
+                        isDarkMode={isDarkMode}
+                    />
+                )}
                 {/* <div className="space-y-6">
                     <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
                         <GlassCard isDarkMode={isDarkMode} className="p-6 space-y-6">
@@ -656,75 +684,29 @@ export const TeamManagementView = () => {
             </Modal>
 
             {/* Delete Confirmation Modal */}
-            <Modal
+            <ConfirmationModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
                 title="Remove Team Member"
-                description={`Are you sure you want to remove ${userToDelete?.username} from the team? This user will be moved to the trash.`}
+                message={`Are you sure you want to remove ${userToDelete?.username} from the team? This user will be moved to the trash.`}
+                confirmText="Remove"
+                variant="danger"
                 isDarkMode={isDarkMode}
-                className="max-w-md font-sans"
-                footer={
-                    <div className="flex justify-end gap-3">
-                        <button
-                            onClick={() => setIsDeleteModalOpen(false)}
-                            disabled={deleteLoading}
-                            className={cn(
-                                "px-6 py-2.5 rounded-xl font-semibold text-sm transition-all",
-                                isDarkMode
-                                    ? 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                            )}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleConfirmDelete}
-                            disabled={deleteLoading}
-                            className={cn(
-                                "px-6 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm transition-all shadow-lg shadow-red-500/20",
-                                deleteLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-red-700"
-                            )}
-                        >
-                            {deleteLoading ? 'Removing...' : 'Remove'}
-                        </button>
-                    </div>
-                }
+                isLoading={deleteLoading}
             />
 
             {/* Permanent Delete Confirmation Modal */}
-            <Modal
+            <ConfirmationModal
                 isOpen={isPermanentDeleteModalOpen}
                 onClose={() => setIsPermanentDeleteModalOpen(false)}
+                onConfirm={handleConfirmPermanentDelete}
                 title="Permanently Delete User"
-                description={`Are you sure you want to permanently delete ${userToDelete?.username}? This action cannot be undone.`}
+                message={`Are you sure you want to permanently delete ${userToDelete?.username}? This action cannot be undone.`}
+                confirmText="Delete Permanently"
+                variant="danger"
                 isDarkMode={isDarkMode}
-                className="max-w-md font-sans"
-                footer={
-                    <div className="flex justify-end gap-3">
-                        <button
-                            onClick={() => setIsPermanentDeleteModalOpen(false)}
-                            disabled={permanentDeleteLoading}
-                            className={cn(
-                                "px-6 py-2.5 rounded-xl font-semibold text-sm transition-all",
-                                isDarkMode
-                                    ? 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                            )}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleConfirmPermanentDelete}
-                            disabled={permanentDeleteLoading}
-                            className={cn(
-                                "px-6 py-2.5 rounded-xl bg-red-700 text-white font-semibold text-sm transition-all shadow-lg shadow-red-600/20",
-                                permanentDeleteLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-red-800"
-                            )}
-                        >
-                            {permanentDeleteLoading ? 'Deleting...' : 'Delete Permanently'}
-                        </button>
-                    </div>
-                }
+                isLoading={permanentDeleteLoading}
             />
         </div >
     );

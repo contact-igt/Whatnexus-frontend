@@ -497,6 +497,10 @@ export const WhatsAppConnectionView = () => {
                                         <span className="font-semibold shrink-0">5.</span>
                                         <span>Click "Verify and Save" to complete the setup</span>
                                     </li>
+                                    <li className="flex items-start space-x-2">
+                                        <span className="font-semibold shrink-0">6.</span>
+                                        <span>Subscribe to webhook fields: <code className={cn("px-1.5 py-0.5 rounded text-xs", isDarkMode ? "bg-white/10" : "bg-slate-200")}>messages</code>, <code className={cn("px-1.5 py-0.5 rounded text-xs", isDarkMode ? "bg-white/10" : "bg-slate-200")}>message_status</code></span>
+                                    </li>
                                 </ol>
                             </div>
 

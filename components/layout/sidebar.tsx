@@ -52,8 +52,10 @@ export const Sidebar = () => {
             </div>
             <nav className="flex-1 flex flex-col space-y-6 px-4 overflow-y-auto no-scrollbar">
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={LayoutDashboard} label="Neural Hub" route="/dashboard" onClick={() => handleActiveTab('/dashboard')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" route="/leads" onClick={() => handleActiveTab('/leads')} />
-                <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
+
+                {/* Tenant-only items */}
+                <RoleBasedWrapper allowedRoles={['tenant_admin', 'staff', 'doctor', 'agent']}>
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" route="/leads" onClick={() => handleActiveTab('/leads')} />
                     <FloatingDockDropdown
                         isExpanded={isExpanded}
                         isDarkMode={isDarkMode}
@@ -74,12 +76,8 @@ export const Sidebar = () => {
                             }
                         ]}
                     />
-                </RoleBasedWrapper>
-                {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={MessageSquare} label="Shared Inbox" route="/chats" onClick={() => handleActiveTab('/chats')} urgent={true} /> */}
-                <RoleBasedWrapper allowedRoles={['tenant_admin', 'staff', 'doctor', 'agent']}><FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} /></RoleBasedWrapper>
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
-                {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" route="/appointments" onClick={() => handleActiveTab('/appointments')} /> */}
-                <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} />
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
                     <FloatingDockDropdown
                         isExpanded={isExpanded}
                         isDarkMode={isDarkMode}
@@ -100,18 +98,17 @@ export const Sidebar = () => {
                             }
                         ]}
                     />
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Zap} label="Templates" route="/templates" onClick={() => handleActiveTab('/templates')} />
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Megaphone} label="Campaign" route="/campaign" onClick={() => handleActiveTab('/campaign')} />
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" route="/knowledge" onClick={() => handleActiveTab('/knowledge')} />
                 </RoleBasedWrapper>
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Zap} label="Templates" route="/templates" onClick={() => handleActiveTab('/templates')} />
-                {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Stethoscope} label="Doctors" route="/doctors" onClick={() => handleActiveTab('/doctors')} /> */}
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Megaphone} label="Campaign" route="/campaign" onClick={() => handleActiveTab('/campaign')} />
-                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" route="/knowledge" onClick={() => handleActiveTab('/knowledge')} />
-                {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Brain} label="AI Logic" route="/logic" onClick={() => handleActiveTab('/logic')} /> */}
-                {/* <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
-                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Smartphone} label="Governance" route="/system" onClick={() => handleActiveTab('/system')} />
-                </RoleBasedWrapper> */}
-                <RoleBasedWrapper allowedRoles={['super_admin']}>
-                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Building2} label="Organizations" route="/organizations" onClick={() => handleActiveTab('/organizations')} />
+
+                {/* Management-only items */}
+                <RoleBasedWrapper allowedRoles={['super_admin', 'platform_admin']}>
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Building2} label="Platform Management" route="/organizations" onClick={() => handleActiveTab('/organizations')} />
                 </RoleBasedWrapper>
+
+                {/* Tenant Settings */}
                 <RoleBasedWrapper allowedRoles={['tenant_admin']}>
                     <FloatingDockDropdown
                         isExpanded={isExpanded}

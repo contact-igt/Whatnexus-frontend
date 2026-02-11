@@ -25,6 +25,7 @@ import { RoleBasedWrapper } from '@/components/ui/role-based-wrapper';
 import { ActionMenu } from '@/components/ui/action-menu';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { ConfirmationModal } from '@/components/ui/confirmationModal';
+import { Pagination } from '@/components/ui/pagination';
 
 type TabType = 'active' | 'trash';
 
@@ -48,11 +49,16 @@ type CreateFormData = z.infer<typeof createFormSchema>;
 type EditFormData = z.infer<typeof editFormSchema>;
 
 export const PlatformAdminsView = () => {
+    // ... (existing hooks)
     const { isDarkMode } = useTheme();
     const [activeTab, setActiveTab] = useState<TabType>('active');
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [userToDelete, setUserToDelete] = useState<any>(null);
     const [userToRestore, setUserToRestore] = useState<any>(null);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 7;
 
     // Modal states
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -91,6 +97,18 @@ export const PlatformAdminsView = () => {
     const deletedUsers = (deletedManagementData as any)?.data || [];
     const displayUsers = activeTab === 'active' ? activeUsers : deletedUsers;
     const isDataLoading = activeTab === 'active' ? isLoading : deletedLoading;
+
+    const currentDisplayUsers = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return displayUsers.slice(startIndex, startIndex + itemsPerPage);
+    }, [displayUsers, currentPage]);
+
+    const totalPages = Math.ceil(displayUsers.length / itemsPerPage);
+
+    // Reset page on tab change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab]);
 
     // Sync edit form with fetched user details
     useEffect(() => {
@@ -343,7 +361,7 @@ export const PlatformAdminsView = () => {
                     </div>
                     <DataTable
                         columns={columns}
-                        data={displayUsers || []}
+                        data={currentDisplayUsers || []}
                         isLoading={isDataLoading}
                         isDarkMode={isDarkMode}
                         emptyState={
@@ -366,6 +384,17 @@ export const PlatformAdminsView = () => {
                         }
                     />
                 </GlassCard>
+
+                {displayUsers.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={displayUsers.length}
+                        itemsPerPage={itemsPerPage}
+                        isDarkMode={isDarkMode}
+                    />
+                )}
             </div>
 
             {/* Create Admin Modal */}

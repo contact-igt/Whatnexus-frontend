@@ -5,7 +5,7 @@ import { WhatsAppConnectionView } from "@/components/views/whatsappConfiguration
 export default function WhatsAppSettingsPage() {
     return (
         <RoleBasedWrapper
-            allowedRoles={['admin', 'tenant_admin', 'super_admin']}
+            allowedRoles={['tenant_admin', 'staff', 'agent', 'doctor']}
             fallback={
                 <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 gap-2">
                     <span className="text-4xl">🔒</span>

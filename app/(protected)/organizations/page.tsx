@@ -4,7 +4,7 @@ import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
 export default function OrganizationPage() {
   return (
     <RoleBasedWrapper
-      allowedRoles={['super_admin']}
+      allowedRoles={['super_admin', 'platform_admin']}
       fallback={
         <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 gap-2">
           <span className="text-4xl">🔒</span>
