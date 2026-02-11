@@ -20,6 +20,7 @@ export const useManagementLoginMutation = () => {
                 toast.error(data?.message || "Something went wrong")
                 return;
             }
+            console.log("user", data)
             dispatch(setAuthData({
                 token: data?.tokens?.accessToken,
                 refreshToken: data?.tokens?.refreshToken,

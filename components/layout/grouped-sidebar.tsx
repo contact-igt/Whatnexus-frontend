@@ -19,8 +19,8 @@ export const GroupedSidebar = () => {
     const dispatch = useDispatch();
 
     // Determine which sidebar config to use based on user role
-    const isSuperAdmin = user?.role === 'super_admin';
-    const sidebarConfig: SidebarGroup[] = isSuperAdmin ? managementSidebarConfig : tenantSidebarConfig;
+    const isManagement = user?.user_type == 'management';
+    const sidebarConfig: SidebarGroup[] = isManagement ? managementSidebarConfig : tenantSidebarConfig;
 
     // Check if WhatsApp is connected and active
     const isWhatsAppActive = whatsappApiDetails?.status === 'active';
@@ -126,7 +126,7 @@ export const GroupedSidebar = () => {
             </div>
 
             {/* WhatsApp Status Card - Only for tenant users */}
-            {!isSuperAdmin && user?.role !== 'platform_admin' && (
+            {!isManagement && (
                 <div className="px-4 pb-5 relative z-10">
                     {isWhatsAppActive ? (
                         <div className={cn(

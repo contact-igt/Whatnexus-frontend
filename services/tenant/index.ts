@@ -20,7 +20,7 @@ export class TenantApiData {
         return await _axios("put", `/tenant/${tenantId}`, data);
     };
     updateTenantStatus = async (tenantId: string, data: any) => {
-        return await _axios("put", `tenant/${tenantId}/status?status=${data?.status}`)
+        return await _axios("put", `/tenant/${tenantId}/status?status=${data?.status}`)
     }
     softDeleteTenant = async (tenantId: string) => {
         return await _axios("delete", `/tenant/${tenantId}/soft`)
@@ -39,5 +39,9 @@ export class TenantApiData {
 
     testWhatsAppConnection = async (tenantId: string, data: any) => {
         return await _axios("post", `/tenant/${tenantId}/whatsapp-test`, data);
+    };
+
+    getWebhookStatus = async (tenantId: string) => {
+        return await _axios("get", `/tenant/${tenantId}/webhook-status`);
     };
 }
