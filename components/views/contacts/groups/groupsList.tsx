@@ -40,7 +40,7 @@ export const GroupsList = ({
         {
             field: 'id',
             headerName: 'S.No',
-            width: 80,
+            width: 150,
             renderCell: ({ index }) => (
                 <span className={cn(
                     "text-sm font-medium",
@@ -74,7 +74,7 @@ export const GroupsList = ({
         {
             field: 'description',
             headerName: 'Description',
-            width: 'auto',
+            width: 200,
             renderCell: ({ row }) => (
                 row.description ? (
                     <span className={cn(

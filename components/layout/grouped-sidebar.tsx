@@ -10,9 +10,11 @@ import { useDispatch } from 'react-redux';
 import { setActiveTabData } from '@/redux/slices/auth/authSlice';
 import { tenantSidebarConfig, managementSidebarConfig, SidebarGroup } from './sidebar-config';
 import { SidebarGroupItem } from '@/components/ui/sidebar-group-item';
+import { useGetWhatsappConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 
 export const GroupedSidebar = () => {
     const { user, whatsappApiDetails } = useAuth();
+    useGetWhatsappConfigQuery();
     const router = useRouter();
     const { isDarkMode } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);

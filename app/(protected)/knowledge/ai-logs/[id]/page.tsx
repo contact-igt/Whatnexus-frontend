@@ -96,7 +96,8 @@ export default function AiLogDetailPage() {
             // Answer mode: Always set status to resolved and include resolution
             updatePayload = {
                 status: "resolved",
-                resolution: formData.resolution
+                resolution: formData.resolution,
+                type: formData.type
             };
         } else {
             // Edit mode: Only include changed fields
@@ -252,7 +253,7 @@ export default function AiLogDetailPage() {
                         <div className="space-y-4">
                             {/* Type */}
                             <div>
-                                {(isEditMode && !isAnswerMode) ? (
+                                {(isEditMode) ? (
                                     <Select
                                         isDarkMode={isDarkMode}
                                         label="Type"

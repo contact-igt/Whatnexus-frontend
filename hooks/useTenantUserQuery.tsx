@@ -49,20 +49,20 @@ export const useTenantUserLoginMutation = () => {
     })
 }
 
-export const useGetWebhookStatusQuery = (tenantId: string) => {
-    const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ['webhook-status', tenantId],
-        queryFn: () => tenantUserApis.getWebhookStatus(tenantId),
-        enabled: !!tenantId,
-        staleTime: 5 * 60 * 1000, // 5 minutes
-    });
+// export const useGetWebhookStatusQuery = (tenantId: string) => {
+//     const { data, isLoading, isError, refetch } = useQuery({
+//         queryKey: ['webhook-status', tenantId],
+//         queryFn: () => tenantUserApis.getWebhookStatus(tenantId),
+//         enabled: !!tenantId,
+//         staleTime: 5 * 60 * 1000, // 5 minutes
+//     });
 
-    if (isError) {
-        toast.error('Failed to check webhook status');
-    }
+//     if (isError) {
+//         toast.error('Failed to check webhook status');
+//     }
 
-    return { data, isLoading, isError, refetch };
-};
+//     return { data, isLoading, isError, refetch };
+// };
 
 export const useCreateTenantUserMutation = () => {
     const queryClient = useQueryClient();

@@ -128,11 +128,45 @@ export const TeamManagementView = () => {
     };
 
     const handleEditClick = (user: any) => {
+        let mobile = user.mobile || '';
+        let countryCode = user.country_code || '+91';
+
+        // Normalize country code
+        if (!countryCode.startsWith('+')) countryCode = `+${countryCode}`;
+
+        const knownCodes = ['+91', '+1', '+44', '+971'];
+        let foundCode = false;
+
+        // 1. Check if it matches the assigned country code
+        if (mobile.startsWith(countryCode)) {
+            mobile = mobile.slice(countryCode.length).trim();
+            foundCode = true;
+        }
+        // 2. Check known codes
+        else {
+            for (const code of knownCodes) {
+                if (mobile.startsWith(code)) {
+                    countryCode = code;
+                    mobile = mobile.slice(code.length).trim();
+                    foundCode = true;
+                    break;
+                }
+            }
+        }
+
+        // 3. Fallback to raw code check (e.g. "91" vs "+91") if not found yet
+        if (!foundCode) {
+            const rawCode = user.country_code || '91';
+            if (mobile.startsWith(rawCode)) {
+                mobile = mobile.slice(rawCode.length).trim();
+            }
+        }
+
         setSelectedUser(user);
         editReset({
             username: user.username,
-            country_code: user.country_code || '+91',
-            mobile: user.mobile,
+            country_code: countryCode,
+            mobile: mobile,
             role: user.role
         });
         setIsEditModalOpen(true);
@@ -141,10 +175,44 @@ export const TeamManagementView = () => {
     // Sync form with fetched details using useEffect
     useEffect(() => {
         if (userDetails?.data && isEditModalOpen && selectedUser?.tenant_user_id === userDetails.data.tenant_user_id) {
+            let mobile = userDetails.data.mobile || '';
+            let countryCode = userDetails.data.country_code || '+91';
+
+            // Normalize country code
+            if (!countryCode.startsWith('+')) countryCode = `+${countryCode}`;
+
+            const knownCodes = ['+91', '+1', '+44', '+971'];
+            let foundCode = false;
+
+            // 1. Check if it matches the assigned country code
+            if (mobile.startsWith(countryCode)) {
+                mobile = mobile.slice(countryCode.length).trim();
+                foundCode = true;
+            }
+            // 2. Check known codes
+            else {
+                for (const code of knownCodes) {
+                    if (mobile.startsWith(code)) {
+                        countryCode = code;
+                        mobile = mobile.slice(code.length).trim();
+                        foundCode = true;
+                        break;
+                    }
+                }
+            }
+
+            // 3. Fallback to raw code check (e.g. "91" vs "+91") if not found yet
+            if (!foundCode) {
+                const rawCode = userDetails.data.country_code || '91';
+                if (mobile.startsWith(rawCode)) {
+                    mobile = mobile.slice(rawCode.length).trim();
+                }
+            }
+
             editReset({
                 username: userDetails.data.username,
-                country_code: userDetails.data.country_code || '+91',
-                mobile: userDetails.data.mobile,
+                country_code: countryCode,
+                mobile: mobile,
                 role: userDetails.data.role
             });
         }

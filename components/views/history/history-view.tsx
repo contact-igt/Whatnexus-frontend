@@ -60,7 +60,7 @@ export const HistoryView = () => {
         isLoading: isChatsLoading,
         isError: isChatsError,
     } = useGetAllHistoryChatsQuery();
-    const [filteredChats, setFilteredChats] = useState(chatHistoryList?.data);
+    const [filteredChats, setFilteredChats] = useState(chatHistoryList?.data?.chats);
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -117,15 +117,15 @@ export const HistoryView = () => {
 
     useEffect(() => {
         if (!selectedChat?.phone) return;
-        if (!chatHistoryList?.data?.length) return;
+        if (!chatHistoryList?.data?.chats?.length) return;
 
-        const hasUnreadUserMessages = chatHistoryList.data.some(
+        const hasUnreadUserMessages = chatHistoryList.data.chats.some(
             (msg: any) => msg.seen === "false"
         );
         if (hasUnreadUserMessages) {
             updateSeenMutate(selectedChat?.phone);
         }
-    }, [selectedChat?.phone, chatHistoryList?.data]);
+    }, [selectedChat?.phone, chatHistoryList?.data?.chats]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {
@@ -182,7 +182,7 @@ export const HistoryView = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();
-            let filtered = chatHistoryList?.data;
+            let filtered = chatHistoryList?.data?.chats;
             if (value) {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
@@ -213,9 +213,9 @@ export const HistoryView = () => {
     }, [messageSearchText, selectedChat, messagesData]);
 
     useEffect(() => {
-        if (!chatHistoryList?.data?.length) return;
+        if (!chatHistoryList?.data?.chats?.length) return;
         if (phoneParam) {
-            const chatFromUrl = chatHistoryList.data.find(
+            const chatFromUrl = chatHistoryList.data.chats.find(
                 (c: any) => String(c.phone) === String(phoneParam)
             );
 
@@ -230,7 +230,7 @@ export const HistoryView = () => {
         }
         // Don't auto-select first chat - let user click to select
         setSelectedChat(null);
-    }, [chatHistoryList?.data, phoneParam]);
+    }, [chatHistoryList?.data?.chats, phoneParam]);
 
     const isSearching = messageSearchText.trim().length > 0;
     const updatedMessageData =
