@@ -35,8 +35,16 @@ export default function TenantProfileView() {
     const { control, register, handleSubmit, formState: { errors }, reset } = useForm<EditProfileData>({
         defaultValues: {
             username: user?.username || user?.name || '',
-            country_code: user?.country_code || '+91',
-            mobile: user?.mobile || '',
+            country_code: user?.country_code?.startsWith('+') ? user?.country_code : `+${user?.country_code || '91'}`,
+            mobile: (() => {
+                const rawCode = user?.country_code || '+91';
+                const normCode = rawCode.startsWith('+') ? rawCode : `+${rawCode}`;
+                const mobile = user?.mobile || '';
+
+                if (mobile.startsWith(normCode)) return mobile.slice(normCode.length).trim();
+                if (mobile.startsWith(rawCode)) return mobile.slice(rawCode.length).trim();
+                return mobile;
+            })(),
         },
         resolver: zodResolver(editProfileSchema)
     });
@@ -63,9 +71,10 @@ export default function TenantProfileView() {
     };
 
     const handleCancel = () => {
+        const countryCode = user?.country_code?.startsWith('+') ? user?.country_code : `+${user?.country_code || '91'}`;
         reset({
             username: user?.username || user?.name || '',
-            country_code: user?.country_code || '+91',
+            country_code: countryCode,
             mobile: user?.mobile || '',
         });
         setIsEditMode(false);
@@ -74,10 +83,20 @@ export default function TenantProfileView() {
     // Sync form values when entering edit mode
     useEffect(() => {
         if (isEditMode && user) {
+            const rawCountryCode = user?.country_code || '+91';
+            const normalizedCountryCode = rawCountryCode.startsWith('+') ? rawCountryCode : `+${rawCountryCode}`;
+
+            let mobile = user?.mobile || '';
+            if (mobile.startsWith(normalizedCountryCode)) {
+                mobile = mobile.slice(normalizedCountryCode.length).trim();
+            } else if (mobile.startsWith(rawCountryCode)) {
+                mobile = mobile.slice(rawCountryCode.length).trim();
+            }
+
             reset({
                 username: user?.username || user?.name || '',
-                country_code: user?.country_code || '+91',
-                mobile: user?.mobile || '',
+                country_code: normalizedCountryCode,
+                mobile: mobile,
             });
         }
     }, [isEditMode, user, reset]);

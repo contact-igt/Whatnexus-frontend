@@ -113,9 +113,20 @@ export const PlatformAdminsView = () => {
     // Sync edit form with fetched user details
     useEffect(() => {
         if ((userDetails as any)?.data && isEditModalOpen) {
-            setValue('username', (userDetails as any).data.username || '');
-            setValue('country_code', (userDetails as any).data.country_code || '+91');
-            setValue('mobile', (userDetails as any).data.mobile || '');
+            const data = (userDetails as any).data;
+            const rawCountryCode = data.country_code || '+91';
+            const normalizedCountryCode = rawCountryCode.startsWith('+') ? rawCountryCode : `+${rawCountryCode}`;
+
+            let mobile = data.mobile || '';
+            if (mobile.startsWith(normalizedCountryCode)) {
+                mobile = mobile.slice(normalizedCountryCode.length).trim();
+            } else if (mobile.startsWith(rawCountryCode)) {
+                mobile = mobile.slice(rawCountryCode.length).trim();
+            }
+
+            setValue('username', data.username || '');
+            setValue('country_code', normalizedCountryCode);
+            setValue('mobile', mobile);
         }
     }, [userDetails, isEditModalOpen, setValue]);
 
@@ -126,7 +137,20 @@ export const PlatformAdminsView = () => {
     };
 
     const handleEditClick = (user: any) => {
+        const rawCountryCode = user.country_code || '+91';
+        const normalizedCountryCode = rawCountryCode.startsWith('+') ? rawCountryCode : `+${rawCountryCode}`;
+
+        let mobile = user.mobile || '';
+        if (mobile.startsWith(normalizedCountryCode)) {
+            mobile = mobile.slice(normalizedCountryCode.length).trim();
+        } else if (mobile.startsWith(rawCountryCode)) {
+            mobile = mobile.slice(rawCountryCode.length).trim();
+        }
+
         setSelectedUser(user);
+        setValue('username', user.username || '');
+        setValue('country_code', normalizedCountryCode);
+        setValue('mobile', mobile);
         setIsEditModalOpen(true);
     };
 

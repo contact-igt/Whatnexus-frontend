@@ -46,9 +46,9 @@ export class tenantUserApiData {
         return await _axios("put", `/tenant/user/${tenantUserId}`, data)
     }
     
-    getWebhookStatus = async (tenantId: string) => {
-        return await _axios("get", `/tenant/webhook-status/${tenantId}`)
-    }
+    // getWebhookStatus = async (tenantId: string) => {
+    //     return await _axios("get", `/tenant/webhook-status/${tenantId}`)
+    // }
     // GET /api/whatsapp/tenant/profile - Get logged-in tenant user profile
     getTenantProfile = async () => {
         return await _axios("get", `/tenant/user/profile`)
