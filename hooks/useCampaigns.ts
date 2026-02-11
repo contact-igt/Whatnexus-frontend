@@ -22,6 +22,8 @@ interface UseCampaignsReturn {
         status: CampaignStatus | undefined;
         setStatus: (status: CampaignStatus | undefined) => void;
     };
+    deletedCampaigns: Campaign[];
+    fetchDeletedCampaigns: () => Promise<void>;
 }
 
 /**
@@ -43,6 +45,7 @@ export const useCampaigns = (
     const [statusFilter, setStatusFilter] = useState<CampaignStatus | undefined>(
         undefined
     );
+    const [deletedCampaigns, setDeletedCampaigns] = useState<Campaign[]>([]);
 
     const fetchCampaigns = useCallback(async () => {
         try {
@@ -67,6 +70,19 @@ export const useCampaigns = (
             setLoading(false);
         }
     }, [currentPage, limit, statusFilter]);
+
+    const fetchDeletedCampaigns = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await campaignService.getDeletedCampaignList();
+            setDeletedCampaigns(response.data.campaigns);
+        } catch (err) {
+            console.error("Error fetching deleted campaigns:", err);
+            // Optional: set specific error for deleted campaigns
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     // Initial fetch
     useEffect(() => {
@@ -120,5 +136,7 @@ export const useCampaigns = (
             status: statusFilter,
             setStatus,
         },
+        deletedCampaigns,
+        fetchDeletedCampaigns,
     };
 };

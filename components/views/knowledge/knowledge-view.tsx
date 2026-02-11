@@ -7,17 +7,19 @@ import { cn } from "@/lib/utils";
 import { extractTextFromFile } from '@/utils/ocr';
 import { DataSource } from './dataSource';
 import { Modal } from "@/components/ui/modal";
-import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation } from '@/hooks/usePromptQuery';
+import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation, useDeletePromptPermanentById, useRestorePromptById } from '@/hooks/usePromptQuery';
 import { toast } from "sonner";
-import { useDeleteKnowledgeById, useKnowledgeByIdQuery, useUpdateKnowledgeMutation } from '@/hooks/useUploadKnowledge';
+import { useDeleteKnowledgeById, useDeleteKnowledgePermanentById, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useRestoreKnowledgeById } from '@/hooks/useUploadKnowledge';
 import { PromptConfiguration } from './promptConfiguration';
 import { Settings } from './settings';
 import { useTheme } from '@/hooks/useTheme';
+import { AiLogs } from './aiLogs';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 
-type TabType = 'data-sources' | 'prompts' | 'settings';
+type TabType = 'data-sources' | 'prompts' | 'settings' | 'ai-logs';
 
 export const KnowledgeView = () => {
-    const {isDarkMode} = useTheme();
+    const { isDarkMode } = useTheme();
     const [activeTab, setActiveTab] = useState<TabType>('data-sources');
     const [uploading, setUploading] = useState(false);
     const { mutate: activatePromptMutate } = useActivatePromptMutation();
@@ -42,15 +44,23 @@ export const KnowledgeView = () => {
         prompt: "",
         text: ""
     });
+    const {user} = useAuth();
     const { data: knowledgeDetailsById, refetch: refetchKnowledgeById, isLoading: isKnowledgeByIdLoading } = useKnowledgeByIdQuery(selectedItem?.item?.id, selectedItem?.mode ?? "knowledge");
     const { data: promptDetailsById, isLoading: isPromptByIdLoading } = usePromptByIdQuery(selectedItem?.item?.id, selectedItem?.mode ?? "prompt");
     const [isDragging, setIsDragging] = useState(false);
     const { mutate: updateKnowledgeMutate } = useUpdateKnowledgeMutation();
     const { mutate: updatePromptMutute } = useUpdatePromptMutation();
+    const [isPermanentKnowledgeDelete, setIsPermanentKnowledgeDelete] = useState(false);
+    const [isPermanentPromptDelete, setIsPermanentPromptDelete] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<{ item: any, type: string } | null>(null);
     const { mutate: deleteKnowledgeMutate } = useDeleteKnowledgeById();
     const { mutate: deletePromptMutate } = useDeletePromptMutation();
+    const { mutate: deletePermanentKnowledgeMutate } = useDeleteKnowledgePermanentById();
+    const { mutate: deletePermanentPromptMutate } = useDeletePromptPermanentById();
+    const { mutate: restorePromptMutate } = useRestorePromptById();
+    const { mutate: restoreKnowledgeMutate } = useRestoreKnowledgeById();
     const isView = viewMode === "view";
     const isEdit = viewMode === "edit";
     const isKnowledge = selectedItem?.mode === "knowledge";
@@ -58,9 +68,10 @@ export const KnowledgeView = () => {
     const knowledgeTabs = [
         { value: "data-sources", label: "Data Sources" },
         { value: "prompts", label: "Prompts" },
+        { value: "ai-logs", label: "AI Logs" },
         // { value: "settings", label: "Settings" }
     ];
-
+    console.log("user", user)
     useEffect(() => {
         const storedTab = localStorage.getItem("selectedTab");
         if (storedTab) {
@@ -167,20 +178,52 @@ export const KnowledgeView = () => {
         setIsViewModalOpen(false);
     };
 
-    const handleDeleteClick = (item: any, type: string) => {
-        console.log("item", item)
+    const handleDeleteClick = (item: any, type: string, isPermanent: boolean = false) => {
+        console.log("item", item);
+        console.log("type", type);
+        console.log("isPermanent", isPermanent);
         setItemToDelete({ item, type });
+        if (isPermanent && type == "knowledge") {
+            setIsPermanentKnowledgeDelete(true);
+        } else if (isPermanent && type == "prompt") {
+            setIsPermanentPromptDelete(true);
+        }
         setIsDeleteModalOpen(true);
     };
 
+    const handleRestore = (item: any, type: string) => {
+        console.log("item", item)
+        setItemToDelete({ item, type });
+        setIsRestoreModalOpen(true);
+    }
+
+    const handleConfirmRestore = () => {
+        if (itemToDelete?.type == "knowledge") {
+            restoreKnowledgeMutate(itemToDelete.item.id);
+        } else if (itemToDelete?.type == "prompt") {
+            restorePromptMutate(itemToDelete.item.id);
+        }
+        setIsRestoreModalOpen(false);
+        setItemToDelete(null);
+    };
     const handleConfirmDelete = () => {
         if (itemToDelete?.type == "knowledge") {
-            deleteKnowledgeMutate(itemToDelete.item.id);
+            if (isPermanentKnowledgeDelete) {
+                deletePermanentKnowledgeMutate(itemToDelete.item.id);
+                setIsPermanentKnowledgeDelete(false);
+            } else {
+                deleteKnowledgeMutate(itemToDelete.item.id);
+            }
             setIsDeleteModalOpen(false);
             setItemToDelete(null);
         }
         else if (itemToDelete?.type == "prompt") {
-            deletePromptMutate(itemToDelete.item.id);
+            if (isPermanentPromptDelete) {
+                deletePermanentPromptMutate(itemToDelete.item.id);
+                setIsPermanentPromptDelete(false);
+            } else {
+                deletePromptMutate(itemToDelete.item.id);
+            }
             setIsDeleteModalOpen(false);
             setItemToDelete(null);
         }
@@ -320,7 +363,9 @@ export const KnowledgeView = () => {
             setEditContent({ name: data?.name, prompt: content });
         }
     }, [knowledgeDetailsById, promptDetailsById, viewMode, isViewModalOpen]);
-    console.log("editContent", editContent)
+    console.log("editContent", editContent);
+    console.log("isPermanentKnowledgeDelete", isPermanentKnowledgeDelete);
+    console.log("isPermanentPromptDelete", isPermanentPromptDelete);
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">
@@ -365,6 +410,8 @@ export const KnowledgeView = () => {
                     handleDrop={handleDrop}
                     handleUploadFile={handleUploadFile}
                     handleDeleteClick={handleDeleteClick}
+                    handlePermanentDeleteClick={handleDeleteClick}
+                    handleRestore={handleRestore}
                     handleEdit={handleEdit}
                     handleView={handleView}
                     uploading={uploading}
@@ -385,11 +432,20 @@ export const KnowledgeView = () => {
                     handleDrop={handleDrop}
                     handleUploadFile={handleUploadFile}
                     handleDeleteClick={handleDeleteClick}
+                    handlePermanentDeleteClick={handleDeleteClick}
+                    handleRestore={handleRestore}
                     handleEdit={handleEdit}
                     handleView={handleView}
                     uploading={uploading}
                 />
             )}
+            {
+                activeTab === 'ai-logs' && (
+                    <AiLogs
+                        isDarkMode={isDarkMode}
+                    />
+                )
+            }
             {
                 activeTab === 'settings' && (
                     <Settings
@@ -582,10 +638,22 @@ export const KnowledgeView = () => {
             <Modal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
-                title={itemToDelete?.type === "prompt" ? "Delete Prompt?" : "Delete Knowledge Source?"}
-                description={itemToDelete?.type === "prompt" ? "Are you sure you want to delete this prompt? This action cannot be undone." : "Are you sure you want to delete this knowledge source? This action cannot be undone."}
+                title={
+                    itemToDelete?.type === "prompt"
+                        ? isPermanentPromptDelete ? "Delete Prompt Permanently" : "Remove Prompt?"
+                        : isPermanentKnowledgeDelete ? "Delete Knowledge Source Permanently" : "Remove Knowledge Source?"
+                }
+                description={
+                    itemToDelete?.type === "prompt"
+                        ? isPermanentPromptDelete
+                            ? "Are you sure you want to delete this prompt permanently? This action cannot be undone."
+                            : "Are you sure you want to remove this prompt? It will be moved to the trash."
+                        : isPermanentKnowledgeDelete
+                            ? "Are you sure you want to delete this knowledge source permanently? This action cannot be undone."
+                            : "Are you sure you want to remove this knowledge source? It will be moved to the trash."
+                }
                 isDarkMode={isDarkMode}
-                className="max-w-md"
+                className="max-w-md font-sans"
                 footer={
                     <div className="flex items-center justify-end space-x-3">
                         <button
@@ -609,6 +677,42 @@ export const KnowledgeView = () => {
                             )}
                         >
                             Delete
+                        </button>
+                    </div>
+                }
+            >
+                <div className="hidden"></div>
+            </Modal>
+            <Modal
+                isOpen={isRestoreModalOpen}
+                onClose={() => setIsRestoreModalOpen(false)}
+                title={itemToDelete?.type === "prompt" ? "Restore Prompt?" : "Restore Knowledge Source?"}
+                description={itemToDelete?.type === "prompt" ? "Are you sure you want to restore this prompt?" : "Are you sure you want to restore this knowledge source?"}
+                isDarkMode={isDarkMode}
+                className="max-w-md font-sans"
+                footer={
+                    <div className="flex items-center justify-end space-x-3">
+                        <button
+                            onClick={() => setIsRestoreModalOpen(false)}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+                                isDarkMode
+                                    ? 'border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            )}
+                        >
+                            No, Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmRestore}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium text-white transition-all shadow-lg",
+                                isDarkMode
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
+                            )}
+                        >
+                            Yes, Restore
                         </button>
                     </div>
                 }

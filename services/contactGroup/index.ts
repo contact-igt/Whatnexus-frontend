@@ -3,35 +3,47 @@ import { CreateGroupDto, UpdateGroupDto, AddContactsToGroupDto } from "@/types/c
 
 export class contactGroupApiData {
     createGroup = async (data: CreateGroupDto) => {
-        return await _axios("post", "/contact-group", data);
+        return await _axios("post", "/whatsapp/contact-group", data);
     };
 
     getAllGroups = async (params?: any) => {
-        return await _axios("get", "/contact-group/list", null, undefined, params);
+        return await _axios("get", "/whatsapp/contact-group/list", null, undefined, params);
     };
 
     getGroupById = async (groupId: string) => {
-        return await _axios("get", `/contact-group/${groupId}`);
+        return await _axios("get", `/whatsapp/contact-group/${groupId}`);
     };
 
     getAvailableContacts = async (groupId: string) => {
-        return await _axios("get", `/contact-group/${groupId}/available-contacts`);
+        return await _axios("get", `/whatsapp/contact-group/${groupId}/available-contacts`);
     };
 
     updateGroup = async (groupId: string, data: UpdateGroupDto) => {
-        return await _axios("put", `/contact-group/${groupId}`, data);
+        return await _axios("put", `/whatsapp/contact-group/${groupId}`, data);
     };
 
     addContactsToGroup = async (groupId: string, data: AddContactsToGroupDto) => {
-        return await _axios("post", `/contact-group/${groupId}/add-contacts`, data);
+        return await _axios("post", `/whatsapp/contact-group/${groupId}/add-contacts`, data);
     };
 
     removeContactFromGroup = async (groupId: string, contactId: string) => {
-        return await _axios("delete", `/contact-group/${groupId}/contact/${contactId}`);
+        return await _axios("delete", `/whatsapp/contact-group/${groupId}/contact/${contactId}`);
     };
 
     deleteGroup = async (groupId: string) => {
-        return await _axios("delete", `/contact-group/${groupId}`);
+        return await _axios("delete", `/whatsapp/contact-group/${groupId}/soft`);
+    };
+
+    getDeletedGroups = async (params?: any) => {
+        return await _axios("get", "/whatsapp/contact-group/deleted/list", null, undefined, params);
+    };
+
+    restoreGroup = async (groupId: string) => {
+        return await _axios("post", `/whatsapp/contact-group/${groupId}/restore`);
+    };
+
+    permanentDeleteGroup = async (groupId: string) => {
+        return await _axios("delete", `/whatsapp/contact-group/${groupId}/permanent`);
     };
 }
 

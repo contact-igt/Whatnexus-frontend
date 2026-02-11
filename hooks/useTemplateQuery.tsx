@@ -176,3 +176,10 @@ export const useGenerateAiTemplateMutation = () => {
         }
     })
 }
+
+export const useGetDeletedTemplatesQuery = () => {
+    return useQuery({
+        queryKey: ['deletedTemplates'],
+        queryFn: () => templateApis.getDeletedTemplates()
+    })
+}

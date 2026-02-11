@@ -4,12 +4,14 @@ import { User, Settings, LogOut, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { getProfileRoute } from '@/lib/profile-utils';
 
 interface UserProfileDropdownProps {
     isDarkMode: boolean;
     user: {
         username?: string;
         email?: string;
+        role?: string;
     } | null;
     onClose: () => void;
     onLogout: () => void;
@@ -37,14 +39,8 @@ export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: Use
             icon: User,
             label: "View Profile",
             onClick: () => {
-                router.push("/profile")
-                onClose();
-            }
-        },
-        {
-            icon: Settings,
-            label: "Account Settings",
-            onClick: () => {
+                const profileRoute = getProfileRoute(user?.role || '');
+                router.push(profileRoute);
                 onClose();
             }
         },

@@ -6,7 +6,7 @@ import { TemplateListPage } from './template-list-page';
 import { TemplateFormPage } from './template-form-page';
 import { TemplatePreviewModal } from './template-preview-modal';
 import { toast } from 'sonner';
-import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation } from '@/hooks/useTemplateQuery';
+import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation, useGetDeletedTemplatesQuery, useRestoreTemplateMutation } from '@/hooks/useTemplateQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsapp-connection-placeholder';
 
@@ -104,7 +104,7 @@ export const TemplateView = () => {
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
     const [editTemplateById, setEditTemplateById] = useState<Template | null>(null);
-    const { data: templateData } = useGetAllTemplateQuery();
+    const { data: templateData, isLoading: templateDataLoading } = useGetAllTemplateQuery();
     const { data: templateDataById, isPending: getTemplateByIdLoading } = useGetTemplateByIdQuery(editTemplateById || previewTemplate?.template_id);
     const { mutate: createTemplateMutate, isPending: createTemplateLoading } = useCreateTemplateMutation();
     const { mutate: updateTemplateMutate, isPending: updateTemplateLoading } = useUpdateTemplateMutation();
@@ -113,8 +113,9 @@ export const TemplateView = () => {
     const { mutate: syncAllTemplatesMutate, isPending: syncAllTemplatesLoading } = useSyncAllTemplateMutation();
     const { mutate: softDeleteTemplateMutate, isPending: softDeleteTemplateLoading } = useSoftDeleteTemplateMutation();
     const { mutate: permanentDeleteTemplateMutate, isPending: permanentDeleteTemplateLoading } = usePermanentDeleteTemplateMutation();
+    const { data: deletedTemplateData } = useGetDeletedTemplatesQuery();
     const { mutate: reSubmitTemplateMutate, isPending: reSubmitTemplateLoading } = useResubmitTemplateMutation();
-    // const {mutate: restoreTemplateMutate, isPending: restoreTemplateLoading} = useRestoreTemplateMutation();
+    const { mutate: restoreTemplateMutate, isPending: restoreTemplateLoading } = useRestoreTemplateMutation();
     const handleCreateNew = () => {
         setSelectedTemplate(null);
         setEditTemplateById(null);
@@ -170,6 +171,10 @@ export const TemplateView = () => {
 
     const handlePermanentDelete = (templateId: string) => {
         permanentDeleteTemplateMutate(templateId);
+    }
+
+    const handleRestore = (templateId: string) => {
+        restoreTemplateMutate(templateId);
     }
 
     const handleSync = () => {
@@ -249,15 +254,17 @@ export const TemplateView = () => {
             <TemplateListPage
                 isDarkMode={isDarkMode}
                 templates={templateData?.data || []}
+                deletedTemplates={deletedTemplateData?.data || []}
                 onCreateNew={handleCreateNew}
                 onEdit={handleEdit}
-                isLoading={submitTemplateLoading || reSubmitTemplateLoading || syncTemplateLoading || softDeleteTemplateLoading || permanentDeleteTemplateLoading || syncAllTemplatesLoading}
+                isLoading={templateDataLoading || submitTemplateLoading || reSubmitTemplateLoading || syncTemplateLoading || softDeleteTemplateLoading || permanentDeleteTemplateLoading || syncAllTemplatesLoading || restoreTemplateLoading}
                 onSyncTemplate={handleSyncTemplate}
                 onSubmitTemplate={handleSubmitTemplate}
                 onResubmitTemplate={handleResubmitTemplate}
                 onView={handleView}
                 onSoftDelete={handleSoftDelete}
                 onPermanentDelete={handlePermanentDelete}
+                onRestore={handleRestore}
                 onSync={handleSync}
             />
 

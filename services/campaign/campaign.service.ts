@@ -23,7 +23,7 @@ export class CampaignService {
         data: CreateCampaignRequest
     ): Promise<CreateCampaignResponse> => {
         try {
-            const response = await _axios("post", "/whatsapp-campaign", data);
+            const response = await _axios("post", "/whatsapp/whatsapp-campaign", data);
             return response;
         } catch (error) {
             console.error("Error creating campaign:", error);
@@ -42,7 +42,7 @@ export class CampaignService {
         try {
             const response = await _axios(
                 "get",
-                "/whatsapp-campaign/list",
+                "/whatsapp/whatsapp-campaign/list",
                 undefined,
                 "application/json",
                 params
@@ -67,7 +67,7 @@ export class CampaignService {
         try {
             const response = await _axios(
                 "get",
-                `/whatsapp-campaign/${campaignId}`,
+                `/whatsapp/whatsapp-campaign/${campaignId}`,
                 undefined,
                 "application/json",
                 params
@@ -90,7 +90,7 @@ export class CampaignService {
         try {
             const response = await _axios(
                 "post",
-                `/whatsapp-campaign/${campaignId}/execute`
+                `/whatsapp/whatsapp-campaign/${campaignId}/execute`
             );
             return response;
         } catch (error) {
@@ -99,21 +99,78 @@ export class CampaignService {
         }
     };
     /**
-     * Delete a campaign
+     * Delete a campaign (Soft Delete)
      * @param campaignId Campaign ID to delete
      * @returns Deletion confirmation
      */
-    deleteCampaign = async (
+    softDeleteCampaign = async (
         campaignId: string
     ): Promise<{ message: string }> => {
         try {
             const response = await _axios(
                 "delete",
-                `/whatsapp-campaign/${campaignId}/soft`
+                `/whatsapp/whatsapp-campaign/${campaignId}/soft`
             );
             return response;
         } catch (error) {
-            console.error("Error deleting campaign:", error);
+            console.error("Error soft deleting campaign:", error);
+            throw error;
+        }
+    };
+
+    /**
+     * Get list of deleted campaigns
+     * @returns List of deleted campaigns
+     */
+    getDeletedCampaignList = async (): Promise<CampaignListResponse> => {
+        try {
+            const response = await _axios(
+                "get",
+                "/whatsapp/whatsapp-campaign/deleted/list"
+            );
+            return response;
+        } catch (error) {
+            console.error("Error fetching deleted campaign list:", error);
+            throw error;
+        }
+    };
+
+    /**
+     * Permanently delete a campaign
+     * @param campaignId Campaign ID to permanently delete
+     * @returns Deletion confirmation
+     */
+    permanentDeleteCampaign = async (
+        campaignId: string
+    ): Promise<{ message: string }> => {
+        try {
+            const response = await _axios(
+                "delete",
+                `/whatsapp/whatsapp-campaign/${campaignId}/permanent`
+            );
+            return response;
+        } catch (error) {
+            console.error("Error permanently deleting campaign:", error);
+            throw error;
+        }
+    };
+
+    /**
+     * Restore a deleted campaign
+     * @param campaignId Campaign ID to restore
+     * @returns Restore confirmation
+     */
+    restoreCampaign = async (
+        campaignId: string
+    ): Promise<{ message: string }> => {
+        try {
+            const response = await _axios(
+                "post",
+                `/whatsapp/whatsapp-campaign/${campaignId}/restore`
+            );
+            return response;
+        } catch (error) {
+            console.error("Error restoring campaign:", error);
             throw error;
         }
     };

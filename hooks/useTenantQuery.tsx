@@ -96,7 +96,7 @@ export const useDeleteTenantMutation = () => {
 
     return useMutation({
         mutationFn: (tenantId: string) => {
-            return TenantApis.deleteTenant(tenantId);
+            return TenantApis.softDeleteTenant(tenantId);
         },
         onSuccess: (response: any, variables: any) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
@@ -109,29 +109,20 @@ export const useDeleteTenantMutation = () => {
 };
 
 
-// ================= Tenant User ==================
-
-export const useTenantUserLoginMutation = () => {
-    const router = useRouter();
-    const dispatch = useDispatch();
+export const usePermanentDeleteTenantMutation = () => {
     const queryClient = useQueryClient();
+
     return useMutation({
-        mutationFn: (data: any) => {
-            return TenantApis.tenantUserLogin(data);
+        mutationFn: (tenantId: string) => {
+            return TenantApis.permanentDeleteTenant(tenantId);
         },
         onSuccess: (response: any, variables: any) => {
-            dispatch(setAuthData({
-                token: variables.rememberMe === true ? response?.tokens?.refreshToken : response?.tokens?.accessToken,
-                refreshToken: response?.tokens?.refreshToken,
-                user: response?.user
-            }))
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
-            toast.success(response?.data?.message || response?.message || 'Tenant user login successful');
-            router.replace("/dashboard");
+            toast.success(response?.data?.message || response?.message || 'Organization deleted successfully');
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || error.message || 'Failed to login tenant user');
+            toast.error(error?.response?.data?.message || error.message || 'Failed to delete organization');
         },
-    })
-}
+    });
+};
 
