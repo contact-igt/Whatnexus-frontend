@@ -12,7 +12,7 @@ export const useCreateTemplateMutation = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['templates'] });
-            toast.success(data?.message || 'Template created successfully!');
+            toast.success(data?.message);
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Template creation failed!')
@@ -174,5 +174,12 @@ export const useGenerateAiTemplateMutation = () => {
         mutationFn: (data: any) => {
             return templateApis.generateAiTemplate(data)
         }
+    })
+}
+
+export const useGetDeletedTemplatesQuery = () => {
+    return useQuery({
+        queryKey: ['deletedTemplates'],
+        queryFn: () => templateApis.getDeletedTemplates()
     })
 }

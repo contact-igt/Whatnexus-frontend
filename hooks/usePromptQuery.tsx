@@ -49,6 +49,7 @@ export const useDeletePromptMutation = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['prompt-configurations'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-prompt-configurations'] });
             toast.success('Prompt deleted successfully!');
         },
         onError: (error: any) => {
@@ -105,3 +106,47 @@ export const useUpdatePromptMutation = () => {
         },
     });
 };
+
+export const useDeletedPromptList = () => {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['deleted-prompt-configurations'],
+        queryFn: () => PromptApis.getDeletedPrompts(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    return { data, isLoading, isError };
+}
+
+export const useDeletePromptPermanentById = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => PromptApis.deletePromptPermanentById(id),
+
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["deleted-prompt-configurations"] });
+            toast.success("Prompt deleted successfully");
+        },
+
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to delete knowledge");
+        },
+    });
+};
+
+
+export const useRestorePromptById = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => PromptApis.restorePromptById(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["prompt-configurations"] });
+            queryClient.invalidateQueries({ queryKey: ["deleted-prompt-configurations"] });
+            toast.success("Prompt restored successfully");
+        },
+        onError: (error: any) => {
+            toast.error(error.response.data.message || "Failed to restore prompt")
+        }
+    })
+}

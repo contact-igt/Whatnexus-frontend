@@ -1,25 +1,19 @@
-
 "use client";
 
 import { useState } from 'react';
-import { Filter, Sparkles, Lightbulb, MessageSquare, MoreHorizontal, ClipboardList, X, Brain, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
-import { LEADS } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
-import { callOpenAI } from "@/lib/openai";
 import { cn } from "@/lib/utils";
 import dayjs from "@/utils/dayjs";
 import { useTheme } from '@/hooks/useTheme';
-import { useLeadIntelligenceQuery, useSummarizeLeadMutation } from '@/hooks/useLeadIntelligenceQuery';
+import { useLeadIntelligenceQuery, useGetDeletedLeadsQuery, useSoftDeleteLeadMutation, usePermanentDeleteLeadMutation, useRestoreLeadMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsapp-connection-placeholder';
-
-type SummaryResponse = {
-    data: {
-        summary: string;
-    };
-};
+import { LeadSummaryModal } from './lead-summary-modal';
+import { ConfirmationModal } from '@/components/ui/confirmationModal';
+import { DataTable, ColumnDef } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
@@ -27,58 +21,72 @@ export const LeadsView = () => {
     console.log("whatsappApiDetails", whatsappApiDetails);
     const router = useRouter();
 
-    if (whatsappApiDetails?.status !== 'active') {
-        return <WhatsAppConnectionPlaceholder />;
-    }
+    const [activeTab, setActiveTab] = useState<'all' | 'trash'>('all');
 
-    const { data: leadIntelligenceData, isLoading, isError } = useLeadIntelligenceQuery();
-    const summarizeLeadMutation = useSummarizeLeadMutation();
-    const [analyzingId, setAnalyzingId] = useState<string | null>(null);
-    const [insight, setInsight] = useState<{ id: string; text: string } | null>(null);
-    const [summarizingId, setSummarizingId] = useState<string | null>(null);
-    const [summary, setSummary] = useState<string | any | null>(null);
-    const [summaryLeadId, setSummaryLeadId] = useState<string | null>(null);
+    // Data Queries
+    const { data: leadIntelligenceData, isLoading: isLoadingLeads, refetch: refetchLeads } = useLeadIntelligenceQuery();
+    const { data: deletedLeadsData, isLoading: isLoadingDeletedLeads, refetch: refetchDeletedLeads } = useGetDeletedLeadsQuery();
+
+    const isLoading = activeTab === 'all' ? isLoadingLeads : isLoadingDeletedLeads;
+    const leads = activeTab === 'all' ? (leadIntelligenceData?.data?.leads || []) : (deletedLeadsData?.data?.leads || []);
+
+    // Mutations
+    const { mutate: softDeleteLead, isPending: isSoftDeletePending } = useSoftDeleteLeadMutation();
+    const { mutate: permanentDeleteLead, isPending: isPermanentDeletePending } = usePermanentDeleteLeadMutation();
+    const { mutate: restoreLead, isPending: isRestorePending } = useRestoreLeadMutation();
+
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
-    // const analyzeLead = async (lead: any) => {
-    //     setAnalyzingId(lead.id);
-    //     try {
-    //         const prompt = `Analyze this lead for WhatsNexus (AI Receptionist platform): Name: ${lead.name}, Source: ${lead.source}, Score: ${lead.score}, Status: ${lead.status}. 
-    //   Provide a brief, 1-sentence strategic advice for the agent to close this lead. Keep it professional and high-level.`;
-    //         const result = await callGemini(prompt, "You are an expert sales strategist.");
-    //         setInsight({ id: lead.id, text: result });
-    //     } catch (err) {
-    //         setInsight({ id: lead.id, text: "Error generating strategy. Try again." });
-    //     } finally {
-    //         setAnalyzingId(null);
-    //     }
-    // };
+    // Summary Modal State
+    const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+    const [selectedLeadForSummary, setSelectedLeadForSummary] = useState<any>(null);
+
+    // Confirmation Modal State
+    const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+    const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+    const [actionType, setActionType] = useState<'delete' | 'permanent_delete' | 'restore'>('delete');
 
     const summarizeLead = async (e: React.MouseEvent, lead: any) => {
         e.stopPropagation();
-        setSummarizingId(lead.contact_id);
-        setSummary(null);
-        setSummaryLeadId(lead.contact_id);
-        const result = await summarizeLeadMutation.mutateAsync({
-            id: lead.contact_id,
-            phone: lead.phone,
-        });
-        console.log(result);
-        setSummary(result?.data?.summary ?? null)
-        setSummaryLeadId(null)
-        setSummarizingId(null)
-        // const prompt = `Generate a concise summary (max 30 words) for this lead based on their status:
-        // Name: ${lead?.name}
-        // Score: ${lead?.heat_score}/100
-        // Status: ${lead?.heat_state}
-        // Last Active: ${formatMessageDate(lead?.last_user_message_at).date}
-
-        // Highlight their engagement level and recommend the next best action.`;
-
-        // const result = await callOpenAI(prompt, "You are a concise sales assistant.");
-        // setSummary(result);
+        setSelectedLeadForSummary(lead);
+        setIsSummaryModalOpen(true);
     };
+
+    const handleAction = (type: 'delete' | 'permanent_delete' | 'restore', id: string) => {
+        setActionType(type);
+        setSelectedLeadId(id);
+        setIsConfirmationModalOpen(true);
+    };
+
+    const confirmAction = () => {
+        if (!selectedLeadId) return;
+
+        if (actionType === 'delete') {
+            softDeleteLead(selectedLeadId, {
+                onSuccess: () => {
+                    setIsConfirmationModalOpen(false);
+                    setSelectedLeadId(null);
+                }
+            });
+        } else if (actionType === 'permanent_delete') {
+            permanentDeleteLead(selectedLeadId, {
+                onSuccess: () => {
+                    setIsConfirmationModalOpen(false);
+                    setSelectedLeadId(null);
+                }
+            });
+        } else if (actionType === 'restore') {
+            restoreLead(selectedLeadId, {
+                onSuccess: () => {
+                    setIsConfirmationModalOpen(false);
+                    setSelectedLeadId(null);
+                }
+            });
+        }
+    };
+
+    console.log("leadIntelligenceData", leadIntelligenceData)
     const getHeatStateStyles = (state: string) => {
         switch (state?.toLowerCase()) {
             case 'hot': return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
@@ -103,16 +111,168 @@ export const LeadsView = () => {
     const handleLeadOpen = (leadPhone: string) => {
         router.push(`/chats?phone=${leadPhone}`)
     }
-    console.log("summary", summary);
-    console.log("summaryLeadId", summaryLeadId);
 
-    const leads = leadIntelligenceData?.data || [];
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
+
     const totalPages = Math.ceil(leads.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const currentLeads = leads.slice(startIndex, startIndex + itemsPerPage);
+    console.log("leads", leads)
+    const currentLeads = leads?.slice(startIndex, startIndex + itemsPerPage);
+
+    const columns: ColumnDef<any>[] = [
+        {
+            field: 'identity',
+            headerName: 'Lead Identity',
+            renderCell: ({ row }) => (
+                <div className="flex items-center space-x-3">
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border", isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-700')}>
+                        {row?.name?.charAt(0)?.toUpperCase() ?? "?"}
+                    </div>
+                    <div>
+                        <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{row?.name}</p>
+                        <p className="text-[10px] text-slate-500 uppercase font-medium tracking-wider">+{row?.phone}</p>
+                    </div>
+                </div>
+            )
+        },
+        {
+            field: 'score',
+            headerName: 'Neural Score',
+            align: 'center',
+            headerAlign: 'center',
+            renderCell: ({ row }) => (
+                <div className="flex flex-col justify-center items-center">
+                    <span className={cn("text-xs font-bold mb-1.5", row?.score > 80 ? 'text-emerald-500' : 'text-orange-500')}>{row?.score}</span>
+                    <div className={cn("h-1 w-12 rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-200')}>
+                        <div className={cn("h-full rounded-full transition-all duration-[2000ms] ease-out", row?.score > 80 ? 'bg-emerald-500' : 'bg-orange-500')} style={{ width: `${row?.score}%` }} />
+                    </div>
+                </div>
+            )
+        },
+        {
+            field: 'heat_state',
+            headerName: 'Heat State',
+            align: 'center',
+            headerAlign: 'center',
+            renderCell: ({ row }) => (
+                <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(row.heat_state))}>
+                    {row?.heat_state}
+                </span>
+            )
+        },
+        {
+            field: 'last_user_message_at',
+            headerName: 'User Last Message',
+            align: 'center',
+            headerAlign: 'center',
+            minWidth: 150,
+            renderCell: ({ row }) => (
+                <div className="flex flex-col">
+                    <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/90' : 'text-slate-700')}>{formatMessageDate(row?.last_user_message_at)?.date}</span>
+                    <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{formatMessageDate(row?.last_user_message_at)?.time}</span>
+                </div>
+            )
+        },
+        {
+            field: 'last_admin_reply_at',
+            headerName: 'Admin Last Message',
+            align: 'center',
+            headerAlign: 'center',
+            minWidth: 150,
+            renderCell: ({ row }) => (
+                row?.last_admin_reply_at ? <div className="flex flex-col">
+                    <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/90' : 'text-slate-700')}>{formatMessageDate(row?.last_admin_reply_at)?.date}</span>
+                    <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{formatMessageDate(row?.last_admin_reply_at)?.time}</span>
+                </div> : <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>-</span>
+            )
+        },
+        {
+            field: 'actions',
+            headerName: 'Actions',
+            align: 'right',
+            headerAlign: 'right',
+            renderCell: ({ row }) => (
+                <div className="flex items-center justify-end space-x-1 transition-all">
+                    {activeTab === 'all' && (
+                        <>
+                            <button
+                                onClick={(e) => summarizeLead(e, row)}
+                                title="Generate AI Summary"
+                                className={cn(
+                                    "p-2 rounded-lg transition-colors hover:bg-white/10 hover:text-emerald-500 text-slate-400"
+                                )}
+                            >
+                                <ClipboardList size={16} />
+                            </button>
+                            <button onClick={() => handleLeadOpen(row?.phone)} className="p-2 hover:bg-white/10 rounded-lg hover:text-emerald-500 transition-colors text-slate-400"><MessageSquare size={16} /></button>
+                            <button
+                                onClick={() => handleAction('delete', row?.lead_id)}
+                                className="p-2 hover:bg-white/10 rounded-lg hover:text-red-500 transition-colors text-slate-400"
+                                title="Remove Lead"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </>
+                    )}
+
+                    {activeTab === 'trash' && (
+                        <>
+                            <button
+                                onClick={() => handleAction('restore', row?.lead_id)}
+                                className="p-2 hover:bg-white/10 rounded-lg hover:text-blue-500 transition-colors text-slate-400"
+                                title="Restore Lead"
+                            >
+                                <ArchiveRestore size={16} />
+                            </button>
+                            <button
+                                onClick={() => handleAction('permanent_delete', row?.lead_id)}
+                                className="p-2 hover:bg-white/10 rounded-lg hover:text-red-500 transition-colors text-slate-400"
+                                title="Delete Forever"
+                            >
+                                <Trash size={16} />
+                            </button>
+                        </>
+                    )}
+                </div>
+            )
+        }
+    ];
 
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in fade-in duration-700 no-scrollbar pb-32">
+            <LeadSummaryModal
+                isOpen={isSummaryModalOpen}
+                onClose={() => setIsSummaryModalOpen(false)}
+                lead={selectedLeadForSummary}
+                isDarkMode={isDarkMode}
+            />
+
+            <ConfirmationModal
+                isOpen={isConfirmationModalOpen}
+                onClose={() => setIsConfirmationModalOpen(false)}
+                onConfirm={confirmAction}
+                title={
+                    actionType === 'delete' ? "Remove Lead" :
+                        actionType === 'permanent_delete' ? "Permanently Delete Lead" :
+                            "Restore Lead"
+                }
+                message={
+                    actionType === 'delete' ? "Are you sure you want to remove this lead? It will be moved to the trash." :
+                        actionType === 'permanent_delete' ? "This action cannot be undone. Are you sure you want to permanently delete this lead?" :
+                            "Are you sure you want to restore this lead?"
+                }
+                isDarkMode={isDarkMode}
+                confirmText={
+                    actionType === 'delete' ? "Remove" :
+                        actionType === 'permanent_delete' ? "Delete Forever" :
+                            "Restore"
+                }
+                isLoading={isSoftDeletePending || isPermanentDeletePending || isRestorePending}
+                variant={actionType === 'restore' ? 'info' : 'danger'}
+            />
+
             <div className="flex justify-between items-end border-b border-white/5 pb-6">
                 <div>
                     <h1 className={cn("text-3xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Lead Intelligence</h1>
@@ -127,328 +287,81 @@ export const LeadsView = () => {
                 </div>
             </div>
 
-            {/* Summary Overlay */}
-            {summary && (
-                <div className="fixed inset-x-0 top-24 z-50 flex justify-center pointer-events-none animate-in slide-in-from-top-4 fade-in duration-300">
-                    <div className="pointer-events-auto">
-                        <GlassCard isDarkMode={isDarkMode} className="p-5 border-emerald-500/40 bg-emerald-500/10 shadow-2xl relative rounded-xl max-w-md mx-4 backdrop-blur-xl">
-                            <button
-                                onClick={() => {
-                                    setSummary(null);
-                                    setSummaryLeadId(null);
-                                }}
-                                className="absolute top-3 right-3 p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X size={14} />
-                            </button>
-                            <div className="flex items-center space-x-2 mb-2 text-emerald-500">
-                                <Brain size={14} className="animate-pulse" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Neural Lead Summary</span>
+            {/* Tabs */}
+            <div className="flex items-center space-x-1 border-b border-white/5">
+                <button
+                    onClick={() => { setActiveTab('all'); setCurrentPage(1); }}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium border-b-2 transition-all",
+                        activeTab === 'all'
+                            ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                    )}
+                >
+                    All Leads
+                </button>
+                <button
+                    onClick={() => { setActiveTab('trash'); setCurrentPage(1); }}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center space-x-2",
+                        activeTab === 'trash'
+                            ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                    )}
+                >
+                    <Trash2 size={14} />
+                    <span>Trash</span>
+                </button>
+            </div>
+
+            <GlassCard isDarkMode={isDarkMode} className="overflow-hidden p-0">
+                <DataTable
+                    columns={columns}
+                    data={currentLeads}
+                    isLoading={isLoading}
+                    isDarkMode={isDarkMode}
+                    emptyState={
+                        <div className="flex flex-col items-center justify-center text-center">
+                            <div className={cn(
+                                "w-20 h-20 rounded-2xl flex items-center justify-center mb-6 border-2",
+                                isDarkMode
+                                    ? 'bg-emerald-500/10 border-emerald-500/20'
+                                    : 'bg-emerald-50 border-emerald-200'
+                            )}>
+                                <Filter size={36} className="text-emerald-500" />
                             </div>
-                            <div className="mb-2">
-                                <span className={cn("text-xs font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                    {leadIntelligenceData?.data?.find((l: any) => l?.contact_id === summaryLeadId)?.name}
-                                </span>
-                            </div>
-                            <p className={cn("text-xs leading-relaxed font-medium", isDarkMode ? 'text-white/90' : 'text-slate-800')}>
-                                {summary}
+                            <h3 className={cn(
+                                "text-xl font-bold mb-2",
+                                isDarkMode ? 'text-white' : 'text-slate-900'
+                            )}>
+                                No Leads Found
+                            </h3>
+                            <p className={cn(
+                                "text-sm font-medium max-w-md",
+                                isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                            )}>
+                                {activeTab === 'all'
+                                    ? "No lead intelligence data available. Start syncing leads from Meta & Website."
+                                    : "No deleted leads found in trash."}
                             </p>
-                        </GlassCard>
-                    </div>
-                </div>
-            )}
-
-            <GlassCard isDarkMode={isDarkMode} className="overflow-hidden p-0 rounded-2xl">
-                <div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[900px]">
-                            <thead>
-                                <tr className={cn("text-xs font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/30 bg-white/5' : 'text-slate-400 bg-slate-50')}>
-                                    <th className="px-6 py-4 text">Lead Identity</th>
-                                    {/* <th className="px-6 py-4">Origin</th> */}
-                                    <th className="px-6 py-4 text-center">Neural Score</th>
-                                    <th className="px-6 py-4 text-center">Heat State</th>
-                                    <th className="px-6 py-4 text-center">User Last Message</th>
-                                    <th className="px-6 py-4 text-center">Admin Last Message</th>
-                                    <th className="px-6 py-4 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                                {isLoading ? (
-                                    Array.from({ length: 5 }).map((_, i) => (
-                                        <tr key={i} className={cn("animate-pulse", isDarkMode ? 'border-b border-white/5' : 'border-b border-slate-100')}>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className={cn("w-10 h-10 rounded-xl", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                    <div className="space-y-2">
-                                                        <div className={cn("h-3 w-24 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                        <div className={cn("h-2 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex flex-col items-center space-y-2">
-                                                    <div className={cn("h-3 w-8 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                    <div className={cn("h-1 w-12 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className={cn("h-6 w-20 rounded-lg mx-auto", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="space-y-1 flex flex-col items-center">
-                                                    <div className={cn("h-3 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                    <div className={cn("h-2 w-10 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end space-x-2">
-                                                    <div className={cn("h-8 w-8 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                    <div className={cn("h-8 w-8 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : !leadIntelligenceData?.data || leadIntelligenceData?.data.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-24">
-                                            <div className="flex flex-col items-center justify-center text-center">
-                                                <div className={cn(
-                                                    "w-20 h-20 rounded-2xl flex items-center justify-center mb-6 border-2",
-                                                    isDarkMode
-                                                        ? 'bg-emerald-500/10 border-emerald-500/20'
-                                                        : 'bg-emerald-50 border-emerald-200'
-                                                )}>
-                                                    <Filter size={36} className="text-emerald-500" />
-                                                </div>
-                                                <h3 className={cn(
-                                                    "text-xl font-bold mb-2",
-                                                    isDarkMode ? 'text-white' : 'text-slate-900'
-                                                )}>
-                                                    No Leads Found
-                                                </h3>
-                                                <p className={cn(
-                                                    "text-sm font-medium max-w-md",
-                                                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                                                )}>
-                                                    No lead intelligence data available. Start syncing leads from Meta & Website.
-                                                </p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : currentLeads?.map((lead: any, i: number) => {
-
-                                    // if(lead?.last_admin_reply_at){
-                                    //     const { date: adminDate, time: adminTime } = formatMessageDate(lead?.last_admin_reply_at);
-                                    // }
-                                    return (
-                                        <tr key={lead?.contact_id} className={cn("group transition-all hover:bg-emerald-500/5 animate-in slide-in-from-left-4", isDarkMode ? '' : 'hover:bg-slate-50')} style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border", isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-700')}>
-                                                        {lead?.name?.charAt(0)?.toUpperCase() ?? "?"}
-                                                    </div>
-                                                    <div>
-                                                        <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{lead?.name}</p>
-                                                        <p className="text-[10px] text-slate-500 uppercase font-medium tracking-wider">+{lead?.phone}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            {/* <td className={cn("px-6 py-4 text-xs font-medium uppercase tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{lead.source}</td> */}
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex flex-col justify-center items-center">
-                                                    <span className={cn("text-xs font-bold mb-1.5", lead?.score > 80 ? 'text-emerald-500' : 'text-orange-500')}>{lead?.score}</span>
-                                                    <div className={cn("h-1 w-12 rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-200')}>
-                                                        <div className={cn("h-full rounded-full transition-all duration-[2000ms] ease-out", lead?.score > 80 ? 'bg-emerald-500' : 'bg-orange-500')} style={{ width: `${lead?.score}%` }} />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(lead.heat_state))}>
-                                                    {lead?.heat_state}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center min-w-[150px]">
-                                                <div className="flex flex-col">
-                                                    <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/90' : 'text-slate-700')}>{formatMessageDate(lead?.last_user_message_at)?.date}</span>
-                                                    <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{formatMessageDate(lead?.last_user_message_at)?.time}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center min-w-[150px]">
-                                                {lead?.last_admin_reply_at ? <div className="flex flex-col">
-                                                    <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/90' : 'text-slate-700')}>{formatMessageDate(lead?.last_admin_reply_at)?.date}</span>
-                                                    <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{formatMessageDate(lead?.last_admin_reply_at)?.time}</span>
-                                                </div> : <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>-</span>}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-center space-x-1 transition-all">
-                                                    <button
-                                                        onClick={(e) => summarizeLead(e, lead)}
-                                                        disabled={summarizingId === lead?.contact_id}
-                                                        title="Generate AI Summary"
-                                                        className={cn(
-                                                            "p-2 rounded-lg transition-colors",
-                                                            summarizingId === lead?.contact_id
-                                                                ? "text-emerald-500 bg-emerald-500/10"
-                                                                : "hover:bg-white/10 hover:text-emerald-500 text-slate-400"
-                                                        )}
-                                                    >
-                                                        {summarizingId === lead.contact_id ? (
-                                                            <Loader2 size={16} className="animate-spin" />
-                                                        ) : (
-                                                            <ClipboardList size={16} />
-                                                        )}
-                                                    </button>
-                                                    <button onClick={() => handleLeadOpen(lead?.phone)} className="p-2 hover:bg-white/10 rounded-lg hover:text-emerald-500 transition-colors"><MessageSquare size={16} /></button>
-                                                    <button className="p-2 hover:bg-white/10 rounded-lg hover:text-rose-500 transition-colors"><MoreHorizontal size={16} /></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                        </div>
+                    }
+                />
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-white/5">
-                        <div className={cn(
-                            "text-xs font-medium",
-                            isDarkMode ? 'text-white/50' : 'text-slate-500'
-                        )}>
-                            Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, leads.length)} of {leads.length} leads
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <button
-                                onClick={() => setCurrentPage(1)}
-                                disabled={currentPage === 1}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                                    isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-600'
-                                )}
-                            >
-                                <ChevronsLeft size={16} />
-                            </button>
-                            <button
-                                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                                disabled={currentPage === 1}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                                    isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-600'
-                                )}
-                            >
-                                <ChevronLeft size={16} />
-                            </button>
-                            <span className={cn(
-                                "text-xs font-medium px-2",
-                                isDarkMode ? 'text-white/70' : 'text-slate-600'
-                            )}>
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <button
-                                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                                disabled={currentPage === totalPages}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                                    isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-600'
-                                )}
-                            >
-                                <ChevronRight size={16} />
-                            </button>
-                            <button
-                                onClick={() => setCurrentPage(totalPages)}
-                                disabled={currentPage === totalPages}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                                    isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-600'
-                                )}
-                            >
-                                <ChevronsRight size={16} />
-                            </button>
-                        </div>
+                    <div className="mt-4 px-2">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            totalItems={leads.length}
+                            itemsPerPage={itemsPerPage}
+                            isDarkMode={isDarkMode}
+                        />
                     </div>
                 )}
             </GlassCard>
-            {/* <GlassCard isDarkMode={isDarkMode} className="overflow-hidden p-0 rounded-2xl">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[900px]">
-                        <thead>
-                            <tr className={cn("text-xs font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/30 bg-white/5' : 'text-slate-400 bg-slate-50')}>
-                                <th className="px-6 py-4">Lead Identity</th>
-                                <th className="px-6 py-4">Origin</th>
-                                <th className="px-6 py-4 text-center">Neural Score</th>
-                                <th className="px-6 py-4">Heat State</th>
-                                <th className="px-6 py-4">Strategy Hub</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                            {LEADS.map((lead, i) => (
-                                <tr key={lead.id} className={cn("group transition-all hover:bg-emerald-500/5 animate-in slide-in-from-left-4", isDarkMode ? '' : 'hover:bg-slate-50')} style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border", isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-700')}>
-                                                {lead.name[0]}
-                                            </div>
-                                            <div>
-                                                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{lead.name}</p>
-                                                <p className="text-[10px] text-slate-500 uppercase font-medium tracking-wider">{lead.id}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className={cn("px-6 py-4 text-xs font-medium uppercase tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{lead.source}</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <span className={cn("text-xs font-bold mb-1.5", lead.score > 80 ? 'text-emerald-500' : 'text-orange-500')}>{lead.score}</span>
-                                            <div className={cn("h-1 w-12 rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-200')}>
-                                                <div className={cn("h-full rounded-full transition-all duration-[2000ms] ease-out", lead.score > 80 ? 'bg-emerald-500' : 'bg-orange-500')} style={{ width: `${lead.score}%` }} />
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", lead.status === 'Hot' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20')}>{lead.status}</span>
-                                    </td>
-                                    <td className="px-6 py-4 min-w-[250px]">
-                                        {insight?.id === lead.id ? (
-                                            <div className="flex items-start space-x-2 text-xs text-emerald-500 font-medium bg-emerald-500/5 p-2 rounded-lg border border-emerald-500/10 animate-in fade-in zoom-in-95">
-                                                <Sparkles size={14} className="shrink-0 mt-0.5" />
-                                                <span>{insight.text}</span>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => analyzeLead(lead)}
-                                                disabled={analyzingId === lead.id}
-                                                className={cn("flex items-center space-x-2 text-[10px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg transition-all", isDarkMode ? 'bg-white/5 text-white/40 hover:text-emerald-500 hover:bg-emerald-500/10' : 'bg-slate-50 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50')}
-                                            >
-                                                {analyzingId === lead.id ? (
-                                                    <div className="flex space-x-1">
-                                                        <div className="w-1 h-1 bg-current rounded-full animate-bounce" />
-                                                        <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]" />
-                                                        <div className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]" />
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <Lightbulb size={12} />
-                                                        <span>Generate Strategy</span>
-                                                    </>
-                                                )}
-                                            </button>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-all">
-                                            <button className="p-2 hover:bg-white/10 rounded-lg hover:text-emerald-500 transition-colors"><MessageSquare size={16} /></button>
-                                            <button className="p-2 hover:bg-white/10 rounded-lg hover:text-rose-500 transition-colors"><MoreHorizontal size={16} /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </GlassCard> */}
         </div>
     );
 };

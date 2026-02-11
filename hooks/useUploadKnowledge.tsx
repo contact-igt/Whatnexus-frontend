@@ -119,6 +119,7 @@ export const useDeleteKnowledgeById = () => {
 
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["knowledges"] });
+            queryClient.invalidateQueries({ queryKey: ["deleted-knowledges"] });
             toast.success("Knowledge deleted successfully");
         },
 
@@ -127,3 +128,47 @@ export const useDeleteKnowledgeById = () => {
         },
     });
 };
+
+export const useDeletedKnowledgeList = () => {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['deleted-knowledges'],
+        queryFn: () => KnowledgeApis.getDeletedKnowledges(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    return { data, isLoading, isError };
+}
+
+export const useDeleteKnowledgePermanentById = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => KnowledgeApis.deleteKnowledgePermanentById(id),
+
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['deleted-knowledges'] });
+            toast.success("Knowledge deleted successfully");
+        },
+
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to delete knowledge");
+        },
+    });
+};
+
+
+export const useRestoreKnowledgeById = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => KnowledgeApis.restoreKnowledgeById(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["knowledges"] });
+            queryClient.invalidateQueries({ queryKey: ["deleted-knowledges"] });
+            toast.success("Knowledge restored successfully");
+        },
+        onError: (error: any) => {
+            toast.error(error.response.data.message || "Failed to restore knowledge")
+        }
+    })
+}

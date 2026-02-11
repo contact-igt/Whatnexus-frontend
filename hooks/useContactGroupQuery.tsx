@@ -114,10 +114,54 @@ export const useDeleteGroupMutation = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-groups'] });
             toast.success(data?.message || 'Group deleted successfully');
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Failed to delete group');
+        }
+    });
+};
+
+// Get Deleted Groups
+export const useGetDeletedGroupsQuery = (params?: any) => {
+    return useQuery({
+        queryKey: ['deleted-groups', params],
+        queryFn: () => contactGroupApis.getDeletedGroups(params),
+    });
+};
+
+// Restore Group
+export const useRestoreGroupMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (groupId: string) => {
+            return contactGroupApis.restoreGroup(groupId);
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-groups'] });
+            toast.success(data?.message || 'Group restored successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to restore group');
+        }
+    });
+};
+
+// Permanent Delete Group
+export const usePermanentDeleteGroupMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (groupId: string) => {
+            return contactGroupApis.permanentDeleteGroup(groupId);
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['deleted-groups'] });
+            toast.success(data?.message || 'Group permanently deleted successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to permanently delete group');
         }
     });
 };

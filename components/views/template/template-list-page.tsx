@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { FileText, Plus, Search, RefreshCw, AlertCircle } from 'lucide-react';
 import { ActionMenu } from '@/components/ui/action-menu';
 import { cn } from '@/lib/utils';
@@ -8,12 +8,14 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { Template, TemplateStatus } from './template-types';
 import { getStatusColor, getHealthColor, formatDate } from './template-utils';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-
+import { DataTable, ColumnDef } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import { Modal } from '@/components/ui/modal';
 
 interface TemplateListPageProps {
     isDarkMode: boolean;
-    templates: Template[];
+    templates: { templates: Template[] };
+    deletedTemplates?: Template[];
     isLoading: boolean;
     onCreateNew: () => void;
     onEdit: (template: Template) => void;
@@ -23,6 +25,7 @@ interface TemplateListPageProps {
     onSyncTemplate: (template_id: string) => void;
     onPermanentDelete: (template_id: string) => void;
     onSoftDelete: (templateId: string) => void;
+    onRestore?: (templateId: string) => void;
     onSync: () => void;
 }
 
@@ -40,67 +43,176 @@ export const TemplateListPage = ({
     onEdit,
     onView,
     onSoftDelete,
-    onSync
+    onRestore,
+    onSync,
+    deletedTemplates = []
 }: TemplateListPageProps) => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const [actionConfirmation, setActionConfirmation] = useState<{
         isOpen: boolean;
         templateId: string | null;
-        type: 'soft' | 'permanent';
+        type: 'soft' | 'permanent' | 'restore';
     }>({
         isOpen: false,
         templateId: null,
         type: 'soft'
     });
 
-
+    console.log(templates)
     const tabs: { id: TabType; label: string; count?: number }[] = [
-        { id: 'all', label: 'All', count: templates.length },
-        { id: 'draft', label: 'Draft', count: templates.filter((t: any) => t.status === 'draft').length },
-        { id: 'pending', label: 'Pending', count: templates.filter((t: any) => t.status === 'pending').length },
-        { id: 'approved', label: 'Approved', count: templates.filter((t: any) => t.status === 'approved').length },
-        { id: 'action_required', label: 'Action Required', count: templates.filter((t: any) => t.status === 'rejected').length },
-        { id: 'paused', label: 'Paused', count: templates.filter((t: any) => t.status === 'paused').length },
-        { id: 'trash', label: 'Trash', count: templates.filter((t: any) => t.status === 'deleted').length },
+        { id: 'all', label: 'All', count: templates?.templates?.length },
+        { id: 'draft', label: 'Draft', count: templates?.templates?.filter((t: any) => t.status === 'draft').length },
+        { id: 'pending', label: 'Pending', count: templates?.templates?.filter((t: any) => t.status === 'pending').length },
+        { id: 'approved', label: 'Approved', count: templates?.templates?.filter((t: any) => t.status === 'approved').length },
+        { id: 'action_required', label: 'Action Required', count: templates?.templates?.filter((t: any) => t.status === 'rejected').length },
+        { id: 'paused', label: 'Paused', count: templates?.templates?.filter((t: any) => t.status === 'paused').length },
+        { id: 'trash', label: 'Trash', count: deletedTemplates.length },
     ];
 
-    const filteredTemplates = templates.filter((template: any) => {
-        // Tab filter
-        if (activeTab === 'draft' && template.status !== 'draft') return false;
-        if (activeTab === 'pending' && template.status !== 'pending') return false;
-        if (activeTab === 'approved' && template.status !== 'approved') return false;
-        if (activeTab === 'action_required' && template.status !== 'rejected') return false;
-        if (activeTab === 'paused' && template.status !== 'paused') return false;
-        if (activeTab === 'trash' && template.status !== 'deleted') return false;
+    const currentTemplates = activeTab === 'trash' ? deletedTemplates : templates?.templates;
 
-        // Search filter
-        if (searchQuery && !template.template_name.toLowerCase().includes(searchQuery.toLowerCase())) {
-            return false;
-        }
+    const filteredTemplates = useMemo(() => {
+        return currentTemplates?.filter((template: any) => {
+            // Tab filter
+            if (activeTab === 'draft' && template?.status !== 'draft') return false;
+            if (activeTab === 'pending' && template?.status !== 'pending') return false;
+            if (activeTab === 'approved' && template?.status !== 'approved') return false;
+            if (activeTab === 'action_required' && template?.status !== 'rejected') return false;
+            if (activeTab === 'paused' && template?.status !== 'paused') return false;
+            // if (activeTab === 'trash' && template.status !== 'deleted') return false;
 
-        return true;
-    });
+            // Search filter
+            if (searchQuery && !template.template_name?.toLowerCase().includes(searchQuery.toLowerCase())) {
+                return false;
+            }
 
-    const handleDeleteClick = (templateId: string, type: 'soft' | 'permanent') => {
-        setDeleteConfirmation({
+            return true;
+        });
+    }, [currentTemplates, activeTab, searchQuery]);
+
+    const totalPages = Math.ceil(filteredTemplates?.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedTemplates = filteredTemplates?.slice(startIndex, startIndex + itemsPerPage);
+
+    const handleActionClick = (templateId: string, type: 'soft' | 'permanent' | 'restore') => {
+        setActionConfirmation({
             isOpen: true,
             templateId,
             type
         });
     };
 
-    const handleConfirmDelete = () => {
-        if (deleteConfirmation.templateId) {
-            if (deleteConfirmation.type === 'soft') {
-                onSoftDelete(deleteConfirmation.templateId);
-            } else {
-                onPermanentDelete(deleteConfirmation.templateId);
+    const handleConfirmAction = () => {
+        if (actionConfirmation.templateId) {
+            if (actionConfirmation.type === 'soft') {
+                onSoftDelete(actionConfirmation.templateId);
+            } else if (actionConfirmation.type === 'permanent') {
+                onPermanentDelete(actionConfirmation.templateId);
+            } else if (actionConfirmation.type === 'restore') {
+                onRestore?.(actionConfirmation.templateId);
             }
         }
-        setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' });
+        setActionConfirmation({ isOpen: false, templateId: null, type: 'soft' });
     };
+
+    const columns: ColumnDef<Template>[] = useMemo(() => [
+        {
+            field: 'template_name',
+            headerName: 'Template Name',
+            width: 250,
+            renderCell: ({ row }) => (
+                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
+                    {row.template_name}
+                </p>
+            )
+        },
+        {
+            field: 'category',
+            headerName: 'Category',
+            align: 'center',
+            headerAlign: 'center',
+            width: 120,
+            renderCell: ({ row }) => (
+                <span className={cn(
+                    "text-xs font-medium px-2 py-1 rounded",
+                    isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-600'
+                )}>
+                    {row.category}
+                </span>
+            )
+        },
+        {
+            field: 'status',
+            headerName: 'Status',
+            align: 'center',
+            headerAlign: 'center',
+            width: 120,
+            renderCell: ({ row }) => (
+                <span className={cn(
+                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
+                    getStatusColor(row.status, isDarkMode)
+                )}>
+                    {row.status}
+                </span>
+            )
+        },
+        {
+            field: 'template_type', // Type
+            headerName: 'Type',
+            align: 'center',
+            headerAlign: 'center',
+            width: 100,
+            renderCell: ({ row }) => (
+                <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                    {row.template_type}
+                </span>
+            )
+        },
+        {
+            field: 'created_at',
+            headerName: 'Created At',
+            align: 'center',
+            headerAlign: 'center',
+            width: 150,
+            renderCell: ({ row }) => (
+                <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                    {formatDate(row.created_at)}
+                </span>
+            )
+        },
+        {
+            field: 'actions',
+            headerName: 'Actions',
+            align: 'center',
+            headerAlign: 'center',
+            width: 100,
+            renderCell: ({ row }) => (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <ActionMenu
+                        isDarkMode={isDarkMode}
+                        isView={true}
+                        isEdit={['draft', 'paused', 'rejected'].includes(row?.status)}
+                        isSubmitTemplate={['draft', 'paused', 'rejected'].includes(row?.status)}
+                        onSubmitTemplate={() => { (row?.status === 'paused' || row?.status === 'rejected') ? onResubmitTemplate(row?.template_id) : onSubmitTemplate(row?.template_id) }}
+                        isSyncTemplate={row?.status === 'pending'}
+                        onSyncTemplate={() => onSyncTemplate(row?.template_id)}
+                        onView={() => onView(row)}
+                        onEdit={() => onEdit(row)}
+                        isDelete={['draft', 'paused', 'rejected'].includes(row?.status)}
+                        onDelete={() => handleActionClick(row.template_id, 'soft')}
+                        isPermanentDelete={activeTab === 'trash' && user?.role === 'tenant_admin'}
+                        onPermanentDelete={() => handleActionClick(row.template_id, 'permanent')}
+                        isRestore={activeTab === 'trash'}
+                        onRestore={() => handleActionClick(row.template_id, 'restore')}
+                    />
+                </div>
+            )
+        }
+    ], [isDarkMode, activeTab, user?.role, onEdit, onView, onResubmitTemplate, onSubmitTemplate, onSyncTemplate]);
 
     return (
         <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
@@ -162,7 +274,7 @@ export const TemplateListPage = ({
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
                         className={cn(
                             "px-4 py-3 text-sm font-semibold transition-all duration-200 border-b-2 whitespace-nowrap flex items-center gap-2",
                             activeTab === tab.id
@@ -190,130 +302,66 @@ export const TemplateListPage = ({
             </div>
 
             {/* Templates Table */}
-            <GlassCard isDarkMode={isDarkMode} className="p-0">
-                <div className="overflow-x-auto">
-                    {isLoading ? (
-                        <div className="flex items-center justify-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+            <GlassCard isDarkMode={isDarkMode} className="p-0 overflow-hidden">
+                <DataTable
+                    columns={columns}
+                    data={paginatedTemplates}
+                    isLoading={isLoading}
+                    isDarkMode={isDarkMode}
+                    onRowClick={(row) => onView(row)}
+                    emptyState={
+                        <div className="flex flex-col items-center justify-center py-16">
+                            <AlertCircle size={32} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
+                            <div className={cn("text-sm mt-3", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                {searchQuery ? 'No templates found matching your search' : 'No templates found'}
+                            </div>
                         </div>
-                    ) : (
-                        <table className="w-full text-left min-w-[1000px]">
-                            <thead>
-                                <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
-                                    <th className="px-6 py-4">Template Name</th>
-                                    <th className="px-6 py-4 text-center">Category</th>
-                                    <th className="px-6 py-4 text-center">Status</th>
-                                    <th className="px-6 py-4 text-center">Type</th>
-                                    {/* <th className="px-6 py-4 text-center">Health</th> */}
-                                    <th className="px-6 py-4 text-center">Created At</th>
-                                    <th className="px-6 py-4 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                                {filteredTemplates.length > 0 ? (
-                                    filteredTemplates.map((template) => (
-                                        <tr key={template.template_id} className="group transition-all hover:bg-emerald-500/5">
-                                            <td className="px-6 py-5 w-50">
-                                                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
-                                                    {template?.template_name}
-                                                </p>
-                                            </td>
-                                            <td className="px-2 py-5 text-center">
-                                                <span className={cn(
-                                                    "text-xs font-medium px-2 py-1 rounded",
-                                                    isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-100 text-slate-600'
-                                                )}>
-                                                    {template.category}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5 text-center">
-                                                <span className={cn(
-                                                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                                                    getStatusColor(template.status, isDarkMode)
-                                                )}>
-                                                    {template.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5 text-center">
-                                                <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                                    {template.template_type}
-                                                </span>
-                                            </td>
-                                            {/* <td className="px-6 py-5 text-center">
-                                            <span className={cn(
-                                                "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                                                getHealthColor(template.health, isDarkMode)
-                                            )}>
-                                                {template.health}
-                                            </span>
-                                        </td> */}
-                                            <td className="px-6 py-5 text-center">
-                                                <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                    {formatDate(template.created_at)}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <div className="flex items-center justify-center">
-                                                    <ActionMenu
-                                                        isDarkMode={isDarkMode}
-                                                        isView={true}
-                                                        isEdit={['draft', 'paused', 'rejected'].includes(template?.status)}
-                                                        isSubmitTemplate={['draft', 'paused', 'rejected'].includes(template?.status)}
-                                                        onSubmitTemplate={() => { (template?.status === 'paused' || template?.status === 'rejected') ? onResubmitTemplate(template?.template_id) : onSubmitTemplate(template?.template_id) }}
-                                                        isSyncTemplate={template?.status === 'pending'}
-                                                        onSyncTemplate={() => onSyncTemplate(template?.template_id)}
-                                                        onView={() => onView(template)}
-                                                        onEdit={() => onEdit(template)}
-                                                        isDelete={['draft', 'paused', 'rejected', 'deleted'].includes(template?.status)}
-                                                        onDelete={() => handleDeleteClick(template.template_id, 'soft')}
-                                                        isPermanentDelete={template?.status === "deleted" && activeTab === 'trash' && user?.role === 'tenant_admin'}
-                                                        onPermanentDelete={() => handleDeleteClick(template.template_id, 'permanent')}
-                                                    // onRestore={() => onRestore(template.template_id)}
-                                                    />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <AlertCircle size={32} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
-                                                <p className={cn("text-sm", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                                    {searchQuery ? 'No templates found matching your search' : 'No templates found'}
-                                                </p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
+                    }
+                />
+                {totalPages > 1 && (
+                    <div className="p-4 border-t border-white/5">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            totalItems={filteredTemplates?.length}
+                            itemsPerPage={itemsPerPage}
+                            isDarkMode={isDarkMode}
+                        />
+                    </div>
+                )}
             </GlassCard>
 
             {/* Footer */}
-            <div className="flex items-center justify-between">
+            {/* <div className="flex items-center justify-between">
                 <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                    Showing {filteredTemplates.length} of {templates.length} templates
+                    Showing {paginatedTemplates.length} of {templates.length} templates
                 </p>
-            </div>
+            </div> */}
 
             <Modal
-                isOpen={deleteConfirmation.isOpen}
-                onClose={() => setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
-                title={deleteConfirmation.type === 'permanent' ? "Permanently Delete Template?" : "Delete Template?"}
+                isOpen={actionConfirmation.isOpen}
+                onClose={() => setActionConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
+                title={
+                    actionConfirmation.type === 'permanent'
+                        ? "Permanently Delete Template?"
+                        : actionConfirmation.type === 'restore'
+                            ? "Restore Template?"
+                            : "Remove Template?"
+                }
                 description={
-                    deleteConfirmation.type === 'permanent'
+                    actionConfirmation.type === 'permanent'
                         ? "Are you sure you want to permanently delete this template? This action cannot be undone."
-                        : "Are you sure you want to delete this template? It will be moved to the trash."
+                        : actionConfirmation.type === 'restore'
+                            ? "Are you sure you want to restore this template?"
+                            : "Are you sure you want to remove this template? It will be moved to the trash."
                 }
                 isDarkMode={isDarkMode}
                 className="max-w-md"
                 footer={
                     <div className="flex items-center justify-end space-x-3">
                         <button
-                            onClick={() => setDeleteConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
+                            onClick={() => setActionConfirmation({ isOpen: false, templateId: null, type: 'soft' })}
                             className={cn(
                                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
                                 isDarkMode
@@ -324,15 +372,15 @@ export const TemplateListPage = ({
                             Cancel
                         </button>
                         <button
-                            onClick={handleConfirmDelete}
+                            onClick={handleConfirmAction}
                             className={cn(
                                 "px-4 py-2 rounded-lg text-sm font-medium text-white transition-all shadow-lg",
                                 isDarkMode
-                                    ? 'bg-red-500 hover:bg-red-600 border border-red-500/50'
-                                    : 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
+                                    ? actionConfirmation.type === 'restore' ? 'bg-emerald-500 hover:bg-emerald-600 border border-emerald-500/50' : 'bg-red-500 hover:bg-red-600 border border-red-500/50'
+                                    : actionConfirmation.type === 'restore' ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20' : 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
                             )}
                         >
-                            Delete
+                            {actionConfirmation.type === 'restore' ? 'Restore' : actionConfirmation.type === 'permanent' ? 'Delete' : 'Remove'}
                         </button>
                     </div>
                 }

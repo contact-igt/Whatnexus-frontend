@@ -1,7 +1,7 @@
 
 "use client";
-import { useState } from 'react';
-import { UserPlus, Shield, MoreHorizontal, User, Mail, Phone, Lock, Globe, ChevronDown, Badge } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { UserPlus, Shield, MoreHorizontal, User, Mail, Phone, Globe, ChevronDown, Badge, Edit2, Trash2, Eye } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
@@ -13,54 +13,362 @@ import { useTheme } from '@/hooks/useTheme';
 import { RoleBasedWrapper } from '@/components/ui/role-based-wrapper';
 import { Select } from '../../ui/select';
 import { Input } from '../../ui/input';
-import { useCreateTenantUserMutation, useTenantUserQuery } from '@/hooks/useTenantUserQuery';
+import { useCreateTenantUserMutation, useTenantUserQuery, useSoftDeleteTenantUserMutation, useUpdateTenantUserMutation, usePermanentDeleteTenantUserMutation, useGetTenantUserByIdQuery } from '@/hooks/useTenantUserQuery';
+import { ActionMenu } from '@/components/ui/action-menu';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { DataTable, ColumnDef } from '@/components/ui/data-table';
+import { ConfirmationModal } from '@/components/ui/confirmationModal';
+import { Pagination } from '@/components/ui/pagination';
 
-const formSchema = z.object({
+type TabType = 'active' | 'trash';
+
+// Invite Form Schema
+const inviteFormSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }),
+    email: z.string().email({ message: "Invalid email address." }),
     country_code: z.string().min(2, { message: "Country code must be at least 2 characters." }),
     mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
-    email: z.string().email({ message: "Invalid email address." }),
-    password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+    role: z.enum(["staff", "agent", "doctor"], { message: "Role is required." }),
 });
 
-type FormData = z.infer<typeof formSchema>;
+// Edit Form Schema
+const editFormSchema = z.object({
+    username: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
+    country_code: z.string().min(2, { message: "Country code must be at least 2 characters." }).optional(),
+    mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }).optional(),
+    role: z.enum(["staff", "agent", "doctor"], { message: "Role is required." }).optional(),
+});
+
+type InviteFormData = z.infer<typeof inviteFormSchema>;
+type EditFormData = z.infer<typeof editFormSchema>;
 
 export const TeamManagementView = () => {
+    const { user } = useAuth();
     const { isDarkMode } = useTheme();
-    const { control, register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
-        defaultValues: {
-            "country_code": "+91"
-        },
-        resolver: zodResolver(formSchema)
-    })
-    // const { data: managementData, isLoading } = useManagementQuery();
-    const {data: tenantUserData, isLoading} = useTenantUserQuery();
-    const { mutate: createTenantUserMutate, isPending: createManagementLoading } = useCreateTenantUserMutation();
+    const [activeTab, setActiveTab] = useState<TabType>('active');
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [userToDelete, setUserToDelete] = useState<any>(null);
 
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 7;
+
+    // Modal states
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isPermanentDeleteModalOpen, setIsPermanentDeleteModalOpen] = useState(false);
 
-    const onSubmit = (data: FormData) => {
+    // Data and mutations
+    const { data: tenantUserData, isLoading } = useTenantUserQuery();
+    const { data: userDetails, isLoading: userDetailsLoading } = useGetTenantUserByIdQuery(selectedUser?.tenant_user_id || "");
+    const { mutate: createTenantUserMutate, isPending: createLoading } = useCreateTenantUserMutation();
+    const { mutate: deleteTenantUserMutate, isPending: deleteLoading } = useSoftDeleteTenantUserMutation();
+    const { mutate: updateTenantUserMutate, isPending: updateLoading } = useUpdateTenantUserMutation();
+    const { mutate: permanentDeleteMutate, isPending: permanentDeleteLoading } = usePermanentDeleteTenantUserMutation();
+
+    // Invite form
+    const { control: inviteControl, register: inviteRegister, handleSubmit: inviteHandleSubmit, formState: { errors: inviteErrors }, reset: inviteReset } = useForm<InviteFormData>({
+        defaultValues: {
+            country_code: "+91",
+            role: "staff",
+        },
+        resolver: zodResolver(inviteFormSchema)
+    });
+
+    // Edit form
+    const { control: editControl, register: editRegister, handleSubmit: editHandleSubmit, formState: { errors: editErrors }, reset: editReset } = useForm<EditFormData>({
+        resolver: zodResolver(editFormSchema)
+    });
+
+    const filteredUsers = tenantUserData?.data?.users?.filter((user: any) => user.role !== "super_admin" && user.role !== "tenant_admin") || [];
+
+    // Separate active and deleted users
+    const activeUsers = filteredUsers.filter((user: any) => user.status !== 'deleted' && user.is_deleted !== true);
+    const deletedUsers = filteredUsers.filter((user: any) => user.status === 'deleted' || user.is_deleted === true);
+
+    const displayUsers = activeTab === 'active' ? activeUsers : deletedUsers;
+
+    const currentDisplayUsers = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return displayUsers.slice(startIndex, startIndex + itemsPerPage);
+    }, [displayUsers, currentPage]);
+
+    const totalPages = Math.ceil(displayUsers.length / itemsPerPage);
+
+    // Reset page on tab change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab]);
+
+    // Form handlers
+    const onInviteSubmit = (data: InviteFormData) => {
         createTenantUserMutate(data, {
             onSuccess: () => {
-                reset();
+                inviteReset();
                 setIsInviteModalOpen(false);
             }
         });
-    }
-    const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    };
+
+    const onEditSubmit = (data: EditFormData) => {
+        if (selectedUser?.tenant_user_id) {
+            updateTenantUserMutate(
+                { tenantUserId: selectedUser.tenant_user_id, data },
+                {
+                    onSuccess: () => {
+                        setIsEditModalOpen(false);
+                        setSelectedUser(null);
+                        editReset();
+                    }
+                }
+            );
+        }
+    };
+
+    const handleEditClick = (user: any) => {
+        let mobile = user.mobile || '';
+        let countryCode = user.country_code || '+91';
+
+        // Normalize country code
+        if (!countryCode.startsWith('+')) countryCode = `+${countryCode}`;
+
+        const knownCodes = ['+91', '+1', '+44', '+971'];
+        let foundCode = false;
+
+        // 1. Check if it matches the assigned country code
+        if (mobile.startsWith(countryCode)) {
+            mobile = mobile.slice(countryCode.length).trim();
+            foundCode = true;
+        }
+        // 2. Check known codes
+        else {
+            for (const code of knownCodes) {
+                if (mobile.startsWith(code)) {
+                    countryCode = code;
+                    mobile = mobile.slice(code.length).trim();
+                    foundCode = true;
+                    break;
+                }
+            }
+        }
+
+        // 3. Fallback to raw code check (e.g. "91" vs "+91") if not found yet
+        if (!foundCode) {
+            const rawCode = user.country_code || '91';
+            if (mobile.startsWith(rawCode)) {
+                mobile = mobile.slice(rawCode.length).trim();
+            }
+        }
+
+        setSelectedUser(user);
+        editReset({
+            username: user.username,
+            country_code: countryCode,
+            mobile: mobile,
+            role: user.role
+        });
+        setIsEditModalOpen(true);
+    };
+
+    // Sync form with fetched details using useEffect
+    useEffect(() => {
+        if (userDetails?.data && isEditModalOpen && selectedUser?.tenant_user_id === userDetails.data.tenant_user_id) {
+            let mobile = userDetails.data.mobile || '';
+            let countryCode = userDetails.data.country_code || '+91';
+
+            // Normalize country code
+            if (!countryCode.startsWith('+')) countryCode = `+${countryCode}`;
+
+            const knownCodes = ['+91', '+1', '+44', '+971'];
+            let foundCode = false;
+
+            // 1. Check if it matches the assigned country code
+            if (mobile.startsWith(countryCode)) {
+                mobile = mobile.slice(countryCode.length).trim();
+                foundCode = true;
+            }
+            // 2. Check known codes
+            else {
+                for (const code of knownCodes) {
+                    if (mobile.startsWith(code)) {
+                        countryCode = code;
+                        mobile = mobile.slice(code.length).trim();
+                        foundCode = true;
+                        break;
+                    }
+                }
+            }
+
+            // 3. Fallback to raw code check (e.g. "91" vs "+91") if not found yet
+            if (!foundCode) {
+                const rawCode = userDetails.data.country_code || '91';
+                if (mobile.startsWith(rawCode)) {
+                    mobile = mobile.slice(rawCode.length).trim();
+                }
+            }
+
+            editReset({
+                username: userDetails.data.username,
+                country_code: countryCode,
+                mobile: mobile,
+                role: userDetails.data.role
+            });
+        }
+    }, [userDetails, isEditModalOpen, selectedUser?.tenant_user_id]);
+
+    const handleViewClick = (user: any) => {
+        setSelectedUser(user);
+        setIsViewModalOpen(true);
+    };
+
+    const handleDeleteClick = (user: any) => {
+        setUserToDelete(user);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handlePermanentDeleteClick = (user: any) => {
+        setUserToDelete(user);
+        setIsPermanentDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (userToDelete?.tenant_user_id) {
+            deleteTenantUserMutate(userToDelete.tenant_user_id, {
+                onSuccess: () => {
+                    setIsDeleteModalOpen(false);
+                    setUserToDelete(null);
+                }
+            });
+        }
+    };
+
+    const handleConfirmPermanentDelete = () => {
+        if (userToDelete?.tenant_user_id) {
+            permanentDeleteMutate(userToDelete.tenant_user_id, {
+                onSuccess: () => {
+                    setIsPermanentDeleteModalOpen(false);
+                    setUserToDelete(null);
+                }
+            });
+        }
+    };
+
+    const handleInviteFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        await handleSubmit(onSubmit)(e);
+        await inviteHandleSubmit(onInviteSubmit)(e);
     };
-    const filteredManagementUsers  = tenantUserData?.data?.filter((user: any)=> user.role !== "super_admin" )
+
+    const handleEditFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await editHandleSubmit(onEditSubmit)(e);
+    };
+
+    // Define DataTable columns
+    const columns: ColumnDef<any>[] = useMemo(() => [
+        {
+            field: 'username',
+            headerName: 'Identity',
+            width: 200,
+            renderCell: ({ row }) => (
+                <div className="flex items-center space-x-3">
+                    <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-white/10 shadow-lg">
+                        {row?.username ? row.username.charAt(0).toUpperCase() : <User size={16} />}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className={cn("text-sm font-semibold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-800')}>{row?.username || 'N/A'}</span>
+                    </div>
+                </div>
+            )
+        },
+        {
+            field: 'email',
+            headerName: 'Contact',
+            width: 200,
+            renderCell: ({ row }) => (
+                <div className="flex flex-col space-y-1">
+                    <div className="flex items-center space-x-2">
+                        <Mail size={12} className={cn(isDarkMode ? 'text-white/40' : 'text-slate-400')} />
+                        <span className={cn("text-xs", isDarkMode ? 'text-white/70' : 'text-slate-600')}>{row?.email || 'N/A'}</span>
+                    </div>
+                    {row?.mobile && (
+                        <div className="flex items-center space-x-2">
+                            <Phone size={12} className={cn(isDarkMode ? 'text-white/40' : 'text-slate-400')} />
+                            <span className={cn("text-xs", isDarkMode ? 'text-white/70' : 'text-slate-600')}>{row?.country_code} {row?.mobile}</span>
+                        </div>
+                    )}
+                </div>
+            )
+        },
+        {
+            field: 'status',
+            headerName: 'Status',
+            width: 180,
+            renderCell: ({ row }) => (
+                <div className="flex items-center space-x-2">
+                    <div className={cn("w-2 h-2 rounded-full", row.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600')} />
+                    <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/50' : 'text-slate-500')}>{row?.status || 'inactive'}</span>
+                </div>
+            )
+        },
+        {
+            field: 'role',
+            headerName: 'Security Role',
+            width: 180,
+            renderCell: ({ row }) => (
+                <span className={cn(
+                    "text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide",
+                    row.role === 'tenant_admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                        row.role === 'admin' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                )}>
+                    {row?.role || 'staff'}
+                </span>
+            )
+        },
+        {
+            field: 'actions',
+            headerName: 'Actions',
+            width: 80,
+            align: 'right',
+            headerAlign: 'right',
+            renderCell: ({ row }) => (
+                <div onClick={(e) => e.stopPropagation()}>
+                    {activeTab === 'active' ? (
+                        <ActionMenu
+                            isDarkMode={isDarkMode}
+                            isView={true}
+                            onView={() => handleViewClick(row)}
+                            isEdit={user?.role === 'tenant_admin'}
+                            onEdit={() => handleEditClick(row)}
+                            isDelete={user?.role === 'tenant_admin'}
+                            onDelete={() => handleDeleteClick(row)}
+                        />
+                    ) : (
+                        <RoleBasedWrapper allowedRoles={['tenant_admin']}>
+                            <ActionMenu
+                                isDarkMode={isDarkMode}
+                                isPermanentDelete={true}
+                                onPermanentDelete={() => handlePermanentDeleteClick(row)}
+                            />
+                        </RoleBasedWrapper>
+                    )}
+                </div>
+            )
+        }
+    ], [isDarkMode, activeTab]);
+
     return (
-        <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
+        <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 no-scrollbar pb-32">
             <div className="flex justify-between items-end border-b border-white/5 pb-6">
                 <div>
                     <h1 className={cn("text-4xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Agent Matrix</h1>
                     <p className={cn("font-medium text-sm mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Manage shared inbox permissions and neural layer overrides.</p>
                 </div>
-                <RoleBasedWrapper allowedRoles={['tenant_admin', 'super_admin']}>
+                <RoleBasedWrapper allowedRoles={['tenant_admin']}>
                     <button
                         onClick={() => setIsInviteModalOpen(true)}
                         className="h-12 px-6 rounded-xl bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-500/20 flex items-center space-x-2"
@@ -71,93 +379,75 @@ export const TeamManagementView = () => {
                 </RoleBasedWrapper>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2">
-                    <GlassCard isDarkMode={isDarkMode} className="p-0">
-                        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5 rounded-t-2xl">
-                            <h3 className="font-bold uppercase tracking-tight text-sm">Active Nodes</h3>
-                            <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wide">4 Human Shards</span>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className={cn("text-[10px] font-bold uppercase tracking-wider", isDarkMode ? 'text-white/20' : 'text-slate-400')}>
-                                        <th className="px-8 py-4">Identity</th>
-                                        <th className="px-8 py-4">Pulse</th>
-                                        <th className="px-8 py-4 text-center">Load</th>
-                                        <th className="px-8 py-4">Security Role</th>
-                                        <th className="px-8 py-4 text-right">Settings</th>
-                                    </tr>
-                                </thead>
-                                <tbody className={cn("divide-y", isDarkMode ? 'divide-white/5' : 'divide-slate-100')}>
-                                    {isLoading ? (
-                                        Array.from({ length: 4 }).map((_, index) => (
-                                            <tr key={index} className="animate-pulse">
-                                                <td className="px-8 py-4">
-                                                    <div className="flex items-center space-x-3">
-                                                        <div className={cn("w-9 h-9 rounded-xl", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                        <div className={cn("h-4 w-24 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-4">
-                                                    <div className="flex items-center space-x-2">
-                                                        <div className={cn("w-2 h-2 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                        <div className={cn("h-3 w-16 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-4 text-center">
-                                                    <div className={cn("h-4 w-12 rounded mx-auto", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                </td>
-                                                <td className="px-8 py-4">
-                                                    <div className={cn("h-5 w-20 rounded-lg", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                </td>
-                                                {/* <td className="px-8 py-4 text-right">
-                                                    <div className={cn("h-8 w-8 rounded ml-auto", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                                                </td> */}
-                                            </tr>
-                                        ))
-                                    ) : filteredManagementUsers?.length > 0 ? (
-                                        filteredManagementUsers?.map((agent: any) => (
-                                            <tr key={agent.id} className="group transition-all hover:bg-emerald-500/5">
-                                                <td className="px-8 py-4">
-                                                    <div className="flex items-center space-x-3">
-                                                        <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-white/10 group-hover:rotate-6 transition-transform shadow-lg">{!agent?.username ? agent?.username?.split("")[0].toUpperCase() : <User size={16} />}</div>
-                                                        <span className={cn("text-sm font-semibold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-800')}>{agent?.username}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-4">
-                                                    <div className="flex items-center space-x-2">
-                                                        <div className={cn("w-2 h-2 rounded-full", agent.status === 'Online' ? 'bg-emerald-500 animate-pulse' : agent?.status === 'Busy' ? 'bg-orange-500' : 'bg-slate-600')} />
-                                                        <span className={cn("text-[10px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/50' : 'text-slate-500')}>{agent?.status}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-4 text-center">
-                                                    <span className={cn("text-xs font-bold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>{Math.floor(Math.random() * 10)} / 15</span>
-                                                </td>
-                                                <td className="px-8 py-4">
-                                                    <span className={cn("text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide", agent.role === 'super_admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20')}>{agent?.role}</span>
-                                                </td>
-                                                <td className="px-8 py-4 text-right">
-                                                    <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
-                                                        <button className="p-2 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"><MoreHorizontal size={18} /></button>
-                                                    </RoleBasedWrapper>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={5} className="px-8 py-12 text-center">
-                                                <p className={cn("text-sm font-medium", isDarkMode ? 'text-white/40' : 'text-slate-400')}>No team members found</p>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </GlassCard>
-                </div>
+            {/* Tabs */}
+            <div className={cn("flex space-x-1 border-b", isDarkMode ? 'border-white/5' : 'border-slate-200')}>
+                {[
+                    { id: 'active', label: 'Active Users', count: activeUsers.length },
+                    { id: 'trash', label: 'Trash', count: deletedUsers.length }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as TabType)}
+                        className={cn(
+                            "px-4 py-3 text-sm font-semibold uppercase tracking-wide border-b-2 transition-all",
+                            activeTab === tab.id
+                                ? 'border-emerald-500 text-emerald-500'
+                                : isDarkMode
+                                    ? 'border-transparent text-white/50 hover:text-white/70'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                    >
+                        {tab.label}
+                        <span className={cn("ml-2", activeTab === tab.id ? 'text-emerald-500' : isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                            ({tab.count})
+                        </span>
+                    </button>
+                ))}
+            </div>
 
-                <div className="space-y-6">
+            <div>
+                <GlassCard isDarkMode={isDarkMode} className="p-0">
+                    <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5 rounded-t-2xl">
+                        <h3 className="font-bold uppercase tracking-tight text-sm">{activeTab === 'active' ? 'Active Nodes' : 'Deleted Nodes'}</h3>
+                        <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wide">{displayUsers?.length || 0} Team Members</span>
+                    </div>
+                    <DataTable
+                        columns={columns}
+                        data={currentDisplayUsers || []}
+                        isLoading={isLoading}
+                        isDarkMode={isDarkMode}
+                        emptyState={
+                            <div className="flex flex-col items-center justify-center py-16">
+                                <div className={cn(
+                                    "w-16 h-16 rounded-full flex items-center justify-center",
+                                    isDarkMode ? 'bg-white/5' : 'bg-slate-100'
+                                )}>
+                                    <User size={28} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
+                                </div>
+                                <div className="space-y-2 mt-4 text-center">
+                                    <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                        No team members found
+                                    </p>
+                                    <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                        Invite team members to get started
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    />
+                </GlassCard>
+
+                {displayUsers.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={displayUsers.length}
+                        itemsPerPage={itemsPerPage}
+                        isDarkMode={isDarkMode}
+                    />
+                )}
+                {/* <div className="space-y-6">
                     <RoleBasedWrapper allowedRoles={['admin', 'super_admin']}>
                         <GlassCard isDarkMode={isDarkMode} className="p-6 space-y-6">
                             <div className="flex items-center space-x-2.5 text-emerald-500">
@@ -185,7 +475,7 @@ export const TeamManagementView = () => {
                             <button className="w-full py-3 rounded-xl border border-white/10 text-[10px] font-bold uppercase tracking-wide hover:bg-white/5 transition-all">Reset All Permissions</button>
                         </GlassCard>
                     </RoleBasedWrapper>
-                </div>
+                </div> */}
             </div>
 
             <Modal
@@ -194,7 +484,7 @@ export const TeamManagementView = () => {
                 title="Invite New Node"
                 description="Add a new team member to your agent matrix"
                 isDarkMode={isDarkMode}
-                className="max-w-2xl"
+                className="max-w-2xl font-sans"
                 footer={
                     <div className="flex justify-end gap-3">
                         <button
@@ -211,80 +501,281 @@ export const TeamManagementView = () => {
                         <button
                             type='submit'
                             form="invite-form"
-                            disabled={createManagementLoading}
+                            disabled={createLoading}
                             className={cn(
                                 "px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20",
-                                createManagementLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-emerald-700"
+                                createLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-emerald-700"
                             )}
                         >
-                            {createManagementLoading ? 'Sending...' : 'Send Invite'}
+                            {createLoading ? 'Sending...' : 'Send Invite'}
                         </button>
                     </div>
                 }
             >
-                <form id="invite-form" autoComplete="off" onSubmit={handleFormSubmit} className="space-y-5">
+                <form id="invite-form" autoComplete="off" onSubmit={handleInviteFormSubmit} className="space-y-5">
                     <Input
                         isDarkMode={isDarkMode}
-                        label=" Username"
-                        {...register('username')}
+                        label="Username"
+                        {...inviteRegister('username')}
                         icon={User}
                         placeholder="Enter username"
-                        disabled={createManagementLoading}
-                        error={errors.username?.message}
+                        disabled={createLoading}
+                        error={inviteErrors.username?.message}
                         required
                     />
+
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Email"
+                        {...inviteRegister('email')}
+                        icon={Mail}
+                        placeholder="Enter email address"
+                        disabled={createLoading}
+                        error={inviteErrors.email?.message}
+                        required
+                    />
+
+                    <div className="grid grid-cols-3 gap-4">
+                        <Controller
+                            name="country_code"
+                            control={inviteControl}
+                            render={({ field }) => (
+                                <Select
+                                    isDarkMode={isDarkMode}
+                                    label="Country Code"
+                                    value={field.value || '+91'}
+                                    onChange={field.onChange}
+                                    options={[
+                                        { value: '+91', label: 'India (+91)' },
+                                        { value: '+1', label: 'USA (+1)' },
+                                        { value: '+44', label: 'UK (+44)' },
+                                        { value: '+971', label: 'UAE (+971)' }
+                                    ]}
+                                    disabled={createLoading}
+                                    className="col-span-1"
+                                    error={inviteErrors.country_code?.message}
+                                    required
+                                />
+                            )}
+                        />
+
+                        <Input
+                            isDarkMode={isDarkMode}
+                            label="Mobile Number"
+                            {...inviteRegister('mobile')}
+                            icon={Phone}
+                            placeholder="Enter mobile number"
+                            disabled={createLoading}
+                            error={inviteErrors.mobile?.message}
+                            wrapperClassName="col-span-2"
+                            required
+                        />
+                    </div>
+
                     <Controller
-                        name="country_code"
-                        control={control}
+                        name="role"
+                        control={inviteControl}
                         render={({ field }) => (
                             <Select
-                                label="Country Code"
+                                label="Role"
                                 value={field.value}
                                 onChange={field.onChange}
                                 isDarkMode={isDarkMode}
                                 options={[
-                                    { value: '+91', label: 'India (+91)' },
-                                    { value: '+1', label: 'USA (+1)' },
-                                    { value: '+44', label: 'UK (+44)' },
-                                    { value: '+971', label: 'UAE (+971)' }
+                                    { value: 'staff', label: 'Staff' },
+                                    { value: 'agent', label: 'Agent' },
+                                    { value: 'doctor', label: 'Doctor' },
                                 ]}
-                                disabled={createManagementLoading}
-                                error={errors.country_code?.message}
-
+                                disabled={createLoading}
+                                error={inviteErrors.role?.message}
+                                required
                             />
                         )} />
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Mobile Number"
-                        {...register('mobile')}
-                        icon={Phone}
-                        placeholder="+91 1234567890"
-                        disabled={createManagementLoading}
-                        error={errors.mobile?.message}
-                        required
-                    />
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Email"
-                        {...register('email')}
-                        icon={Mail}
-                        placeholder="Enter email"
-                        disabled={createManagementLoading}
-                        error={errors.email?.message}
-                        required
-                    />
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Password"
-                        {...register('password')}
-                        icon={Lock}
-                        placeholder="Enter password"
-                        disabled={createManagementLoading}
-                        error={errors.password?.message}
-                        required
-                    />
                 </form>
             </Modal>
-        </div>
+
+            {/* View Modal */}
+            <Modal
+                isOpen={isViewModalOpen}
+                onClose={() => setIsViewModalOpen(false)}
+                title="User Details"
+                description={`Viewing details for ${selectedUser?.username}`}
+                isDarkMode={isDarkMode}
+                className="max-w-2xl font-sans"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={() => setIsViewModalOpen(false)}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                                isDarkMode
+                                    ? 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                            )}
+                        >
+                            Close
+                        </button>
+                    </div>
+                }
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Username</label>
+                        <p className={cn("text-sm", isDarkMode ? 'text-white' : 'text-slate-900')}>{userDetails?.data?.username || selectedUser?.username}</p>
+                    </div>
+                    <div>
+                        <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Email</label>
+                        <p className={cn("text-sm", isDarkMode ? 'text-white' : 'text-slate-900')}>{userDetails?.data?.email || selectedUser?.email}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Country Code</label>
+                            <p className={cn("text-sm", isDarkMode ? 'text-white' : 'text-slate-900')}>{userDetails?.data?.country_code || selectedUser?.country_code}</p>
+                        </div>
+                        <div>
+                            <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Mobile</label>
+                            <p className={cn("text-sm", isDarkMode ? 'text-white' : 'text-slate-900')}>{userDetails?.data?.mobile || selectedUser?.mobile}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Role</label>
+                        <p className={cn("text-sm", isDarkMode ? 'text-white' : 'text-slate-900')}>{userDetails?.data?.role || selectedUser?.role}</p>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Edit Modal */}
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                title="Edit User"
+                description={`Editing user: ${selectedUser?.username}`}
+                isDarkMode={isDarkMode}
+                className="max-w-2xl font-sans"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={() => setIsEditModalOpen(false)}
+                            disabled={updateLoading}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                                isDarkMode
+                                    ? 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                            )}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type='submit'
+                            form="edit-form"
+                            disabled={updateLoading}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20",
+                                updateLoading ? "opacity-50 cursor-not-allowed" : "hover:bg-emerald-700"
+                            )}
+                        >
+                            {updateLoading ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="edit-form" autoComplete="off" onSubmit={handleEditFormSubmit} className="space-y-5">
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Username"
+                        {...editRegister('username')}
+                        icon={User}
+                        placeholder="Enter username"
+                        disabled={updateLoading}
+                        error={editErrors.username?.message}
+                        required
+                    />
+
+                    <div className="grid grid-cols-3 gap-4">
+                        <Controller
+                            name="country_code"
+                            control={editControl}
+                            render={({ field }) => (
+                                <Select
+                                    isDarkMode={isDarkMode}
+                                    label="Country Code"
+                                    value={field.value || '+91'}
+                                    onChange={field.onChange}
+                                    options={[
+                                        { value: '+91', label: 'India (+91)' },
+                                        { value: '+1', label: 'USA (+1)' },
+                                        { value: '+44', label: 'UK (+44)' },
+                                        { value: '+971', label: 'UAE (+971)' }
+                                    ]}
+                                    disabled={updateLoading}
+                                    className="col-span-1"
+                                    error={editErrors.country_code?.message}
+                                    required
+                                />
+                            )}
+                        />
+
+
+                        <Input
+                            isDarkMode={isDarkMode}
+                            label="Mobile Number"
+                            {...editRegister('mobile')}
+                            icon={Phone}
+                            placeholder="Enter mobile number"
+                            disabled={updateLoading}
+                            error={editErrors.mobile?.message}
+                            wrapperClassName="col-span-2"
+                            required
+                        />
+                    </div>
+
+                    <Controller
+                        name="role"
+                        control={editControl}
+                        render={({ field }) => (
+                            <Select
+                                label="Role"
+                                value={field.value}
+                                onChange={field.onChange}
+                                isDarkMode={isDarkMode}
+                                options={[
+                                    { value: 'staff', label: 'Staff' },
+                                    { value: 'agent', label: 'Agent' },
+                                    { value: 'doctor', label: 'Doctor' },
+                                ]}
+                                disabled={updateLoading}
+                                error={editErrors.role?.message}
+                            />
+                        )} />
+                </form>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="Remove Team Member"
+                message={`Are you sure you want to remove ${userToDelete?.username} from the team? This user will be moved to the trash.`}
+                confirmText="Remove"
+                variant="danger"
+                isDarkMode={isDarkMode}
+                isLoading={deleteLoading}
+            />
+
+            {/* Permanent Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isPermanentDeleteModalOpen}
+                onClose={() => setIsPermanentDeleteModalOpen(false)}
+                onConfirm={handleConfirmPermanentDelete}
+                title="Permanently Delete User"
+                message={`Are you sure you want to permanently delete ${userToDelete?.username}? This action cannot be undone.`}
+                confirmText="Delete Permanently"
+                variant="danger"
+                isDarkMode={isDarkMode}
+                isLoading={permanentDeleteLoading}
+            />
+        </div >
     );
 };

@@ -60,10 +60,51 @@ export const useDeleteContactMutation = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-contacts'] });
             toast.success(data?.message || 'Contact deleted successfully!');
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Contact deletion failed!');
+        }
+    });
+};
+
+export const useGetDeletedContactsQuery = (params?: any) => {
+    return useQuery({
+        queryKey: ['deleted-contacts', params],
+        queryFn: () => contactApis.getDeletedContacts(params)
+    });
+};
+
+export const useRestoreContactMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (contactId: string) => {
+            return contactApis.restoreContact(contactId);
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-contacts'] });
+            toast.success(data?.message || 'Contact restored successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Contact restoration failed!');
+        }
+    });
+};
+
+export const usePermanentDeleteContactMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (contactId: string) => {
+            return contactApis.permanentDeleteContact(contactId);
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['deleted-contacts'] });
+            toast.success(data?.message || 'Contact permanently deleted successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Contact permanent deletion failed!');
         }
     });
 };

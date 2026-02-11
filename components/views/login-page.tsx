@@ -11,7 +11,7 @@ import { useManagementLoginMutation } from "@/hooks/useLoginQuery";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import Link from "next/link";
-import { useTenantUserLoginMutation } from "@/hooks/useTenantQuery";
+import { useTenantUserLoginMutation } from "@/hooks/useTenantUserQuery";
 
 const loginSchema = z.object({
     email: z
@@ -28,7 +28,7 @@ const loginSchema = z.object({
         ),
     password: z
         .string()
-        .min(8, "Password must be at least 8 characters")
+        .min(6, "Password must be at least 6 characters")
         .max(100, "Password is too long"),
     rememberMe: z.boolean().optional(),
 });
@@ -186,7 +186,7 @@ export default function LoginPage() {
                         <span className={cn("text-4xl font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
                             WhatsNexus<span className="text-emerald-500">.</span>
                         </span>
-                        <div className={cn("absolute top-0 right-2 px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wide uppercase",
+                        <div className={cn("absolute top-0 right-8 px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wide uppercase",
                             isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-emerald-50 border-emerald-200 text-emerald-600")}>
                             Beta
                         </div>
@@ -348,6 +348,7 @@ export default function LoginPage() {
                         </label>
                         <button
                             type="button"
+                            onClick={() => router.push(pathname === '/management/login' ? '/management/forgot-password' : '/forgot-password')}
                             className={cn(
                                 "text-sm font-medium transition-colors duration-200",
                                 isDarkMode

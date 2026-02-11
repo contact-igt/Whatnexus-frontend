@@ -16,6 +16,8 @@ import { useCreateTenantMutation, useDeleteTenantMutation, useGetTenantsQuery, u
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { ActionMenu } from '@/components/ui/action-menu';
+import { Pagination } from '@/components/ui/pagination';
+import { useMemo } from 'react';
 
 export interface Organization {
     id: string;
@@ -67,6 +69,17 @@ export const OrganizationView = () => {
     // Delete Confirmation State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 7;
+
+    const currentOrganizations = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return tenantsData?.data?.slice(startIndex, startIndex + itemsPerPage) || [];
+    }, [tenantsData, currentPage]);
+
+    const totalPages = Math.ceil((tenantsData?.data?.length || 0) / itemsPerPage);
 
     console.log("tenantsData", tenantsData)
 
@@ -214,153 +227,158 @@ export const OrganizationView = () => {
                     </button>
                 </div>
             </div>
-            <Table isDarkMode={isDarkMode}>
-                {tenantsData?.data?.length === 0 ? (
-                    <tbody>
-                        <tr>
-                            <td colSpan={7}>
-                                <div className={cn(
-                                    "text-center py-16",
-                                    isDarkMode ? "text-white/40" : "text-slate-400"
-                                )}>
-                                    <Building2 className="mx-auto mb-4" size={48} />
-                                    <p className="text-lg font-medium">No organizations found</p>
-                                    <p className="text-sm mt-1">Try adjusting your search or filters</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                ) : (
-                    <>
-                        <TableHeader isDarkMode={isDarkMode}>
+
+            <div className={cn(
+                "rounded-xl overflow-hidden border transition-all duration-200",
+                isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'
+            )}>
+                <Table isDarkMode={isDarkMode}>
+                    {tenantsData?.data?.length === 0 ? (
+                        <tbody>
                             <tr>
-                                <TableHead align="left" isDarkMode={isDarkMode} width='300px'>Organization</TableHead>
-                                <TableHead align="center" isDarkMode={isDarkMode}>Admin</TableHead>
-                                <TableHead align="center" isDarkMode={isDarkMode}>Type</TableHead>
-                                {/* <TableHead align="center" isDarkMode={isDarkMode}>Plan</TableHead>
-                                <TableHead align="left" isDarkMode={isDarkMode}>Users</TableHead> */}
-                                <TableHead align="center" isDarkMode={isDarkMode}>Status</TableHead>
-                                <TableHead align="center" isDarkMode={isDarkMode}>Created At</TableHead>
-                                <TableHead align="center" isDarkMode={isDarkMode}>Actions</TableHead>
+                                <td colSpan={7}>
+                                    <div className="flex flex-col items-center justify-center py-20">
+                                        <div className={cn(
+                                            "w-20 h-20 rounded-full flex items-center justify-center mb-6",
+                                            isDarkMode ? 'bg-white/5' : 'bg-slate-50'
+                                        )}>
+                                            <Building2 className={cn("opacity-50", isDarkMode ? "text-white" : "text-slate-400")} size={40} />
+                                        </div>
+                                        <h3 className={cn("text-xl font-bold mb-2", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            No Organizations Found
+                                        </h3>
+                                        <p className={cn("text-sm mb-8 text-center max-w-sm", isDarkMode ? "text-white/60" : "text-slate-500")}>
+                                            Get started by adding your first organization. You can manage hospitals, clinics, and their subscriptions here.
+                                        </p>
+                                        <button
+                                            onClick={() => handleOpenModal('create')}
+                                            className={cn(
+                                                "flex items-center space-x-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all shadow-lg hover:scale-105 active:scale-95",
+                                                isDarkMode ? "bg-emerald-600 shadow-emerald-900/20" : "bg-emerald-600 shadow-emerald-600/20"
+                                            )}
+                                        >
+                                            <Plus size={18} />
+                                            <span>Create First Organization</span>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
-                        </TableHeader>
-                        <TableBody>
-                            {tenantsData?.data?.map((org: any, index: any) => (
-                                <TableRow
-                                    key={org.id}
-                                    isDarkMode={isDarkMode}
-                                    isLast={index === tenantsData?.data?.length - 1}
-                                >
-                                    <TableCell align="left">
-                                        <div className="flex justify-start items-center">
-                                            <div className='flex justify-start items-center space-x-3'>
+                        </tbody>
+                    ) : (
+                        <>
+                            <TableHeader isDarkMode={isDarkMode}>
+                                <tr>
+                                    <TableHead align="left" isDarkMode={isDarkMode} width='300px'>Organization</TableHead>
+                                    <TableHead align="center" isDarkMode={isDarkMode}>Admin</TableHead>
+                                    <TableHead align="center" isDarkMode={isDarkMode}>Type</TableHead>
+                                    <TableHead align="center" isDarkMode={isDarkMode}>Status</TableHead>
+                                    <TableHead align="center" isDarkMode={isDarkMode}>Created At</TableHead>
+                                    <TableHead align="center" isDarkMode={isDarkMode}>Actions</TableHead>
+                                </tr>
+                            </TableHeader>
+                            <TableBody>
+                                {currentOrganizations.map((org: any, index: any) => (
+                                    <TableRow
+                                        key={org.id}
+                                        isDarkMode={isDarkMode}
+                                        isLast={index === currentOrganizations.length - 1}
+                                    >
+                                        <TableCell align="left">
+                                            <div className="flex justify-start items-center">
+                                                <div className='flex justify-start items-center space-x-3'>
+                                                    <div className={cn(
+                                                        "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                                                        isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
+                                                    )}>
+                                                        {org.type == "hospital" ? <Hospital className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} /> : <Building2 className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} />}
+                                                    </div>
+                                                    <div className='text-start'>
+                                                        <p className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                            {org.company_name}
+                                                        </p>
+                                                        <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                                            {org.owner_email}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell align="center">
+                                            <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                                {org.adminName}
+                                            </p>
+                                            <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                                {org.owner_name}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                                {org.type}
+                                            </p>
+                                        </TableCell>
+
+                                        <TableCell align="center">
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="sr-only peer"
+                                                    checked={org.status == "active" ? true : false}
+                                                    onChange={() => handleToggleActive(org.tenant_id, org.status)}
+                                                />
                                                 <div className={cn(
-                                                    "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                                                    isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
+                                                    "w-11 h-6 rounded-full peer transition-all",
+                                                    "peer-checked:bg-emerald-600",
+                                                    isDarkMode ? 'bg-white/10' : 'bg-slate-300'
                                                 )}>
-                                                    {org.type == "hospital" ? <Hospital className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} /> : <Building2 className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} />}
+                                                    <div className={cn(
+                                                        "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
+                                                        org.status == "active" ? "translate-x-5" : "translate-x-0"
+                                                    )} />
                                                 </div>
-                                                <div className='text-start'>
-                                                    <p className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                        {org.company_name}
-                                                    </p>
-                                                    <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                        {org.owner_email}
-                                                    </p>
-                                                </div>
+                                            </label>
+                                        </TableCell>
+
+                                        <TableCell align="center">
+                                            <div className="flex items-center justify-center space-x-2">
+                                                <Calendar className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
+                                                <span className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                                    {formatDate(org.created_at)}
+                                                </span>
                                             </div>
-                                        </div>
-                                    </TableCell>
+                                        </TableCell>
 
-                                    <TableCell align="center">
-                                        <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                            {org.adminName}
-                                        </p>
-                                        <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                            {org.owner_name}
-                                        </p>
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <p className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                            {org.type}
-                                        </p>
-                                    </TableCell>
-
-                                    {/* <TableCell align="center">
-                                        <span className={cn(
-                                            "px-3 py-1 rounded-full text-xs font-medium uppercase inline-block",
-                                            getPlanBadgeColor(org.subscriptionPlan)
-                                        )}>
-                                            {org.subscriptionPlan || 'basic'}
-                                        </span>
-                                    </TableCell> */}
-
-                                    {/* Users */}
-                                    {/* <TableCell align="center">
-                                        <div className="flex items-center space-x-2">
-                                            <Users className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
-                                            <span className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
-                                                {org.userCount} / {org.maxUsers} 1
-                                            </span>
-                                        </div>
-                                    </TableCell> */}
-                                    <TableCell align="center">
-                                        {/* <span className={cn(
-                                            "text-xs font-medium px-2 py-0.5 rounded-full w-fit inline-block",
-                                            !org.isActive
-                                                ? isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-100 text-emerald-700"
-                                                : isDarkMode ? "bg-red-500/10 text-red-400" : "bg-red-100 text-red-700"
-                                        )}>
-                                            {!org.isActive ? 'Active' : 'Suspended'}
-                                        </span> */}
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                className="sr-only peer"
-                                                checked={org.status == "active" ? true : false}
-                                                onChange={() => handleToggleActive(org.tenant_id, org.status)}
+                                        <TableCell align="center">
+                                            <ActionMenu
+                                                isDarkMode={isDarkMode}
+                                                isView={true}
+                                                isEdit={true}
+                                                isDelete={true}
+                                                isWhatsAppConfig={true}
+                                                onWhatsAppConfig={() => handleNavigateToWhatsApp(org)}
+                                                onView={() => handleOpenModal('view', org)}
+                                                onEdit={() => handleOpenModal('edit', org)}
+                                                onDelete={() => handleDeleteClick(org)}
                                             />
-                                            <div className={cn(
-                                                "w-11 h-6 rounded-full peer transition-all",
-                                                "peer-checked:bg-emerald-600",
-                                                isDarkMode ? 'bg-white/10' : 'bg-slate-300'
-                                            )}>
-                                                <div className={cn(
-                                                    "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all",
-                                                    org.status == "active" ? "translate-x-5" : "translate-x-0"
-                                                )} />
-                                            </div>
-                                        </label>
-                                    </TableCell>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </>
+                    )}
+                </Table>
+            </div>
 
-                                    <TableCell align="center">
-                                        <div className="flex items-center justify-center space-x-2">
-                                            <Calendar className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
-                                            <span className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
-                                                {formatDate(org.created_at)}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-
-                                    <TableCell align="center">
-                                        <ActionMenu
-                                            isDarkMode={isDarkMode}
-                                            isView={true}
-                                            isEdit={true}
-                                            isDelete={true}
-                                            isWhatsAppConfig={true}
-                                            onWhatsAppConfig={() => handleNavigateToWhatsApp(org)}
-                                            onView={() => handleOpenModal('view', org)}
-                                            onEdit={() => handleOpenModal('edit', org)}
-                                            onDelete={() => handleDeleteClick(org)}
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </>
-                )}
-            </Table>
+            {tenantsData?.data?.length > 0 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    totalItems={tenantsData?.data?.length}
+                    itemsPerPage={itemsPerPage}
+                    isDarkMode={isDarkMode}
+                />
+            )}
 
             <OrganizationModal
                 isOpen={isModalOpen}
