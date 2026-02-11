@@ -348,6 +348,7 @@ export default function LoginPage() {
                         </label>
                         <button
                             type="button"
+                            onClick={() => router.push(pathname === '/management/login' ? '/management/forgot-password' : '/forgot-password')}
                             className={cn(
                                 "text-sm font-medium transition-colors duration-200",
                                 isDarkMode
