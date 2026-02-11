@@ -100,20 +100,12 @@ export default function AiLogDetailPage() {
                 type: formData.type
             };
         } else {
-            // Edit mode: Only include changed fields
-            if (formData.status !== log?.status) {
-                updatePayload.status = formData.status;
-            }
-            if (formData.type !== log?.type) {
-                updatePayload.type = formData.type;
-            }
+            // Edit mode: Always include status and type
+            updatePayload.status = formData.status;
+            updatePayload.type = formData.type;
+
             if (formData.resolution !== (log?.resolution || '')) {
                 updatePayload.resolution = formData.resolution;
-            }
-
-            if (Object.keys(updatePayload).length === 0) {
-                toast.error("No changes to save");
-                return;
             }
         }
 

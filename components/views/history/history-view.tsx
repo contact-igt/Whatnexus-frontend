@@ -73,7 +73,6 @@ export const HistoryView = () => {
         isError: isMessagesError,
     } = useMessagesByPhoneQuery(selectedChat?.phone);
     const { mutateAsync: chatSuggestMutate, isPending: isSuggesting } = useChatSuggestMutation();
-    const [inputValue, setInputValue] = useState('');
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [chatSummary, setChatSummary] = useState<string | null>(null);
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
