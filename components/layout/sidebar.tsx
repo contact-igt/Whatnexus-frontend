@@ -76,8 +76,8 @@ export const Sidebar = () => {
                     />
                 </RoleBasedWrapper>
                 {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={MessageSquare} label="Shared Inbox" route="/chats" onClick={() => handleActiveTab('/chats')} urgent={true} /> */}
-                {/* <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin']}><FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} /></RoleBasedWrapper> */}
-                {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} /> */}
+                <RoleBasedWrapper allowedRoles={['tenant_admin', 'staff', 'doctor', 'agent']}><FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users2} label="Agent Matrix" route="/team" onClick={() => handleActiveTab('/team')} /></RoleBasedWrapper>
+                <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Calendar} label="Follow-ups" route="/followups" onClick={() => handleActiveTab('/followups')} />
                 {/* <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={CalendarCheck} label="Appointments" route="/appointments" onClick={() => handleActiveTab('/appointments')} /> */}
                 <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
                     <FloatingDockDropdown
@@ -112,7 +112,7 @@ export const Sidebar = () => {
                 <RoleBasedWrapper allowedRoles={['super_admin']}>
                     <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Building2} label="Organizations" route="/organizations" onClick={() => handleActiveTab('/organizations')} />
                 </RoleBasedWrapper>
-                <RoleBasedWrapper allowedRoles={['admin', 'tenant_admin', 'super_admin']}>
+                <RoleBasedWrapper allowedRoles={['tenant_admin']}>
                     <FloatingDockDropdown
                         isExpanded={isExpanded}
                         isDarkMode={isDarkMode}

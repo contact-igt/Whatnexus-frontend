@@ -57,7 +57,8 @@ export const ChatView = () => {
         isLoading: isChatsLoading,
         isError: isChatsError,
     } = useGetAllLiveChatsQuery();
-    const [filteredChats, setFilteredChats] = useState(chatList?.data);
+    console.log("chatList", chatList?.data?.chats)
+    const [filteredChats, setFilteredChats] = useState(chatList?.data?.chats);
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -151,7 +152,7 @@ export const ChatView = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();
-            let filtered = chatList?.data;
+            let filtered = chatList?.data?.chats;
             if (value) {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
@@ -196,6 +197,20 @@ export const ChatView = () => {
                 });
                 return;
             }
+
+            const chatFromFiltered = filteredChats?.find(
+                (c: any) => String(c.phone) === String(phoneParam)
+            );
+
+
+            if (chatFromFiltered) {
+                setSelectedChat({
+                    phone: chatFromFiltered.phone,
+                    contact_id: chatFromFiltered.contact_id,
+                    name: chatFromFiltered.name ?? chatFromFiltered.phone,
+                });
+                return;
+            }
         }
         const firstChat = chatList.data[0];
 
@@ -207,7 +222,7 @@ export const ChatView = () => {
 
         router.replace(`?phone=${firstChat.phone}`, { scroll: false });
 
-    }, [chatList?.data, phoneParam]);
+    }, [chatList?.data, phoneParam, filteredChats]);
 
     const isSearching = messageSearchText.trim().length > 0;
     const updatedMessageData = useMemo(() => {
@@ -377,7 +392,7 @@ export const ChatView = () => {
             }, 100);
         }
     }, [groupedEntries?.length, newMessage.length, selectedChat?.phone]);
-    console.log("filteredChat", filteredChats)
+    console.log("filteredChat1", filteredChats)
     if (!whatsappApiDetails?.phone_number_id) {
         return (
             <div className="flex h-full flex-col items-center justify-center p-6 space-y-6 animate-in fade-in duration-500">

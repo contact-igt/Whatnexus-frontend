@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 
 interface ActionMenuProps {
     isDarkMode: boolean;
@@ -24,11 +25,16 @@ interface ActionMenuProps {
     onSoftDelete?: () => void;
     isPermanentDelete?: boolean;
     onPermanentDelete?: () => void;
+    isRestore?: boolean;
+    onRestore?: () => void;
     isExecute?: boolean;
     onExecute?: () => void;
+    isAnswer?: boolean;
+    onAnswer?: () => void;
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, isRestore, onRestore, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute, isAnswer, onAnswer }: ActionMenuProps) => {
+    const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef<HTMLButtonElement>(null);
@@ -87,7 +93,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                 ref={menuRef}
                 onClick={toggleOpen}
                 className={cn(
-                    "p-2 rounded-lg transition-all",
+                    "p-2 rounded-lg transition-all font-sans",
                     isOpen
                         ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-900')
                         : (isDarkMode ? 'text-white/40 hover:bg-white/5 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-900')
@@ -105,13 +111,13 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                         position: 'absolute' // "absolute" in body relative to document
                     }}
                     className={cn(
-                        "w-36 rounded-xl border shadow-xl z-[9999] animate-in fade-in zoom-in-95 duration-200",
+                        "w-36 font-sans cursor-pointer rounded-xl border shadow-xl z-[9999] animate-in fade-in zoom-in-95 duration-200",
                         isDarkMode
                             ? 'bg-[#1c1c21] border-white/10'
                             : 'bg-white border-slate-200'
                     )}
                 >
-                    <div className="p-1">
+                    <div className="p-1 cursor-pointer">
                         {onView && isView && (
                             <button
                                 onClick={(e) => {
@@ -147,6 +153,25 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                             >
                                 <Edit2 size={14} />
                                 <span>Edit</span>
+                            </button>
+                        )}
+
+                        {onAnswer && isAnswer && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAnswer();
+                                    setIsOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                    isDarkMode
+                                        ? 'text-emerald-400 hover:bg-emerald-500/10'
+                                        : 'text-emerald-500 hover:bg-emerald-50'
+                                )}
+                            >
+                                <MessageCircle size={14} />
+                                <span>Answer</span>
                             </button>
                         )}
 
@@ -228,6 +253,24 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                 <span className="flex-1 text-left">Remove</span>
                             </button>
                         )}
+                        {((user?.role === "tenant_admin" || user?.role === "super_admin") && !!isRestore && onRestore) && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRestore();
+                                    setIsOpen(false);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all mt-1",
+                                    isDarkMode
+                                        ? 'text-green-400 hover:bg-green-500/10'
+                                        : 'text-green-500 hover:bg-green-50'
+                                )}
+                            >
+                                <Save size={14} />
+                                <span>Restore</span>
+                            </button>
+                        )}
                         {isExecute && onExecute && (
                             <button
                                 onClick={() => {
@@ -245,7 +288,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                 <span className="flex-1 text-left">Execute</span>
                             </button>
                         )}
-                        {(!!isPermanentDelete && onPermanentDelete) && (
+                        {((user?.role === "tenant_admin" || user?.role === "super_admin") && !!isPermanentDelete && onPermanentDelete) && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -260,7 +303,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                 )}
                             >
                                 <Trash2 size={14} />
-                                <span>Remove</span>
+                                <span>Delete</span>
                             </button>
                         )}
                     </div>

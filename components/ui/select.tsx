@@ -89,10 +89,10 @@ export const Select = ({
     };
 
     return (
-        <div className={cn("w-full relative", className)}>
+        <div className={cn("w-full relative font-sans", className)}>
             {label && (
                 <label className={cn(
-                    "text-xs font-semibold mb-2 block ml-1",
+                    "text-xs font-semibold font-sans mb-2 block ml-1",
                     isDarkMode ? 'text-white/70' : 'text-slate-700'
                 )}>
                     {label}
@@ -103,7 +103,7 @@ export const Select = ({
             <div
                 ref={containerRef}
                 className={cn(
-                    "w-full px-4 py-2.5 rounded-xl text-sm border transition-all flex items-center justify-between cursor-pointer",
+                    "w-full px-4 py-2.5 rounded-xl font-sans text-sm border transition-all flex items-center justify-between cursor-pointer",
                     isDarkMode
                         ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
                         : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50',
@@ -146,7 +146,7 @@ export const Select = ({
                         <div
                             key={option.value}
                             className={cn(
-                                "px-4 py-2.5 text-sm cursor-pointer flex items-center justify-between transition-colors",
+                                "px-4 py-2.5 font-sans text-sm cursor-pointer flex items-center justify-between transition-colors",
                                 isDarkMode
                                     ? "text-slate-200 hover:bg-white/5"
                                     : "text-slate-700 hover:bg-slate-50",

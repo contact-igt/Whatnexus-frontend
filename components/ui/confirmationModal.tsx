@@ -16,7 +16,7 @@ interface ConfirmationModalProps {
     confirmText?: string;
     cancelText?: string;
     isLoading?: boolean;
-    variant?: 'danger' | 'warning' | 'info';
+    variant?: 'danger' | 'warning' | 'info' | 'success';
 }
 
 export const ConfirmationModal = ({
@@ -53,7 +53,8 @@ export const ConfirmationModal = ({
     const variantStyles = {
         danger: 'text-red-500',
         warning: 'text-yellow-500',
-        info: 'text-blue-500'
+        info: 'text-blue-500',
+        success: 'text-green-500'
     };
 
     const confirmButtonStyles = {
@@ -65,7 +66,10 @@ export const ConfirmationModal = ({
             : 'bg-yellow-500 hover:bg-yellow-600 text-white',
         info: isDarkMode
             ? 'bg-blue-500 hover:bg-blue-600 text-white'
-            : 'bg-blue-500 hover:bg-blue-600 text-white'
+            : 'bg-blue-500 hover:bg-blue-600 text-white',
+        success: isDarkMode
+            ? 'bg-green-500 hover:bg-green-600 text-white'
+            : 'bg-green-500 hover:bg-green-600 text-white'
     };
 
     return createPortal(

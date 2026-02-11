@@ -9,7 +9,10 @@ import {
     useCreateContactMutation,
     useUpdateContactMutation,
     useDeleteContactMutation,
-    useImportContactsMutation
+    useImportContactsMutation,
+    useGetDeletedContactsQuery,
+    useRestoreContactMutation,
+    usePermanentDeleteContactMutation
 } from "@/hooks/useContactQuery";
 import { handleCSVDownloadData } from "@/hooks/useExportDataToExcel";
 import { ContactsHeader } from "./contactsHeader";
@@ -18,6 +21,8 @@ import { AddContactModal } from "./addContactModal";
 import { EditContactDrawer } from "./editContactDrawer";
 import { ImportContactsModal } from "./importContactsModal";
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
+import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const ContactsView = () => {
     const { isDarkMode } = useTheme();
@@ -29,22 +34,34 @@ export const ContactsView = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
+    // Tab State
+    const [activeTab, setActiveTab] = useState<'all' | 'trash'>('all');
+
     // Selected Contact State
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+    const [actionType, setActionType] = useState<'delete' | 'permanent_delete' | 'restore'>('delete');
 
     // Search State
     const [searchQuery, setSearchQuery] = useState("");
 
     // React Query Hooks
-    const { data: contactsData, isLoading } = useGetAllContactsQuery();
+    const { data: contactsData, isLoading: isLoadingContacts } = useGetAllContactsQuery();
+    const { data: deletedContactsData, isLoading: isLoadingDeleted } = useGetDeletedContactsQuery();
+
     const { mutate: createContact, isPending: isCreating } = useCreateContactMutation();
     const { mutate: updateContact, isPending: isUpdating } = useUpdateContactMutation();
     const { mutate: deleteContact, isPending: isDeleting } = useDeleteContactMutation();
     const { mutate: importContacts, isPending: isImporting } = useImportContactsMutation();
+    const { mutate: restoreContact, isPending: isRestoring } = useRestoreContactMutation();
+    const { mutate: permanentDeleteContact, isPending: isPermanentlyDeleting } = usePermanentDeleteContactMutation();
 
-    // Get contacts from API response
-    const contacts: Contact[] = contactsData?.data || [];
+    // Get contacts from API response based on tab
+    const contacts: Contact[] = activeTab === 'all'
+        ? contactsData?.data?.contacts || []
+        : deletedContactsData?.data?.contacts || [];
+
+    const isLoading = activeTab === 'all' ? isLoadingContacts : isLoadingDeleted;
 
     // Filtered contacts based on search
     const filteredContacts = useMemo(() => {
@@ -78,9 +95,25 @@ export const ContactsView = () => {
         });
     };
 
-    const handleDeleteContact = () => {
-        if (selectedContact) {
+    const handleConfirmAction = () => {
+        if (!selectedContact) return;
+
+        if (actionType === 'delete') {
             deleteContact(selectedContact.contact_id, {
+                onSuccess: () => {
+                    setIsDeleteModalOpen(false);
+                    setSelectedContact(null);
+                }
+            });
+        } else if (actionType === 'restore') {
+            restoreContact(selectedContact.contact_id, {
+                onSuccess: () => {
+                    setIsDeleteModalOpen(false);
+                    setSelectedContact(null);
+                }
+            });
+        } else if (actionType === 'permanent_delete') {
+            permanentDeleteContact(selectedContact.contact_id, {
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
                     setSelectedContact(null);
@@ -91,8 +124,13 @@ export const ContactsView = () => {
 
     const handleBulkDelete = () => {
         // Delete selected contacts one by one
+        // Note: Ideally backend should support bulk delete
         selectedContacts.forEach(contactId => {
-            deleteContact(contactId);
+            if (activeTab === 'all') {
+                deleteContact(contactId);
+            } else {
+                permanentDeleteContact(contactId);
+            }
         });
         setIsBulkDeleteModalOpen(false);
         setSelectedContacts([]);
@@ -153,6 +191,19 @@ export const ContactsView = () => {
 
     const openDeleteModal = (contact: Contact) => {
         setSelectedContact(contact);
+        setActionType('delete');
+        setIsDeleteModalOpen(true);
+    };
+
+    const openRestoreModal = (contact: Contact) => {
+        setSelectedContact(contact);
+        setActionType('restore');
+        setIsDeleteModalOpen(true);
+    };
+
+    const openPermanentDeleteModal = (contact: Contact) => {
+        setSelectedContact(contact);
+        setActionType('permanent_delete');
         setIsDeleteModalOpen(true);
     };
 
@@ -163,7 +214,7 @@ export const ContactsView = () => {
     };
 
     return (
-        <div className="p-6 font-sans overflow-y-auto h-full">
+        <div className="p-6 font-sans overflow-y-auto h-full space-y-4">
             {/* Header */}
             <ContactsHeader
                 isDarkMode={isDarkMode}
@@ -177,6 +228,33 @@ export const ContactsView = () => {
                 onBulkDelete={selectedContacts.length > 0 ? () => setIsBulkDeleteModalOpen(true) : undefined}
             />
 
+            {/* Tabs */}
+            <div className="flex items-center space-x-1 border-b border-white/5">
+                <button
+                    onClick={() => { setActiveTab('all'); setSelectedContacts([]); }}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium border-b-2 transition-all",
+                        activeTab === 'all'
+                            ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                    )}
+                >
+                    All Contacts
+                </button>
+                <button
+                    onClick={() => { setActiveTab('trash'); setSelectedContacts([]); }}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center space-x-2",
+                        activeTab === 'trash'
+                            ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                    )}
+                >
+                    <Trash2 size={14} />
+                    <span>Trash</span>
+                </button>
+            </div>
+
             {/* Contact List */}
             <ContactList
                 isDarkMode={isDarkMode}
@@ -188,6 +266,9 @@ export const ContactsView = () => {
                 onView={openViewContact}
                 onEdit={openEditDrawer}
                 onDelete={openDeleteModal}
+                onRestore={openRestoreModal}
+                onPermanentDelete={openPermanentDeleteModal}
+                isTrash={activeTab === 'trash'}
             />
 
             {/* Add Contact Modal */}
@@ -221,21 +302,35 @@ export const ContactsView = () => {
                 isLoading={isImporting}
             />
 
-            {/* Delete Confirmation Modal */}
+            {/* Confirmation Modal */}
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => {
                     setIsDeleteModalOpen(false);
                     setSelectedContact(null);
                 }}
-                onConfirm={handleDeleteContact}
-                title="Delete Contact"
-                message={`Are you sure you want to delete ${selectedContact?.name}? This action cannot be undone.`}
+                onConfirm={handleConfirmAction}
+                title={
+                    actionType === 'delete' ? "Remove Contact" :
+                        actionType === 'restore' ? "Restore Contact" :
+                            "Permanently Delete Contact"
+                }
+                message={
+                    actionType === 'delete'
+                        ? `Are you sure you want to remove ${selectedContact?.name}? It will be moved to the trash.`
+                        : actionType === 'restore'
+                            ? `Are you sure you want to restore ${selectedContact?.name}?`
+                            : `Are you sure you want to permanently delete ${selectedContact?.name}? This action cannot be undone.`
+                }
                 isDarkMode={isDarkMode}
-                confirmText="Delete"
+                confirmText={
+                    actionType === 'delete' ? "Remove" :
+                        actionType === 'restore' ? "Restore" :
+                            "Delete Forever"
+                }
                 cancelText="Cancel"
-                isLoading={isDeleting}
-                variant="danger"
+                isLoading={isDeleting || isRestoring || isPermanentlyDeleting}
+                variant={actionType === 'restore' ? 'info' : 'danger'}
             />
 
             {/* Bulk Delete Confirmation Modal */}
@@ -244,11 +339,11 @@ export const ContactsView = () => {
                 onClose={() => setIsBulkDeleteModalOpen(false)}
                 onConfirm={handleBulkDelete}
                 title="Delete Multiple Contacts"
-                message={`Are you sure you want to delete ${selectedContacts.length} contact(s)? This action cannot be undone.`}
+                message={`Are you sure you want to ${activeTab === 'trash' ? 'permanently ' : ''}delete ${selectedContacts.length} contact(s)? This action cannot be undone.`}
                 isDarkMode={isDarkMode}
                 confirmText="Delete All"
                 cancelText="Cancel"
-                isLoading={isDeleting}
+                isLoading={isDeleting || isPermanentlyDeleting}
                 variant="danger"
             />
         </div>

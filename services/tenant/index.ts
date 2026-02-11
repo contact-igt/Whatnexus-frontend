@@ -11,19 +11,23 @@ export class TenantApiData {
     };
 
     getAllTenants = async () => {
-        return await _axios("get", "/tenants");
+        return await _axios("get", "/tenant/list");
     };
-
+    getTenantById = async (tenantId: string) => {
+        return await _axios("get", `/tenant/${tenantId}`);
+    }
     updateTenant = async (tenantId: string, data: any) => {
         return await _axios("put", `/tenant/${tenantId}`, data);
     };
     updateTenantStatus = async (tenantId: string, data: any) => {
-        return await _axios("put", `/tenant-status/${tenantId}?status=${data?.status}`)
+        return await _axios("put", `tenant/${tenantId}/status?status=${data?.status}`)
     }
-    deleteTenant = async (tenantId: string) => {
-        return await _axios("delete", `/tenant/${tenantId}`)
+    softDeleteTenant = async (tenantId: string) => {
+        return await _axios("delete", `/tenant/${tenantId}/soft`)
     }
-
+    permanentDeleteTenant = async (tenantId: string) => {
+        return await _axios("delete", `/tenant/${tenantId}/permanent`)
+    }
     // WhatsApp Configuration APIs
     getWhatsAppConfig = async (tenantId: string) => {
         return await _axios("get", `/tenant/${tenantId}/whatsapp-config`);
@@ -36,8 +40,4 @@ export class TenantApiData {
     testWhatsAppConnection = async (tenantId: string, data: any) => {
         return await _axios("post", `/tenant/${tenantId}/whatsapp-test`, data);
     };
-
-    tenantUserLogin = async (data: any) => {
-        return await _axios("post", "/tenant-user/login", data)
-    }
 }
