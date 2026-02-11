@@ -140,7 +140,7 @@ export const CampaignView = () => {
         {
             field: 'campaign_name',
             headerName: 'Campaign',
-            flex: 1,
+            width: 180,
             renderCell: ({ row }) => (
                 <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>{row.campaign_name}</p>
             )
@@ -148,7 +148,7 @@ export const CampaignView = () => {
         {
             field: 'campaign_type',
             headerName: 'Type',
-            width: 120,
+            width: 150,
             renderCell: ({ row }) => (
                 <span className={cn("text-xs font-medium capitalize", isDarkMode ? 'text-white/60' : 'text-slate-600')}>{row.campaign_type}</span>
             )

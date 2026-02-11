@@ -349,7 +349,6 @@ IMPORTANT:
 
         // Call onSave with transformed payload
         onSave(payload);
-        toast.success(templateId ? 'Template updated successfully!' : 'Template created successfully!');
     };
 
     return (

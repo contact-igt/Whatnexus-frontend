@@ -198,11 +198,11 @@ export const TemplateView = () => {
             updateTemplateMutate({ templateId: editTemplateById, data: formData }, {
                 onSuccess: () => {
                     setViewMode('list');
+                    toast.success('Template updated successfully!');
                     setEditTemplateById(null);
                 },
 
             });
-            toast.success('Template updated successfully!');
         } else {
             createTemplateMutate((formData), {
                 onSuccess: () => {
