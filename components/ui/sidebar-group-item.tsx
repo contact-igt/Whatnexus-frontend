@@ -4,10 +4,11 @@ import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import { Lock, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 interface SidebarGroupItemProps {
     icon: LucideIcon;
-    onClick: () => void;
+    onClick?: () => void;
     label: string;
     route: string;
     isDarkMode?: boolean;
@@ -29,16 +30,20 @@ export const SidebarGroupItem = ({
     const pathname = usePathname();
     const active = pathname === route || pathname.startsWith(route + "/");
 
-    const handleClick = () => {
-        if (!isDisabled) {
+    const handleClick = (e: React.MouseEvent) => {
+        // Call onClick for state management (e.g., Redux updates)
+        if (onClick) {
             onClick();
+        }
+
+        // If disabled, prevent navigation
+        if (isDisabled) {
+            e.preventDefault();
         }
     };
 
-    return (
-        <button
-            onClick={handleClick}
-            disabled={isDisabled}
+    const content = (
+        <div
             className={cn(
                 "relative rounded-xl cursor-pointer transition-all duration-300 group/item flex items-center gap-3.5 overflow-hidden w-full",
                 isExpanded ? "px-3.5 py-3" : "p-3 justify-center",
@@ -131,6 +136,24 @@ export const SidebarGroupItem = ({
                     <Lock size={9} />
                 </div>
             )}
-        </button>
+        </div>
+    );
+
+    // If disabled, render as a div without Link
+    if (isDisabled) {
+        return content;
+    }
+
+    // Otherwise, wrap in Link for navigation with prefetching
+    return (
+        <Link
+            href={route}
+            onClick={handleClick}
+            prefetch={true}
+            scroll={false}
+            className="block w-full"
+        >
+            {content}
+        </Link>
     );
 }

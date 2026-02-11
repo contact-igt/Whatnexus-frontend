@@ -4,18 +4,17 @@ import { User, Sparkles } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTheme } from "@/hooks/useTheme";
 import { useDispatch } from 'react-redux';
 import { setActiveTabData } from '@/redux/slices/auth/authSlice';
 import { tenantSidebarConfig, managementSidebarConfig, SidebarGroup } from './sidebar-config';
 import { SidebarGroupItem } from '@/components/ui/sidebar-group-item';
 import { useGetWhatsappConfigQuery } from '@/hooks/useWhatsappConfigQuery';
+import Link from 'next/link';
 
 export const GroupedSidebar = () => {
     const { user, whatsappApiDetails } = useAuth();
     useGetWhatsappConfigQuery();
-    const router = useRouter();
     const { isDarkMode } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);
     const dispatch = useDispatch();
@@ -27,13 +26,13 @@ export const GroupedSidebar = () => {
     // Check if WhatsApp is connected and active
     const isWhatsAppActive = whatsappApiDetails?.status === 'active';
 
+    // Handle Redux state updates only (Link component handles navigation)
     const handleActiveTab = (tab: string) => {
         if (tab.includes('live-chats')) {
             dispatch(setActiveTabData('chats'));
         } else {
             dispatch(setActiveTabData('dashboard'));
         }
-        router.push(tab);
     }
 
     // Filter items based on user role (case-insensitive)
@@ -162,61 +161,66 @@ export const GroupedSidebar = () => {
                             </div>
                         </div>
                     ) : (
-                        <button
+                        <Link
+                            href="/settings/whatsapp-settings"
                             onClick={() => handleActiveTab('/settings/whatsapp-settings')}
-                            className={cn(
-                                "w-full rounded-xl transition-all duration-300 relative overflow-hidden group/status hover:scale-[1.02] active:scale-[0.98]",
-                                isDarkMode
-                                    ? 'bg-gradient-to-br from-rose-500/10 to-rose-600/10 border border-rose-500/20 hover:border-rose-500/40'
-                                    : 'bg-gradient-to-br from-rose-50 to-rose-100/50 border border-rose-200 hover:border-rose-300',
-                                isExpanded ? "p-3" : "p-2.5"
-                            )}
+                            className="block w-full"
                         >
-                            {/* Sweep effect */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/20 to-rose-500/0 translate-x-[-100%] group-hover/status:translate-x-[100%] transition-transform duration-700" />
-
-                            {/* Pulse ring animation */}
-                            <div className={cn(
-                                "absolute inset-0 rounded-xl opacity-0 group-hover/status:opacity-100 transition-opacity duration-500",
-                                isDarkMode ? "bg-rose-500/5" : "bg-rose-500/10"
-                            )} />
-
-                            <div className={cn("flex items-center gap-2.5 relative z-10", !isExpanded && "justify-center")}>
-                                <div className="relative flex items-center justify-center">
-                                    <div className={cn(
-                                        "w-2 h-2 rounded-full",
-                                        isDarkMode ? 'bg-rose-400' : 'bg-rose-500'
-                                    )} />
-                                    {/* Pulse animation for disconnected state */}
-                                    <div className={cn(
-                                        "absolute w-2 h-2 rounded-full animate-ping",
-                                        isDarkMode ? 'bg-rose-400' : 'bg-rose-500'
-                                    )} />
-                                </div>
-                                {isExpanded && (
-                                    <div className="flex flex-col items-start flex-1">
-                                        <span className={cn(
-                                            "text-[9px] font-bold uppercase tracking-[0.15em]",
-                                            isDarkMode ? 'text-rose-400' : 'text-rose-600'
-                                        )}>
-                                            WhatsApp
-                                        </span>
-                                        <span className={cn(
-                                            "text-[11px] font-black leading-tight",
-                                            isDarkMode ? 'text-white' : 'text-slate-900'
-                                        )}>
-                                            Not Connected
-                                        </span>
-                                        <span className={cn(
-                                            "text-[8px] font-medium mt-0.5 opacity-70",
-                                            isDarkMode ? 'text-white' : 'text-slate-700'
-                                        )}>
-                                            Click to connect
-                                        </span>
-                                    </div>
+                            <div
+                                className={cn(
+                                    "w-full rounded-xl transition-all duration-300 relative overflow-hidden group/status hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+                                    isDarkMode
+                                        ? 'bg-gradient-to-br from-rose-500/10 to-rose-600/10 border border-rose-500/20 hover:border-rose-500/40'
+                                        : 'bg-gradient-to-br from-rose-50 to-rose-100/50 border border-rose-200 hover:border-rose-300',
+                                    isExpanded ? "p-3" : "p-2.5"
                                 )}
+                            >
+                                {/* Sweep effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/20 to-rose-500/0 translate-x-[-100%] group-hover/status:translate-x-[100%] transition-transform duration-700" />
+
+                                {/* Pulse ring animation */}
+                                <div className={cn(
+                                    "absolute inset-0 rounded-xl opacity-0 group-hover/status:opacity-100 transition-opacity duration-500",
+                                    isDarkMode ? "bg-rose-500/5" : "bg-rose-500/10"
+                                )} />
+
+                                <div className={cn("flex items-center gap-2.5 relative z-10", !isExpanded && "justify-center")}>
+                                    <div className="relative flex items-center justify-center">
+                                        <div className={cn(
+                                            "w-2 h-2 rounded-full",
+                                            isDarkMode ? 'bg-rose-400' : 'bg-rose-500'
+                                        )} />
+                                        {/* Pulse animation for disconnected state */}
+                                        <div className={cn(
+                                            "absolute w-2 h-2 rounded-full animate-ping",
+                                            isDarkMode ? 'bg-rose-400' : 'bg-rose-500'
+                                        )} />
+                                    </div>
+                                    {isExpanded && (
+                                        <div className="flex flex-col items-start flex-1">
+                                            <span className={cn(
+                                                "text-[9px] font-bold uppercase tracking-[0.15em]",
+                                                isDarkMode ? 'text-rose-400' : 'text-rose-600'
+                                            )}>
+                                                WhatsApp
+                                            </span>
+                                            <span className={cn(
+                                                "text-[11px] font-black leading-tight",
+                                                isDarkMode ? 'text-white' : 'text-slate-900'
+                                            )}>
+                                                Not Connected
+                                            </span>
+                                            <span className={cn(
+                                                "text-[8px] font-medium mt-0.5 opacity-70",
+                                                isDarkMode ? 'text-white' : 'text-slate-700'
+                                            )}>
+                                                Click to connect
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </button>
+                        </Link>
                     )}
                 </div>
             )}
