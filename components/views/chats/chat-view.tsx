@@ -57,8 +57,8 @@ export const ChatView = () => {
         isLoading: isChatsLoading,
         isError: isChatsError,
     } = useGetAllLiveChatsQuery();
-    console.log("chatList", chatList?.data?.chats)
-    const [filteredChats, setFilteredChats] = useState(chatList?.data?.chats);
+    console.log("chatList", chatList?.data)
+    const [filteredChats, setFilteredChats] = useState(chatList?.data);
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -114,7 +114,7 @@ export const ChatView = () => {
         if (!selectedChat?.phone) return;
         if (!chatList?.data?.length) return;
 
-        const hasUnreadUserMessages = chatList.data.some(
+        const hasUnreadUserMessages = chatList?.data?.some(
             (msg: any) => msg.seen === "false"
         );
         if (hasUnreadUserMessages) {
@@ -152,7 +152,7 @@ export const ChatView = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();
-            let filtered = chatList?.data?.chats;
+            let filtered = chatList?.data;
             if (value) {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
@@ -212,15 +212,6 @@ export const ChatView = () => {
                 return;
             }
         }
-        const firstChat = chatList.data[0];
-
-        setSelectedChat({
-            phone: firstChat.phone,
-            contact_id: firstChat.contact_id,
-            name: firstChat.name ?? firstChat.phone,
-        });
-
-        router.replace(`?phone=${firstChat.phone}`, { scroll: false });
 
     }, [chatList?.data, phoneParam, filteredChats]);
 
