@@ -128,7 +128,7 @@ export default function OtpScreen({ isDarkMode, email, onSubmit, onResend, onBac
                     {otp.map((digit, index) => (
                         <input
                             key={index}
-                            ref={(el) => { inputRefs.current[index] = el; }}
+                            ref={(el: HTMLInputElement | null) => { inputRefs.current[index] = el; }}
                             type="text"
                             inputMode="numeric"
                             maxLength={1}
