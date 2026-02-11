@@ -18,7 +18,7 @@ export default function OtpScreen({ isDarkMode, email, onSubmit, onResend, onBac
     const [error, setError] = useState("");
     const [resendTimer, setResendTimer] = useState(60);
     const [canResend, setCanResend] = useState(false);
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
 
     useEffect(() => {
         // Auto-focus first input on mount
@@ -128,7 +128,7 @@ export default function OtpScreen({ isDarkMode, email, onSubmit, onResend, onBac
                     {otp.map((digit, index) => (
                         <input
                             key={index}
-                            ref={(el) => (inputRefs.current[index] = el)}
+                            ref={(el) => { inputRefs.current[index] = el; }}
                             type="text"
                             inputMode="numeric"
                             maxLength={1}
