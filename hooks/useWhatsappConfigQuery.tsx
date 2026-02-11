@@ -11,7 +11,7 @@ const whatsappConfigApis = new whatsappConfigApiData();
 export const useGetWhatsappConfigQuery = () => {
     const dispatch = useDispatch();
     const { token } = useAuth();
-    const { data, isLoading, isError } = useQuery({
+    const { data, isLoading, isError, refetch } = useQuery({
         queryKey: ['whatsapp-config'],
         enabled: !!token,
         queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
@@ -22,7 +22,7 @@ export const useGetWhatsappConfigQuery = () => {
             dispatch(setWhatsAppApiDetails(data.data));
         }
     }, [data, dispatch]);
-    return { data, isLoading, isError }
+    return { data, isLoading, isError, refetch }
 }
 
 export const useSaveWhatsAppConfigMutation = () => {
