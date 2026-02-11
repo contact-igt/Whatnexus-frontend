@@ -61,7 +61,7 @@ export const WhatsAppConnectionView = () => {
     })
     const { user } = useAuth();
     const dispatch = useDispatch();
-    const { data: WhatsAppConnectionData, isLoading: isWhatsappLoading } = useGetWhatsappConfigQuery();
+    const { data: WhatsAppConnectionData, isLoading: isWhatsappLoading, refetch: refetchWhatsAppConfig } = useGetWhatsappConfigQuery();
     const { mutate: saveWhatsConfigMutate, isPending: isSaveLoading } = useSaveWhatsAppConfigMutation();
     const { mutate: testWhatsConfigMutate, isPending: isTestLoading } = useTestWhatsAppConfigQuery();
     const { mutate: updateWhatsappConfigMutate, isPending: isUpdateLoading } = useStatusWhatsAppConfigQuery();
@@ -130,6 +130,7 @@ export const WhatsAppConnectionView = () => {
             dispatch(updateWebhookStatus(webhookVerified));
 
             if (webhookVerified) {
+                await refetchWhatsAppConfig(); // Refetch WhatsApp config
                 toast.success('Webhook verified successfully!');
             } else {
                 toast.info('Webhook not yet verified. Please complete Meta verification.');
@@ -239,9 +240,9 @@ export const WhatsAppConnectionView = () => {
 
 
             {!WhatsAppConnectionData?.data?.id && <>
-                {/* Conditional UI based on meta_verified status */}
-                {user?.meta_verified ? (
-                    /* API Credentials Form - Shown when meta_verified is true */
+                {/* Conditional UI based on webhook_verified status */}
+                {user?.webhook_verified ? (
+                    /* API Credentials Form - Shown when webhook_verified is true */
                     <div className={cn(
                         "p-8 rounded-xl border backdrop-blur-xl",
                         isDarkMode
@@ -339,7 +340,7 @@ export const WhatsAppConnectionView = () => {
                         </div>
                     </div>
                 ) : (
-                    /* Webhook Setup Instructions - Shown when meta_verified is false */
+                    /* Webhook Setup Instructions - Shown when webhook_verified is false */
                     <div className={cn(
                         "p-8 rounded-xl border backdrop-blur-xl",
                         isDarkMode
