@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
 import { Sun, Moon } from "lucide-react";
@@ -28,6 +28,40 @@ export default function ForgotPassword({ userType }: ForgotPasswordProps) {
     const { mutate: forgotPasswordMutate, isPending: isForgotPasswordPending } = useForgotPasswordMutation(userType);
     const { mutate: verifyOtpMutate, isPending: isVerifyOtpPending } = useVerifyOtpMutation(userType);
     const { mutate: resetPasswordMutate, isPending: isResetPasswordPending } = useResetPasswordMutation(userType);
+
+    // State persistence
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Initial state load
+    useEffect(() => {
+        const savedState = sessionStorage.getItem('forgot_password_state');
+        if (savedState) {
+            try {
+                const parsed = JSON.parse(savedState);
+                if (parsed.step && parsed.email) {
+                    setCurrentStep(parsed.step);
+                    setEmail(parsed.email);
+                }
+            } catch (e) {
+                console.error("Failed to parse saved state", e);
+                sessionStorage.removeItem('forgot_password_state');
+            }
+        }
+        setIsLoaded(true);
+    }, []);
+
+    // Save state on change
+    useEffect(() => {
+        if (isLoaded) {
+            sessionStorage.setItem('forgot_password_state', JSON.stringify({
+                step: currentStep,
+                email
+            }));
+        }
+    }, [currentStep, email, isLoaded]);
+
+    // Clear state on success (optional, but good for cleanup if they navigate away manually)
+    // For now we keep it as requested to "persist refresh", only tab close clears it naturally via sessionStorage.
 
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
@@ -58,12 +92,16 @@ export default function ForgotPassword({ userType }: ForgotPasswordProps) {
         resetPasswordMutate({ email, new_password: password }, {
             onSuccess: () => {
                 setCurrentStep('success');
+                // We can optionally clear storage here if we want them to start over on refresh after success.
+                // But the user asked "persist refresh after need to display...".
+                // I'll leave it persisted.
             }
         });
     };
 
     const handleBackToEmail = () => {
         setCurrentStep(1);
+        setEmail(""); // Clear email when going back
     };
 
     const renderScreenContent = () => {
@@ -114,6 +152,10 @@ export default function ForgotPassword({ userType }: ForgotPasswordProps) {
     };
 
     const isUnifiedFlow = currentStep !== 'success';
+
+    if (!isLoaded) {
+        return null; // or a loading spinner
+    }
 
     return (
         <div
