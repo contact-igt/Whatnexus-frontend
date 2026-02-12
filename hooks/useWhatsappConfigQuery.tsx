@@ -46,8 +46,8 @@ export const useTestWhatsAppConfigQuery = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: () => {
-            return whatsappConfigApis.testWhatsAppConfig();
+        mutationFn: (data?: { to: string; type: string }) => {
+            return whatsappConfigApis.testWhatsAppConfig(data);
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] })

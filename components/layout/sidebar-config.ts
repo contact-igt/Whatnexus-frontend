@@ -15,7 +15,8 @@ import {
     Smartphone,
     UserCog,
     UserCircle,
-    LucideIcon
+    LucideIcon,
+    Stethoscope
 } from 'lucide-react';
 
 export interface SidebarItem {
@@ -51,6 +52,13 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Agent Matrix",
                 route: "/team",
                 icon: Users2,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Doctors",
+                route: "/doctors",
+                icon: Stethoscope,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }

@@ -354,8 +354,8 @@ export const OrganizationView = () => {
                                                 isView={true}
                                                 isEdit={true}
                                                 isDelete={true}
-                                                isWhatsAppConfig={true}
-                                                onWhatsAppConfig={() => handleNavigateToWhatsApp(org)}
+                                                // isWhatsAppConfig={true}
+                                                // onWhatsAppConfig={() => handleNavigateToWhatsApp(org)}
                                                 onView={() => handleOpenModal('view', org)}
                                                 onEdit={() => handleOpenModal('edit', org)}
                                                 onDelete={() => handleDeleteClick(org)}

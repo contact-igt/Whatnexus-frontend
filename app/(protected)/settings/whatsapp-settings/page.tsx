@@ -16,6 +16,5 @@ export default function WhatsAppSettingsPage() {
         >
             <WhatsAppConnectionView />
         </RoleBasedWrapper>
-        
     );
 }

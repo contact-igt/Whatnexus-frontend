@@ -68,7 +68,7 @@ export default function EmailScreen({ isDarkMode, onSubmit, isLoading, userType 
                     )}>
                         Email Address
                     </label>
-                    <div className="relative">
+                    <div className="relative mt-2">
                         <div className={cn(
                             "absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none",
                             isDarkMode ? "text-emerald-400" : "text-emerald-600"
