@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash } from 'lucide-react';
+import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import dayjs from "@/utils/dayjs";
@@ -10,10 +10,11 @@ import { useLeadIntelligenceQuery, useGetDeletedLeadsQuery, useSoftDeleteLeadMut
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsapp-connection-placeholder';
-import { LeadSummaryModal } from './lead-summary-modal';
+import { LeadSummaryDrawer } from './lead-summary-drawer';
 import { ConfirmationModal } from '@/components/ui/confirmationModal';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { Pagination } from '@/components/ui/pagination';
+import { getHeatStateStyles } from '@/utils/lead-utils';
 
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
@@ -87,15 +88,7 @@ export const LeadsView = () => {
     };
 
     console.log("leadIntelligenceData", leadIntelligenceData)
-    const getHeatStateStyles = (state: string) => {
-        switch (state?.toLowerCase()) {
-            case 'hot': return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
-            case 'warm': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
-            case 'cold': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-            case 'super_cold': return 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20';
-            default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
-        }
-    };
+    console.log("leadIntelligenceData", leadIntelligenceData)
 
     const formatMessageDate = (dateString: string) => {
         if (!dateString) return { date: '-', time: '' };
@@ -112,6 +105,10 @@ export const LeadsView = () => {
         router.push(`/chats?phone=${leadPhone}`)
     }
 
+    const handleViewDetails = (leadId: string) => {
+        router.push(`/leads/${leadId}`);
+    }
+
     if (whatsappApiDetails?.status !== 'active') {
         return <WhatsAppConnectionPlaceholder />;
     }
@@ -125,6 +122,7 @@ export const LeadsView = () => {
         {
             field: 'identity',
             headerName: 'Lead Identity',
+            minWidth: 200,
             renderCell: ({ row }) => (
                 <div className="flex items-center space-x-3">
                     <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border", isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-700')}>
@@ -138,12 +136,21 @@ export const LeadsView = () => {
             )
         },
         {
+            field: 'origin',
+            headerName: 'Origin',
+            minWidth: 100,
+            renderCell: ({ row }) => (
+                <span className={cn("text-xs font-medium uppercase tracking-wide", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
+                    {row?.origin || row?.source || '-'}
+                </span>
+            )
+        },
+        {
             field: 'score',
             headerName: 'Neural Score',
-            align: 'center',
-            headerAlign: 'center',
+            minWidth: 150,
             renderCell: ({ row }) => (
-                <div className="flex flex-col justify-center items-center">
+                <div className="flex flex-col justify-center items-start">
                     <span className={cn("text-xs font-bold mb-1.5", row?.score > 80 ? 'text-emerald-500' : 'text-orange-500')}>{row?.score}</span>
                     <div className={cn("h-1 w-12 rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-200')}>
                         <div className={cn("h-full rounded-full transition-all duration-[2000ms] ease-out", row?.score > 80 ? 'bg-emerald-500' : 'bg-orange-500')} style={{ width: `${row?.score}%` }} />
@@ -154,8 +161,7 @@ export const LeadsView = () => {
         {
             field: 'heat_state',
             headerName: 'Heat State',
-            align: 'center',
-            headerAlign: 'center',
+            minWidth: 120,
             renderCell: ({ row }) => (
                 <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(row.heat_state))}>
                     {row?.heat_state}
@@ -163,11 +169,49 @@ export const LeadsView = () => {
             )
         },
         {
+            field: 'summary',
+            headerName: 'Summary',
+            minWidth: 250,
+            flex: 1,
+            renderCell: ({ row }) => (
+                <div className="flex flex-col items-start justify-center group/summary py-1 w-full">
+                    {row?.summary_status && (
+                        <span className={cn(
+                            "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border mb-1.5",
+                            row.summary_status === 'new'
+                                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                : "bg-slate-500/10 text-slate-500 border-slate-500/20"
+                        )}>
+                            {row.summary_status}
+                        </span>
+                    )}
+                    <div className="flex items-start space-x-2 w-full">
+                        <p className={cn("text-xs leading-relaxed line-clamp-3 w-[90%] whitespace-normal", isDarkMode ? 'text-white/60' : 'text-slate-500')} title={row?.ai_summary}>
+                            {row?.ai_summary || '-'}
+                        </p>
+                        {row?.ai_summary && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(row.ai_summary);
+                                }}
+                                className={cn(
+                                    "p-1 rounded opacity-0 group-hover/summary:opacity-100 transition-all shrink-0 mt-0.5",
+                                    isDarkMode ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                                )}
+                                title="Copy Summary"
+                            >
+                                <ClipboardList size={12} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )
+        },
+        {
             field: 'last_user_message_at',
             headerName: 'User Last Message',
-            align: 'center',
-            headerAlign: 'center',
-            minWidth: 150,
+            minWidth: 140,
             renderCell: ({ row }) => (
                 <div className="flex flex-col">
                     <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/90' : 'text-slate-700')}>{formatMessageDate(row?.last_user_message_at)?.date}</span>
@@ -176,23 +220,11 @@ export const LeadsView = () => {
             )
         },
         {
-            field: 'last_admin_reply_at',
-            headerName: 'Admin Last Message',
-            align: 'center',
-            headerAlign: 'center',
-            minWidth: 150,
-            renderCell: ({ row }) => (
-                row?.last_admin_reply_at ? <div className="flex flex-col">
-                    <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/90' : 'text-slate-700')}>{formatMessageDate(row?.last_admin_reply_at)?.date}</span>
-                    <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{formatMessageDate(row?.last_admin_reply_at)?.time}</span>
-                </div> : <span className={cn("text-[10px] uppercase font-medium tracking-wide", isDarkMode ? 'text-white/40' : 'text-slate-400')}>-</span>
-            )
-        },
-        {
             field: 'actions',
             headerName: 'Actions',
             align: 'right',
             headerAlign: 'right',
+            minWidth: 100,
             renderCell: ({ row }) => (
                 <div className="flex items-center justify-end space-x-1 transition-all">
                     {activeTab === 'all' && (
@@ -205,6 +237,15 @@ export const LeadsView = () => {
                                 )}
                             >
                                 <ClipboardList size={16} />
+                            </button>
+                            <button
+                                onClick={() => handleViewDetails(row?.lead_id)}
+                                title="View Details"
+                                className={cn(
+                                    "p-2 rounded-lg transition-colors hover:bg-white/10 hover:text-emerald-500 text-slate-400"
+                                )}
+                            >
+                                <Eye size={16} />
                             </button>
                             <button onClick={() => handleLeadOpen(row?.phone)} className="p-2 hover:bg-white/10 rounded-lg hover:text-emerald-500 transition-colors text-slate-400"><MessageSquare size={16} /></button>
                             <button
@@ -242,7 +283,7 @@ export const LeadsView = () => {
 
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in fade-in duration-700 no-scrollbar pb-32">
-            <LeadSummaryModal
+            <LeadSummaryDrawer
                 isOpen={isSummaryModalOpen}
                 onClose={() => setIsSummaryModalOpen(false)}
                 lead={selectedLeadForSummary}

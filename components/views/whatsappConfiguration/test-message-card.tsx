@@ -45,17 +45,19 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
 
     return (
         <div className={cn(
-            "p-6 rounded-xl border backdrop-blur-xl h-full",
+            "p-6 rounded-xl border backdrop-blur-xl h-full transition-all",
             isDarkMode
                 ? "bg-white/[0.02] border-white/10"
-                : "bg-white border-slate-200"
+                : "bg-white border-slate-200",
+            !isActive && "opacity-75"
         )}>
             <div className="flex items-center space-x-3 mb-6">
                 <div className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center",
-                    isDarkMode ? "bg-blue-500/20" : "bg-blue-100"
+                    isDarkMode ? "bg-blue-500/20" : "bg-blue-100",
+                    !isActive && "grayscale"
                 )}>
-                    <Send className="text-blue-500" size={20} />
+                    <Send className={cn("text-blue-500", !isActive && "text-slate-500")} size={20} />
                 </div>
                 <div>
                     <h3 className={cn("font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
@@ -78,15 +80,28 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                     disabled={!isActive}
                 />
 
+                {!isActive && (
+                    <div className={cn(
+                        "text-xs p-3 rounded-lg flex items-center justify-center text-center",
+                        isDarkMode ? "bg-amber-500/10 text-amber-400" : "bg-amber-50 text-amber-600"
+                    )}>
+                        Activate connection to send test messages
+                    </div>
+                )}
+
                 <div className="pt-2">
                     <button
                         onClick={handleSendTestMessage}
-                        disabled={isTestLoading || !testPhoneNumber}
+                        disabled={isTestLoading || !testPhoneNumber || !isActive}
                         className={cn(
                             "w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                            isDarkMode
-                                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20"
-                                : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
+                            isActive
+                                ? (isDarkMode
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20"
+                                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20")
+                                : (isDarkMode
+                                    ? "bg-white/5 text-white/40 cursor-not-allowed"
+                                    : "bg-slate-100 text-slate-400 cursor-not-allowed")
                         )}
                     >
                         {isTestLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
