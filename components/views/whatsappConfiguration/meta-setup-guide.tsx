@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { Building2, ChevronDown, ChevronUp, ExternalLink, MessageCircle, Copy, Check } from 'lucide-react';
+import { Building2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { getWebhookBaseURL } from '@/helper/axios';
 
 interface MetaSetupGuideProps {
     isDarkMode: boolean;
@@ -12,29 +11,28 @@ interface MetaSetupGuideProps {
 
 export const MetaSetupGuide = ({ isDarkMode, user }: MetaSetupGuideProps) => {
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
-    const [copiedWebhook, setCopiedWebhook] = useState(false);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 sticky top-8">
             <div className={cn(
                 "p-6 rounded-xl border backdrop-blur-xl",
                 isDarkMode
-                    ? "bg-blue-500/5 border-blue-500/20"
-                    : "bg-blue-50 border-blue-200"
+                    ? "bg-white/[0.02] border-white/10"
+                    : "bg-white border-slate-200"
             )}>
                 <div className="flex items-start space-x-3 mb-4">
                     <div className={cn(
                         "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                        isDarkMode ? "bg-blue-500/20" : "bg-blue-100"
+                        isDarkMode ? "bg-white/10" : "bg-slate-100"
                     )}>
-                        <Building2 className="text-blue-500" size={20} />
+                        <Building2 className={cn("text-slate-500", isDarkMode && "text-white")} size={20} />
                     </div>
                     <div className="flex-1">
                         <h3 className={cn("font-semibold mb-1", isDarkMode ? "text-white" : "text-slate-900")}>
                             Meta Business Setup Guide
                         </h3>
                         <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                            Follow these steps to configure WhatsApp Business API
+                            Detailed instructions to configure WhatsApp Business API
                         </p>
                     </div>
                 </div>
@@ -55,7 +53,7 @@ export const MetaSetupGuide = ({ isDarkMode, user }: MetaSetupGuideProps) => {
                             <div className="flex items-center space-x-3">
                                 <div className={cn(
                                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                                    isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                    isDarkMode ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"
                                 )}>
                                     1
                                 </div>
@@ -89,7 +87,7 @@ export const MetaSetupGuide = ({ isDarkMode, user }: MetaSetupGuideProps) => {
                             <div className="flex items-center space-x-3">
                                 <div className={cn(
                                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                                    isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                    isDarkMode ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"
                                 )}>
                                     2
                                 </div>
@@ -124,7 +122,7 @@ export const MetaSetupGuide = ({ isDarkMode, user }: MetaSetupGuideProps) => {
                             <div className="flex items-center space-x-3">
                                 <div className={cn(
                                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                                    isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                    isDarkMode ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"
                                 )}>
                                     3
                                 </div>
@@ -159,7 +157,7 @@ export const MetaSetupGuide = ({ isDarkMode, user }: MetaSetupGuideProps) => {
                             <div className="flex items-center space-x-3">
                                 <div className={cn(
                                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                                    isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                    isDarkMode ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"
                                 )}>
                                     4
                                 </div>
@@ -197,7 +195,7 @@ export const MetaSetupGuide = ({ isDarkMode, user }: MetaSetupGuideProps) => {
                             <div className="flex items-center space-x-3">
                                 <div className={cn(
                                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                                    isDarkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+                                    isDarkMode ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"
                                 )}>
                                     5
                                 </div>
