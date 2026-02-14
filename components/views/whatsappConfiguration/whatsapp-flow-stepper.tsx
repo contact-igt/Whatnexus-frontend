@@ -45,7 +45,7 @@ export const WhatsAppFlowStepper = ({ isDarkMode }: WhatsAppFlowStepperProps) =>
 
     return (
         <div className={cn(
-            "rounded-xl border backdrop-blur-xl overflow-hidden sticky top-8 transition-all",
+            "rounded-xl border backdrop-blur-xl overflow-hidden transition-all",
             isDarkMode ? "bg-white/[0.02] border-white/10" : "bg-white border-slate-200"
         )}>
             <div className={cn(

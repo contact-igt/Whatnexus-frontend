@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'next/navigation';
 import { TemplateSelectionModal } from "@/components/ui/template-selection-modal";
 import { CSVPreviewModal, CSVRow } from "@/components/ui/csv-preview-modal";
+import { ProcessedTemplate } from "@/components/ui/template-selection-modal";
 
 type TabType = 'single' | 'group' | 'csv';
 
@@ -165,8 +166,8 @@ export const ComposeMessageView = () => {
         // Handle CSV data submission here
     };
 
-    const handleTemplateSelect = (template: Template) => {
-        setMessageContent(template.content);
+    const handleTemplateSelect = (template: ProcessedTemplate) => {
+        setMessageContent(template.description);
     };
 
     return (
@@ -537,7 +538,6 @@ export const ComposeMessageView = () => {
                 isOpen={isTemplateModalOpen}
                 onClose={() => setIsTemplateModalOpen(false)}
                 onSelect={handleTemplateSelect}
-                isDarkMode={isDarkMode}
             />
 
             {/* CSV Preview Modal */}

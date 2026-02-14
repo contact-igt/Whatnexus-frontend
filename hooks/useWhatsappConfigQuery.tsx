@@ -46,7 +46,7 @@ export const useTestWhatsAppConfigQuery = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data?: { to: string; type: string }) => {
+        mutationFn: (data?: { to: string; type: string; template?: any; text?: { body: string } }) => {
             return whatsappConfigApis.testWhatsAppConfig(data);
         },
         onSuccess: (response) => {

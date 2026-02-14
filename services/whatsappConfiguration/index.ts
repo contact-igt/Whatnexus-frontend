@@ -16,7 +16,7 @@ export class whatsappConfigApiData {
         console.log("data", data)
         return await _axios("post", "/whatsapp/whatsapp-account/manual", data);
     }
-    testWhatsAppConfig = async (data?: { to: string; type: string }) => {
+    testWhatsAppConfig = async (data?: { to: string; type: string; template?: any; text?: { body: string } }) => {
         return await _axios("post", "/whatsapp/whatsapp-account/test", data);
     }
     updateStatusWhatsappConfig = async (id: string, status: any) => {
