@@ -16,7 +16,10 @@ import {
     UserCog,
     UserCircle,
     LucideIcon,
-    Stethoscope
+    Stethoscope,
+    Filter,
+    Clock,
+    Workflow
 } from 'lucide-react';
 
 export interface SidebarItem {
@@ -89,7 +92,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
             {
                 label: "Lead Pool",
                 route: "/leads",
-                icon: Users,
+                icon: Filter,
                 requiresWhatsApp: true,
             },
             {
@@ -109,7 +112,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
             {
                 label: "Follow-ups",
                 route: "/followups",
-                icon: Calendar,
+                icon: Clock,
                 requiresWhatsApp: true,
             },
             {
@@ -119,9 +122,9 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 requiresWhatsApp: false,
             },
             {
-                label: "logic",
+                label: "Logic",
                 route: "/logic",
-                icon: Calendar,
+                icon: Workflow,
                 requiresWhatsApp: false,
             }
         ]

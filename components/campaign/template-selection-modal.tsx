@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
@@ -126,11 +127,11 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] font-sans flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <GlassCard
                 isDarkMode={isDarkMode}
-                className="w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col"
+                className="w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
             >
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-white/10">
@@ -221,7 +222,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                         </div>
 
                         {/* Templates Grid */}
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <Loader2 size={48} className={cn("animate-spin", isDarkMode ? 'text-white/40' : 'text-slate-400')} />
@@ -331,6 +332,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                     </div>
                 </div>
             </GlassCard>
-        </div>
+        </div>,
+        document.body
     );
 };

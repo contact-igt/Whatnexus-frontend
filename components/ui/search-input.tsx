@@ -41,7 +41,7 @@ export const SearchInput = ({
                 onChange={handleChange}
                 {...props}
                 className={cn(
-                    "w-full pl-10 pr-4 py-3 rounded-xl text-sm border transition-all focus:outline-none",
+                    "w-full pl-10 pr-4 py-2 rounded-xl text-sm border transition-all focus:outline-none",
                     isDarkMode
                         ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
                         : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30'

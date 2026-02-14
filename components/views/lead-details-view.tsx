@@ -291,7 +291,7 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                     </GlassCard>
 
                     {/* Recent Activity / Chat UI */}
-                    <GlassCard className="flex flex-col h-[380px] overflow-hidden p-0 border-0" isDarkMode={isDarkMode}>
+                    <GlassCard className="flex flex-col h-[400px] max-h-[420px] overflow-hidden p-0 border-0" isDarkMode={isDarkMode}>
                         {/* Header */}
                         <div className={cn(
                             "px-6 py-4 flex items-center justify-between shrink-0 border-b",
@@ -308,7 +308,7 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
 
                         <div
                             className={cn(
-                                "flex-1 overflow-y-auto p-6 space-y-4 relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent",
+                                "flex-1 overflow-y-auto p-6 flex flex-col gap-4 relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent",
                                 isDarkMode ? 'bg-[#0b141a]' : 'bg-[#e5ddd5]'
                             )}
                             style={{
@@ -322,7 +322,7 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                                 lead.last_messages.map((msg: any, idx: number) => {
                                     const isBot = msg.sender === 'bot';
                                     return (
-                                        <div key={idx} className={cn("flex w-full mb-1", isBot ? "justify-end" : "justify-start")}>
+                                        <div key={idx} className={cn("flex w-full", isBot ? "justify-end" : "justify-start")}>
                                             <div className={cn(
                                                 "max-w-[80%] rounded-lg shadow-sm relative px-3 py-1.5",
                                                 isBot
