@@ -19,6 +19,16 @@ export const useLeadIntelligenceQuery = () => {
   return { data, isLoading, isError, refetch }
 }
 
+export const useGetLeadByIdQuery = (id: string) => {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["lead-intelligence", id],
+    queryFn: () => leadIntelligenceApis.getLeadById(id),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  })
+  return { data, isLoading, isError, refetch }
+}
+
 
 
 export const useSummarizeLeadMutation = () => {
@@ -32,10 +42,15 @@ export const useSummarizeLeadMutation = () => {
     mutationFn: (data: any) =>
       leadIntelligenceApis.getLeadSummary(data.id, data.date, data.startDate, data.endDate),
 
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["lead-intelligence"],
       });
+      if (variables.id) {
+        queryClient.invalidateQueries({
+          queryKey: ["lead-intelligence", variables.id],
+        });
+      }
     },
   });
 };

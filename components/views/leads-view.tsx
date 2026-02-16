@@ -1,7 +1,11 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
-import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye, RefreshCw, Sparkles } from 'lucide-react';
+import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye, RefreshCw, Sparkles, BrainCircuit } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
+import { Select } from '@/components/ui/select';
+import { ActionMenu } from '@/components/ui/action-menu';
+import { Badge } from '@/components/ui/badge';
+import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import dayjs from "@/utils/dayjs";
 import { useTheme } from '@/hooks/useTheme';
@@ -15,11 +19,8 @@ import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { Pagination } from '@/components/ui/pagination';
 import { getHeatStateStyles } from '@/utils/lead-utils';
 import { SearchInput } from '@/components/ui/search-input';
-import { Select } from '@/components/ui/select';
-import { ActionMenu } from '@/components/ui/action-menu';
-import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useState } from 'react';
+
 
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
@@ -29,28 +30,7 @@ export const LeadsView = () => {
 
     const [activeTab, setActiveTab] = useState<'all' | 'trash'>('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterOpen, setFilterOpen] = useState(false);
-    const filterRef = useRef<HTMLDivElement>(null);
-    const filterTriggerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (
-                filterOpen &&
-                filterRef.current &&
-                !filterRef.current.contains(event.target as Node) &&
-                filterTriggerRef.current &&
-                !filterTriggerRef.current.contains(event.target as Node)
-            ) {
-                setFilterOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [filterOpen]);
     const [filters, setFilters] = useState({
         origin: 'all',
         score: 0,
@@ -61,14 +41,34 @@ export const LeadsView = () => {
     const { data: leadIntelligenceData, isLoading: isLoadingLeads, refetch: refetchLeads } = useLeadIntelligenceQuery();
     const { data: deletedLeadsData, isLoading: isLoadingDeletedLeads, refetch: refetchDeletedLeads } = useGetDeletedLeadsQuery();
 
+    const formatMessageDate = (dateString: string) => {
+        if (!dateString) return { date: '-', time: '' };
+
+        const d = dayjs.utc(dateString).tz('Asia/Kolkata');
+
+        return {
+            date: d.format('MMM D'),
+            time: d.format('hh:mm A')
+        };
+    };
+
     const isLoading = activeTab === 'all' ? isLoadingLeads : isLoadingDeletedLeads;
     const leads = activeTab === 'all' ? (leadIntelligenceData?.data?.leads || []) : (deletedLeadsData?.data?.leads || []);
 
     const filteredLeads = leads.filter((lead: any) => {
-        const matchesSearch = (
-            lead?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            lead?.phone?.includes(searchQuery)
-        );
+        const searchLower = searchQuery.toLowerCase();
+        const { date, time } = formatMessageDate(lead?.last_user_message_at);
+        const matchesSearch = searchQuery === '' || [
+            lead?.name,
+            lead?.phone,
+            lead?.origin,
+            lead?.source,
+            lead?.heat_state,
+            lead?.ai_summary,
+            lead?.summary_status,
+            date,
+            time
+        ].some(val => val?.toString().toLowerCase().includes(searchLower));
 
         const matchesOrigin = filters.origin === 'all' || (lead?.origin || lead?.source) === filters.origin;
 
@@ -161,17 +161,6 @@ export const LeadsView = () => {
 
     console.log("leadIntelligenceData", leadIntelligenceData)
     console.log("leadIntelligenceData", leadIntelligenceData)
-
-    const formatMessageDate = (dateString: string) => {
-        if (!dateString) return { date: '-', time: '' };
-
-        const d = dayjs.utc(dateString).tz('Asia/Kolkata');
-
-        return {
-            date: d.format('MMM D'),
-            time: d.format('hh:mm A')
-        };
-    };
 
     const handleLeadOpen = (leadPhone: string) => {
         router.push(`/chats?phone=${leadPhone}`)
@@ -280,17 +269,19 @@ export const LeadsView = () => {
                                 <p className={cn("text-xs leading-relaxed line-clamp-3 w-[90%] whitespace-normal", isDarkMode ? 'text-white/60' : 'text-slate-500')} title={row?.ai_summary}>
                                     {row?.ai_summary}
                                 </p>
-                                <button
-                                    onClick={(e) => handleRefreshSummary(e, row.lead_id)}
-                                    className={cn(
-                                        "p-1 rounded transition-all shrink-0 mt-0.5",
-                                        isDarkMode ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-                                    )}
-                                    title="Refresh Summary"
-                                    disabled={isSummarizePending && activeSummaryId === row.lead_id}
-                                >
-                                    <RefreshCw size={12} className={cn(isSummarizePending && activeSummaryId === row.lead_id ? "animate-spin" : "")} />
-                                </button>
+                                {row?.summary_status?.toLowerCase() === 'new' && (
+                                    <button
+                                        onClick={(e) => handleRefreshSummary(e, row.lead_id)}
+                                        className={cn(
+                                            "p-1 rounded transition-all shrink-0 mt-0.5",
+                                            isDarkMode ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                                        )}
+                                        title="Refresh Summary"
+                                        disabled={isSummarizePending && activeSummaryId === row.lead_id}
+                                    >
+                                        <RefreshCw size={12} className={cn(isSummarizePending && activeSummaryId === row.lead_id ? "animate-spin" : "")} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -343,7 +334,7 @@ export const LeadsView = () => {
                         onSummary={() => summarizeLead(undefined, row)}
                         isMessage={activeTab === 'all'}
                         onMessage={() => handleLeadOpen(row?.phone)}
-                        isRefresh={activeTab === 'all'}
+                        isRefresh={activeTab === 'all' && row?.summary_status?.toLowerCase() === 'new'}
                         onRefresh={() => handleRefreshSummary({ stopPropagation: () => { } } as any, row?.lead_id)}
                         // Adding missing logic for other potential actions if needed
                         onEdit={undefined}
@@ -393,153 +384,161 @@ export const LeadsView = () => {
                             placeholder="Search leads..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-64"
+                            className="w-60"
                         />
-                        <div
-                            ref={filterTriggerRef}
-                            className={cn(
-                                "px-4 py-2.5 flex items-center space-x-2 group cursor-pointer border rounded-xl transition-all select-none",
-                                isDarkMode
-                                    ? filteredLeads.length !== leads.length
-                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                        : 'bg-white/5 border-white/10 hover:border-emerald-500/50 text-white'
-                                    : filteredLeads.length !== leads.length
-                                        ? 'bg-emerald-50 border-emerald-500/50 text-emerald-600'
-                                        : 'bg-white border-slate-200 hover:border-emerald-500/50 shadow-sm text-slate-700'
-                            )}
-                            onClick={() => setFilterOpen(!filterOpen)}
-                        >
-                            <Filter size={16} className={filteredLeads.length !== leads.length ? "text-emerald-500" : "text-slate-400"} />
-                            <span className="text-xs font-semibold uppercase tracking-wide">Filters</span>
+
+                        {/* Source Filter */}
+                        <div className="w-40">
+                            <Select
+                                isDarkMode={isDarkMode}
+                                options={[{ value: 'all', label: 'All Sources' }, ...uniqueOrigins.map(o => ({ value: o, label: o }))]}
+                                value={filters.origin}
+                                onChange={(val) => setFilters(prev => ({ ...prev, origin: val }))}
+                                placeholder="Source"
+                                className="w-full"
+                            />
                         </div>
 
-                        {filterOpen && (
-                            <div
-                                ref={filterRef}
-                                className={cn(
-                                    "absolute top-full right-0 mt-3 p-0 rounded-3xl border shadow-2xl w-[480px] max-h-[85vh] flex flex-col animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right overflow-hidden z-50",
-                                    isDarkMode ? 'bg-[#09090b] border-white/10 shadow-black/80 ring-1 ring-white/5' : 'bg-white border-slate-200 shadow-xl'
+                        {/* Heat State Filter */}
+                        <div className="w-40">
+                            <Select
+                                isDarkMode={isDarkMode}
+                                options={[
+                                    { value: 'all', label: 'All States' },
+                                    { value: 'cold', label: 'Cold' },
+                                    { value: 'warm', label: 'Warm' },
+                                    { value: 'hot', label: 'Hot' },
+                                    { value: 'super_cold', label: 'Super Cold' }
+                                ]}
+                                value={filters.heatState}
+                                onChange={(val) => setFilters(prev => ({ ...prev, heatState: val }))}
+                                placeholder="Heat State"
+                                className="w-full"
+                            />
+                        </div>
+
+                        {/* Neural Score Filter (Hero Gauge Style) */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button className={cn(
+                                    "w-40 px-3 py-2.5 rounded-xl text-sm font-bold border flex items-center justify-center gap-2 transition-all shadow-sm group relative overflow-hidden",
+                                    filters.score > 0
+                                        ? isDarkMode
+                                            ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]"
+                                            : "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm"
+                                        : isDarkMode
+                                            ? "bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20"
+                                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
                                 )}>
-                                {/* Panel Header */}
-                                <div className={cn(
-                                    "px-6 py-5 border-b flex justify-between items-center sticky top-0 z-10",
-                                    isDarkMode ? "bg-[#09090b] border-white/5" : "bg-white border-slate-100"
-                                )}>
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn("p-2 rounded-xl", isDarkMode ? "bg-white/5" : "bg-slate-100")}>
-                                            <Filter size={16} className={isDarkMode ? "text-white" : "text-slate-600"} />
-                                        </div>
-                                        <div>
-                                            <h3 className={cn("text-sm font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>Filter Leads</h3>
-                                        </div>
+                                    <BrainCircuit size={16} className={cn("transition-colors", filters.score > 0 ? "text-emerald-500 animate-pulse" : "opacity-70")} />
+                                    <span className="truncate">
+                                        <span className={cn("font-medium", filters.score > 0 ? "opacity-100" : "opacity-70")}>Neural: </span>
+                                        {filters.score > 0 ? `${filters.score}+` : 'Any'}
+                                    </span>
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className={cn("w-80 p-0 overflow-hidden font-sans", isDarkMode ? "bg-black border-white/10" : "bg-white border-slate-200")} align="end">
+                                {/* Header */}
+                                <div className={cn("px-5 py-4 border-b flex justify-between items-center", isDarkMode ? "border-white/10 bg-white/5" : "border-slate-100 bg-slate-50/50")}>
+                                    <div className="flex items-center gap-2">
+                                        <BrainCircuit size={16} className={isDarkMode ? "text-emerald-400" : "text-emerald-600"} />
+                                        <span className={cn("text-sm font-bold tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Neural Score Threshold
+                                        </span>
                                     </div>
-                                    <button
-                                        onClick={() => setFilters({ origin: 'all', score: 0, heatState: 'all' })}
-                                        className={cn(
-                                            "text-[10px] font-bold px-3.5 py-2 rounded-xl transition-all hover:scale-105 active:scale-95 border",
-                                            isDarkMode
-                                                ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20 hover:border-rose-500/40"
-                                                : "bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100"
-                                        )}
-                                    >
-                                        RESET
-                                    </button>
                                 </div>
 
-                                {/* Panel Content */}
-                                <div className="p-6 space-y-8 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-
-                                    {/* Origin Search & Grid */}
-                                    <div className="space-y-4">
-                                        <label className={cn("text-[11px] font-bold uppercase tracking-widest block opacity-60 ml-1", isDarkMode ? "text-white" : "text-slate-500")}>
-                                            Source / Origin
-                                        </label>
-                                        <div className="grid grid-cols-4 gap-2.5">
-                                            {['all', ...uniqueOrigins].map((origin) => (
-                                                <button
-                                                    key={origin}
-                                                    onClick={() => setFilters(prev => ({ ...prev, origin }))}
-                                                    className={cn(
-                                                        "px-2 py-2.5 rounded-xl text-[11px] font-semibold transition-all border truncate capitalize",
-                                                        filters.origin === origin
-                                                            ? isDarkMode
-                                                                ? "bg-emerald-500 text-white border-emerald-500 shadow-[0_0_15px_-3px_rgba(16,185,129,0.4)]"
-                                                                : "bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/20"
-                                                            : isDarkMode
-                                                                ? "bg-white/5 text-white/60 border-transparent hover:border-white/10 hover:bg-white/10 hover:text-white"
-                                                                : "bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100 hover:text-slate-700"
+                                <div className="p-6 space-y-6">
+                                    {/* Large Circular Gauge */}
+                                    <div className="flex justify-center">
+                                        <div className="relative w-32 h-32 flex items-center justify-center">
+                                            <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                                                {/* Track */}
+                                                <circle
+                                                    cx="50" cy="50" r="40"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="8"
+                                                    className={isDarkMode ? "text-white/10" : "text-slate-100"}
+                                                />
+                                                {/* Progress */}
+                                                <circle
+                                                    cx="50" cy="50" r="40"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="8"
+                                                    strokeLinecap="round"
+                                                    strokeDasharray={`${2 * Math.PI * 40}`}
+                                                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - filters.score / 100)}`}
+                                                    className={cn("transition-all duration-700 ease-out",
+                                                        filters.score > 75 ? "text-emerald-500" :
+                                                            filters.score > 50 ? "text-blue-500" :
+                                                                filters.score > 25 ? "text-yellow-500" : "text-slate-500"
                                                     )}
-                                                    title={origin}
-                                                >
-                                                    {origin}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Neural Score - Slider */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-end px-1">
-                                            <label className={cn("text-[11px] font-bold uppercase tracking-widest block opacity-60", isDarkMode ? "text-white" : "text-slate-500")}>
-                                                Min Neural Score
-                                            </label>
-                                            <span className={cn("text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-gradient-to-r border", isDarkMode ? "from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/20" : "from-emerald-50 to-teal-50 text-emerald-600 border-emerald-100")}>
-                                                {filters.score > 0 ? `${filters.score}+` : 'All'}
-                                            </span>
-                                        </div>
-                                        <div className={cn("p-6 rounded-2xl border transition-colors", isDarkMode ? "bg-white/5 border-white/5 hover:border-white/10" : "bg-slate-50 border-slate-100")}>
-                                            <Slider
-                                                value={[typeof filters.score === 'number' ? filters.score : 0]}
-                                                onValueChange={(val) => setFilters(prev => ({ ...prev, score: val[0] }))}
-                                                isDarkMode={isDarkMode}
-                                                min={0}
-                                                max={100}
-                                                step={5}
-                                            />
-                                            <div className="flex justify-between mt-4 px-1 opacity-40">
-                                                <span className={cn("text-[10px] font-bold", isDarkMode ? "text-white" : "text-slate-900")}>0</span>
-                                                <span className={cn("text-[10px] font-bold", isDarkMode ? "text-white" : "text-slate-900")}>50</span>
-                                                <span className={cn("text-[10px] font-bold", isDarkMode ? "text-white" : "text-slate-900")}>100</span>
+                                                />
+                                            </svg>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                <span className={cn("text-3xl font-black tracking-tighter",
+                                                    isDarkMode ? "text-white" : "text-slate-900"
+                                                )}>
+                                                    {filters.score}
+                                                </span>
+                                                <span className="text-[10px] uppercase font-bold opacity-40">Min Score</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Heat State */}
+                                    {/* Slider Control */}
                                     <div className="space-y-4">
-                                        <label className={cn("text-[11px] font-bold uppercase tracking-widest block opacity-60 ml-1", isDarkMode ? "text-white" : "text-slate-500")}>
-                                            Heat State
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-2.5">
-                                            {[
-                                                { value: 'all', label: 'Any State' },
-                                                { value: 'hot', label: '🔥 Hot' },
-                                                { value: 'warm', label: '☀️ Warm' },
-                                                { value: 'cold', label: '❄️ Cold' },
-                                                { value: 'super_cold', label: '🧊 Super Cold' }
-                                            ].map((option) => (
+                                        <Slider
+                                            isDarkMode={isDarkMode}
+                                            value={[filters.score]}
+                                            max={100}
+                                            step={1}
+                                            onValueChange={(val) => setFilters(prev => ({ ...prev, score: val[0] }))}
+                                            className="w-full"
+                                        />
+
+                                        {/* Presets Grid */}
+                                        <div className="grid grid-cols-4 gap-2 pt-2">
+                                            {[0, 50, 75, 90].map((preset) => (
                                                 <button
-                                                    key={option.value}
-                                                    onClick={() => setFilters(prev => ({ ...prev, heatState: option.value }))}
+                                                    key={preset}
+                                                    onClick={() => setFilters(prev => ({ ...prev, score: preset }))}
                                                     className={cn(
-                                                        "px-4 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border text-left flex items-center gap-2",
-                                                        option.value === 'super_cold' ? 'col-span-2' : '',
-                                                        filters.heatState === option.value
+                                                        "py-2 rounded-lg text-[10px] font-bold transition-all border",
+                                                        filters.score === preset
                                                             ? isDarkMode
-                                                                ? "bg-white/10 text-white border-white/20 shadow-lg"
-                                                                : "bg-slate-100 text-slate-900 border-slate-300 shadow-sm"
+                                                                ? "bg-white text-black border-white"
+                                                                : "bg-slate-900 text-white border-slate-900"
                                                             : isDarkMode
-                                                                ? "bg-transparent text-white/40 border-white/5 hover:border-white/15 hover:bg-white/5 hover:text-white"
-                                                                : "bg-transparent text-slate-400 border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                                                                ? "bg-white/5 text-white/50 border-transparent hover:bg-white/10 hover:text-white"
+                                                                : "bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100 hover:text-slate-700"
                                                     )}
                                                 >
-                                                    {option.label}
+                                                    {preset === 0 ? 'Any' : `${preset}+`}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
-
                                 </div>
-                            </div>
+                            </PopoverContent>
+                        </Popover>
+
+                        {/* Reset Button (only if filters active) */}
+                        {(filters.origin !== 'all' || filters.heatState !== 'all' || filters.score > 0) && (
+                            <button
+                                onClick={() => setFilters({ origin: 'all', score: 0, heatState: 'all' })}
+                                className={cn(
+                                    "p-2.5 rounded-xl border transition-all hover:scale-105 active:scale-95",
+                                    isDarkMode
+                                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+                                        : "bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100"
+                                )}
+                                title="Reset Filters"
+                            >
+                                <RefreshCw size={16} />
+                            </button>
                         )}
 
                         <button className="h-10 px-5 rounded-xl bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Sync CRM</button>
@@ -571,7 +570,7 @@ export const LeadsView = () => {
                         <Trash2 size={14} />
                         <span>Trash</span>
                     </button>
-                </div>
+                </div >
 
                 <GlassCard isDarkMode={isDarkMode} className="flex flex-col min-h-0 overflow-hidden p-0">
                     <DataTable
@@ -633,6 +632,6 @@ export const LeadsView = () => {
                 lead={selectedLeadForSummary}
                 isDarkMode={isDarkMode}
             />
-        </div >
+        </div>
     );
 };

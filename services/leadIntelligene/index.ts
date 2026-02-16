@@ -24,6 +24,10 @@ export class LeadIntelligenceApiData {
         return await _axios("get", url);
     };
 
+    getLeadById = async (id: string) => {
+        return await _axios("get", `/whatsapp/lead/${id}`);
+    };
+
     softDeleteLead = async (id: string) => {
         return await _axios("delete", `/whatsapp/lead/${id}/soft`)
     }
