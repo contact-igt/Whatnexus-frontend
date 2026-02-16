@@ -112,10 +112,10 @@ export const LeadSummarySidebar = ({ isOpen, onClose, lead, isDarkMode }: LeadSu
     const renderCalendar = () => {
         const monthStart = startOfMonth(currentMonth);
         const monthEnd = endOfMonth(monthStart);
-        const startDate = startOfWeek(monthStart);
-        const endDate = endOfWeek(monthEnd);
+        const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
+        const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
         const days = eachDayOfInterval({ start: startDate, end: endDate });
-        const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
         return (
             <div className="p-2">
@@ -224,7 +224,7 @@ export const LeadSummarySidebar = ({ isOpen, onClose, lead, isDarkMode }: LeadSu
                     </div>
                     <div className={cn("text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
                         {selectedRange.from ? format(selectedRange.from, "MMM d, yyyy") : "Select"}
-                        {selectedRange.to && selectedRange.to !== selectedRange.from && ` - ${format(selectedRange.to, "MMM d, yyyy")}`}
+                        {selectedRange.from && selectedRange.to && !isSameDay(selectedRange.from, selectedRange.to) && ` - ${format(selectedRange.to, "MMM d, yyyy")}`}
                     </div>
 
                     {/* Collapsible Date Picker */}

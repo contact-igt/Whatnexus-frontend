@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { LeadDetailsView } from "@/components/views/lead-details-view";
-import { useLeadIntelligenceQuery } from "@/hooks/useLeadIntelligenceQuery";
+import { useLeadIntelligenceQuery, useGetLeadByIdQuery } from "@/hooks/useLeadIntelligenceQuery";
 import { useTheme } from "@/hooks/useTheme";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,11 +11,10 @@ export default function LeadDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const { isDarkMode } = useTheme();
-    const { data: leadIntelligenceData, isLoading } = useLeadIntelligenceQuery();
-
     const leadId = params?.id as string;
-    const leads = leadIntelligenceData?.data?.leads || [];
-    const lead = leads.find((l: any) => l.lead_id === leadId);
+    const { data: leadDetailData, isLoading } = useGetLeadByIdQuery(leadId);
+
+    const lead = leadDetailData?.data;
 
     if (isLoading) {
         return (

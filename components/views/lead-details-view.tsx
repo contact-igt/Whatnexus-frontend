@@ -19,8 +19,11 @@ import {
     Sparkles,
     AlertCircle,
     Check,
-    Copy
+    Copy,
+    RefreshCw
 } from 'lucide-react';
+import { useSummarizeLeadMutation } from '@/hooks/useLeadIntelligenceQuery';
+import { toast } from 'sonner';
 
 interface LeadDetailsViewProps {
     lead: any;
@@ -37,6 +40,24 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
     };
 
     const isSummaryNew = lead.summary_status === 'new';
+
+    const { mutate: summarizeLead, isPending } = useSummarizeLeadMutation();
+
+    const handleRefresh = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        summarizeLead({ id: lead.lead_id }, {
+            onSuccess: () => {
+                toast.success("Summary updated successfully");
+            }
+        });
+    };
+
+    const handleCopy = () => {
+        if (lead.ai_summary) {
+            navigator.clipboard.writeText(lead.ai_summary);
+            toast.success("Summary copied to clipboard");
+        }
+    };
 
     return (
         <div className="h-full overflow-y-auto p-6 space-y-6 animate-in fade-in duration-500">
@@ -257,23 +278,37 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                                 {lead.ai_summary || "No summary available yet."}
                             </p>
 
-                            {lead.ai_summary && (
-                                <button
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(lead.ai_summary);
-                                        // toast.success("Summary copied to clipboard"); // Assuming toast is available or just visual feedback
-                                    }}
-                                    className={cn(
-                                        "self-end flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all",
-                                        isDarkMode
-                                            ? "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
-                                            : "bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm border border-slate-200"
-                                    )}
-                                >
-                                    <Copy size={12} />
-                                    Copy Summary
-                                </button>
-                            )}
+                            <div className="flex items-center gap-2 self-end">
+                                {lead.summary_status?.toLowerCase() === 'new' && (
+                                    <button
+                                        onClick={handleRefresh}
+                                        disabled={isPending}
+                                        className={cn(
+                                            "flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all",
+                                            isDarkMode
+                                                ? "bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20"
+                                                : "bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 shadow-sm"
+                                        )}
+                                    >
+                                        <RefreshCw size={12} className={cn(isPending && "animate-spin")} />
+                                        <span>Update Summary</span>
+                                    </button>
+                                )}
+                                {lead.ai_summary && (
+                                    <button
+                                        onClick={handleCopy}
+                                        className={cn(
+                                            "flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all",
+                                            isDarkMode
+                                                ? "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                                                : "bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm border border-slate-200"
+                                        )}
+                                    >
+                                        <Copy size={12} />
+                                        Copy Summary
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Additional AI Insights if available in payload later */}

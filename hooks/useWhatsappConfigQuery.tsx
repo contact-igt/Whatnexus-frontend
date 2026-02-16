@@ -46,8 +46,25 @@ export const useTestWhatsAppConfigQuery = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data?: { to: string; type: string; template?: any; text?: { body: string } }) => {
+        mutationFn: (data: any) => {
             return whatsappConfigApis.testWhatsAppConfig(data);
+        },
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] })
+            toast.success(response?.data?.message || response?.message || "WhatsApp configuration test successful")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "WhatsApp configuration test failed")
+        }
+    })
+}
+
+export const useSendTestWhatsAppConfigQuery = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: any) => {
+            return whatsappConfigApis.sendTestWhatsAppConfig(data);
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] })
