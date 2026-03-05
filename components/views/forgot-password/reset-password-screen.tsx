@@ -88,7 +88,7 @@ export default function ResetPasswordScreen({ isDarkMode, email, onSubmit, isLoa
                     )}>
                         New Password
                     </label>
-                    <div className="relative">
+                    <div className="relative mt-2">
                         <div className={cn(
                             "absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none",
                             isDarkMode ? "text-emerald-400" : "text-emerald-600"
@@ -102,6 +102,7 @@ export default function ResetPasswordScreen({ isDarkMode, email, onSubmit, isLoa
                                 setPassword(e.target.value);
                                 setErrors({ ...errors, password: undefined });
                             }}
+                            autoComplete="new-password"
                             placeholder="••••••••"
                             disabled={isLoading}
                             className={cn(
@@ -140,7 +141,7 @@ export default function ResetPasswordScreen({ isDarkMode, email, onSubmit, isLoa
                     )}>
                         Confirm Password
                     </label>
-                    <div className="relative">
+                    <div className="relative mt-2">
                         <div className={cn(
                             "absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none",
                             isDarkMode ? "text-emerald-400" : "text-emerald-600"

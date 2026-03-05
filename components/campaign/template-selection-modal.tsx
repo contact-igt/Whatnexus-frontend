@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from 'react';
-import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useTemplates } from '@/hooks/useTemplates';
+import { useSyncAllTemplateMutation } from '@/hooks/useTemplateQuery';
 
 export interface ProcessedTemplate {
     id: string;
@@ -19,6 +21,7 @@ export interface ProcessedTemplate {
     variableArray?: any[]; // Add parsed variables to processed template
     headerText?: string;
     footerText?: string;
+    bodyText?: string;
 }
 
 interface TemplateSelectionModalProps {
@@ -35,6 +38,7 @@ type TemplateType = 'all' | 'text' | 'image' | 'file' | 'video' | 'carousel';
 export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSelectionModalProps) => {
     const { isDarkMode } = useTheme();
     const { templates: apiTemplates, loading, error, refetch } = useTemplates();
+    const { mutate: syncTemplates, isPending: isSyncing } = useSyncAllTemplateMutation();
     const [activeCategory, setActiveCategory] = useState<CategoryType>('marketing');
     const [activeType, setActiveType] = useState<TemplateType>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -60,7 +64,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
         .filter(t => t.status?.toUpperCase() === 'APPROVED')
         .map(t => {
             // Extract data from components if standard fields are missing
-            let bodyText = t.body;
+            let bodyTextData = t.body;
             let headerType = t.header_type;
 
             if (Array.isArray(t.components)) {
@@ -68,7 +72,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                 const bodyComponent = t.components.find((c: any) =>
                     c.component_type?.toLowerCase() === 'body' || c.type?.toLowerCase() === 'body'
                 );
-                if (bodyComponent && !bodyText) bodyText = bodyComponent.text_content || bodyComponent.text;
+                if (bodyComponent && !bodyTextData) bodyTextData = bodyComponent.text_content || bodyComponent.text;
 
                 const headerComponent = t.components.find((c: any) =>
                     c.component_type?.toLowerCase() === 'header' || c.type?.toLowerCase() === 'header'
@@ -90,12 +94,13 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                 id: t.template_id || t.id || '',
                 name: t.name || t.template_name || (t as any).element_name || t.id || 'Untitled',
                 category: (t.category?.toLowerCase() as any) || 'marketing',
-                description: bodyText?.substring(0, 100) || 'No description',
+                description: bodyTextData?.substring(0, 100) || 'No description',
                 type: (headerType ? headerType.toLowerCase() : 'text') as any,
                 variables: t.variables_count || t.variables?.length || 0,
                 variableArray: t.variables || [],
                 headerText,
                 footerText,
+                bodyText: bodyTextData || '',
             };
         });
 
@@ -117,6 +122,15 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
         return matchesCategory && matchesType && matchesSearch;
     });
 
+    const handleSync = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        syncTemplates(undefined, {
+            onSuccess: () => {
+                refetch();
+            }
+        });
+    };
+
     const handleSelect = () => {
         if (selectedTemplate) {
             onSelect(selectedTemplate);
@@ -126,26 +140,41 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] font-sans flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <GlassCard
                 isDarkMode={isDarkMode}
-                className="w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col"
+                className="w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
             >
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-white/10">
                     <h2 className={cn("text-2xl font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                         Select Template
                     </h2>
-                    <button
-                        onClick={onClose}
-                        className={cn(
-                            "p-2 rounded-lg transition-all",
-                            isDarkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
-                        )}
-                    >
-                        <X size={20} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleSync}
+                            disabled={isSyncing}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                                isDarkMode
+                                    ? "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20"
+                                    : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+                            )}
+                        >
+                            <RefreshCw size={14} className={cn(isSyncing && "animate-spin")} />
+                            <span>{isSyncing ? 'Syncing...' : 'Sync Templates'}</span>
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className={cn(
+                                "p-2 rounded-lg transition-all",
+                                isDarkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+                            )}
+                        >
+                            <X size={20} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex flex-1 overflow-hidden">
@@ -221,7 +250,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                         </div>
 
                         {/* Templates Grid */}
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <Loader2 size={48} className={cn("animate-spin", isDarkMode ? 'text-white/40' : 'text-slate-400')} />
@@ -331,6 +360,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                     </div>
                 </div>
             </GlassCard>
-        </div>
+        </div>,
+        document.body
     );
 };

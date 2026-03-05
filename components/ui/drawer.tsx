@@ -53,7 +53,7 @@ export const Drawer = ({
         >
             <div
                 className={cn(
-                    "relative h-full w-full max-w-md shadow-2xl border-l animate-in slide-in-from-right duration-300 flex flex-col",
+                    "relative h-full w-full max-w-md shadow-2xl border-l animate-in slide-in-from-right duration-300 flex flex-col font-sans",
                     isDarkMode
                         ? 'bg-[#1c1c21] border-white/10'
                         : 'bg-white border-slate-200',
