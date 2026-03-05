@@ -81,7 +81,7 @@ export default function TermsAndConditionsPage() {
 
                 {/* ── Intro ─────────────────────────────────────── */}
                 <P cls={body}>
-                    These Terms & Conditions (&quot;Terms&quot;) govern access to and use of <B d={D}>WhatsNexus</B> (the &quot;Platform&quot;), an AI-powered messaging automation platform operated by <B d={D}>Invictus Global Tech Pvt Ltd</B> (&quot;Invictus,&quot; &quot;we,&quot; &quot;us,&quot; &quot;our&quot;). By accessing or using WhatsNexus, you (&quot;Customer,&quot; &quot;you,&quot; &quot;your&quot;) agree to these Terms. If you are using WhatsNexus on behalf of an organization, you represent that you have authority to bind that organization to these Terms.
+                    These Terms & Conditions (&quot;Terms&quot;) govern access to and use of <B d={D}>WhatsNexus</B> (the &quot;Platform&quot;), an AI-powered messaging automation platform operated by <B d={D}>Invictus Global Tech</B> (&quot;Invictus,&quot; &quot;we,&quot; &quot;us,&quot; &quot;our&quot;). By accessing or using WhatsNexus, you (&quot;Customer,&quot; &quot;you,&quot; &quot;your&quot;) agree to these Terms. If you are using WhatsNexus on behalf of an organization, you represent that you have authority to bind that organization to these Terms, <B d={D}>Invictus Global Tech Pvt Ltd</B> (formerly known as Invictus Global Tech).
                 </P>
 
                 <hr className={cn("my-10", hr)} />
@@ -323,7 +323,7 @@ export default function TermsAndConditionsPage() {
                     <SecHeading d={D}>19. Contact</SecHeading>
                     <P cls={body}>For questions about these Terms, contact:</P>
                     <P cls={body}>
-                        <B d={D}>Invictus Global Tech Pvt Ltd</B><br />
+                        <B d={D}>Invictus Global Tech</B><br />
                         Email: <A href="mailto:contact@invictusglobaltech.com" d={D}>contact@invictusglobaltech.com</A><br />
                         Address: LIG 13/19, NH3, Vanjinathan Street, Maraimalai Nagar, Chennai - 603209
                     </P>
