@@ -23,8 +23,7 @@ export const FooterSection = () => {
                     </div>
                 </div>
 
-                {/* Legal Nav Links */}
-                <div className="flex items-center gap-6">
+                <div className="flex flex-wrap justify-center items-center gap-6">
                     <Link
                         href="/privacy-policy"
                         className="text-[10px] font-bold tracking-widest uppercase text-white/30 hover:text-emerald-400 transition-colors duration-200"
@@ -38,11 +37,18 @@ export const FooterSection = () => {
                     >
                         Terms &amp; Conditions
                     </Link>
+                    <span className="text-white/10 text-xs">|</span>
+                    <Link
+                        href="/data-deletion"
+                        className="text-[10px] font-bold tracking-widest uppercase text-white/30 hover:text-emerald-400 transition-colors duration-200"
+                    >
+                        Data Deletion
+                    </Link>
                 </div>
 
                 {/* Copyright */}
                 <div className="text-white/20 text-[10px] font-bold tracking-widest uppercase text-center md:text-right">
-                    © 2025 WhatsNexus. Beta Version. All Rights Reserved.
+                    © 2026 WhatsNexus. Beta Version. All Rights Reserved.
                 </div>
             </div>
         </footer>
