@@ -10,6 +10,8 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     error?: string;
     required?: boolean;
     icon?: LucideIcon;
+
+    variant?: 'default' | 'secondary';
     wrapperClassName?: string;
 }
 
@@ -20,6 +22,7 @@ export const Input = ({
     required,
     icon: Icon,
     className,
+    variant = 'default',
     wrapperClassName,
     ...props
 }: InputProps) => {
@@ -49,9 +52,12 @@ export const Input = ({
                     className={cn(
                         "w-full py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                         Icon ? "pl-10 pr-4" : "px-4",
-                        isDarkMode
+                        variant === 'default' && (isDarkMode
                             ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
-                            : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30',
+                            : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30'),
+                        variant === 'secondary' && (isDarkMode
+                            ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 hover:bg-white/10 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50'
+                            : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50'),
                         error && 'border-red-500',
                         props.disabled && 'opacity-60 cursor-not-allowed',
                         className
