@@ -12,9 +12,16 @@ import { CalendarView } from './calendar-view';
 type TabType = 'booking-list' | 'calendar';
 
 export const AppointmentsView = () => {
-      const {theme } = useTheme()
-    const isDarkMode = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    const [activeTab, setActiveTab] = useState<TabType>('booking-list');
+    const { isDarkMode } = useTheme();
+    // Restore the last selected tab from localStorage on initial render.
+    // Previously the tab was saved but never restored, so it always reset to 'booking-list'.
+    const [activeTab, setActiveTab] = useState<TabType>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('selectedAppointmentTab');
+            if (saved === 'calendar' || saved === 'booking-list') return saved as TabType;
+        }
+        return 'booking-list';
+    });
 
     const appointmentTabs = [
         { value: "booking-list", label: "Booking List", icon: List },

@@ -19,7 +19,8 @@ import {
     Stethoscope,
     Filter,
     Clock,
-    Workflow
+    Workflow,
+    BadgeCheck
 } from 'lucide-react';
 
 export interface SidebarItem {
@@ -64,6 +65,13 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 icon: Stethoscope,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Specialization",
+                route: "/specialization",
+                icon: BadgeCheck,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff']
             }
         ]
     },

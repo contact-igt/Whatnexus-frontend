@@ -25,6 +25,8 @@ export const TemplateVariableModal = ({
 }: TemplateVariableModalProps) => {
     const [headerValues, setHeaderValues] = useState<string[]>([]);
     const [bodyValues, setBodyValues] = useState<string[]>([]);
+    const [headerErrors, setHeaderErrors] = useState<string[]>([]);
+    const [bodyErrors, setBodyErrors] = useState<string[]>([]);
 
     // Detect variables on template change
     useEffect(() => {
@@ -32,16 +34,31 @@ export const TemplateVariableModal = ({
             // Count header variables
             const headerVars = (template.headerText?.match(/\{\{\d+\}\}/g) || []).length;
             setHeaderValues(new Array(headerVars).fill(""));
+            setHeaderErrors(new Array(headerVars).fill(""));
 
             // Count body variables - use variables property if available, otherwise regex
             const bodyVars = template.variables || (template.description?.match(/\{\{\d+\}\}/g) || []).length;
             setBodyValues(new Array(bodyVars).fill(""));
+            setBodyErrors(new Array(bodyVars).fill(""));
         }
     }, [template]);
 
     if (!isOpen || !template) return null;
 
     const handleSubmit = () => {
+        // Validate header variables
+        const newHeaderErrors = headerValues.map(val => (!val || val.trim() === "") ? "This field is required" : "");
+        // Validate body variables
+        const newBodyErrors = bodyValues.map(val => (!val || val.trim() === "") ? "This field is required" : "");
+
+        setHeaderErrors(newHeaderErrors);
+        setBodyErrors(newBodyErrors);
+
+        const hasHeaderError = newHeaderErrors.some(e => e);
+        const hasBodyError = newBodyErrors.some(e => e);
+
+        if (hasHeaderError || hasBodyError) return;
+
         const components = [];
 
         // Construct Header Component Payload
@@ -109,9 +126,10 @@ export const TemplateVariableModal = ({
                             </div>
                             <div className="grid gap-3">
                                 {headerValues.map((val, i) => (
-                                    <div key={`header-${i}`} className="flex flex-col space-y-1.5">
+                                    <div key={`header-${i}`} className="flex flex-col space-y-1">
                                         <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
                                             Variable {'{{'}{i + 1}{'}}'}
+                                            <span className="text-red-500 ml-0.5">*</span>
                                         </label>
                                         <input
                                             type="text"
@@ -120,13 +138,27 @@ export const TemplateVariableModal = ({
                                                 const newValues = [...headerValues];
                                                 newValues[i] = e.target.value;
                                                 setHeaderValues(newValues);
+                                                if (headerErrors[i]) {
+                                                    const newErrs = [...headerErrors];
+                                                    newErrs[i] = "";
+                                                    setHeaderErrors(newErrs);
+                                                }
                                             }}
                                             placeholder={`Enter value for {{${i + 1}}}...`}
                                             className={cn(
-                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 focus:ring-emerald-500/20 outline-none",
-                                                isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30" : "bg-white border-slate-200 text-slate-900"
+                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
+                                                headerErrors[i]
+                                                    ? "border-red-500 focus:ring-red-500/20 bg-red-500/5"
+                                                    : isDarkMode
+                                                        ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
+                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
                                             )}
                                         />
+                                        {headerErrors[i] && (
+                                            <p className="text-red-500 text-[11px] ml-0.5 animate-in slide-in-from-top-1">
+                                                {headerErrors[i]}
+                                            </p>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -144,9 +176,10 @@ export const TemplateVariableModal = ({
                             </div>
                             <div className="grid gap-3">
                                 {bodyValues.map((val, i) => (
-                                    <div key={`body-${i}`} className="flex flex-col space-y-1.5">
+                                    <div key={`body-${i}`} className="flex flex-col space-y-1">
                                         <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
                                             Variable {'{{'}{i + 1}{'}}'}
+                                            <span className="text-red-500 ml-0.5">*</span>
                                         </label>
                                         <input
                                             type="text"
@@ -155,13 +188,27 @@ export const TemplateVariableModal = ({
                                                 const newValues = [...bodyValues];
                                                 newValues[i] = e.target.value;
                                                 setBodyValues(newValues);
+                                                if (bodyErrors[i]) {
+                                                    const newErrs = [...bodyErrors];
+                                                    newErrs[i] = "";
+                                                    setBodyErrors(newErrs);
+                                                }
                                             }}
                                             placeholder={`Enter value for {{${i + 1}}}...`}
                                             className={cn(
-                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 focus:ring-emerald-500/20 outline-none",
-                                                isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30" : "bg-white border-slate-200 text-slate-900"
+                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
+                                                bodyErrors[i]
+                                                    ? "border-red-500 focus:ring-red-500/20 bg-red-500/5"
+                                                    : isDarkMode
+                                                        ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
+                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
                                             )}
                                         />
+                                        {bodyErrors[i] && (
+                                            <p className="text-red-500 text-[11px] ml-0.5 animate-in slide-in-from-top-1">
+                                                {bodyErrors[i]}
+                                            </p>
+                                        )}
                                     </div>
                                 ))}
                             </div>

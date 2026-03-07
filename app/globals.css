@@ -1,48 +1,235 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
+/* ─── Tailwind Theme ─── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, Arial, sans-serif;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-jakarta); /* We will define this variable in layout */
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #080b12;
+    --foreground: #e8ecf0;
   }
 }
 
+/* ─── Font — force Plus Jakarta Sans everywhere ─── */
+*,
+*::before,
+*::after {
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, Arial, sans-serif;
+}
+
+html,
 body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Custom Scrollbar from User Code */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.2); border-radius: 10px; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
+/* ─── Product-grade Glass Card System ─── */
+/*
+  Dark  → deep dark translucent base + strong backdrop-blur + inset rim light
+  Light → near-opaque white + soft shadow
+*/
+.glass-card-dark {
+  background: linear-gradient(145deg,
+      rgba(18, 24, 38, 0.82) 0%,
+      rgba(10, 14, 24, 0.90) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.20),
+    0 8px 32px rgba(0, 0, 0, 0.40),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+}
 
-/* Custom Animations from User Code */
-.animate-spin-slow { animation: spin 20s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.glass-card-light {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 1);
+}
 
+/* Nested / inner cards */
+.glass-inner-dark {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-inner-light {
+  background: rgba(248, 250, 252, 0.90);
+  border: 1px solid rgba(226, 232, 240, 0.80);
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.25);
+  border-radius: 10px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ─── Skeleton / Shimmer ─── */
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-150%);
+  }
+
+  100% {
+    transform: translateX(150%);
+  }
 }
 
-.glass-gradient {
-  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+.sk {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
 }
 
+.sk::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.08) 30%,
+      rgba(255, 255, 255, 0.18) 50%,
+      rgba(255, 255, 255, 0.08) 70%,
+      transparent 100%);
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Funnel skeleton */
+.funnel-sk {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.funnel-sk::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(16, 185, 129, 0.10) 40%,
+      rgba(16, 185, 129, 0.24) 50%,
+      rgba(16, 185, 129, 0.10) 60%,
+      transparent 100%);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* ─── Animations ─── */
+@keyframes number-pop {
+  0% {
+    transform: scale(0.82) translateY(6px);
+    opacity: 0;
+  }
+
+  65% {
+    transform: scale(1.05) translateY(-2px);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-number-pop {
+  animation: number-pop 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2.2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-dashboard 20s linear infinite;
+}
+
+@keyframes spin-dashboard {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes live-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.animate-live-ring {
+  animation: live-ring 1.6s ease-out infinite;
+}
+
+@keyframes slide-up-fade {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up-fade 0.45s ease forwards;
+}
+
+/* ─── Toast ─── */
 @theme {
   --animate-toast-enter: toast-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-toast-exit: toast-exit 0.2s ease-in forwards;
@@ -52,6 +239,7 @@ body {
       opacity: 0;
       transform: scale(0.9) translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: scale(1) translateY(0);
@@ -63,6 +251,7 @@ body {
       opacity: 1;
       transform: scale(1) translateX(0);
     }
+
     to {
       opacity: 0;
       transform: scale(0.9) translateX(20px);

@@ -43,10 +43,10 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
     const handleTemplateSelect = (template: ProcessedTemplate) => {
         setSelectedTemplate(template);
         // Reset values based on template params count
-        // For body: regex to find max {{n}} or use template.variables count if reliable
-        // Utilizing template.variableArray or basic count
         setHeaderValues([]); // Initialize if header params exist
         setBodyValues(new Array(template.variables).fill(''));
+        // Clear template error when a template is selected
+        setErrors(prev => ({ ...prev, template: undefined, variables: undefined }));
     };
 
     const resetForm = () => {
@@ -252,7 +252,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                Template
+                                Template <span className="text-red-500">*</span>
                             </label>
                             {selectedTemplate ? (
                                 <div className={cn("p-3 rounded-xl border relative group mt-2", isDarkMode ? "bg-white/5 border-emerald-500/30" : "bg-emerald-50/50 border-emerald-200")}>
@@ -287,23 +287,27 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                     </div>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={() => setIsTemplateModalOpen(true)}
-                                    className={cn(
-                                        "w-full  mt-2 p-4 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 transition-all group",
-                                        isDarkMode
-                                            ? "border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5"
-                                            : "border-slate-300 hover:border-emerald-500/50 hover:bg-emerald-50"
+                                <>
+                                    <button
+                                        onClick={() => setIsTemplateModalOpen(true)}
+                                        className={cn(
+                                            "w-full mt-2 p-4 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 transition-all group",
+                                            errors.template
+                                                ? "border-red-500/60 bg-red-500/5"
+                                                : isDarkMode
+                                                    ? "border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5"
+                                                    : "border-slate-300 hover:border-emerald-500/50 hover:bg-emerald-50"
+                                        )}
+                                    >
+                                        <MessageSquare className={cn("group-hover:scale-110 transition-transform", errors.template ? "text-red-400" : isDarkMode ? "text-white/30 group-hover:text-emerald-400" : "text-slate-400 group-hover:text-emerald-600")} />
+                                        <span className={cn("text-sm font-medium", errors.template ? "text-red-400" : isDarkMode ? "text-white/50 group-hover:text-emerald-400" : "text-slate-500 group-hover:text-emerald-700")}>Select a template</span>
+                                    </button>
+                                    {errors.template && (
+                                        <p className="text-red-500 text-xs ml-1 mt-1 animate-in slide-in-from-top-1">{errors.template}</p>
                                     )}
-                                >
-                                    <MessageSquare className={cn("group-hover:scale-110 transition-transform", isDarkMode ? "text-white/30 group-hover:text-emerald-400" : "text-slate-400 group-hover:text-emerald-600")} />
-                                    <span className={cn("text-sm font-medium", isDarkMode ? "text-white/50 group-hover:text-emerald-400" : "text-slate-500 group-hover:text-emerald-700")}>Select a template</span>
-                                </button>
+                                </>
                             )}
                         </div>
-                         {errors.template && (
-                        <p className="text-red-500 text-xs ml-1 animate-in slide-in-from-top-1 mb-2">{errors.template}</p>
-                    )}
                         {/* Message Preview */}
                         {selectedTemplate && (
                             <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-bottom-3">
@@ -317,7 +321,6 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                     {(() => {
                                         let preview = selectedTemplate.bodyText || selectedTemplate.description || '';
                                         // Replace variables {{1}}, {{2}} with bold values
-                                        // We split by {{n}} to highlight the values
                                         const parts = preview.split(/({{\d+}})/g);
                                         return parts.map((part, index) => {
                                             const match = part.match(/{{(\d+)}}/);
@@ -344,7 +347,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                         {selectedTemplate && bodyValues.length > 0 && (
                             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
                                 <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                    Variables
+                                    Customize Template
                                 </label>
                                 <div className="grid gap-2 mt-2">
                                     {bodyValues.map((val, idx) => (
@@ -373,12 +376,11 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                                 />
                                             </div>
                                             {errors.variables?.[idx] && (
-                                                <p className="text-red-500 text-[10px] ml-1">{errors.variables[idx]}</p>
+                                                <p className="text-red-500 text-[10px] ml-1 animate-in slide-in-from-top-1">{errors.variables[idx]}</p>
                                             )}
                                         </div>
                                     ))}
                                 </div>
-
                             </div>
                         )}
                     </div>
