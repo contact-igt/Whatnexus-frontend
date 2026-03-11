@@ -20,7 +20,8 @@ import {
     Filter,
     Clock,
     Workflow,
-    BadgeCheck
+    BadgeCheck,
+    CreditCard
 } from 'lucide-react';
 
 export interface SidebarItem {
@@ -162,6 +163,18 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 route: "/knowledge",
                 icon: Database,
                 requiresWhatsApp: false,
+            }
+        ]
+    },
+    {
+        groupLabel: "Billing",
+        items: [
+            {
+                label: "Billing & Payments",
+                route: "/billing",
+                icon: CreditCard,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin']
             }
         ]
     },
