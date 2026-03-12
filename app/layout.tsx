@@ -21,8 +21,8 @@ export default function RootLayout({
 }>) {
 
   return (
-    <html lang="en">
-      <body className={`${jakarta.variable} antialiased`}>
+    <html lang="en" className={jakarta.variable}>
+      <body className="font-sans antialiased">
         <Providers>
           {children}
         </Providers>

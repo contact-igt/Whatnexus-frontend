@@ -1,4 +1,4 @@
-import { FollowUpHubView } from "@/components/views/follow-up-view";
+import { FollowUpHubView } from "@/components/views/followUpView";
 
 
 export default function FollowupsPage() {

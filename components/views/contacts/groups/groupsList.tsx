@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ContactGroup } from "@/types/contactGroup";
-import { ActionMenu } from "@/components/ui/action-menu";
+import { ActionMenu } from "@/components/ui/actionMenu";
 import { Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { DataTable, ColumnDef } from "@/components/ui/dataTable";
 import { Pagination } from "@/components/ui/pagination";
 
 interface GroupsListProps {

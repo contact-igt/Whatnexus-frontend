@@ -1,4 +1,4 @@
-import TenantProfileView from '@/components/views/profile/tenant-profile-view';
+import TenantProfileView from '@/components/views/profile/tenantProfileView';
 
 export default function TenantProfilePage() {
     return <TenantProfileView />;

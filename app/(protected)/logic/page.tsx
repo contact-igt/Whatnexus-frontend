@@ -1,4 +1,4 @@
-import { LogicView } from "@/components/views/logic-view";
+import { LogicView } from "@/components/views/logicView";
 
 export default function LogicPage() {
   return <LogicView />;

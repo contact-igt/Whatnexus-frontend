@@ -2,8 +2,8 @@
 "use client";
 
 import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings, Megaphone, Timer, MessageCircle, Group } from 'lucide-react';
-import { FloatingDockItem } from "@/components/ui/floating-dock-item";
-import { FloatingDockDropdown } from "@/components/ui/floating-dock-dropdown";
+import { FloatingDockItem } from "@/components/ui/floatingDockItem";
+import { FloatingDockDropdown } from "@/components/ui/floatingDockDropdown";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from "@/hooks/useTheme";
 import { useDispatch } from 'react-redux';
 import { setActiveTabData } from '@/redux/slices/auth/authSlice';
-import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
+import { RoleBasedWrapper } from '../ui/roleBasedWrapper';
 
 export const Sidebar = () => {
     const { user } = useAuth();

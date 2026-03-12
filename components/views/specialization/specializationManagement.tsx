@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { SpecializationDrawer, Specialization } from './specializationDrawer';
 import { useGetAllSpecializationsQuery, useDeleteSpecializationMutation, useToggleSpecializationStatusMutation } from '@/hooks/useSpecializationsQuery';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
-import { ActionMenu } from "@/components/ui/action-menu";
+import { ActionMenu } from '@/components/ui/actionMenu';
 
 interface SpecializationManagementProps {
     isDarkMode: boolean;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { LeadDetailsView } from "@/components/views/lead-details-view";
+import { LeadDetailsView } from "@/components/views/leadDetailsView";
 import { useLeadIntelligenceQuery, useGetLeadByIdQuery } from "@/hooks/useLeadIntelligenceQuery";
 import { useTheme } from "@/hooks/useTheme";
 import { Loader2, ArrowLeft } from "lucide-react";

@@ -1,4 +1,4 @@
-import { LeadsView } from "@/components/views/leads-view";
+import { LeadsView } from "@/components/views/leadsView";
 
 
 export default function LeadsPage() {

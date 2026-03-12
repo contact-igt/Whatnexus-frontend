@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { Search, User, Phone, Mail, CheckSquare, Square } from "lucide-react";
 import { GroupMember } from "@/types/contactGroup";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useDebounce } from "@/hooks/useDebounce";
 
 interface AddMembersModalProps {
