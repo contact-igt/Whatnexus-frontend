@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { MessageSquare, Search, RefreshCw, X, AlertCircle, Plus } from 'lucide-react';
-import { GlassCard } from "@/components/ui/glass-card";
+import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useGetAiLogsQuery, AiLog } from '@/hooks/useAiLogsQuery';
-import { DataTable, ColumnDef } from '@/components/ui/data-table';
-import { ActionMenu } from "@/components/ui/action-menu";
+import { DataTable, ColumnDef } from '@/components/ui/dataTable';
+import { ActionMenu } from "@/components/ui/actionMenu";
 import { Select } from "@/components/ui/select";
 import { useRouter } from 'next/navigation';
 
@@ -112,15 +112,15 @@ export const AiLogs = ({ isDarkMode }: AiLogsProps) => {
     });
 
     const handleViewLog = (id: number) => {
-        router.push(`/knowledge/ai-logs/${id}`);
+        router.push(`/knowledge/aiLogs/${id}`);
     };
 
     const handleEditLog = (id: number) => {
-        router.push(`/knowledge/ai-logs/${id}?mode=edit`);
+        router.push(`/knowledge/aiLogs/${id}?mode=edit`);
     };
 
     const handleAnswerLog = (id: number) => {
-        router.push(`/knowledge/ai-logs/${id}?mode=answer`);
+        router.push(`/knowledge/aiLogs/${id}?mode=answer`);
     };
 
     const columns: ColumnDef<AiLog>[] = useMemo(() => [
@@ -262,7 +262,7 @@ export const AiLogs = ({ isDarkMode }: AiLogsProps) => {
                 </button> */}
 
                 <button
-                    onClick={() => router.push('/knowledge/ai-logs/create')}
+                    onClick={() => router.push('/knowledge/aiLogs/create')}
                     className="px-6 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
                 >
                     <Plus size={16} />

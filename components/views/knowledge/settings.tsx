@@ -3,10 +3,10 @@
 
 import { useState } from 'react';
 import { Settings as SettingsIcon, Database, Bell, Globe } from 'lucide-react';
-import { GlassCard } from "@/components/ui/glass-card";
+import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ActionMenu } from "@/components/ui/action-menu";
+import { ActionMenu } from "@/components/ui/actionMenu";
 import { useActivateSettingMutation, useGetAllSettingQuery } from '@/hooks/useSettingQuery';
 
 interface SettingsProps {

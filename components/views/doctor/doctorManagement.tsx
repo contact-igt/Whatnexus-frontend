@@ -16,35 +16,11 @@ import {
 } from "@/hooks/useDoctorQuery";
 import { useGetAllSpecializationsQuery } from '@/hooks/useSpecializationsQuery';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
+import { Doctor } from '@/services/doctor';
 interface DoctorManagementProps {
     isDarkMode: boolean;
 }
 
-export interface Doctor {
-    doctor_id: string;
-    title?: string;
-    name: string;
-    specializations?: string[] | { specialization_id: string; name: string }[];
-    specialization?: string[] | { specialization_id: string; name: string }[]; // Handle possible singular field from API
-    mobile: string;
-    country_code?: string;
-    email: string;
-    currentStatus?: 'available' | 'busy' | 'off-duty'; // Made optional
-    status?: 'available' | 'busy' | 'off-duty'; // Handle usage of 'status'
-    availability?: {
-        [key: string]: {
-            enabled: boolean;
-            slots: { start: string; end: string }[];
-        };
-    } | { day_of_week: string; start_time: string; end_time: string }[];
-    consultationDuration?: number;
-    appointmentCount?: number;
-    photo?: string;
-    bio?: string;
-    profile_pic?: string;
-    experience_years?: number;
-    qualification?: string;
-}
 
 export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');

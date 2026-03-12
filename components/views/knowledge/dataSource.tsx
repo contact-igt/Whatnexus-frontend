@@ -2,8 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Link2, File, Database } from 'lucide-react';
-import { ActionMenu } from "@/components/ui/action-menu";
-import { GlassCard } from "@/components/ui/glass-card";
+import { ActionMenu } from "@/components/ui/actionMenu";
+import { GlassCard } from "@/components/ui/glassCard";
 import { KNOWLEDGE_SOURCES } from "@/lib/data";
 import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";

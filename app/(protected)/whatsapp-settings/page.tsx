@@ -1,4 +1,4 @@
-import { WhatsAppConnectionView } from "@/components/views/whatsappConfiguration/whatsapp-connection-view";
+import { WhatsAppConnectionView } from "@/components/views/whatsappConfiguration/whatsappConnectionView";
 
 export default function WhatsAppSettingsPage() {
     return <WhatsAppConnectionView />;

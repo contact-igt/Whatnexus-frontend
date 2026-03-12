@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { GlassCard } from "@/components/ui/glass-card";
+import { GlassCard } from "@/components/ui/glassCard";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useCreateAiLogMutation } from '@/hooks/useAiLogsQuery';

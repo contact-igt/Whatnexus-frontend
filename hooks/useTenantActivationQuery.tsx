@@ -1,5 +1,5 @@
 import { setAuthData } from "@/redux/slices/auth/authSlice";
-import { TenantActivationApiData } from "@/services/tenant-activation"
+import { TenantActivationApiData } from "@/services/tenantActivation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios";
 import { useDispatch } from "react-redux";
@@ -11,7 +11,7 @@ const tenantActivationApis = new TenantActivationApiData();
 export const useTenantActivationCheckQuery = (token: string, enabled: boolean)=>{
     const {data, error, isLoading, isError} = useQuery<any, AxiosError<any>>({
         enabled: !enabled && !!token,
-        queryKey: ['tenant-activation', token],
+        queryKey: ['tenantActivation', token],
         queryFn: async()=> {
             try {
                 return await tenantActivationApis.CheckInvitedEmailStatus(token)
@@ -59,7 +59,7 @@ export const useSetPasswordQuery = ()=>{
         },
         onError: (error: AxiosError<any>)=>{
             toast.error(error?.response?.data?.message || error?.message || "Failed to set password")
-            queryClient.invalidateQueries({queryKey: ['tenant-activation', error?.response?.data?.token]})
+            queryClient.invalidateQueries({queryKey: ['tenantActivation', error?.response?.data?.token]})
         }
     })
 }

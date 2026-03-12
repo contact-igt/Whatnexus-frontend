@@ -1,4 +1,4 @@
-import { AppointmentsView } from "@/components/views/appointments/appointments-view";
+import { AppointmentsView } from "@/components/views/appointments/appointmentsView";
 
 
 export default function AppointmentsPage() {

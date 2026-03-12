@@ -1,4 +1,4 @@
-import { GlassCard } from "@/components/ui/glass-card";
+import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 
 export default function CampaignLoading() {

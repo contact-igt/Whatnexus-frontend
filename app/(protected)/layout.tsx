@@ -1,6 +1,6 @@
 "use client";
 import { Header } from "@/components/layout/header";
-import { GroupedSidebar } from "@/components/layout/grouped-sidebar";
+import { GroupedSidebar } from "@/components/layout/groupedSidebar";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/routes/ProtectedRoute";

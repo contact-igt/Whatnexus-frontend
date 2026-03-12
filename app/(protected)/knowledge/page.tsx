@@ -1,4 +1,4 @@
-import { KnowledgeView } from "@/components/views/knowledge/knowledge-view";
+import { KnowledgeView } from "@/components/views/knowledge/knowledgeView";
 
 export default function KnowledgePage() {
   return <KnowledgeView   />;
