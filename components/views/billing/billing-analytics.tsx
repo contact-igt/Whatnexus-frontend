@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { BarChart3, Sparkles, TrendingUp, ArrowUpRight } from "lucide-react";
 import { DAILY_SPEND_DATA, WEEKLY_SPEND_DATA, MONTHLY_SPEND_DATA, COUNTRY_SPEND } from "./billing-mock-data";
+import { GlassCard } from "@/components/ui/glassCard";
 
 interface BillingAnalyticsProps {
   isDarkMode: boolean;
