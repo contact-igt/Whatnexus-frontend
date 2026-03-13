@@ -42,4 +42,16 @@ export class MessagesApiData {
   sendTemplateMessage = async (data: { phone: string; contact_id: string; template_id: string; components?: any[] }) => {
     return await _axios("post", "/whatsapp/chats/send-template", data);
   };
+
+  claimChat = async (contact_id: string) => {
+    return await _axios("post", "/whatsapp/live-chat/claim", { contact_id });
+  };
+
+  assignAgent = async (contact_id: string, agent_id: string) => {
+    return await _axios("put", "/whatsapp/live-chat/assign", { contact_id, agent_id });
+  };
+
+  getAgents = async () => {
+    return await _axios("get", "/whatsapp/live-chats/agents");
+  };
 }

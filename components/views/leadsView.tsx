@@ -1,5 +1,5 @@
 "use client";
-import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye, RefreshCw, Sparkles, BrainCircuit } from 'lucide-react';
+import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye, RefreshCw, Sparkles, BrainCircuit, Check, UserPlus, Users, CheckSquare, Square, ShieldCheck, Lock, Search, ChevronDown } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { Select } from '@/components/ui/select';
 import { ActionMenu } from '@/components/ui/actionMenu';
@@ -19,12 +19,15 @@ import { DataTable, ColumnDef } from '@/components/ui/dataTable';
 import { Pagination } from '@/components/ui/pagination';
 import { getHeatStateStyles } from '@/utils/leadUtils';
 import { SearchInput } from '@/components/ui/searchInput';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useGetAgentsQuery } from '@/hooks/useMessagesQuery';
+import { useBulkUpdateLeadsMutation } from '@/hooks/useLeadIntelligenceQuery';
+import { toast } from 'sonner';
 
 
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
-    const { whatsappApiDetails } = useAuth();
+    const { whatsappApiDetails, user } = useAuth();
     console.log("whatsappApiDetails", whatsappApiDetails);
     const router = useRouter();
 
@@ -91,10 +94,65 @@ export const LeadsView = () => {
     const { mutate: permanentDeleteLead, isPending: isPermanentDeletePending } = usePermanentDeleteLeadMutation();
     const { mutate: restoreLead, isPending: isRestorePending } = useRestoreLeadMutation();
     const { mutate: summarizeLeadMutation, isPending: isSummarizePending } = useSummarizeLeadMutation();
+    const { mutate: bulkUpdateLeads, isPending: isBulkUpdating } = useBulkUpdateLeadsMutation();
+    const { data: agentsList } = useGetAgentsQuery();
+    
     const [activeSummaryId, setActiveSummaryId] = useState<string | null>(null);
 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+
+    const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+    const [isAssigningBulk, setIsAssigningBulk] = useState(false);
+
+    const isAdmin = user?.role === 'tenant_admin' || user?.role === 'admin';
+    
+    const filteredAgents = useMemo(() => {
+        return agentsList?.data?.filter((agent: any) => agent.role !== 'tenant_admin') || [];
+    }, [agentsList?.data]);
+
+    const toggleLeadSelection = (leadId: string) => {
+        setSelectedLeadIds(prev => 
+            prev.includes(leadId) 
+                ? prev.filter(id => id !== leadId) 
+                : [...prev, leadId]
+        );
+    };
+
+    const toggleAllSelection = () => {
+        if (selectedLeadIds.length === currentLeads.length) {
+            setSelectedLeadIds([]);
+        } else {
+            setSelectedLeadIds(currentLeads.map((l: any) => l.lead_id));
+        }
+    };
+
+    const handleBulkClaim = () => {
+        if (!selectedLeadIds.length) return;
+        bulkUpdateLeads({ 
+            leadIds: selectedLeadIds, 
+            updates: { assigned_to: user?.tenant_user_id } 
+        }, {
+            onSuccess: () => {
+                setSelectedLeadIds([]);
+                toast.success(`Successfully claimed ${selectedLeadIds.length} leads`);
+            }
+        });
+    };
+
+    const handleBulkAssign = (agentId: string) => {
+        if (!selectedLeadIds.length) return;
+        bulkUpdateLeads({ 
+            leadIds: selectedLeadIds, 
+            updates: { assigned_to: agentId } 
+        }, {
+            onSuccess: () => {
+                setSelectedLeadIds([]);
+                setIsAssigningBulk(false);
+                toast.success(`Successfully assigned ${selectedLeadIds.length} leads`);
+            }
+        });
+    };
 
     // Summary Modal State
     const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
@@ -186,8 +244,43 @@ export const LeadsView = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     console.log("leads", leads)
     const currentLeads = filteredLeads?.slice(startIndex, startIndex + itemsPerPage);
-
     const columns: ColumnDef<any>[] = [
+        {
+            field: 'selection',
+            headerName: (
+                <button 
+                    onClick={toggleAllSelection}
+                    className={cn(
+                        "p-1 rounded-md transition-all",
+                        isDarkMode ? "hover:bg-white/10" : "hover:bg-slate-100"
+                    )}
+                >
+                    {selectedLeadIds.length === currentLeads.length && currentLeads.length > 0 ? (
+                        <CheckSquare size={18} className="text-emerald-500" />
+                    ) : (
+                        <Square size={18} className={isDarkMode ? "text-slate-500" : "text-slate-400"} />
+                    )}
+                </button>
+            ),
+            renderCell: ({ row }) => (
+                <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLeadSelection(row.lead_id);
+                    }}
+                    className={cn(
+                        "p-1 rounded-md transition-all",
+                        isDarkMode ? "hover:bg-white/10" : "hover:bg-slate-100"
+                    )}
+                >
+                    {selectedLeadIds.includes(row.lead_id) ? (
+                        <CheckSquare size={18} className="text-emerald-500" />
+                    ) : (
+                        <Square size={18} className={isDarkMode ? "text-slate-500" : "text-slate-400"} />
+                    )}
+                </button>
+            )
+        },
         {
             field: 'identity',
             headerName: 'Lead Identity',
@@ -198,7 +291,7 @@ export const LeadsView = () => {
                         {row?.name?.charAt(0)?.toUpperCase() ?? "?"}
                     </div>
                     <div>
-                        <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{row?.name}</p>
+                        <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{row?.name || "Unknown"}</p>
                         <p className="text-[10px] text-slate-500 uppercase font-medium tracking-wider">+{row?.phone}</p>
                     </div>
                 </div>
@@ -235,6 +328,37 @@ export const LeadsView = () => {
                 <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(row.heat_state))}>
                     {row?.heat_state}
                 </span>
+            )
+        },
+        {
+            field: 'assigned_to',
+            headerName: 'Assigned To',
+            minWidth: 150,
+            renderCell: ({ row }) => (
+                <div className="flex flex-col justify-center">
+                    {row.assigned_to ? (
+                        <div className={cn("flex items-center gap-2 px-2.5 py-1.5 rounded-lg border w-fit", isDarkMode ? "bg-white/5 border-white/10 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")}>
+                            <div className={cn("w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold", isDarkMode ? "bg-white/10" : "bg-slate-200")}>
+                                {row.assigned_agent_name?.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-[11px] font-semibold">{row.assigned_agent_name}</span>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                bulkUpdateLeads({ leadIds: [row.lead_id], updates: { assigned_to: user?.tenant_user_id } });
+                            }}
+                            className={cn(
+                                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all text-[11px] font-bold uppercase tracking-wider w-fit",
+                                isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20" : "bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100"
+                            )}
+                        >
+                            <UserPlus size={12} />
+                            <span>Claim</span>
+                        </button>
+                    )}
+                </div>
             )
         },
         {
@@ -544,6 +668,98 @@ export const LeadsView = () => {
                         <button className="h-10 px-5 rounded-xl bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Sync CRM</button>
                     </div>
                 </div>
+
+                {/* Bulk Actions Bar */}
+                {selectedLeadIds.length > 0 && (
+                    <div className={cn(
+                        "mt-6 p-4 rounded-2xl border flex items-center justify-between animate-in slide-in-from-top-4 duration-300",
+                        isDarkMode 
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-white" 
+                            : "bg-emerald-50 border-emerald-200 text-emerald-900"
+                    )}>
+                        <div className="flex items-center gap-4">
+                            <div className={cn(
+                                "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm",
+                                isDarkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-500 text-white"
+                            )}>
+                                {selectedLeadIds.length}
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold">Leads Selected</p>
+                                <p className={cn("text-[11px] font-medium opacity-70")}>Choose an action to apply to all selected leads</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            {isAdmin ? (
+                                <Popover open={isAssigningBulk} onOpenChange={setIsAssigningBulk}>
+                                    <PopoverTrigger asChild>
+                                        <button className={cn(
+                                            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                                            isDarkMode 
+                                                ? "bg-white/10 border-white/20 hover:bg-white/20" 
+                                                : "bg-white border-slate-200 hover:bg-slate-50 shadow-sm"
+                                        )}>
+                                            <Users size={16} />
+                                            Assign To
+                                            <ChevronDown size={14} className={cn("transition-transform duration-200", isAssigningBulk ? "rotate-180" : "")} />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className={cn("w-64 p-2", isDarkMode ? "bg-black border-white/10" : "bg-white border-slate-200")}>
+                                        <div className="max-h-60 overflow-y-auto space-y-1">
+                                            {filteredAgents.map((agent: any) => (
+                                                <button
+                                                    key={agent.tenant_user_id}
+                                                    onClick={() => handleBulkAssign(agent.tenant_user_id)}
+                                                    className={cn(
+                                                        "w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left",
+                                                        isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50"
+                                                    )}
+                                                >
+                                                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold", isDarkMode ? "bg-white/10" : "bg-slate-100")}>
+                                                        {agent.username?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className={cn("text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>{agent.username}</p>
+                                                        <p className="text-[10px] opacity-60 uppercase font-bold">{agent.role}</p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            {filteredAgents.length === 0 && (
+                                                <p className="p-4 text-center text-xs opacity-50 font-medium">No agents available</p>
+                                            )}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            ) : (
+                                <button
+                                    onClick={handleBulkClaim}
+                                    className={cn(
+                                        "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md",
+                                        isDarkMode 
+                                            ? "bg-emerald-500 text-white hover:bg-emerald-400" 
+                                            : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200"
+                                    )}
+                                >
+                                    <ShieldCheck size={18} />
+                                    Claim Selected
+                                </button>
+                            )}
+
+                            <div className={cn("w-px h-8 mx-1", isDarkMode ? "bg-white/10" : "bg-emerald-200")} />
+
+                            <button 
+                                onClick={() => setSelectedLeadIds([])}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                                    isDarkMode ? "text-white/60 hover:text-white hover:bg-white/5" : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                                )}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="flex items-center space-x-1 border-b border-white/5">
