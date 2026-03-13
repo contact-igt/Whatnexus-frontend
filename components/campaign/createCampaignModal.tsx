@@ -66,6 +66,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
     const [variableValues, setVariableValues] = useState<Record<string, string>>({});
     const [manualPhoneInput, setManualPhoneInput] = useState('');
+    const [manualCountryCode, setManualCountryCode] = useState('+91');
     const [manualInputError, setManualInputError] = useState('');
 
     // Fetch Groups
@@ -205,21 +206,23 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const handleAddManualRecipient = () => {
         if (!manualPhoneInput) return;
 
-        // Validate India Number format 91XXXXXXXXXX
-        if (!/^91\d{10}$/.test(manualPhoneInput)) {
-            setManualInputError('Number must be 12 digits starting with 91 (e.g. 919876543210)');
+        // Validate 10 digits
+        if (!/^\d{10}$/.test(manualPhoneInput)) {
+            setManualInputError('Mobile number must be 10 digits');
             return;
         }
 
+        const fullNumber = manualCountryCode.replace('+', '') + manualPhoneInput;
+
         // Check for duplicates
-        if (formData.manual_recipients?.some((r: any) => r.mobile_number === manualPhoneInput)) {
+        if (formData.manual_recipients?.some((r: any) => r.mobile_number === fullNumber)) {
             setManualInputError('Number already added');
             return;
         }
 
         setFormData(prev => ({
             ...prev,
-            manual_recipients: [...(prev.manual_recipients || []), { mobile_number: manualPhoneInput, dynamic_variables: [] }]
+            manual_recipients: [...(prev.manual_recipients || []), { mobile_number: fullNumber, dynamic_variables: [] }]
         }));
         setManualPhoneInput('');
         setManualInputError('');
@@ -711,6 +714,21 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             Add Phone Numbers
                                         </label>
                                         <div className="flex gap-2">
+                                            <select
+                                                value={manualCountryCode}
+                                                onChange={(e) => setManualCountryCode(e.target.value)}
+                                                className={cn(
+                                                    "px-3 py-3 rounded-xl border text-sm outline-none transition-all",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white [&>option]:bg-slate-800 [&>option]:text-white'
+                                                        : 'bg-white border-slate-200 text-slate-900'
+                                                )}
+                                            >
+                                                <option value="+91">+91</option>
+                                                <option value="+1">+1</option>
+                                                <option value="+44">+44</option>
+                                                <option value="+971">+971</option>
+                                            </select>
                                             <input
                                                 type="text"
                                                 value={manualPhoneInput}
@@ -719,7 +737,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     setManualInputError('');
                                                 }}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleAddManualRecipient()}
-                                                placeholder="919876543210"
+                                                placeholder="9876543210"
+                                                maxLength={10}
                                                 className={cn(
                                                     "flex-1 px-4 py-3 rounded-xl border text-sm outline-none transition-all",
                                                     manualInputError
@@ -747,7 +766,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             <p className="text-red-500 text-xs mt-2">{manualInputError}</p>
                                         )}
                                         <p className={cn("text-xs mt-2", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            Enter 12-digit number starting with country code (e.g. 91) without +
+                                            Select country code and enter 10-digit mobile number
                                         </p>
                                     </div>
 

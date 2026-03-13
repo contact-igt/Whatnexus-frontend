@@ -23,6 +23,7 @@ import { TemplateSelectionModal, ProcessedTemplate } from '@/components/campaign
 import { X, FileText, MessageSquare } from 'lucide-react';
 
 export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMessageCardProps) => {
+    const [testCountryCode, setTestCountryCode] = useState('+91');
     const [testPhoneNumber, setTestPhoneNumber] = useState('');
     const [messageType, setMessageType] = useState<'normal' | 'template'>('normal');
     const [messageText, setMessageText] = useState('');
@@ -50,6 +51,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
     };
 
     const resetForm = () => {
+        setTestCountryCode('+91');
         setTestPhoneNumber('');
         setMessageText('');
         setSelectedTemplate(null);
@@ -60,13 +62,13 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
 
     const handleSendTestMessage = () => {
         const newErrors: typeof errors = {};
-        const phoneRegex = /^\d{10,15}$/;
+        const phoneRegex = /^\d{10}$/;
 
         // Phone Validation
         if (!testPhoneNumber) {
             newErrors.phone = "Phone number is required";
         } else if (!phoneRegex.test(testPhoneNumber)) {
-            newErrors.phone = "Enter a valid numeric phone number (10-15 digits)";
+            newErrors.phone = "Mobile number must be 10 digits";
         }
 
         if (messageType === 'normal') {
@@ -94,8 +96,9 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
         setErrors({}); // Clear errors if valid
 
         if (messageType === 'normal') {
+            const fullPhone = testCountryCode.replace('+', '') + testPhoneNumber;
             sendTestWhatsConfigMutate({
-                phone: testPhoneNumber,
+                phone: fullPhone,
                 message_type: "text",
                 message: messageText
             }, {
@@ -133,8 +136,9 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                 });
             }
 
+            const fullPhoneTemplate = testCountryCode.replace('+', '') + testPhoneNumber;
             sendTestWhatsConfigMutate({
-                phone: testPhoneNumber,
+                phone: fullPhoneTemplate,
                 message_type: "template",
                 template_id: selectedTemplate?.id,
                 components: components
@@ -201,23 +205,42 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                     <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
                         Recipient Number
                     </label>
-                    <div className="relative mt-2">
-                        <Phone className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors",
-                            isDarkMode ? "text-white/30" : "text-slate-400")} size={16} />
-                        <Input
-                            isDarkMode={isDarkMode}
-                            placeholder="e.g. 919876543210"
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                        <select
+                            value={testCountryCode}
+                            onChange={(e) => setTestCountryCode(e.target.value)}
                             className={cn(
-                                "pl-10",
-                                isDarkMode ? "bg-white/5 border-white/10 placeholder:text-white/30" : "bg-white border-slate-200",
-                                errors.phone && "border-red-500 focus-visible:ring-red-500"
+                                "w-full px-3 py-2.5 rounded-xl text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-offset-0",
+                                isDarkMode
+                                    ? "bg-white/5 border-white/10 text-white focus:ring-blue-500/50 [&>option]:bg-slate-800 [&>option]:text-white"
+                                    : "bg-white border-slate-200 text-slate-900 focus:ring-blue-500/50"
                             )}
-                            value={testPhoneNumber}
-                            onChange={(e) => {
-                                setTestPhoneNumber(e.target.value);
-                                if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
-                            }}
-                        />
+                        >
+                            <option value="+91">+91</option>
+                            <option value="+1">+1</option>
+                            <option value="+44">+44</option>
+                            <option value="+971">+971</option>
+                        </select>
+                        <div className="col-span-2 relative">
+                            <Phone className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors",
+                                isDarkMode ? "text-white/30" : "text-slate-400")} size={16} />
+                            <Input
+                                isDarkMode={isDarkMode}
+                                placeholder="9876543210"
+                                className={cn(
+                                    "pl-10",
+                                    isDarkMode ? "bg-white/5 border-white/10 placeholder:text-white/30" : "bg-white border-slate-200",
+                                    errors.phone && "border-red-500 focus-visible:ring-red-500"
+                                )}
+                                value={testPhoneNumber}
+                                maxLength={10}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setTestPhoneNumber(val);
+                                    if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
+                                }}
+                            />
+                        </div>
                     </div>
                     {errors.phone && (
                         <p className="text-red-500 text-xs ml-1 animate-in slide-in-from-top-1">{errors.phone}</p>

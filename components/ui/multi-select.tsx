@@ -70,8 +70,10 @@ export const MultiSelect = ({
             }
         };
 
-        const handleScroll = () => {
-            if (isOpen) setIsOpen(false);
+        const handleScroll = (e: Event) => {
+            if (isOpen && dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
         };
 
         if (isOpen) {

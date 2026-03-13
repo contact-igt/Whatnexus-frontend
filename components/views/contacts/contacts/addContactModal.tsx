@@ -46,8 +46,8 @@ export const AddContactModal = ({
         // Phone is required (per API spec)
         if (!formData.phone.trim()) {
             newErrors.phone = "Phone number is required";
-        } else if (!/^\d+$/.test(formData.phone)) {
-            newErrors.phone = "Phone number must contain only digits";
+        } else if (!/^\d{10}$/.test(formData.phone)) {
+            newErrors.phone = "Mobile number must be 10 digits";
         }
 
         // Email validation (optional)
@@ -63,7 +63,7 @@ export const AddContactModal = ({
         if (validateForm()) {
             onSubmit({
                 ...formData,
-                phone: `${countryCode}${formData.phone}`
+                phone: `${countryCode.replace('+', '')}${formData.phone}`
             });
         }
     };
@@ -200,11 +200,12 @@ export const AddContactModal = ({
                         label="Phone Number"
                         required
                         type="tel"
-                        placeholder="98765 43210"
+                        placeholder="9876543210"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                         error={errors.phone}
                         icon={Phone}
+                        maxLength={10}
                         wrapperClassName="col-span-2"
                     />
                 </div>

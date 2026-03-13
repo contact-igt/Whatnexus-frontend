@@ -21,6 +21,7 @@ import {
     Clock,
     Workflow,
     BadgeCheck,
+    FlaskConical,
     CreditCard
 } from 'lucide-react';
 
@@ -187,6 +188,13 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 icon: MessageSquare,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "WhatsApp Playground",
+                route: "/settings/whatsapp-playground",
+                icon: FlaskConical,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }
         ]
     },
@@ -219,6 +227,20 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 label: "System Admins",
                 route: "/platformAdmins",
                 icon: UserCog,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Tenant Invitations",
+                route: "/admin/invitations",
+                icon: MessageSquare,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Onboarded Tenants",
+                route: "/admin/tenants",
+                icon: Users,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             }

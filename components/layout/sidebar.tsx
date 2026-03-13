@@ -1,9 +1,9 @@
 
 "use client";
 
-import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings, Megaphone, Timer, MessageCircle, Group } from 'lucide-react';
-import { FloatingDockItem } from "@/components/ui/floatingDockItem";
-import { FloatingDockDropdown } from "@/components/ui/floatingDockDropdown";
+import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings, Megaphone, Timer, MessageCircle, Group, FlaskConical } from 'lucide-react';
+import { FloatingDockItem } from "@/components/ui/floating-dock-item";
+import { FloatingDockDropdown } from "@/components/ui/floating-dock-dropdown";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
@@ -121,6 +121,12 @@ export const Sidebar = () => {
                                 route: '/settings/whatsapp-settings',
                                 icon: MessageSquare,
                                 onClick: () => handleActiveTab('/settings/whatsapp-settings'),
+                            },
+                            {
+                                label: 'WhatsApp Playground',
+                                route: '/settings/whatsapp-playground',
+                                icon: FlaskConical,
+                                onClick: () => handleActiveTab('/settings/whatsapp-playground'),
                             }
                         ]}
                     />

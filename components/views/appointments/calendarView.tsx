@@ -1,14 +1,15 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Calendar as BigCalendar, dateFnsLocalizer, View } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { format, parse, startOfWeek, getDay, parseISO } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { Appointment } from './bookingList';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { AppointmentModal } from './appointmentModal';
+import { AppointmentDrawer } from './appointmentDrawer';
+import { useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
 
 interface CalendarViewProps {
     isDarkMode: boolean;
@@ -27,50 +28,45 @@ const localizer = dateFnsLocalizer({
 });
 
 export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [view, setView] = useState<View>('month');
     const [date, setDate] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
-    // Load appointments from localStorage
-    useEffect(() => {
-        const loadAppointments = () => {
-            const stored = localStorage.getItem('appointments');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                const appointmentsWithDates = parsed.map((apt: any) => ({
-                    ...apt,
-                    date: new Date(apt.date)
-                }));
-                setAppointments(appointmentsWithDates);
-            }
-            setIsLoading(false);
-        };
-
-        loadAppointments();
-
-        // Listen for storage changes
-        const handleStorageChange = () => {
-            loadAppointments();
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
-    }, []);
+    const { data, isLoading } = useGetAllAppointmentsQuery();
+    const appointments: Appointment[] = data?.data || [];
 
     // Convert appointments to calendar events
     const events = useMemo(() => {
-        return appointments.map(apt => ({
-            id: apt.id,
-            title: apt.doctorName
-                ? `${apt.doctorName} - ${apt.patientName}`
-                : apt.patientName,
-            start: apt.date,
-            end: new Date(apt.date.getTime() + 30 * 60000), // 30 minutes
-            resource: apt,
-        }));
+        return appointments.map(apt => {
+            const dateStr = apt.appointment_date
+                ? apt.appointment_date.split('T')[0]
+                : new Date().toISOString().split('T')[0];
+
+            // Parse appointment_time (can be "10:30 AM" or "14:30")
+            let hours = 0, minutes = 0;
+            const timeStr = apt.appointment_time || '';
+            if (timeStr.includes('AM') || timeStr.includes('PM')) {
+                const [timePart, period] = timeStr.split(' ');
+                const [h, m] = timePart.split(':').map(Number);
+                hours = period === 'PM' && h !== 12 ? h + 12 : (period === 'AM' && h === 12 ? 0 : h);
+                minutes = m || 0;
+            } else if (timeStr.includes(':')) {
+                const [h, m] = timeStr.split(':').map(Number);
+                hours = h || 0;
+                minutes = m || 0;
+            }
+
+            const startDate = new Date(`${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
+
+            return {
+                id: apt.appointment_id,
+                title: apt.patient_name,
+                start: startDate,
+                end: new Date(startDate.getTime() + 30 * 60000),
+                resource: apt,
+            };
+        });
     }, [appointments]);
 
     const handleSelectEvent = useCallback((event: any) => {
@@ -88,20 +84,20 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
 
     const eventStyleGetter = useCallback((event: any) => {
         const appointment = event.resource as Appointment;
-        let backgroundColor = '#10b981'; // emerald-500
+        let backgroundColor = '#10b981';
 
-        switch (appointment.status) {
+        switch (appointment.status?.toLowerCase()) {
             case 'confirmed':
-                backgroundColor = '#10b981'; // emerald-500
+                backgroundColor = '#10b981';
                 break;
             case 'pending':
-                backgroundColor = '#f59e0b'; // amber-500
+                backgroundColor = '#f59e0b';
                 break;
             case 'cancelled':
-                backgroundColor = '#ef4444'; // red-500
+                backgroundColor = '#ef4444';
                 break;
             case 'completed':
-                backgroundColor = '#3b82f6'; // blue-500
+                backgroundColor = '#3b82f6';
                 break;
         }
 
@@ -154,22 +150,10 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                 />
             </div>
 
-            <AppointmentModal
+            <AppointmentDrawer
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSave={() => {
-                    setIsModalOpen(false);
-                    // Reload appointments
-                    const stored = localStorage.getItem('appointments');
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        const appointmentsWithDates = parsed.map((apt: any) => ({
-                            ...apt,
-                            date: new Date(apt.date)
-                        }));
-                        setAppointments(appointmentsWithDates);
-                    }
-                }}
+                onSave={() => setIsModalOpen(false)}
                 appointment={selectedAppointment}
                 mode="view"
                 isDarkMode={isDarkMode}

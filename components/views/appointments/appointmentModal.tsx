@@ -2,17 +2,17 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { X, User, Phone, Calendar, Clock, FileText, Loader2, UserCircle } from 'lucide-react';
+import { User, Phone, Calendar, Clock, FileText, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { Appointment } from './bookingList';
-import { format } from 'date-fns';
 import { toast } from "sonner";
+import { useCreateAppointmentMutation, useUpdateAppointmentMutation } from '@/hooks/useAppointmentQuery';
 
 interface AppointmentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (appointment: Appointment) => void;
+    onSave: () => void;
     appointment: Appointment | null;
     mode: 'view' | 'edit' | 'create';
     isDarkMode: boolean;
@@ -26,84 +26,92 @@ export const AppointmentModal = ({
     mode,
     isDarkMode
 }: AppointmentModalProps) => {
-    const [formData, setFormData] = useState<Partial<Appointment>>({
-        patientName: '',
-        contact: '',
-        date: new Date(),
-        time: '',
-        type: 'Consultation',
-        status: 'pending',
+    const [formData, setFormData] = useState({
+        patient_name: '',
+        contact_number: '',
+        appointment_date: '',
+        appointment_time: '',
+        status: 'Pending' as string,
         notes: '',
-        doctorId: '',
-        doctorName: ''
+        doctor_id: '',
     });
-    const [isSaving, setIsSaving] = useState(false);
-    const [doctors, setDoctors] = useState<any[]>([]);
 
-    // Load doctors from localStorage
-    useEffect(() => {
-        const stored = localStorage.getItem('doctors');
-        if (stored) {
-            setDoctors(JSON.parse(stored));
-        }
-    }, [isOpen]);
+    const createMutation = useCreateAppointmentMutation();
+    const updateMutation = useUpdateAppointmentMutation();
 
     useEffect(() => {
         if (appointment && (mode === 'view' || mode === 'edit')) {
-            setFormData(appointment);
+            setFormData({
+                patient_name: appointment.patient_name || '',
+                contact_number: appointment.contact_number || '',
+                appointment_date: appointment.appointment_date || '',
+                appointment_time: appointment.appointment_time || '',
+                status: appointment.status || 'Pending',
+                notes: appointment.notes || '',
+                doctor_id: appointment.doctor_id || '',
+            });
         } else if (mode === 'create') {
             setFormData({
-                patientName: '',
-                contact: '',
-                date: new Date(),
-                time: '',
-                type: 'Consultation',
-                status: 'pending',
+                patient_name: '',
+                contact_number: '',
+                appointment_date: '',
+                appointment_time: '',
+                status: 'Pending',
                 notes: '',
-                doctorId: '',
-                doctorName: ''
+                doctor_id: '',
             });
         }
     }, [appointment, mode, isOpen]);
 
-    const handleChange = (field: keyof Appointment, value: any) => {
+    const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleDoctorChange = (doctorId: string) => {
-        const selectedDoctor = doctors.find(d => d.id === doctorId);
-        setFormData(prev => ({
-            ...prev,
-            doctorId,
-            doctorName: selectedDoctor ? selectedDoctor.name : ''
-        }));
-    };
-
-    const handleSubmit = () => {
-        // Validation
-        if (!formData.patientName?.trim()) {
+    const handleSubmit = async () => {
+        if (!formData.patient_name.trim()) {
             toast.error('Patient name is required');
             return;
         }
-        if (!formData.contact?.trim()) {
+        if (!formData.contact_number.trim()) {
             toast.error('Contact number is required');
             return;
         }
-        if (!formData.time?.trim()) {
+        if (!formData.appointment_date) {
+            toast.error('Date is required');
+            return;
+        }
+        if (!formData.appointment_time) {
             toast.error('Time is required');
             return;
         }
 
-        setIsSaving(true);
-
-        // Simulate API call
-        setTimeout(() => {
-            onSave(formData as Appointment);
-            setIsSaving(false);
-            toast.success(mode === 'create' ? 'Appointment created successfully' : 'Appointment updated successfully');
-        }, 500);
+        if (mode === 'create') {
+            createMutation.mutate({
+                patient_name: formData.patient_name,
+                contact_number: formData.contact_number,
+                appointment_date: formData.appointment_date,
+                appointment_time: formData.appointment_time,
+                doctor_id: formData.doctor_id || undefined,
+                notes: formData.notes || undefined,
+                status: formData.status,
+            }, { onSuccess: () => onSave() });
+        } else if (mode === 'edit' && appointment) {
+            updateMutation.mutate({
+                appointmentId: appointment.appointment_id,
+                data: {
+                    patient_name: formData.patient_name,
+                    contact_number: formData.contact_number,
+                    appointment_date: formData.appointment_date,
+                    appointment_time: formData.appointment_time,
+                    doctor_id: formData.doctor_id || undefined,
+                    notes: formData.notes || undefined,
+                    status: formData.status,
+                },
+            }, { onSuccess: () => onSave() });
+        }
     };
 
+    const isSaving = createMutation.isPending || updateMutation.isPending;
     const isView = mode === 'view';
     const isEdit = mode === 'edit';
     const isCreate = mode === 'create';
@@ -115,8 +123,7 @@ export const AppointmentModal = ({
             ? 'Update appointment details.'
             : 'View appointment information.';
 
-    const appointmentTypes = ['Consultation', 'Follow-up', 'Surgery', 'Emergency', 'Checkup'];
-    const appointmentStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
+    const appointmentStatuses = ['Pending', 'Confirmed', 'Cancelled', 'Completed', 'Noshow'];
 
     return (
         <Modal
@@ -169,8 +176,8 @@ export const AppointmentModal = ({
                         <input
                             type="text"
                             disabled={isView}
-                            value={formData.patientName || ''}
-                            onChange={(e) => handleChange('patientName', e.target.value)}
+                            value={formData.patient_name}
+                            onChange={(e) => handleChange('patient_name', e.target.value)}
                             placeholder="Enter patient name"
                             className={cn(
                                 "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
@@ -195,8 +202,8 @@ export const AppointmentModal = ({
                         <input
                             type="tel"
                             disabled={isView}
-                            value={formData.contact || ''}
-                            onChange={(e) => handleChange('contact', e.target.value)}
+                            value={formData.contact_number}
+                            onChange={(e) => handleChange('contact_number', e.target.value)}
                             placeholder="+91 98765 43210"
                             className={cn(
                                 "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
@@ -222,8 +229,8 @@ export const AppointmentModal = ({
                             <input
                                 type="date"
                                 disabled={isView}
-                                value={formData.date ? format(formData.date, 'yyyy-MM-dd') : ''}
-                                onChange={(e) => handleChange('date', new Date(e.target.value))}
+                                value={formData.appointment_date}
+                                onChange={(e) => handleChange('appointment_date', e.target.value)}
                                 className={cn(
                                     "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                     isView && "opacity-60 cursor-not-allowed",
@@ -246,8 +253,8 @@ export const AppointmentModal = ({
                             <input
                                 type="time"
                                 disabled={isView}
-                                value={formData.time || ''}
-                                onChange={(e) => handleChange('time', e.target.value)}
+                                value={formData.appointment_time}
+                                onChange={(e) => handleChange('appointment_time', e.target.value)}
                                 className={cn(
                                     "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                     isView && "opacity-60 cursor-not-allowed",
@@ -260,83 +267,33 @@ export const AppointmentModal = ({
                     </div>
                 </div>
 
-                {/* Type and Status */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                            Appointment Type
-                        </label>
-                        <select
-                            disabled={isView}
-                            value={formData.type || 'Consultation'}
-                            onChange={(e) => handleChange('type', e.target.value)}
-                            className={cn(
-                                "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
-                                isView && "opacity-60 cursor-not-allowed",
-                                isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30 [&>option]:bg-slate-800 [&>option]:text-white'
-                                    : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
-                            )}
-                        >
-                            {appointmentTypes.map(type => (
-                                <option key={type} value={type}>{type}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                            Status
-                        </label>
-                        <select
-                            disabled={isView}
-                            value={formData.status || 'pending'}
-                            onChange={(e) => handleChange('status', e.target.value)}
-                            className={cn(
-                                "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none capitalize",
-                                isView && "opacity-60 cursor-not-allowed",
-                                isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30 [&>option]:bg-slate-800 [&>option]:text-white'
-                                    : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
-                            )}
-                        >
-                            {appointmentStatuses.map(status => (
-                                <option key={status} value={status} className="capitalize">{status}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                {/* Doctor Selection */}
+                {/* Status */}
                 <div>
                     <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                        Doctor
+                        Status
                     </label>
                     <select
                         disabled={isView}
-                        value={formData.doctorId || ''}
-                        onChange={(e) => handleDoctorChange(e.target.value)}
+                        value={formData.status}
+                        onChange={(e) => handleChange('status', e.target.value)}
                         className={cn(
-                            "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                            "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none capitalize",
                             isView && "opacity-60 cursor-not-allowed",
                             isDarkMode
                                 ? 'bg-white/5 border-white/10 text-white focus:ring-2 focus:ring-emerald-500/30 [&>option]:bg-slate-800 [&>option]:text-white'
                                 : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500/30'
                         )}
                     >
-                        <option value="">Select a doctor (optional)</option>
-                        {doctors.map(doctor => (
-                            <option key={doctor.id} value={doctor.id}>
-                                {doctor.name} - {doctor.specialization.join(', ')}
-                            </option>
+                        {appointmentStatuses.map(status => (
+                            <option key={status} value={status} className="capitalize">{status}</option>
                         ))}
                     </select>
                 </div>
 
-                {/* Summary/Reason */}
+                {/* Notes */}
                 <div>
                     <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                        Summary / Reason for Visit
+                        Notes
                     </label>
                     <div className="relative">
                         <div className={cn("absolute left-3 top-3", isDarkMode ? "text-white/30" : "text-slate-400")}>
@@ -345,7 +302,7 @@ export const AppointmentModal = ({
                         <textarea
                             rows={3}
                             disabled={isView}
-                            value={formData.notes || ''}
+                            value={formData.notes}
                             onChange={(e) => handleChange('notes', e.target.value)}
                             placeholder="Brief reason for appointment..."
                             maxLength={150}
@@ -362,6 +319,13 @@ export const AppointmentModal = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Token number (view only) */}
+                {isView && appointment?.token_number && (
+                    <div className={cn("px-4 py-3 rounded-xl text-sm font-medium", isDarkMode ? "bg-white/5 text-white/70" : "bg-slate-50 text-slate-600")}>
+                        Token Number: <strong>#{appointment.token_number}</strong>
+                    </div>
+                )}
             </div>
         </Modal>
     );

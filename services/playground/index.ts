@@ -1,0 +1,48 @@
+import { _axios } from "@/helper/axios";
+
+export interface PlaygroundMessage {
+    sender: "user" | "ai";
+    message: string;
+}
+
+export interface PlaygroundChatPayload {
+    message: string;
+    conversationHistory: PlaygroundMessage[];
+}
+
+export interface KnowledgeSource {
+    id: number;
+    title: string;
+    type: string;
+    chunks: string[];
+}
+
+export interface PlaygroundChatResponse {
+    message: string;
+    data: {
+        reply: string;
+        knowledgeSources: KnowledgeSource[];
+        knowledgeChunksUsed: string[];
+        resolvedLogsUsed: string;
+        responseOrigin: "knowledge_base" | "ai_generated";
+        tokenUsage: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            total_tokens: number;
+        };
+        classification: {
+            category: string;
+            reason: string;
+        } | null;
+    };
+}
+
+export class PlaygroundApiData {
+    sendMessage = async (data: PlaygroundChatPayload): Promise<PlaygroundChatResponse> => {
+        return await _axios("post", "/whatsapp/playground/chat", data);
+    };
+
+    getKnowledgeSources = async () => {
+        return await _axios("get", "/whatsapp/playground/knowledge-sources");
+    };
+}

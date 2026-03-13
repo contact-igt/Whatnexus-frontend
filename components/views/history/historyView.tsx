@@ -14,6 +14,23 @@ import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
 import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
 import { TemplateVariableModal } from './templateVariableModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
+import { useQueryClient } from '@tanstack/react-query';
+
+const MessageStatusTicks = ({ status }: { status: string | null }) => {
+    if (status === 'read') {
+        return <svg viewBox="0 0 16 11" width="16" height="11" className="text-[#53bdeb]"><path fill="currentColor" d="M11.053 1.514L5.373 7.194 2.433 4.254a.553.553 0 00-.783.783l3.333 3.333a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783zM15.053 1.514L9.373 7.194l-1.636-1.636a.553.553 0 00-.783.783l2.027 2.027a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783z"></path></svg>;
+    }
+    if (status === 'delivered') {
+        return <svg viewBox="0 0 16 11" width="16" height="11" className="text-[#8696a0]"><path fill="currentColor" d="M11.053 1.514L5.373 7.194 2.433 4.254a.553.553 0 00-.783.783l3.333 3.333a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783zM15.053 1.514L9.373 7.194l-1.636-1.636a.553.553 0 00-.783.783l2.027 2.027a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783z"></path></svg>;
+    }
+    if (status === 'sent') {
+        return <svg viewBox="0 0 12 11" width="12" height="11" className="text-[#8696a0]"><path fill="currentColor" d="M11.053 1.514L5.373 7.194 2.433 4.254a.553.553 0 00-.783.783l3.333 3.333a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783z"></path></svg>;
+    }
+    if (status === 'failed') {
+        return <svg viewBox="0 0 16 16" width="12" height="12" className="text-red-500"><path fill="currentColor" d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 10.5a.75.75 0 110-1.5.75.75 0 010 1.5zM8.75 8a.75.75 0 01-1.5 0V5a.75.75 0 011.5 0v3z"></path></svg>;
+    }
+    return <svg viewBox="0 0 12 11" width="12" height="11" className="text-[#8696a0]"><path fill="currentColor" d="M11.053 1.514L5.373 7.194 2.433 4.254a.553.553 0 00-.783.783l3.333 3.333a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783z"></path></svg>;
+};
 
 
 const getDateLabel = (dateStr: string) => {
@@ -48,6 +65,7 @@ const formattedTime = (dateString: any) => {
 
 
 export const HistoryView = () => {
+    const queryClient = useQueryClient();
     const { user, whatsappApiDetails } = useAuth();
     if (whatsappApiDetails?.status !== 'active') {
         return <WhatsAppConnectionPlaceholder />;
@@ -118,11 +136,15 @@ export const HistoryView = () => {
         if (!selectedChat?.phone) return;
         if (!chatHistoryList?.data?.chats?.length) return;
 
-        const hasUnreadUserMessages = chatHistoryList.data.chats.some(
-            (msg: any) => msg.seen === "false"
-        );
-        if (hasUnreadUserMessages) {
+        const chat = chatHistoryList.data.chats.find((c: any) => c.phone === selectedChat?.phone);
+        if (chat && Number(chat.unread_count) > 0) {
             updateSeenMutate(selectedChat?.phone);
+            setFilteredChats((prev: any) => {
+                if (!prev) return prev;
+                return prev.map((c: any) =>
+                    c.phone === selectedChat?.phone ? { ...c, unread_count: 0 } : c
+                );
+            });
         }
     }, [selectedChat?.phone, chatHistoryList?.data?.chats]);
 
@@ -186,9 +208,9 @@ export const HistoryView = () => {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
             if (chatFilter === 'read') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "true");
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) === 0);
             } else if (chatFilter === 'unread') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "false" || chat?.seen == null);
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) > 0);
             }
             setFilteredChats(filtered);
         }, 200);
@@ -303,7 +325,7 @@ export const HistoryView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    seen: "false",
+                    unread_count: (updated[index].unread_count || 0) + (data.sender === 'user' ? 1 : 0),
                 };
 
                 return [
@@ -318,7 +340,7 @@ export const HistoryView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    seen: "false",
+                    unread_count: data.sender === 'user' ? 1 : 0,
                 },
                 ...prev,
             ];
@@ -340,6 +362,11 @@ export const HistoryView = () => {
         socket.off("new-message"); // ⬅️ prevent duplicates
         socket.on("new-message", handleIncomingMessage);
 
+        socket.off("message-status-update");
+        socket.on("message-status-update", (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
+        });
+
         socket.on("session-activated", (data: any) => {
             console.log("✅ Session Activated:", data);
             // Optionally redirect to live chats or refresh list
@@ -349,6 +376,7 @@ export const HistoryView = () => {
 
         return () => {
             socket.off("new-message", handleIncomingMessage);
+            socket.off("message-status-update");
             socket.off("session-activated");
             socket.off("connect");
         };
@@ -472,9 +500,9 @@ export const HistoryView = () => {
                                         <span className={cn("text-base font-medium truncate", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             {chat?.name || chat.phone}
                                         </span>
-                                        <span className={cn("text-[11px]", 
-                                            chat?.seen === "false" 
-                                                ? (isDarkMode ? 'text-emerald-400 font-bold' : 'text-emerald-600 font-bold') 
+                                        <span className={cn("text-[11px]",
+                                            Number(chat?.unread_count) > 0
+                                                ? (isDarkMode ? 'text-emerald-400 font-bold' : 'text-emerald-600 font-bold')
                                                 : (isDarkMode ? 'text-slate-500' : 'text-slate-400')
                                         )}>
                                             {chat?.last_message_time ? getDateLabel(chat.last_message_time) : ""}
@@ -484,8 +512,10 @@ export const HistoryView = () => {
                                         <span className={cn("text-sm truncate pr-2", isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
                                             {chat.message}
                                         </span>
-                                        {chat?.seen === "false" && (
-                                            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shrink-0 animate-pulse" />
+                                        {Number(chat?.unread_count) > 0 && (
+                                            <span className="min-w-[18px] h-[18px] px-1 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shrink-0">
+                                                {chat.unread_count}
+                                            </span>
                                         )}
                                     </div>
                                 </div>
@@ -520,190 +550,190 @@ export const HistoryView = () => {
                 )}
 
                 <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
-                {selectedChat ? (
-                    <>
-                        {/* Chat Header */}
-                        <div className={cn("px-4 py-2 border-b flex items-center justify-between shrink-0", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
-                            <div className="flex items-center space-x-3 cursor-pointer">
-                                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm overflow-hidden", isDarkMode ? 'bg-[#3b4a54] text-slate-300' : 'bg-slate-200 text-slate-500')}>
-                                    {selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={20} />}
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className={cn("font-medium text-sm truncate", isDarkMode ? 'text-[#e9edef]' : 'text-slate-900')}>
-                                        {selectedChat?.name || selectedChat?.phone}
-                                    </h3>
-                                    <p className={cn("text-[11px] truncate", isDarkMode ? "text-slate-400" : "text-slate-500")}>
-                                        {selectedChat?.phone}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <button 
-                                    onClick={() => {
-                                        setIsSearchVisible(!isSearchVisible);
-                                        if (!isSearchVisible) setMessageSearchText('');
-                                    }}
-                                    className={cn("p-2 rounded-full", isDarkMode ? "hover:bg-[#3b4a54] text-slate-400" : "hover:bg-gray-200 text-slate-500", isSearchVisible && "text-emerald-500 bg-emerald-500/10")}
-                                >
-                                    <Search size={20} />
-                                </button>
-                                <button className={cn("p-2 rounded-full", isDarkMode ? "hover:bg-[#3b4a54] text-slate-400" : "hover:bg-gray-200 text-slate-500")}>
-                                    <Info size={20} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Search Bar Detail */}
-                        {isSearchVisible && (
-                            <div className={cn("px-4 py-2 border-b animate-in slide-in-from-top-2", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-white border-slate-200")}>
-                                <div className="relative group">
-                                    <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 text-slate-400")} size={14} />
-                                    <input
-                                        onChange={handleMessageSearch}
-                                        value={messageSearchText}
-                                        type="text"
-                                        placeholder="Search in conversation..."
-                                        className={cn(
-                                            "w-full rounded-lg py-2 pl-9 pr-4 text-xs transition-all focus:outline-none",
-                                            isDarkMode ? "bg-[#2a3942] text-white" : "bg-gray-100 text-slate-900"
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Messages Area with WhatsApp Background */}
-                        <div className={cn(
-                            "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative no-scrollbar",
-                            isDarkMode ? "bg-[#0b141a]" : "bg-[#efeae2]"
-                        )}
-                        style={{
-                            backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-                            backgroundBlendMode: isDarkMode ? 'overlay' : 'multiply'
-                        }}>
-                            {/* Encryption Notice */}
-                            <div className="flex justify-center mb-6">
-                                <div className={cn(
-                                    "px-4 py-2 rounded-lg text-center flex items-center gap-2 max-w-[85%] shadow-sm",
-                                    isDarkMode ? "bg-[#182229] border border-[#222d34] text-[#8696a0]" : "bg-[#fff5c4] text-[#54656f]"
-                                )}>
-                                    <svg viewBox="0 0 24 24" width="14" height="14" className="shrink-0"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm4-11l-1.5 1.5L11 9.5V15h-2V8.5l3.5 3.5L14.5 9.5 16 11z"></path></svg>
-                                    <span className="text-[11px] leading-tight font-medium">
-                                        Messages are end-to-end encrypted. History conversations are read-only until re-initiated.
-                                    </span>
-                                </div>
-                            </div>
-
-                            {isMessagesLoading ? (
-                                <div className="space-y-6">
-                                    {Array.from({ length: 3 }).map((_, i) => (
-                                        <div key={i} className="space-y-4">
-                                            <div className="flex justify-start">
-                                                <div className={cn("w-[60%] h-16 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
-                                            </div>
-                                            <div className="flex justify-end">
-                                                <div className={cn("w-[60%] h-12 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : isSearching && filteredMessage?.length === 0 ? (
-                                <div className="flex-1 flex flex-col items-center justify-center h-full pb-20">
-                                    <SearchX size={40} className="text-slate-400 mb-2 opacity-50" />
-                                    <p className="text-sm text-slate-500">No matches found</p>
-                                </div>
-                            ) : groupedEntries?.length > 0 ? (
-                                groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
-                                    <div key={index}>
-                                        <div className="flex justify-center my-6 sticky top-0 z-10">
-                                            <span className={cn(
-                                                "px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-sm backdrop-blur-md border transition-all",
-                                                isDarkMode
-                                                    ? "bg-[#1A1A1B]/80 text-white/80 border-white/10 shadow-black/20"
-                                                    : "bg-white/80 text-slate-600 border-slate-200 shadow-slate-200/50"
-                                            )}>
-                                                {dateLabel}
-                                            </span>
-                                        </div>
-                                        {msgs.map((msg: any, msgIndex: number) => {
-                                            const isOutgoing = msg.sender === 'bot' || msg.sender === 'agent' || msg.sender === 'system';
-                                            
-                                            return (
-                                                <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
-                                                    <div className={cn(
-                                                        "max-w-[85%] min-w-[60px] p-2 rounded-lg shadow-sm relative group",
-                                                        isOutgoing
-                                                            ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
-                                                            : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
-                                                    )}>
-                                                        <p className="text-[14px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                                                            {msg.message}
-                                                        </p>
-                                                        <div className="flex items-center justify-end space-x-1 opacity-60">
-                                                            <span className="text-[10px]">
-                                                                {formattedTime(msg.created_at)}
-                                                            </span>
-                                                            {isOutgoing && (
-                                                                <svg viewBox="0 0 16 11" width="16" height="11" className="text-emerald-500"><path fill="currentColor" d="M11.053 1.514L5.373 7.194 2.433 4.254a.553.553 0 00-.783.783l3.333 3.333a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783zM15.053 1.514L9.373 7.194l-1.636-1.636a.553.553 0 00-.783.783l2.027 2.027a.553.553 0 00.783 0l6.07-6.07a.553.553 0 00-.783-.783z"></path></svg>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                    {selectedChat ? (
+                        <>
+                            {/* Chat Header */}
+                            <div className={cn("px-4 py-2 border-b flex items-center justify-between shrink-0", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
+                                <div className="flex items-center space-x-3 cursor-pointer">
+                                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm overflow-hidden", isDarkMode ? 'bg-[#3b4a54] text-slate-300' : 'bg-slate-200 text-slate-500')}>
+                                        {selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={20} />}
                                     </div>
-                                ))
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-center px-8">
-                                    <div className={cn("p-4 rounded-2xl mb-4", isDarkMode ? 'bg-white/5 text-white/50' : 'bg-slate-100 text-slate-400')}>
-                                        <MessageSquareText size={40} />
-                                    </div>
-                                    <h3 className={cn("text-lg font-bold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                        No messages yet
-                                    </h3>
-                                    <p className={cn("text-sm mb-6 max-w-md", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                        This history thread is currently empty.
-                                    </p>
-                                </div>
-                            )}
-                            <div ref={bottomRef} />
-                        </div>
-
-                        {/* Bottom Template Area */}
-                        {selectedChat && (
-                            <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
-                                <div className={cn(
-                                    "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
-                                    isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
-                                )}>
-                                    <div>
-                                        <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                            History Thread Closed
+                                    <div className="min-w-0">
+                                        <h3 className={cn("font-medium text-sm truncate", isDarkMode ? 'text-[#e9edef]' : 'text-slate-900')}>
+                                            {selectedChat?.name || selectedChat?.phone}
                                         </h3>
-                                        <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                            Send a template to re-initiate this conversation.
+                                        <p className={cn("text-[11px] truncate", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                            {selectedChat?.phone}
                                         </p>
                                     </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
                                     <button
-                                        onClick={() => setIsTemplateModalOpen(true)}
-                                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                        onClick={() => {
+                                            setIsSearchVisible(!isSearchVisible);
+                                            if (!isSearchVisible) setMessageSearchText('');
+                                        }}
+                                        className={cn("p-2 rounded-full", isDarkMode ? "hover:bg-[#3b4a54] text-slate-400" : "hover:bg-gray-200 text-slate-500", isSearchVisible && "text-emerald-500 bg-emerald-500/10")}
                                     >
-                                        <Send size={16} />
-                                        <span>Send Template</span>
+                                        <Search size={20} />
+                                    </button>
+                                    <button className={cn("p-2 rounded-full", isDarkMode ? "hover:bg-[#3b4a54] text-slate-400" : "hover:bg-gray-200 text-slate-500")}>
+                                        <Info size={20} />
                                     </button>
                                 </div>
                             </div>
-                        )}
-                    </>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-10 opacity-40">
-                        <div className="w-24 h-24 rounded-full border-4 border-emerald-500/20 flex items-center justify-center mb-6">
-                            <HistoryIcon size={64} className="text-emerald-500" />
+
+                            {/* Search Bar Detail */}
+                            {isSearchVisible && (
+                                <div className={cn("px-4 py-2 border-b animate-in slide-in-from-top-2", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-white border-slate-200")}>
+                                    <div className="relative group">
+                                        <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 text-slate-400")} size={14} />
+                                        <input
+                                            onChange={handleMessageSearch}
+                                            value={messageSearchText}
+                                            type="text"
+                                            placeholder="Search in conversation..."
+                                            className={cn(
+                                                "w-full rounded-lg py-2 pl-9 pr-4 text-xs transition-all focus:outline-none",
+                                                isDarkMode ? "bg-[#2a3942] text-white" : "bg-gray-100 text-slate-900"
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Messages Area with WhatsApp Background */}
+                            <div className={cn(
+                                "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative no-scrollbar",
+                                isDarkMode ? "bg-[#0b141a]" : "bg-[#efeae2]"
+                            )}
+                                style={{
+                                    backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
+                                    backgroundBlendMode: isDarkMode ? 'overlay' : 'multiply'
+                                }}>
+                                {/* Encryption Notice */}
+                                <div className="flex justify-center mb-6">
+                                    <div className={cn(
+                                        "px-4 py-2 rounded-lg text-center flex items-center gap-2 max-w-[85%] shadow-sm",
+                                        isDarkMode ? "bg-[#182229] border border-[#222d34] text-[#8696a0]" : "bg-[#fff5c4] text-[#54656f]"
+                                    )}>
+                                        <svg viewBox="0 0 24 24" width="14" height="14" className="shrink-0"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm4-11l-1.5 1.5L11 9.5V15h-2V8.5l3.5 3.5L14.5 9.5 16 11z"></path></svg>
+                                        <span className="text-[11px] leading-tight font-medium">
+                                            Messages are end-to-end encrypted. History conversations are read-only until re-initiated.
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {isMessagesLoading ? (
+                                    <div className="space-y-6">
+                                        {Array.from({ length: 3 }).map((_, i) => (
+                                            <div key={i} className="space-y-4">
+                                                <div className="flex justify-start">
+                                                    <div className={cn("w-[60%] h-16 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+                                                </div>
+                                                <div className="flex justify-end">
+                                                    <div className={cn("w-[60%] h-12 rounded-[1.2rem] animate-pulse", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : isSearching && filteredMessage?.length === 0 ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center h-full pb-20">
+                                        <SearchX size={40} className="text-slate-400 mb-2 opacity-50" />
+                                        <p className="text-sm text-slate-500">No matches found</p>
+                                    </div>
+                                ) : groupedEntries?.length > 0 ? (
+                                    groupedEntries?.map(([dateLabel, msgs]: any, index: number) => (
+                                        <div key={index}>
+                                            <div className="flex justify-center my-6 sticky top-0 z-10">
+                                                <span className={cn(
+                                                    "px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-sm backdrop-blur-md border transition-all",
+                                                    isDarkMode
+                                                        ? "bg-[#1A1A1B]/80 text-white/80 border-white/10 shadow-black/20"
+                                                        : "bg-white/80 text-slate-600 border-slate-200 shadow-slate-200/50"
+                                                )}>
+                                                    {dateLabel}
+                                                </span>
+                                            </div>
+                                            {msgs.map((msg: any, msgIndex: number) => {
+                                                const isOutgoing = msg.sender !== 'user';
+
+                                                return (
+                                                    <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
+                                                        <div className={cn(
+                                                            "max-w-[85%] min-w-[60px] p-2 rounded-lg shadow-sm relative group",
+                                                            isOutgoing
+                                                                ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
+                                                                : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
+                                                        )}>
+                                                            <p className="text-[14px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
+                                                                {msg.message}
+                                                            </p>
+                                                            <div className="flex items-center justify-end space-x-1 opacity-60">
+                                                                <span className="text-[10px]">
+                                                                    {formattedTime(msg.created_at)}
+                                                                </span>
+                                                                {isOutgoing && (
+                                                                    <MessageStatusTicks status={msg.status} />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-center px-8">
+                                        <div className={cn("p-4 rounded-2xl mb-4", isDarkMode ? 'bg-white/5 text-white/50' : 'bg-slate-100 text-slate-400')}>
+                                            <MessageSquareText size={40} />
+                                        </div>
+                                        <h3 className={cn("text-lg font-bold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            No messages yet
+                                        </h3>
+                                        <p className={cn("text-sm mb-6 max-w-md", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                            This history thread is currently empty.
+                                        </p>
+                                    </div>
+                                )}
+                                <div ref={bottomRef} />
+                            </div>
+
+                            {/* Bottom Template Area */}
+                            {selectedChat && (
+                                <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
+                                    <div className={cn(
+                                        "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
+                                        isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
+                                    )}>
+                                        <div>
+                                            <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                History Thread Closed
+                                            </h3>
+                                            <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                                Send a template to re-initiate this conversation.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setIsTemplateModalOpen(true)}
+                                            className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                        >
+                                            <Send size={16} />
+                                            <span>Send Template</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-10 opacity-40">
+                            <div className="w-24 h-24 rounded-full border-4 border-emerald-500/20 flex items-center justify-center mb-6">
+                                <HistoryIcon size={64} className="text-emerald-500" />
+                            </div>
+                            <h3 className="text-xl font-bold">WhatsApp History Hub</h3>
+                            <p className="text-sm mt-2">Select a thread to view archives</p>
                         </div>
-                        <h3 className="text-xl font-bold">WhatsApp History Hub</h3>
-                        <p className="text-sm mt-2">Select a thread to view archives</p>
-                    </div>
-                )}
+                    )}
                 </GlassCard>
             </div>
 
@@ -745,7 +775,7 @@ export const HistoryView = () => {
 
                         <div className="pt-4 border-t border-gray-100 dark:border-white/5">
                             <div className="space-y-3">
-                                <button 
+                                <button
                                     onClick={summarizeChat}
                                     disabled={isSummarizing}
                                     className="w-full h-10 flex items-center justify-center space-x-2 bg-blue-600/10 text-blue-500 px-4 rounded-xl text-xs font-bold uppercase hover:bg-blue-600/20 transition-colors disabled:opacity-50"
@@ -757,7 +787,7 @@ export const HistoryView = () => {
                                     )}
                                     <span>Neural Summary</span>
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setIsWeeklySummaryOpen(true)}
                                     className="w-full h-10 flex items-center justify-center space-x-2 bg-emerald-600/10 text-emerald-500 px-4 rounded-xl text-xs font-bold uppercase hover:bg-emerald-600/20 transition-colors"
                                 >

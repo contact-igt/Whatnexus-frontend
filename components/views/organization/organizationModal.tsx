@@ -100,10 +100,8 @@ export const OrganizationModal = ({
 
         if (!formData.owner_mobile?.trim()) {
             newErrors.owner_mobile = "mobile number is required";
-        } else if (!/^\d+$/.test(formData.owner_mobile)) {
-            newErrors.owner_mobile = "mobile number must contain only digits";
-        } else if (formData.owner_mobile.length < 10 || formData.owner_mobile.length > 12) {
-            newErrors.owner_mobile = "mobile number must be between 10 and 12 digits";
+        } else if (!/^\d{10}$/.test(formData.owner_mobile)) {
+            newErrors.owner_mobile = "Mobile number must be 10 digits";
         }
 
         setErrors(newErrors);
@@ -232,13 +230,14 @@ export const OrganizationModal = ({
                             isDarkMode={isDarkMode}
                             label="Mobile Number"
                             icon={Phone}
-                            placeholder="+91 98765 43210"
+                            placeholder="9876543210"
                             value={formData.owner_mobile}
                             wrapperClassName="col-span-2"
-                            onChange={(e) => handleChange('owner_mobile', e.target.value)}
+                            onChange={(e) => handleChange('owner_mobile', e.target.value.replace(/\D/g, ''))}
                             disabled={isView}
                             error={errors.owner_mobile}
                             required
+                            maxLength={10}
                         />
                     </div>
                     <Select

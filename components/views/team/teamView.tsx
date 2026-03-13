@@ -82,7 +82,7 @@ export const TeamManagementView = () => {
         resolver: zodResolver(editFormSchema)
     });
 
-    const filteredUsers = tenantUserData?.data?.users?.filter((user: any) => user.role !== "super_admin" && user.role !== "tenant_admin") || [];
+    const filteredUsers = tenantUserData?.data?.users?.filter((user: any) => user.role !== "super_admin") || [];
 
     // Separate active and deleted users
     const activeUsers = filteredUsers.filter((user: any) => user.status !== 'deleted' && user.is_deleted !== true);
@@ -584,7 +584,6 @@ export const TeamManagementView = () => {
                                 options={[
                                     { value: 'staff', label: 'Staff' },
                                     { value: 'agent', label: 'Agent' },
-                                    { value: 'doctor', label: 'Doctor' },
                                 ]}
                                 disabled={createLoading}
                                 error={inviteErrors.role?.message}

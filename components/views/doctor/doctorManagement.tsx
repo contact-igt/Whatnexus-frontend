@@ -21,7 +21,6 @@ interface DoctorManagementProps {
     isDarkMode: boolean;
 }
 
-
 export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
     const [searchQuery, setSearchQuery] = useState('');
@@ -160,7 +159,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
         switch (status) {
             case 'available': return 'text-emerald-500 bg-emerald-500/10';
             case 'busy': return 'text-amber-500 bg-amber-500/10';
-            case 'off-duty': return 'text-slate-500 bg-slate-500/10';
+            case 'off_duty': return 'text-slate-500 bg-slate-500/10';
             default: return 'text-slate-500 bg-slate-500/10';
         }
     };
@@ -169,7 +168,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
         switch (status) {
             case 'available': return <CheckCircle size={14} />;
             case 'busy': return <MinusCircle size={14} />;
-            case 'off-duty': return <XCircle size={14} />;
+            case 'off_duty': return <XCircle size={14} />;
             default: return <XCircle size={14} />;
         }
     };
@@ -309,11 +308,11 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                                                     {doctor.title} {doctor.name}
                                                 </h3>
                                                 {(() => {
-                                                    const status = doctor.currentStatus || doctor.status || 'off-duty';
+                                                    const status = doctor.status || 'off_duty';
                                                     return (
                                                         <div className={cn("flex items-center rounded-full p-1 px-3 w-fit space-x-1.5 text-xs mt-1", getStatusColor(status))}>
                                                             {getStatusIcon(status)}
-                                                            <span className="capitalize font-medium">{status.replace('-', ' ')}</span>
+                                                            <span className="capitalize font-medium">{status.replace('_', ' ')}</span>
                                                         </div>
                                                     );
                                                 })()}
@@ -370,7 +369,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                                         <div className="flex items-center space-x-2">
                                             <Briefcase className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {doctor.appointmentCount || 0} appointments
+                                                {doctor.appointment_count || 0} appointments
                                             </span>
                                         </div>
                                     </div>

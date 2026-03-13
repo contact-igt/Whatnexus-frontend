@@ -1,7 +1,7 @@
 "use client";
 
-import { GlassCard } from "@/components/ui/glass-card";
-import { PulseMetric } from "@/components/ui/pulse-metric";
+import { GlassCard } from "@/components/ui/glassCard";
+import { PulseMetric } from "@/components/ui/pulseMetric";
 import { cn } from "@/lib/utils";
 import { Wallet, TrendingUp, Megaphone, Zap, ShieldCheck, MessageCircle, Send, CheckCircle, BarChart3 } from "lucide-react";
 import { BILLING_KPI } from "./billing-mock-data";

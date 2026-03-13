@@ -1,115 +1,49 @@
-
+﻿
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, Eye, Edit2, X, Clock, User, Phone, Calendar as CalendarIcon, FileText, UserCircle } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Clock, Phone, Calendar as CalendarIcon, FileText, UserCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { format } from 'date-fns';
-import { AppointmentModal } from './appointmentModal';
+import { format, parseISO } from 'date-fns';
+import { AppointmentDrawer } from './appointmentDrawer';
+import { useGetAllAppointmentsQuery, useDeleteAppointmentMutation } from '@/hooks/useAppointmentQuery';
+import { Modal } from '@/components/ui/modal';
 
 interface BookingListProps {
     isDarkMode: boolean;
 }
 
 export interface Appointment {
-    id: string;
-    patientName: string;
-    contact: string;
-    date: Date;
-    time: string;
-    type: string;
-    status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
+    appointment_id: string;
+    patient_name: string;
+    contact_number: string;
+    appointment_date: string;
+    appointment_time: string;
+    status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed' | 'Noshow';
     notes?: string;
-    doctorId?: string;
-    doctorName?: string;
+    doctor_id?: string;
+    doctor?: { doctor_id: string; name: string; title?: string };
+    token_number?: number;
 }
 
 export const BookingList = ({ isDarkMode }: BookingListProps) => {
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
-    const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
     const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
+    const [deleteConfirm, setDeleteConfirm] = useState<Appointment | null>(null);
 
-    // Load appointments from localStorage
+    // Debounce search
     useEffect(() => {
-        const loadAppointments = () => {
-            const stored = localStorage.getItem('appointments');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                const appointmentsWithDates = parsed.map((apt: any) => ({
-                    ...apt,
-                    date: new Date(apt.date)
-                }));
-                setAppointments(appointmentsWithDates);
-                setFilteredAppointments(appointmentsWithDates);
-            } else {
-                // Mock data for initial display
-                const mockAppointments: Appointment[] = [
-                    {
-                        id: '1',
-                        patientName: 'John Doe',
-                        contact: '+91 98765 43210',
-                        date: new Date(2026, 0, 15, 10, 0),
-                        time: '10:00 AM',
-                        type: 'Consultation',
-                        status: 'confirmed',
-                        notes: 'Regular eye checkup - Patient experiencing mild blurred vision',
-                        doctorId: '1',
-                        doctorName: 'Dr. Sarah Johnson'
-                    },
-                    {
-                        id: '2',
-                        patientName: 'Jane Smith',
-                        contact: '+91 98765 43211',
-                        date: new Date(2026, 0, 15, 14, 30),
-                        time: '02:30 PM',
-                        type: 'Follow-up',
-                        status: 'pending',
-                        notes: 'Post-surgery follow-up appointment to check healing progress',
-                        doctorId: '2',
-                        doctorName: 'Dr. Michael Chen'
-                    },
-                    {
-                        id: '3',
-                        patientName: 'Robert Johnson',
-                        contact: '+91 98765 43212',
-                        date: new Date(2026, 0, 12, 11, 0),
-                        time: '11:00 AM',
-                        type: 'Surgery',
-                        status: 'completed',
-                        notes: 'Cataract surgery completed successfully',
-                        doctorId: '1',
-                        doctorName: 'Dr. Sarah Johnson'
-                    }
-                ];
-                setAppointments(mockAppointments);
-                setFilteredAppointments(mockAppointments);
-                localStorage.setItem('appointments', JSON.stringify(mockAppointments));
-            }
-            setIsLoading(false);
-        };
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
-        loadAppointments();
-    }, []);
+    const { data, isLoading, refetch } = useGetAllAppointmentsQuery({ search: debouncedSearch });
+    const { mutate: deleteAppointment, isPending: isDeleting } = useDeleteAppointmentMutation();
 
-    // Filter appointments based on search query
-    useEffect(() => {
-        if (searchQuery.trim() === '') {
-            setFilteredAppointments(appointments);
-        } else {
-            const filtered = appointments.filter(apt =>
-                apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                apt.contact.includes(searchQuery) ||
-                apt.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (apt.doctorName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-                (apt.notes?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-            );
-            setFilteredAppointments(filtered);
-        }
-    }, [searchQuery, appointments]);
+    const appointments: Appointment[] = data?.data || [];
 
     const handleCreateAppointment = () => {
         setSelectedAppointment(null);
@@ -129,36 +63,25 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         setIsModalOpen(true);
     };
 
-    const handleCancelAppointment = (id: string) => {
-        const updated = appointments.map(apt =>
-            apt.id === id ? { ...apt, status: 'cancelled' as const } : apt
-        );
-        setAppointments(updated);
-        localStorage.setItem('appointments', JSON.stringify(updated));
+    const handleDeleteAppointment = () => {
+        if (!deleteConfirm) return;
+        deleteAppointment(deleteConfirm.appointment_id, {
+            onSuccess: () => setDeleteConfirm(null),
+        });
     };
 
-    const handleSaveAppointment = (appointment: Appointment) => {
-        if (modalMode === 'create') {
-            const newAppointment = { ...appointment, id: Date.now().toString() };
-            const updated = [...appointments, newAppointment];
-            setAppointments(updated);
-            localStorage.setItem('appointments', JSON.stringify(updated));
-        } else if (modalMode === 'edit') {
-            const updated = appointments.map(apt =>
-                apt.id === appointment.id ? appointment : apt
-            );
-            setAppointments(updated);
-            localStorage.setItem('appointments', JSON.stringify(updated));
-        }
+    const handleSaveAppointment = () => {
         setIsModalOpen(false);
+        refetch();
     };
 
     const getStatusColor = (status: string) => {
-        switch (status) {
+        switch (status?.toLowerCase()) {
             case 'confirmed': return 'text-emerald-500 bg-emerald-500/10';
             case 'pending': return 'text-amber-500 bg-amber-500/10';
             case 'cancelled': return 'text-red-500 bg-red-500/10';
             case 'completed': return 'text-blue-500 bg-blue-500/10';
+            case 'noshow': return 'text-orange-500 bg-orange-500/10';
             default: return 'text-slate-500 bg-slate-500/10';
         }
     };
@@ -208,7 +131,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
 
             {/* Appointments List */}
             <div className="space-y-4">
-                {filteredAppointments.length === 0 ? (
+                {appointments.length === 0 ? (
                     <div className={cn(
                         "text-center py-12 rounded-xl border-2 border-dashed",
                         isDarkMode ? "border-white/10 text-white/40" : "border-slate-200 text-slate-400"
@@ -218,9 +141,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                         <p className="text-sm mt-1">Create your first appointment to get started</p>
                     </div>
                 ) : (
-                    filteredAppointments.map((appointment) => (
+                    appointments.map((appointment) => (
                         <div
-                            key={appointment.id}
+                            key={appointment.appointment_id}
                             className={cn(
                                 "p-5 rounded-xl border transition-all hover:scale-[1.01]",
                                 isDarkMode
@@ -233,45 +156,44 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
                                             <h3 className={cn("text-lg font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                {appointment.patientName}
+                                                {appointment.patient_name}
                                             </h3>
                                             <span className={cn("px-3 py-1 rounded-full text-xs font-medium capitalize", getStatusColor(appointment.status))}>
                                                 {appointment.status}
                                             </span>
+                                            {appointment.token_number && (
+                                                <span className={cn("px-2 py-1 rounded-full text-xs font-medium", isDarkMode ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500")}>
+                                                    Token #{appointment.token_number}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {appointment.doctorName && (
+                                        {(appointment.doctor?.name || appointment.doctor_id) && (
                                             <div className="flex items-center space-x-2">
                                                 <UserCircle className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-600")} size={16} />
                                                 <span className={cn("text-sm font-medium", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>
-                                                    {appointment.doctorName}
+                                                    {appointment.doctor ? `${appointment.doctor.title || ''} ${appointment.doctor.name}`.trim() : appointment.doctor_id}
                                                 </span>
                                             </div>
                                         )}
                                         <div className="flex items-center space-x-2">
                                             <Phone className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={16} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {appointment.contact}
+                                                {appointment.contact_number ? `+${appointment.contact_number}` : '-'}
                                             </span>
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <CalendarIcon className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={16} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {format(appointment.date, 'MMM dd, yyyy')}
+                                                {appointment.appointment_date ? format(parseISO(appointment.appointment_date), 'dd MMM yyyy') : '-'}
                                             </span>
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <Clock className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={16} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {appointment.time}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <FileText className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={16} />
-                                            <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {appointment.type}
+                                                {appointment.appointment_time}
                                             </span>
                                         </div>
                                     </div>
@@ -282,7 +204,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                             isDarkMode ? "border-white/10" : "border-slate-200"
                                         )}>
                                             <p className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
-                                                <span className="font-semibold">Summary: </span>
+                                                <span className="font-semibold">Notes: </span>
                                                 {appointment.notes.length > 80 ? appointment.notes.substring(0, 80) + '...' : appointment.notes}
                                             </p>
                                         </div>
@@ -314,20 +236,18 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                     >
                                         <Edit2 size={18} />
                                     </button>
-                                    {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
-                                        <button
-                                            onClick={() => handleCancelAppointment(appointment.id)}
-                                            className={cn(
-                                                "p-2 rounded-lg transition-all",
-                                                isDarkMode
-                                                    ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
-                                                    : 'hover:bg-red-50 text-red-600 hover:text-red-700'
-                                            )}
-                                            title="Cancel"
-                                        >
-                                            <X size={18} />
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => setDeleteConfirm(appointment)}
+                                        className={cn(
+                                            "p-2 rounded-lg transition-all",
+                                            isDarkMode
+                                                ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
+                                                : 'hover:bg-red-50 text-red-600 hover:text-red-700'
+                                        )}
+                                        title="Delete"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -335,7 +255,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                 )}
             </div>
 
-            <AppointmentModal
+            <AppointmentDrawer
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSaveAppointment}
@@ -343,6 +263,49 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                 mode={modalMode}
                 isDarkMode={isDarkMode}
             />
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                title="Delete Appointment"
+                isDarkMode={isDarkMode}
+                className="max-w-sm"
+            >
+                <div className="p-6 text-center space-y-4">
+                    <div className={cn(
+                        "mx-auto w-14 h-14 rounded-full flex items-center justify-center",
+                        isDarkMode ? "bg-red-500/10" : "bg-red-50"
+                    )}>
+                        <AlertTriangle className="text-red-500" size={28} />
+                    </div>
+                    <p className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                        Are you sure you want to delete the appointment for{' '}
+                        <span className="font-semibold">{deleteConfirm?.patient_name}</span>?
+                        This action cannot be undone.
+                    </p>
+                    <div className="flex items-center justify-center space-x-3 pt-2">
+                        <button
+                            onClick={() => setDeleteConfirm(null)}
+                            className={cn(
+                                "px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border",
+                                isDarkMode
+                                    ? 'border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            )}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleDeleteAppointment}
+                            disabled={isDeleting}
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

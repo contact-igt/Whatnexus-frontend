@@ -113,7 +113,7 @@ export const ContactList = ({
                         "text-sm",
                         isDarkMode ? 'text-white/70' : 'text-slate-600'
                     )}>
-                        {row.phone}
+                        +{row.phone}
                     </span>
                 </div>
             )

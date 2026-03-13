@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useGetWhatsappConfigQuery, useSaveWhatsAppConfigMutation, useStatusWhatsAppConfigQuery, useTestWhatsAppConfigQuery } from '@/hooks/useWhatsappConfigQuery';
+import { useGetWhatsappConfigQuery, useSaveWhatsAppConfigMutation, useStatusWhatsAppConfigQuery, useTestWhatsAppConfigQuery, useUpdateAccessTokenMutation } from '@/hooks/useWhatsappConfigQuery';
 import { WhatsappConnectionList } from './whatsappConnectionList';
 import { TestMessageCard } from './testMessageCard';
 import { MetaVerificationCard } from './metaVerificationCard';
@@ -69,6 +69,7 @@ export const WhatsAppConnectionView = () => {
     const { mutate: saveWhatsConfigMutate, isPending: isSaveLoading } = useSaveWhatsAppConfigMutation();
     const { mutate: testWhatsConfigMutate, isPending: isTestLoading } = useTestWhatsAppConfigQuery();
     const { mutate: updateWhatsappConfigMutate, isPending: isUpdateLoading } = useStatusWhatsAppConfigQuery();
+    const { mutate: updateAccessTokenMutate, isPending: isTokenUpdateLoading } = useUpdateAccessTokenMutation();
     const { isDarkMode } = useTheme();
 
     const [organization, setOrganization] = useState<Organization | null>(null);
@@ -114,8 +115,11 @@ export const WhatsAppConnectionView = () => {
     };
 
     const handleSaveEdit = (connection: any) => {
-        console.log('Save configuration for:', connection.id);
-        // TODO: Implement save logic
+        if (!connection.access_token || connection.access_token.length < 50) {
+            toast.error('Access token is too short. Please enter a valid token.');
+            return;
+        }
+        updateAccessTokenMutate({ access_token: connection.access_token });
     };
 
     const getStatusColor = () => {

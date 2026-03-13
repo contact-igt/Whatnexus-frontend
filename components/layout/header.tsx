@@ -4,12 +4,13 @@
 import { Globe, Bell, Sun, Moon, Power, Flag, MessageSquare, Bell as BellIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { useState } from 'react';
-import { UserProfileDropdown } from '@/components/ui/userProfileDropdown';
+import { useState, useEffect, useRef } from 'react';
+import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
 import { useDispatch } from 'react-redux';
 import { clearAuthData } from '@/redux/slices/auth/authSlice';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
+import { socket } from '@/utils/socket';
 
 /** Derive a messaging-tier label from the messaging_limit_tier field from Meta */
 function formatTierLabel(tier: string | undefined | null): string {
@@ -48,8 +49,39 @@ export const Header = () => {
     const { user, whatsappApiDetails } = useAuth();
     const { setTheme, isDarkMode } = useTheme();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const dispatch = useDispatch();
     const router = useRouter();
+    const pathname = usePathname();
+    const pathnameRef = useRef(pathname);
+
+    useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+
+    // Reset unread badge when user visits chats pages
+    useEffect(() => {
+        if (pathname?.includes('/shared-inbox')) {
+            setUnreadCount(0);
+        }
+    }, [pathname]);
+
+    // Socket: listen for new messages and show unread badge
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+        if (!socket.connected) socket.connect();
+        socket.on('connect', () => {
+            socket.emit('join-tenant', user.tenant_id);
+        });
+        const handleNewMessage = () => {
+            if (!pathnameRef.current?.includes('/shared-inbox')) {
+                setUnreadCount(prev => prev + 1);
+            }
+        };
+        socket.on('new-message', handleNewMessage);
+        return () => {
+            socket.off('new-message', handleNewMessage);
+            socket.off('connect');
+        };
+    }, [user?.tenant_id]);
 
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
@@ -193,12 +225,21 @@ export const Header = () => {
             <div className="flex items-center gap-3">
 
                 {/* Bell */}
-                <button className={cn(
-                    "p-2.5 rounded-xl transition-all relative",
-                    isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
-                )}>
+                <button
+                    onClick={() => { setUnreadCount(0); router.push('/shared-inbox/live-chats'); }}
+                    className={cn(
+                        "p-2.5 rounded-xl transition-all relative",
+                        isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
+                    )}
+                >
                     <Bell size={18} />
-                    <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
+                    {unreadCount > 0 ? (
+                        <div className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 flex items-center justify-center">
+                            <span className="text-white text-[8px] font-black px-0.5">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                        </div>
+                    ) : (
+                        <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
+                    )}
                 </button>
 
                 {/* Theme toggle */}
@@ -212,13 +253,12 @@ export const Header = () => {
                     {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
 
-                {/* Org / user name + avatar — matching reference "SIVAKUMAR LAW ASSOCIATES" style */}
+                {/* Org / user name + avatar */}
                 <div className="relative">
                     <div
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
                         className="flex items-center gap-2.5 cursor-pointer group"
                     >
-                        {/* Org / user name text */}
                         <span className={cn(
                             "text-[11px] font-bold uppercase tracking-wider transition-colors",
                             isDarkMode ? 'text-white/70 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'
@@ -226,7 +266,6 @@ export const Header = () => {
                             {user?.name || user?.organization_name || user?.username || 'Account'}
                         </span>
 
-                        {/* Avatar circle */}
                         <div className={cn(
                             "w-9 h-9 rounded-full flex items-center justify-center font-black text-[12px] border-2 transition-all duration-300 shrink-0",
                             isDarkMode

@@ -7,12 +7,13 @@ import { Drawer } from "@/components/ui/drawer";
 import { Select } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
+import { Doctor } from '@/services/doctor';
 import { toast } from "sonner";
 import { useCreateDoctorMutation, useUpdateDoctorMutation } from '@/hooks/useDoctorQuery';
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Doctor } from '@/services/doctor';
+// import { Doctor } from '@/services/doctor';
 
 const doctorSchema = z.object({
     title: z.string().min(1, "Title is required"),
@@ -20,8 +21,8 @@ const doctorSchema = z.object({
     country_code: z.string().default("+91"),
     mobile: z.string().regex(/^\d{10}$/, "Mobile number must be 10 digits"),
     email: z.string().trim().email("Invalid email address"),
-    currentStatus: z.string().default("available"),
-    consultationDuration: z.coerce.number().min(5, "Duration must be at least 5 minutes"),
+    status: z.string().default("available"),
+    consultation_duration: z.coerce.number().min(5, "Duration must be at least 5 minutes").max(240, "Duration must be at most 240 minutes"),
     bio: z.string().trim().min(10, "Bio is required (min 10 chars)").max(500, "Bio must be less than 500 characters").optional().or(z.literal('')),
     profile_pic: z.string().optional(),
     experience_years: z.coerce.number({ message: "Experience is required" }).min(0, "Experience required (0+)"),
@@ -55,13 +56,13 @@ export const DoctorDrawer = ({
     const { control, register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DoctorFormValues>({
         resolver: zodResolver(doctorSchema),
         defaultValues: {
-            title: 'Dr.',
+            title: 'Dr',
             name: '',
             country_code: '+91',
             mobile: '',
             email: '',
-            currentStatus: 'available',
-            consultationDuration: 30,
+            status: 'available',
+            consultation_duration: 30,
             bio: '',
             profile_pic: '',
             experience_years: 0,
@@ -79,9 +80,8 @@ export const DoctorDrawer = ({
 
     useEffect(() => {
         if (doctor && (mode === 'view' || mode === 'edit')) {
-            // Specializations
             // Robust Specializations mapping
-            const rawSpecs = doctor.specializations || (doctor as any).specialization || [];
+            const rawSpecs = doctor.specializations || [];
             const specs = Array.isArray(rawSpecs)
                 ? rawSpecs.map((s: any) => {
                     if (typeof s === 'string') {
@@ -100,13 +100,13 @@ export const DoctorDrawer = ({
             }
 
             reset({
-                title: doctor.title || 'Dr.',
+                title: doctor.title || 'Dr',
                 name: doctor.name || '',
                 country_code: countryCode,
                 mobile: doctor.mobile || '',
                 email: doctor.email || '',
-                currentStatus: doctor.currentStatus || (doctor as any).status || 'available',
-                consultationDuration: doctor.consultationDuration || 30,
+                status: doctor.status || 'available',
+                consultation_duration: doctor.consultation_duration || 30,
                 bio: doctor.bio || '',
                 profile_pic: doctor.profile_pic || '',
                 experience_years: doctor.experience_years || 0,
@@ -140,13 +140,13 @@ export const DoctorDrawer = ({
             setAvailabilityMap(availMap);
         } else if (mode === 'create') {
             reset({
-                title: 'Dr.',
+                title: 'Dr',
                 name: '',
                 country_code: '+91',
                 mobile: '',
                 email: '',
-                currentStatus: 'available',
-                consultationDuration: 30,
+                status: 'available',
+                consultation_duration: 30,
                 bio: '',
                 profile_pic: '',
                 experience_years: 0,
@@ -208,28 +208,23 @@ export const DoctorDrawer = ({
     };
 
     const onSubmit = async (data: DoctorFormValues) => {
-        // Convert availability map to API format (Flat array)
+        // Convert availability map to API format (lowercase day names for backend ENUM)
         const availability = Object.keys(availabilityMap)
-            .filter(day => availabilityMap[day].enabled)
-            .flatMap(day => availabilityMap[day].slots.map(slot => ({
-                day_of_week: day.toLowerCase(),
-                start_time: slot.start,
-                end_time: slot.end
-            })));
-
-        // Map selected specialization names to IDs
-        const specializationIds = (data.specializations || []).map(name => {
-            const spec = specializationsList.find((s: any) =>
-                typeof s === 'object'
-                    ? (s.name === name || s.specialization_id === name)
-                    : s === name
-            );
-            return (typeof spec === 'object' ? spec.specialization_id : spec) || name;
-        });
+            .filter(day => availabilityMap[day].enabled && availabilityMap[day].slots.length > 0)
+            .map(day => ({
+                day: day.toLowerCase(),
+                slots: availabilityMap[day].slots
+                    .filter(slot => slot.start && slot.end && slot.start < slot.end)
+                    .map(slot => ({
+                        start_time: slot.start,
+                        end_time: slot.end
+                    }))
+            }))
+            .filter(day => day.slots.length > 0);
 
         const apiData = {
             ...data,
-            specializations: specializationIds,
+            specializations: data.specializations,
             availability: availability
         };
 
@@ -319,14 +314,14 @@ export const DoctorDrawer = ({
                                     </label>
                                     <div className={cn(
                                         "inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
-                                        formData.currentStatus === 'available' && (isDarkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"),
-                                        formData.currentStatus === 'busy' && (isDarkMode ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-700 border-amber-200"),
-                                        (formData.currentStatus === 'off-duty' || !formData.currentStatus) && (isDarkMode ? "bg-slate-500/10 text-slate-400 border-slate-500/20" : "bg-slate-100 text-slate-600 border-slate-200")
+                                        formData.status === 'available' && (isDarkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"),
+                                        formData.status === 'busy' && (isDarkMode ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-700 border-amber-200"),
+                                        (formData.status === 'off_duty' || !formData.status) && (isDarkMode ? "bg-slate-500/10 text-slate-400 border-slate-500/20" : "bg-slate-100 text-slate-600 border-slate-200")
                                     )}>
-                                        {formData.currentStatus === 'available' && <CheckCircle size={12} />}
-                                        {formData.currentStatus === 'busy' && <MinusCircle size={12} />}
-                                        {(formData.currentStatus === 'off-duty' || !formData.currentStatus) && <XCircle size={12} />}
-                                        <span className="capitalize">{formData.currentStatus?.replace('-', ' ') || 'Off Duty'}</span>
+                                        {formData.status === 'available' && <CheckCircle size={12} />}
+                                        {formData.status === 'busy' && <MinusCircle size={12} />}
+                                        {(formData.status === 'off_duty' || !formData.status) && <XCircle size={12} />}
+                                        <span className="capitalize">{formData.status?.replace('_', ' ') || 'Off Duty'}</span>
                                     </div>
                                 </div>
                                 <div>
@@ -368,7 +363,7 @@ export const DoctorDrawer = ({
                                         Consultation Duration
                                     </label>
                                     <p className={cn("text-sm font-medium", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                        {formData.consultationDuration} min
+                                        {formData.consultation_duration} min
                                     </p>
                                 </div>
                             </div>
@@ -479,10 +474,10 @@ export const DoctorDrawer = ({
                                             value={field.value}
                                             onChange={field.onChange}
                                             options={[
-                                                { value: 'Dr.', label: 'Dr.' },
-                                                { value: 'Prof.', label: 'Prof.' },
-                                                { value: 'Mr.', label: 'Mr.' },
-                                                { value: 'Ms.', label: 'Ms.' }
+                                                { value: 'Dr', label: 'Dr' },
+                                                { value: 'Mr', label: 'Mr' },
+                                                { value: 'Mrs', label: 'Mrs' },
+                                                { value: 'Ms', label: 'Ms' }
                                             ]}
                                             disabled={isView}
                                         />
@@ -565,7 +560,7 @@ export const DoctorDrawer = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <Controller
-                                        name="currentStatus"
+                                        name="status"
                                         control={control}
                                         render={({ field }) => (
                                             <Select
@@ -577,14 +572,14 @@ export const DoctorDrawer = ({
                                                 options={[
                                                     { value: 'available', label: 'Available' },
                                                     { value: 'busy', label: 'Busy' },
-                                                    { value: 'off-duty', label: 'Off Duty' }
+                                                    { value: 'off_duty', label: 'Off Duty' }
                                                 ]}
                                                 disabled={isView}
                                             />
                                         )}
                                     />
-                                    {errors.currentStatus && (
-                                        <p className="text-xs text-red-500 mt-1 ml-1">{errors.currentStatus.message}</p>
+                                    {errors.status && (
+                                        <p className="text-xs text-red-500 mt-1 ml-1">{errors.status.message}</p>
                                     )}
                                 </div>
 
@@ -597,11 +592,11 @@ export const DoctorDrawer = ({
                                         icon={Clock}
                                         type="number"
                                         disabled={isView}
-                                        {...register("consultationDuration")}
+                                        {...register("consultation_duration")}
                                         min={5}
                                         step={5}
                                         className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        error={errors.consultationDuration?.message}
+                                        error={errors.consultation_duration?.message}
                                         variant="secondary"
                                     />
                                 </div>
