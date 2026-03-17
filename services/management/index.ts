@@ -72,4 +72,21 @@ export class managementApiData {
     permanentDeleteManagement = async (managementId: string) => {
         return await _axios("delete", `/management/${managementId}/permanent`)
     }
+
+    // --- Pricing Table CRUD ---
+    getPricingRules = async (): Promise<any> => {
+        return await _axios("get", "/management/pricing")
+    }
+
+    createPricingRule = async (data: { category: string, country: string, rate: number, markup_percent?: number }) => {
+        return await _axios("post", "/management/pricing", data)
+    }
+
+    updatePricingRule = async (id: number, data: { rate?: number, markup_percent?: number }) => {
+        return await _axios("put", `/management/pricing/${id}`, data)
+    }
+
+    deletePricingRule = async (id: number) => {
+        return await _axios("delete", `/management/pricing/${id}`)
+    }
 }

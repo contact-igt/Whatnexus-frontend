@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -67,6 +67,37 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [variableValues, setVariableValues] = useState<Record<string, string>>({});
     const [manualPhoneInput, setManualPhoneInput] = useState('');
     const [manualInputError, setManualInputError] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !selectedTemplate) return;
+
+        const headerFormat = selectedTemplate.type; // image, video, document
+        const fileType = file.type;
+
+        if (headerFormat === 'image' && !fileType.startsWith('image/')) {
+            setError('Please upload an image file');
+            return;
+        }
+        if (headerFormat === 'video' && !fileType.startsWith('video/')) {
+            setError('Please upload a video file');
+            return;
+        }
+
+        setIsUploading(true);
+        setError(null);
+
+        try {
+            const result = await campaignService.uploadMedia(file, headerFormat as any);
+            setFormData(prev => ({ ...prev, header_media_url: result.url }));
+        } catch (err: any) {
+            setError(err.message || 'Failed to upload media');
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     // Fetch Groups
     const { data: groupsData, isLoading: isGroupsLoading } = useGetAllGroupsQuery();
@@ -126,12 +157,38 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     setError('Template ID is required');
                     return false;
                 }
+
+                // Strictly validate all template variables are filled
+                if (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) {
+                    const missingVars = selectedTemplate.variableArray.filter(
+                        (v: any) => !variableValues[v.variable_key]?.trim()
+                    );
+
+                    if (missingVars.length > 0) {
+                        setError(`Please fill all template variables: ${missingVars.map(v => '{{' + v.variable_key + '}}').join(', ')}`);
+                        return false;
+                    }
+                }
+
+                // Validate Media Header
+                if (['image', 'video', 'document'].includes(selectedTemplate?.type || '') && !(formData as any).header_media_url) {
+                    setError(`Please provide or upload a ${selectedTemplate?.type} for the header`);
+                    return false;
+                }
                 return true;
 
             case 3: // Recipients
                 if (formData.recipient_source === 'csv') {
-                    if (!csvValidation?.isValid || !formData.csv_data || formData.csv_data.length === 0) {
-                        setError('Please upload a valid CSV file with recipients');
+                    if (!csvFile) {
+                        setError('Please upload a CSV file');
+                        return false;
+                    }
+                    if (!csvValidation?.isValid) {
+                        setError('The uploaded CSV has validation errors. Please fix them before proceeding.');
+                        return false;
+                    }
+                    if (!formData.csv_data || formData.csv_data.length === 0) {
+                        setError('No valid recipients found in the CSV');
                         return false;
                     }
                 } else if (formData.recipient_source === 'group') {
@@ -269,6 +326,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 audience_data: audienceData,
                 scheduled_at: formData.scheduled_at,
                 variable_values: variableValues, // Kept for reference, though backend uses audience_data
+                header_media_url: (formData as any).header_media_url || null,
             };
 
             const response = await campaignService.createCampaign(request);
@@ -477,11 +535,38 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                         )}>
                                             {/* Preview Header */}
                                             {selectedTemplate.type !== 'text' && (
-                                                <div className="mb-2 w-full h-32 bg-black/10 rounded flex items-center justify-center text-xs opacity-50 flex-col gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center">
-                                                        {/* Icon placeholder */}
-                                                    </div>
-                                                    {selectedTemplate.type.toUpperCase()} HEADER
+                                                <div className="mb-2 w-full min-h-[128px] bg-black/10 rounded overflow-hidden flex items-center justify-center text-xs opacity-80 flex-col gap-2">
+                                                    {(formData as any).header_media_url ? (
+                                                        selectedTemplate.type === 'image' ? (
+                                                            <img 
+                                                                src={(formData as any).header_media_url} 
+                                                                alt="Header" 
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    (e.target as any).style.display = 'none';
+                                                                }}
+                                                            />
+                                                        ) : selectedTemplate.type === 'video' ? (
+                                                            <video 
+                                                                src={(formData as any).header_media_url} 
+                                                                className="w-full h-full object-cover"
+                                                                muted
+                                                            />
+                                                        ) : (
+                                                            <div className="flex flex-col items-center gap-2 p-4 text-center">
+                                                                <FileText size={32} />
+                                                                <span className="font-semibold">DOCUMENT ATTACHED</span>
+                                                            </div>
+                                                        )
+                                                    ) : (
+                                                        <>
+                                                            <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center">
+                                                                {/* Icon placeholder */}
+                                                                {selectedTemplate.type === 'image' ? <ImageIcon size={16} /> : <FileText size={16} />}
+                                                            </div>
+                                                            {selectedTemplate.type.toUpperCase()} HEADER
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
                                             {selectedTemplate.headerText && (
@@ -492,9 +577,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
                                             {/* Preview Body */}
                                             <p className={cn("text-sm whitespace-pre-wrap leading-relaxed", isDarkMode ? "text-gray-100" : "text-gray-900")}>
-                                                {/* Replaces {{1}} with variable values if available or keeps placeholders */}
-                                                {selectedTemplate.description.split(/(\{\{\d+\}\})/).map((part, i) => {
-                                                    if (part.match(/\{\{\d+\}\}/)) {
+                                                {/* Replaces {{variable}} with variable values if available or keeps placeholders */}
+                                                {(selectedTemplate.bodyText || selectedTemplate.description).split(/(\{\{[\w]+\}\})/).map((part, i) => {
+                                                    if (part.match(/\{\{[\w]+\}\}/)) {
                                                         const key = part.replace(/[{}]/g, '');
                                                         const val = variableValues[key];
                                                         return (
@@ -508,12 +593,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             </p>
 
                                             {/* Preview Footer */}
-                                            {selectedTemplate.footerText && (
+                                            {selectedTemplate?.footerText && (
                                                 <div className={cn("text-xs mt-2 opacity-60", isDarkMode ? "text-gray-300" : "text-gray-600")}>
                                                     {selectedTemplate.footerText}
                                                 </div>
                                             )}
-
+                                            
                                             {/* Preview Timestamp */}
                                             <div className={cn("text-[10px] text-right mt-1 opacity-60", isDarkMode ? "text-white" : "text-gray-500")}>
                                                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -537,17 +622,83 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     <input
                                                         type="text"
                                                         value={variableValues[v.variable_key] || ''}
-                                                        onChange={(e) => setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }))}
+                                                        onChange={(e) => {
+                                                            setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
+                                                            if (error) setError(null); // Clear error when typing
+                                                        }}
                                                         placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Value'}
                                                         className={cn(
                                                             "w-full px-3 py-2 rounded-lg border text-sm outline-none transition-all",
-                                                            isDarkMode
-                                                                ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
-                                                                : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                                            !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
+                                                                ? 'border-red-500 bg-red-500/5'
+                                                                : isDarkMode
+                                                                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
+                                                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
                                                         )}
                                                     />
                                                 </div>
                                             ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Media Header Input */}
+                                {selectedTemplate && ['image', 'video', 'document'].includes(selectedTemplate.type) && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                {selectedTemplate.type.toUpperCase()} Header Media *
+                                            </label>
+                                            {isUploading && (
+                                                <span className="text-xs text-emerald-500 animate-pulse flex items-center gap-1">
+                                                    <Upload size={12} className="animate-bounce" /> uploading...
+                                                </span>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={(formData as any).header_media_url || ''}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, header_media_url: e.target.value }))}
+                                                    placeholder={`Paste ${selectedTemplate.type} URL here`}
+                                                    className={cn(
+                                                        "flex-1 px-4 py-3 rounded-xl border text-sm outline-none transition-all",
+                                                        isDarkMode
+                                                            ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
+                                                            : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                                    )}
+                                                />
+                                                <input
+                                                    type="file"
+                                                    ref={fileInputRef}
+                                                    onChange={handleFileUpload}
+                                                    className="hidden"
+                                                    accept={selectedTemplate.type === 'image' ? 'image/*' : selectedTemplate.type === 'video' ? 'video/*' : '*/*'}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={isUploading}
+                                                    className={cn(
+                                                        "px-4 py-3 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all min-w-[120px] justify-center",
+                                                        isDarkMode
+                                                            ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                                                            : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100",
+                                                        isUploading && "opacity-50 cursor-not-allowed"
+                                                    )}
+                                                >
+                                                    <Upload size={16} />
+                                                    {isUploading ? 'Uploading...' : 'Upload'}
+                                                </button>
+                                            </div>
+                                            <p className={cn("text-xs opacity-60", isDarkMode ? 'text-white' : 'text-slate-500')}>
+                                                {isUploading 
+                                                    ? 'Your file is being uploaded to our secure servers...' 
+                                                    : `Providing a direct link or upload your ${selectedTemplate.type} file (max 20MB)`
+                                                }
+                                            </p>
                                         </div>
                                     </div>
                                 )}

@@ -3,23 +3,45 @@
 import { GlassCard } from "@/components/ui/glass-card";
 import { PulseMetric } from "@/components/ui/pulse-metric";
 import { cn } from "@/lib/utils";
-import { Wallet, TrendingUp, Megaphone, Zap, ShieldCheck, MessageCircle, Send, CheckCircle, BarChart3 } from "lucide-react";
-import { BILLING_KPI } from "./billing-mock-data";
+import { Wallet, TrendingUp, Megaphone, Zap, ShieldCheck, MessageCircle, Send, CheckCircle, BarChart3, Loader2 } from "lucide-react";
+import { useGetBillingKpiQuery } from "@/hooks/useBillingQuery";
 
 interface BillingKpiCardsProps {
   isDarkMode: boolean;
 }
 
 export const BillingKpiCards = ({ isDarkMode }: BillingKpiCardsProps) => {
+  const { data: responseData, isLoading, error } = useGetBillingKpiQuery();
+  
+  // Unwrap the API response
+  const kpiData = responseData?.data || {
+    totalSpentEstimated: 0,
+    marketingSpent: 0,
+    utilitySpent: 0,
+    authSpent: 0,
+    totalMessagesSent: 0,
+    billableConversations: 0,
+    freeConversations: 0
+  };
+
+  // Convert raw values into the UI format (with mock trends mapped temporarily until we build actual history comparison)
   const kpis = [
-    { label: 'Wallet Balance', ...BILLING_KPI.walletBalance, color: 'emerald', icon: Wallet },
-    { label: 'Total Spend', ...BILLING_KPI.totalSpend, color: 'blue', icon: TrendingUp },
-    { label: 'Marketing Spend', ...BILLING_KPI.marketingSpend, color: 'purple', icon: Megaphone },
-    { label: 'Utility Spend', ...BILLING_KPI.utilitySpend, color: 'orange', icon: Zap },
-    { label: 'Auth Spend', ...BILLING_KPI.authSpend, color: 'rose', icon: ShieldCheck },
-    { label: 'Free Tier Messages', ...BILLING_KPI.freeTierUsage, color: 'emerald', icon: MessageCircle },
-    { label: 'Messages Sent', ...BILLING_KPI.messagesSent, color: 'blue', icon: Send },
+    { label: 'Wallet Balance', value: '₹0.00', trend: 'up', percent: 0, color: 'emerald', icon: Wallet },
+    { label: 'Total Estimated Spend', value: `₹${kpiData.totalSpentEstimated.toFixed(2)}`, trend: 'up', percent: 70, color: 'blue', icon: TrendingUp },
+    { label: 'Marketing Spend', value: `₹${kpiData.marketingSpent.toFixed(2)}`, trend: 'up', percent: 45, color: 'purple', icon: Megaphone },
+    { label: 'Utility Spend', value: `₹${kpiData.utilitySpent.toFixed(2)}`, trend: 'down', percent: 20, color: 'orange', icon: Zap },
+    { label: 'Auth Spend', value: `₹${kpiData.authSpent.toFixed(2)}`, trend: 'up', percent: 5, color: 'rose', icon: ShieldCheck },
+    { label: 'Free Tier Campaigns', value: (kpiData.freeConversations || 0).toLocaleString(), trend: 'down', percent: 0, color: 'emerald', icon: MessageCircle },
+    { label: 'Messages Sent', value: kpiData.totalMessagesSent.toLocaleString(), trend: 'up', percent: 100, color: 'blue', icon: Send },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-10 w-full col-span-full">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -60,11 +82,13 @@ export const BillingKpiCards = ({ isDarkMode }: BillingKpiCardsProps) => {
             <div className={cn("mt-4 pt-3 border-t space-y-1.5", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
               <div className="flex justify-between items-center">
                 <span className={cn("text-[9px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/25' : 'text-slate-400')}>Billable Convos</span>
-                <span className={cn("text-[10px] font-bold tabular-nums", isDarkMode ? 'text-white/60' : 'text-slate-600')}>{BILLING_KPI.billableConversations}</span>
+                <span className={cn("text-[10px] font-bold tabular-nums", isDarkMode ? 'text-white/60' : 'text-slate-600')}>{kpiData.billableConversations.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className={cn("text-[9px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/25' : 'text-slate-400')}>Avg Cost/Conv</span>
-                <span className={cn("text-[10px] font-bold tabular-nums", isDarkMode ? 'text-white/60' : 'text-slate-600')}>{BILLING_KPI.avgCostPerConversation}</span>
+                <span className={cn("text-[10px] font-bold tabular-nums", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                  ₹{kpiData.billableConversations > 0 ? (kpiData.totalSpentEstimated / kpiData.billableConversations).toFixed(4) : "0.0000"}
+                </span>
               </div>
             </div>
           </div>
