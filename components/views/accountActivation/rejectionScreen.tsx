@@ -10,7 +10,7 @@ interface RejectionScreenProps {
 }
 
 export default function RejectionScreen({
-    organizationName = "Invictus Global Tech",
+    organizationName = "Kingpin Ventures",
 }: RejectionScreenProps) {
     const { isDarkMode } = useTheme();
     const router = useRouter();

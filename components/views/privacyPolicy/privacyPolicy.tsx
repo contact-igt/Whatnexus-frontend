@@ -49,7 +49,7 @@ export default function PrivacyPolicyPage() {
                             </span>
                         </div>
                         <span className={cn("text-[8.9px] font-bold tracking-widest uppercase", D ? "text-white/30" : "text-slate-400")}>
-                            Powered by Invictus Global Tech
+                            Powered by Kingpin Ventures
                         </span>
                     </div>
                 </Link>
@@ -81,7 +81,7 @@ export default function PrivacyPolicyPage() {
 
                 {/* ── Intro ─────────────────────────────────────── */}
                 <P cls={body}>
-                    This Privacy Policy explains how <B d={D}>Invictus Global Tech</B> collects, uses, stores, and shares information when you use <B d={D}>WhatsNexus Platform</B>. WhatsNexus is an AI-powered messaging automation platform that helps organizations manage customer conversations, qualify leads, and automate communication workflows using the WhatsApp Business Platform (Cloud API), <B d={D}>Invictus Global Tech Pvt Ltd</B> (formerly known as Invictus Global Tech).
+                    This Privacy Policy explains how <B d={D}>Kingpin Ventures</B> collects, uses, stores, and shares information when you use the <B d={D}>WhatsNexus Platform</B>. WhatsNexus is an AI-powered messaging automation platform operated by <B d={D}>Kingpin Ventures</B> that helps organizations manage customer conversations, qualify leads, and automate communication workflows using the WhatsApp Business Platform (Cloud API).
                 </P>
 
                 <hr className={cn("my-10", hr)} />
@@ -110,33 +110,58 @@ export default function PrivacyPolicyPage() {
                     <SubH d={D}>2.1 Account and Organization Data</SubH>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
                         <Bullet>Organization name and account settings</Bullet>
-                        <Bullet>Admin/user names, email addresses, authentication and access details</Bullet>
-                        <Bullet>Role-based access and permissions</Bullet>
+                        <Bullet>Admin/user names and email addresses</Bullet>
+                        <Bullet>Authentication and access details</Bullet>
+                        <Bullet>Role-based access permissions</Bullet>
                     </ul>
 
                     <SubH d={D}>2.2 WhatsApp Business Platform Data</SubH>
                     <P cls={body}>When a Customer connects WhatsApp to WhatsNexus, we may process:</P>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
-                        <Bullet>WhatsApp Business Account identifiers (e.g., WABA ID), phone number identifiers, and related configuration metadata</Bullet>
-                        <Bullet>Conversation identifiers, timestamps, message delivery/read status events</Bullet>
-                        <Bullet>Message content (text and media metadata) to the extent needed to provide platform features such as automated responses, routing, summaries, human handover, follow-ups, and analytics</Bullet>
+                        <Bullet>WhatsApp Business Account identifiers (e.g., WABA ID)</Bullet>
+                        <Bullet>Phone number identifiers and configuration metadata</Bullet>
+                        <Bullet>Conversation identifiers and timestamps</Bullet>
+                        <Bullet>Message delivery and read status events</Bullet>
+                        <Bullet>Message content (text and media metadata) as required to provide platform features such as:</Bullet>
+                        <div className="ml-6 space-y-1">
+                            <Bullet>automated responses</Bullet>
+                            <Bullet>routing</Bullet>
+                            <Bullet>summaries</Bullet>
+                            <Bullet>human handover</Bullet>
+                            <Bullet>follow-ups</Bullet>
+                            <Bullet>analytics</Bullet>
+                        </div>
                     </ul>
 
                     <SubH d={D}>2.3 Contacts and Lead Data (Customer-Controlled)</SubH>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
-                        <Bullet>Customer-provided phone numbers and contact attributes (e.g., name, tags, segmentation fields)</Bullet>
-                        <Bullet>Lead-related data derived from conversations (e.g., intent labels, lead scoring, engagement indicators, source tracking)</Bullet>
+                        <Bullet>Customer-provided phone numbers and contact attributes (name, tags, segmentation fields)</Bullet>
+                        <Bullet>Lead-related data derived from conversations such as:</Bullet>
+                        <div className="ml-6 space-y-1">
+                            <Bullet>intent labels</Bullet>
+                            <Bullet>lead scoring</Bullet>
+                            <Bullet>engagement indicators</Bullet>
+                            <Bullet>source tracking</Bullet>
+                        </div>
                     </ul>
 
                     <SubH d={D}>2.4 Knowledge Hub Content (Customer-Provided)</SubH>
+                    <P cls={body}>Content uploaded by Customers to guide AI responses may include:</P>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
-                        <Bullet>Business FAQs, service descriptions, product information, operational procedures, and other materials uploaded by Customers to guide AI responses</Bullet>
+                        <Bullet>Business FAQs</Bullet>
+                        <Bullet>Product information</Bullet>
+                        <Bullet>Service descriptions</Bullet>
+                        <Bullet>Operational procedures</Bullet>
+                        <Bullet>Other knowledge materials</Bullet>
                     </ul>
 
                     <SubH d={D}>2.5 Operational, Analytics, and Technical Data</SubH>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
-                        <Bullet>Activity logs, performance and reliability metrics, system health indicators</Bullet>
-                        <Bullet>Device/browser information and diagnostic logs for security and troubleshooting</Bullet>
+                        <Bullet>Activity logs</Bullet>
+                        <Bullet>Performance and reliability metrics</Bullet>
+                        <Bullet>System health indicators</Bullet>
+                        <Bullet>Device and browser information</Bullet>
+                        <Bullet>Diagnostic logs used for troubleshooting and security monitoring</Bullet>
                     </ul>
                 </section>
 
@@ -147,12 +172,33 @@ export default function PrivacyPolicyPage() {
                     <SecHeading d={D}>3. How We Use Information</SecHeading>
                     <P cls={body}>We use information to:</P>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet>Provide, operate, and maintain WhatsNexus features (shared inbox, team collaboration, campaigns, follow-ups, analytics, and operational monitoring)</Bullet>
-                        <Bullet>Power AI-assisted functions (intent recognition, automated response generation, summarization, lead qualification, escalation detection, multilingual understanding)</Bullet>
-                        <Bullet>Route conversations to human agents and enable collaboration tools (assignment, tagging, workload balancing)</Bullet>
+                        <Bullet>Provide, operate, and maintain WhatsNexus platform features, including:</Bullet>
+                        <div className="ml-6 space-y-1 mb-2">
+                            <Bullet>shared inbox</Bullet>
+                            <Bullet>team collaboration</Bullet>
+                            <Bullet>campaigns</Bullet>
+                            <Bullet>follow-ups</Bullet>
+                            <Bullet>analytics</Bullet>
+                            <Bullet>operational monitoring</Bullet>
+                        </div>
+                        <Bullet>Power AI-assisted features, including:</Bullet>
+                        <div className="ml-6 space-y-1 mb-2">
+                            <Bullet>intent recognition</Bullet>
+                            <Bullet>automated response generation</Bullet>
+                            <Bullet>conversation summarization</Bullet>
+                            <Bullet>lead qualification</Bullet>
+                            <Bullet>escalation detection</Bullet>
+                            <Bullet>multilingual understanding</Bullet>
+                        </div>
+                        <Bullet>Route conversations to human agents and enable collaboration tools such as:</Bullet>
+                        <div className="ml-6 space-y-1 mb-2">
+                            <Bullet>assignment</Bullet>
+                            <Bullet>tagging</Bullet>
+                            <Bullet>workload balancing</Bullet>
+                        </div>
                         <Bullet>Monitor performance and improve reliability, quality, and user experience</Bullet>
-                        <Bullet>Secure the Platform, prevent abuse, and detect fraud or unauthorized access</Bullet>
-                        <Bullet>Provide customer support and communicate with Customers regarding service updates</Bullet>
+                        <Bullet>Secure the platform and prevent abuse, fraud, or unauthorized access</Bullet>
+                        <Bullet>Provide customer support and communicate service updates</Bullet>
                         <Bullet>Comply with legal obligations and enforce applicable policies</Bullet>
                     </ul>
                 </section>
@@ -163,10 +209,19 @@ export default function PrivacyPolicyPage() {
                 <section id="how-we-share">
                     <SecHeading d={D}>4. How We Share Information</SecHeading>
                     <P cls={body}>We may share information only as necessary to provide the service, including:</P>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet><B d={D}>Meta/WhatsApp:</B> to send/receive messages and manage WhatsApp Business Platform operations through the Cloud API</Bullet>
-                        <Bullet><B d={D}>Service Providers:</B> hosting, monitoring, analytics, and support vendors that process data on our behalf under contractual protections</Bullet>
-                        <Bullet><B d={D}>Legal/Compliance:</B> where required by law, regulation, court order, or to protect rights, safety, and security</Bullet>
+                    <ul className={cn("mt-2 mb-5 space-y-3 text-sm leading-relaxed", body)}>
+                        <Bullet>
+                            <B d={D}>Meta / WhatsApp</B><br />
+                            To send and receive messages and manage WhatsApp Business Platform operations through the Cloud API.
+                        </Bullet>
+                        <Bullet>
+                            <B d={D}>Service Providers</B><br />
+                            Hosting providers, monitoring systems, analytics services, and technical vendors that process data on our behalf under contractual data protection obligations.
+                        </Bullet>
+                        <Bullet>
+                            <B d={D}>Legal and Compliance</B><br />
+                            Where required by law, regulation, legal process, or to protect rights, safety, and platform security.
+                        </Bullet>
                     </ul>
                     <P cls={body}><B d={D}>We do not sell personal data.</B></P>
                 </section>
@@ -176,9 +231,9 @@ export default function PrivacyPolicyPage() {
                 {/* ── 5. Data Retention ─────────────────────────── */}
                 <section id="data-retention">
                     <SecHeading d={D}>5. Data Retention</SecHeading>
-                    <P cls={body}>We retain information only as long as necessary to:</P>
+                    <P cls={body}>We retain information only for as long as necessary to:</P>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
-                        <Bullet>Provide the Platform and its features</Bullet>
+                        <Bullet>Provide the WhatsNexus platform and its features</Bullet>
                         <Bullet>Maintain security, audit, and operational logs</Bullet>
                         <Bullet>Comply with legal, regulatory, and contractual obligations</Bullet>
                     </ul>
@@ -191,8 +246,8 @@ export default function PrivacyPolicyPage() {
                 <section id="dataDeletion">
                     <SecHeading d={D}>6. Data Deletion and Requests</SecHeading>
                     <P cls={body}>Customers may request deletion of data associated with their use of WhatsNexus by contacting us at:</P>
-                    <P cls={body}><B d={D}>contact@invictusglobaltech.com</B></P>
-                    <P cls={body}>To help us process requests, include:</P>
+                    <P cls={body}><B d={D}><A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A></B></P>
+                    <P cls={body}>To help us process requests, please include:</P>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
                         <Bullet>Organization name (if applicable)</Bullet>
                         <Bullet>The WhatsApp number(s) or account email associated with the request</Bullet>
@@ -212,7 +267,7 @@ export default function PrivacyPolicyPage() {
                         <Bullet>Secure API integrations</Bullet>
                         <Bullet>Monitoring and logging for operational security</Bullet>
                     </ul>
-                    <P cls={body}>No system is completely secure. We cannot guarantee absolute security, but we work to protect data against unauthorized access, alteration, or misuse.</P>
+                    <P cls={body}>No system is completely secure. While we work to protect information from unauthorized access, alteration, or misuse, we cannot guarantee absolute security.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
@@ -223,8 +278,8 @@ export default function PrivacyPolicyPage() {
                     <P cls={body}>Customers are responsible for:</P>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
                         <Bullet>Ensuring they have appropriate rights and notices to collect and use contact data and message content</Bullet>
-                        <Bullet>Complying with applicable laws and regulations (including data protection and messaging rules)</Bullet>
-                        <Bullet>Complying with WhatsApp Business messaging policies when sending templates and campaigns</Bullet>
+                        <Bullet>Complying with applicable laws and regulations, including data protection and messaging regulations</Bullet>
+                        <Bullet>Following WhatsApp Business messaging policies when sending templates and campaigns</Bullet>
                     </ul>
                 </section>
 
@@ -233,7 +288,7 @@ export default function PrivacyPolicyPage() {
                 {/* ── 9. Healthcare Mode Notice ─────────────────── */}
                 <section id="healthcare-mode">
                     <SecHeading d={D}>9. Healthcare Mode Notice</SecHeading>
-                    <P cls={body}>WhatsNexus may be configured for healthcare messaging workflows. Customers are responsible for ensuring compliance with any healthcare privacy, security, and recordkeeping regulations applicable in their region when using WhatsNexus for patient communications.</P>
+                    <P cls={body}>WhatsNexus may be configured for healthcare messaging workflows. Customers are responsible for ensuring compliance with applicable healthcare privacy, security, and recordkeeping regulations in their region when using WhatsNexus for patient communications.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
@@ -241,7 +296,7 @@ export default function PrivacyPolicyPage() {
                 {/* ── 10. Children’s Privacy ────────────────────── */}
                 <section id="childrens-privacy">
                     <SecHeading d={D}>10. Children’s Privacy</SecHeading>
-                    <P cls={body}>WhatsNexus is intended for business use and is not directed to children. Customers must ensure their messaging and data practices comply with applicable age-related requirements and messaging policies.</P>
+                    <P cls={body}>WhatsNexus is designed for business use and is not directed toward children. Customers must ensure their messaging and data practices comply with applicable age-related privacy requirements and messaging policies.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
@@ -249,7 +304,7 @@ export default function PrivacyPolicyPage() {
                 {/* ── 11. Changes to This Privacy Policy ────────── */}
                 <section id="changes">
                     <SecHeading d={D}>11. Changes to This Privacy Policy</SecHeading>
-                    <P cls={body}>We may update this Privacy Policy from time to time. Updates will be posted on this page and the “Last Updated” date will be revised.</P>
+                    <P cls={body}>We may update this Privacy Policy from time to time. Updates will be posted on this page, and the “Last Updated” date will be revised accordingly.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
@@ -259,9 +314,14 @@ export default function PrivacyPolicyPage() {
                     <SecHeading d={D}>12. Contact</SecHeading>
                     <P cls={body}>For privacy questions or requests, contact:</P>
                     <P cls={body}>
-                        <B d={D}>Invictus Global Tech</B><br />
-                        Email: <A href="mailto:contact@invictusglobaltech.com" d={D}>contact@invictusglobaltech.com</A><br />
-                        Address: LIG 13/19, NH3, Vanjinathan Street, Maraimalai Nagar, Chennai - 603209
+                        <B d={D}>Kingpin Ventures</B><br />
+                        Email: <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A><br />
+                        Address:<br />
+                        LIG 13/19, NH3<br />
+                        Vanjinathan Street<br />
+                        Maraimalai Nagar<br />
+                        Chennai – 603209<br />
+                        India
                     </P>
                 </section>
 

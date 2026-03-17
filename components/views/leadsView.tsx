@@ -1,5 +1,5 @@
 "use client";
-import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye, RefreshCw, Sparkles, BrainCircuit, Check, UserPlus, Users, CheckSquare, Square, ShieldCheck, Lock, Search, ChevronDown } from 'lucide-react';
+import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye, RefreshCw, Sparkles, BrainCircuit, Check, UserPlus, UserMinus, Users, CheckSquare, Square, ShieldCheck, Lock, Search, ChevronDown } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { Select } from '@/components/ui/select';
 import { ActionMenu } from '@/components/ui/actionMenu';
@@ -37,7 +37,8 @@ export const LeadsView = () => {
     const [filters, setFilters] = useState({
         origin: 'all',
         score: 0,
-        heatState: 'all'
+        heatState: 'all',
+        assignedTo: 'all'
     });
 
     // Data Queries
@@ -80,12 +81,24 @@ export const LeadsView = () => {
 
         const matchesHeatState = filters.heatState === 'all' || lead?.heat_state?.toLowerCase() === filters.heatState.toLowerCase();
 
-        return matchesSearch && matchesOrigin && matchesScore && matchesHeatState;
+        const matchesAssignment = 
+            filters.assignedTo === 'all' ||
+            (filters.assignedTo === 'unassigned' && !lead.assigned_to) ||
+            (filters.assignedTo === 'assigned' && !!lead.assigned_to) ||
+            (lead.assigned_to === filters.assignedTo);
+
+        return matchesSearch && matchesOrigin && matchesScore && matchesHeatState && matchesAssignment;
     });
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentLeads = filteredLeads?.slice(startIndex, startIndex + itemsPerPage);
 
     const uniqueOrigins = [
         "none", "whatsapp", "meta", "website", "google", "referral",
-        "instagram", "facebook", "twitter", "campaign", "post", "other"
+        "instagram", "facebook", "twitter", "campaign", "post", "nearby", "other"
     ];
 
 
@@ -99,8 +112,6 @@ export const LeadsView = () => {
     
     const [activeSummaryId, setActiveSummaryId] = useState<string | null>(null);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
 
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
     const [isAssigningBulk, setIsAssigningBulk] = useState(false);
@@ -108,7 +119,7 @@ export const LeadsView = () => {
     const isAdmin = user?.role === 'tenant_admin' || user?.role === 'admin';
     
     const filteredAgents = useMemo(() => {
-        return agentsList?.data?.filter((agent: any) => agent.role !== 'tenant_admin') || [];
+        return agentsList?.data || [];
     }, [agentsList?.data]);
 
     const toggleLeadSelection = (leadId: string) => {
@@ -129,30 +140,21 @@ export const LeadsView = () => {
 
     const handleBulkClaim = () => {
         if (!selectedLeadIds.length) return;
-        bulkUpdateLeads({ 
-            leadIds: selectedLeadIds, 
-            updates: { assigned_to: user?.tenant_user_id } 
-        }, {
-            onSuccess: () => {
-                setSelectedLeadIds([]);
-                toast.success(`Successfully claimed ${selectedLeadIds.length} leads`);
-            }
-        });
+        handleAction('bulk_claim');
     };
 
     const handleBulkAssign = (agentId: string) => {
         if (!selectedLeadIds.length) return;
-        bulkUpdateLeads({ 
-            leadIds: selectedLeadIds, 
-            updates: { assigned_to: agentId } 
-        }, {
-            onSuccess: () => {
-                setSelectedLeadIds([]);
-                setIsAssigningBulk(false);
-                toast.success(`Successfully assigned ${selectedLeadIds.length} leads`);
-            }
-        });
+        setTargetAgentId(agentId);
+        handleAction('bulk_assign');
     };
+
+    const handleBulkUnassign = () => {
+        if (!selectedLeadIds.length) return;
+        handleAction('bulk_unassign');
+    };
+
+    const showCheckboxes = activeTab !== 'trash' && (filters.assignedTo === 'unassigned' || (isAdmin && filters.assignedTo !== 'all'));
 
     // Summary Modal State
     const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
@@ -161,7 +163,8 @@ export const LeadsView = () => {
     // Confirmation Modal State
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-    const [actionType, setActionType] = useState<'delete' | 'permanent_delete' | 'restore'>('delete');
+    const [targetAgentId, setTargetAgentId] = useState<string | null>(null);
+    const [actionType, setActionType] = useState<'delete' | 'permanent_delete' | 'restore' | 'claim' | 'assign' | 'unassign' | 'bulk_claim' | 'bulk_assign' | 'bulk_unassign'>('delete');
     // Action Menu State
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -184,34 +187,92 @@ export const LeadsView = () => {
         });
     };
 
-    const handleAction = (type: 'delete' | 'permanent_delete' | 'restore', id: string) => {
+    const handleAction = (type: typeof actionType, id?: string) => {
         setActionType(type);
-        setSelectedLeadId(id);
+        setSelectedLeadId(id || null);
         setIsConfirmationModalOpen(true);
     };
 
     const confirmAction = () => {
-        if (!selectedLeadId) return;
+        if (actionType.startsWith('bulk_')) {
+            const updates: any = {};
+            let successMessage = "";
+
+            if (actionType === 'bulk_claim') {
+                updates.assigned_to = user?.tenant_user_id;
+                successMessage = `Successfully claimed ${selectedLeadIds.length} leads`;
+            } else if (actionType === 'bulk_assign') {
+                updates.assigned_to = targetAgentId;
+                const agent = filteredAgents.find((a: any) => a.tenant_user_id === targetAgentId);
+                successMessage = `Successfully assigned ${selectedLeadIds.length} leads to ${agent?.username || 'agent'}`;
+            } else if (actionType === 'bulk_unassign') {
+                updates.assigned_to = null;
+                successMessage = `Successfully unassigned ${selectedLeadIds.length} leads`;
+            }
+
+            bulkUpdateLeads({ leadIds: selectedLeadIds, updates }, {
+                onSuccess: () => {
+                    setIsConfirmationModalOpen(false);
+                    setSelectedLeadIds([]);
+                    setTargetAgentId(null);
+                    setIsAssigningBulk(false);
+                    toast.success(successMessage);
+                },
+                onError: () => {
+                    setIsConfirmationModalOpen(false);
+                }
+            });
+            return;
+        }
+
+        if (!selectedLeadId && !actionType.startsWith('bulk_')) return;
 
         if (actionType === 'delete') {
-            softDeleteLead(selectedLeadId, {
+            softDeleteLead(selectedLeadId!, {
                 onSuccess: () => {
                     setIsConfirmationModalOpen(false);
                     setSelectedLeadId(null);
                 }
             });
         } else if (actionType === 'permanent_delete') {
-            permanentDeleteLead(selectedLeadId, {
+            permanentDeleteLead(selectedLeadId!, {
                 onSuccess: () => {
                     setIsConfirmationModalOpen(false);
                     setSelectedLeadId(null);
                 }
             });
         } else if (actionType === 'restore') {
-            restoreLead(selectedLeadId, {
+            restoreLead(selectedLeadId!, {
                 onSuccess: () => {
                     setIsConfirmationModalOpen(false);
                     setSelectedLeadId(null);
+                }
+            });
+        } else if (actionType === 'claim' || actionType === 'assign' || actionType === 'unassign') {
+            const updates: any = {};
+            let successMessage = "";
+
+            if (actionType === 'claim') {
+                updates.assigned_to = user?.tenant_user_id;
+                successMessage = "Lead claimed successfully";
+            } else if (actionType === 'assign') {
+                updates.assigned_to = targetAgentId;
+                const agent = filteredAgents.find((a: any) => a.tenant_user_id === targetAgentId);
+                successMessage = `Lead assigned to ${agent?.username || 'agent'} successfully`;
+            } else if (actionType === 'unassign') {
+                updates.assigned_to = null;
+                successMessage = "Lead unassigned successfully";
+            }
+
+            bulkUpdateLeads({ leadIds: [selectedLeadId!], updates }, {
+                onSuccess: () => {
+                    setIsConfirmationModalOpen(false);
+                    setSelectedLeadId(null);
+                    setTargetAgentId(null);
+                    toast.success(successMessage);
+                },
+                onError: () => {
+                    setIsConfirmationModalOpen(false);
                 }
             });
         }
@@ -240,15 +301,11 @@ export const LeadsView = () => {
         return <WhatsAppConnectionPlaceholder />;
     }
 
-    const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    console.log("leads", leads)
-    const currentLeads = filteredLeads?.slice(startIndex, startIndex + itemsPerPage);
-    const columns: ColumnDef<any>[] = [
+    const columns = useMemo<ColumnDef<any>[]>(() => [
         {
             field: 'selection',
-            headerName: (
-                <button 
+            headerName: showCheckboxes ? (
+                <button
                     onClick={toggleAllSelection}
                     className={cn(
                         "p-1 rounded-md transition-all",
@@ -261,9 +318,9 @@ export const LeadsView = () => {
                         <Square size={18} className={isDarkMode ? "text-slate-500" : "text-slate-400"} />
                     )}
                 </button>
-            ),
-            renderCell: ({ row }) => (
-                <button 
+            ) : null,
+            renderCell: ({ row }) => showCheckboxes ? (
+                <button
                     onClick={(e) => {
                         e.stopPropagation();
                         toggleLeadSelection(row.lead_id);
@@ -279,7 +336,8 @@ export const LeadsView = () => {
                         <Square size={18} className={isDarkMode ? "text-slate-500" : "text-slate-400"} />
                     )}
                 </button>
-            )
+            ) : null,
+            width: showCheckboxes ? 50 : 0,
         },
         {
             field: 'identity',
@@ -336,7 +394,89 @@ export const LeadsView = () => {
             minWidth: 150,
             renderCell: ({ row }) => (
                 <div className="flex flex-col justify-center">
-                    {row.assigned_to ? (
+                    {isAdmin ? (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={cn(
+                                        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border w-fit transition-all group",
+                                        row.assigned_to 
+                                            ? (isDarkMode ? "bg-white/5 border-white/10 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
+                                            : (isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-600")
+                                    )}
+                                >
+                                    {row.assigned_to ? (
+                                        <>
+                                            <div className={cn("w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold", isDarkMode ? "bg-white/10" : "bg-slate-200")}>
+                                                {row.assigned_agent_name?.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="text-[11px] font-semibold">{row.assigned_agent_name}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserPlus size={12} />
+                                            <span>Assign</span>
+                                        </>
+                                    )}
+                                    <ChevronDown size={12} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent 
+                                isDarkMode={isDarkMode} 
+                                align="start" 
+                                className="w-56 p-2 overflow-hidden rounded-xl border shadow-xl"
+                            >
+                                <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTargetAgentId(null);
+                                            handleAction('unassign', row.lead_id);
+                                        }}
+                                        className={cn(
+                                            "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                                            !row.assigned_to
+                                                ? (isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600")
+                                                : (isDarkMode ? "hover:bg-white/5 text-slate-400" : "hover:bg-slate-50 text-slate-600")
+                                        )}
+                                    >
+                                        <span>Unassigned</span>
+                                        {!row.assigned_to && <Check size={14} />}
+                                    </button>
+                                    <div className={cn("h-px my-1", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+                                    {filteredAgents.map((agent: any) => (
+                                        <button
+                                            key={agent.tenant_user_id}
+                                            onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTargetAgentId(agent.tenant_user_id);
+                                            handleAction('assign', row.lead_id);
+                                        }}
+                                            className={cn(
+                                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all group/item",
+                                                row.assigned_to === agent.tenant_user_id
+                                                    ? (isDarkMode ? "text-emerald-400" : "text-emerald-600")
+                                                    : (isDarkMode ? "text-slate-300" : "text-slate-700")
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 border",
+                                                isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-100 border-slate-200"
+                                            )}>
+                                                {agent.username.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="flex flex-col items-start min-w-0 flex-1">
+                                                <span className="truncate w-full text-left">{agent.username}</span>
+                                                <span className="text-[8px] uppercase tracking-tighter opacity-50">{agent.role}</span>
+                                            </div>
+                                            {row.assigned_to === agent.tenant_user_id && <Check size={14} className="shrink-0" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    ) : row.assigned_to ? (
                         <div className={cn("flex items-center gap-2 px-2.5 py-1.5 rounded-lg border w-fit", isDarkMode ? "bg-white/5 border-white/10 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")}>
                             <div className={cn("w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold", isDarkMode ? "bg-white/10" : "bg-slate-200")}>
                                 {row.assigned_agent_name?.charAt(0).toUpperCase()}
@@ -347,7 +487,7 @@ export const LeadsView = () => {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                bulkUpdateLeads({ leadIds: [row.lead_id], updates: { assigned_to: user?.tenant_user_id } });
+                                handleAction('claim', row.lead_id);
                             }}
                             className={cn(
                                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all text-[11px] font-bold uppercase tracking-wider w-fit",
@@ -467,8 +607,7 @@ export const LeadsView = () => {
                 </div>
             )
         }
-
-    ];
+    ], [isDarkMode, showCheckboxes, selectedLeadIds, currentLeads, activeTab, isAdmin, filteredAgents, isSummarizePending, activeSummaryId]);
 
     return (
         <div className="flex h-full w-full overflow-hidden relative">
@@ -479,36 +618,58 @@ export const LeadsView = () => {
                     onConfirm={confirmAction}
                     title={
                         actionType === 'delete' ? "Remove Lead" :
-                            actionType === 'permanent_delete' ? "Permanently Delete Lead" :
-                                "Restore Lead"
+                        actionType === 'permanent_delete' ? "Permanently Delete Lead" :
+                        actionType === 'restore' ? "Restore Lead" :
+                        actionType === 'claim' ? "Claim Lead" :
+                        actionType === 'assign' ? "Assign Lead" :
+                        actionType === 'unassign' ? "Unassign Lead" :
+                        actionType === 'bulk_claim' ? `Claim ${selectedLeadIds.length} Leads` :
+                        actionType === 'bulk_assign' ? `Assign ${selectedLeadIds.length} Leads` :
+                        `Unassign ${selectedLeadIds.length} Leads`
                     }
                     message={
                         actionType === 'delete' ? "Are you sure you want to remove this lead? It will be moved to the trash." :
-                            actionType === 'permanent_delete' ? "This action cannot be undone. Are you sure you want to permanently delete this lead?" :
-                                "Are you sure you want to restore this lead?"
+                        actionType === 'permanent_delete' ? "This action cannot be undone. Are you sure you want to permanently delete this lead?" :
+                        actionType === 'restore' ? "Are you sure you want to restore this lead?" :
+                        actionType === 'claim' ? "Are you sure you want to claim this lead?" :
+                        actionType === 'assign' ? "Are you sure you want to assign this lead to the selected agent?" :
+                        actionType === 'unassign' ? "Are you sure you want to unassign this lead?" :
+                        actionType === 'bulk_claim' ? `Are you sure you want to claim ${selectedLeadIds.length} leads?` :
+                        actionType === 'bulk_assign' ? `Are you sure you want to assign ${selectedLeadIds.length} leads to the selected agent?` :
+                        `Are you sure you want to unassign ${selectedLeadIds.length} leads?`
                     }
                     isDarkMode={isDarkMode}
                     confirmText={
                         actionType === 'delete' ? "Remove" :
-                            actionType === 'permanent_delete' ? "Delete Forever" :
-                                "Restore"
+                        actionType === 'permanent_delete' ? "Delete Forever" :
+                        actionType === 'restore' ? "Restore" :
+                        actionType === 'claim' || actionType === 'bulk_claim' ? "Claim" :
+                        actionType === 'assign' || actionType === 'bulk_assign' ? "Assign" :
+                        "Unassign"
                     }
-                    isLoading={isSoftDeletePending || isPermanentDeletePending || isRestorePending}
-                    variant={actionType === 'restore' ? 'info' : 'danger'}
+                    isLoading={isSoftDeletePending || isPermanentDeletePending || isRestorePending || isBulkUpdating}
+                    variant={['restore', 'claim', 'assign', 'bulk_claim', 'bulk_assign'].includes(actionType) ? 'info' : 'danger'}
                 />
 
-                <div className="flex justify-between items-end border-b border-white/5 pb-6">
-                    <div>
-                        <h1 className={cn("text-3xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Lead Intelligence</h1>
-                        <p className={cn("font-medium text-sm mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Qualified audience shards synced from Meta & Website.</p>
+                <div className="flex flex-col border-b border-white/5 pb-8 space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className={cn("text-3xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Lead Intelligence</h1>
+                            <p className={cn("font-medium text-sm mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Qualified audience shards synced from Meta & Website.</p>
+                        </div>
+                        <button className="h-10 px-5 rounded-xl bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                            <RefreshCw size={14} />
+                            Sync CRM
+                        </button>
                     </div>
-                    <div className="flex space-x-3 items-center relative">
+
+                    <div className="flex items-center gap-3 relative">
                         <SearchInput
                             isDarkMode={isDarkMode}
                             placeholder="Search leads..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-60"
+                            onChange={(e) => { setSearchQuery(e.target.value); setSelectedLeadIds([]); }}
+                            className="w-72"
                         />
 
                         {/* Source Filter */}
@@ -517,7 +678,7 @@ export const LeadsView = () => {
                                 isDarkMode={isDarkMode}
                                 options={[{ value: 'all', label: 'All Sources' }, ...uniqueOrigins.map(o => ({ value: o, label: o }))]}
                                 value={filters.origin}
-                                onChange={(val) => setFilters(prev => ({ ...prev, origin: val }))}
+                                onChange={(val) => { setFilters(prev => ({ ...prev, origin: val })); setSelectedLeadIds([]); }}
                                 placeholder="Source"
                                 className="w-full"
                             />
@@ -535,8 +696,28 @@ export const LeadsView = () => {
                                     { value: 'super_cold', label: 'Super Cold' }
                                 ]}
                                 value={filters.heatState}
-                                onChange={(val) => setFilters(prev => ({ ...prev, heatState: val }))}
+                                onChange={(val) => { setFilters(prev => ({ ...prev, heatState: val })); setSelectedLeadIds([]); }}
                                 placeholder="Heat State"
+                                className="w-full"
+                            />
+                        </div>
+
+                        {/* Owner Filter */}
+                        <div className="w-48">
+                            <Select
+                                isDarkMode={isDarkMode}
+                                options={[
+                                    { value: 'all', label: 'All Assignments' },
+                                    { value: 'unassigned', label: 'Unassigned Leads' },
+                                    ...(isAdmin ? [{ value: 'assigned', label: 'All Assigned Leads' }] : []),
+                                    ...filteredAgents.map((agent: any) => ({ 
+                                        value: agent.tenant_user_id, 
+                                        label: `${agent.username} (${agent.role.charAt(0).toUpperCase() + agent.role.slice(1)})`
+                                    }))
+                                ]}
+                                value={filters.assignedTo}
+                                onChange={(val) => { setFilters(prev => ({ ...prev, assignedTo: val })); setSelectedLeadIds([]); }}
+                                placeholder="Owner"
                                 className="w-full"
                             />
                         </div>
@@ -619,7 +800,7 @@ export const LeadsView = () => {
                                             value={[filters.score]}
                                             max={100}
                                             step={1}
-                                            onValueChange={(val) => setFilters(prev => ({ ...prev, score: val[0] }))}
+                                            onValueChange={(val) => { setFilters(prev => ({ ...prev, score: val[0] })); setSelectedLeadIds([]); }}
                                             className="w-full"
                                         />
 
@@ -628,7 +809,7 @@ export const LeadsView = () => {
                                             {[0, 50, 75, 90].map((preset) => (
                                                 <button
                                                     key={preset}
-                                                    onClick={() => setFilters(prev => ({ ...prev, score: preset }))}
+                                                    onClick={() => { setFilters(prev => ({ ...prev, score: preset })); setSelectedLeadIds([]); }}
                                                     className={cn(
                                                         "py-2 rounded-lg text-[10px] font-bold transition-all border",
                                                         filters.score === preset
@@ -650,9 +831,9 @@ export const LeadsView = () => {
                         </Popover>
 
                         {/* Reset Button (only if filters active) */}
-                        {(filters.origin !== 'all' || filters.heatState !== 'all' || filters.score > 0) && (
+                        {(filters.origin !== 'all' || filters.heatState !== 'all' || filters.assignedTo !== 'all' || filters.score > 0) && (
                             <button
-                                onClick={() => setFilters({ origin: 'all', score: 0, heatState: 'all' })}
+                                onClick={() => { setFilters({ origin: 'all', score: 0, heatState: 'all', assignedTo: 'all' }); setSelectedLeadIds([]); }}
                                 className={cn(
                                     "p-2.5 rounded-xl border transition-all hover:scale-105 active:scale-95",
                                     isDarkMode
@@ -664,8 +845,6 @@ export const LeadsView = () => {
                                 <RefreshCw size={16} />
                             </button>
                         )}
-
-                        <button className="h-10 px-5 rounded-xl bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">Sync CRM</button>
                     </div>
                 </div>
 
@@ -691,22 +870,22 @@ export const LeadsView = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {isAdmin ? (
+                            {isAdmin && filters.assignedTo === 'unassigned' && (
                                 <Popover open={isAssigningBulk} onOpenChange={setIsAssigningBulk}>
                                     <PopoverTrigger asChild>
                                         <button className={cn(
                                             "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border",
-                                            isDarkMode 
-                                                ? "bg-white/10 border-white/20 hover:bg-white/20" 
-                                                : "bg-white border-slate-200 hover:bg-slate-50 shadow-sm"
+                                            isDarkMode
+                                                ? "bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                                                : "bg-white border-slate-200 hover:bg-slate-50 shadow-sm text-slate-700"
                                         )}>
                                             <Users size={16} />
                                             Assign To
                                             <ChevronDown size={14} className={cn("transition-transform duration-200", isAssigningBulk ? "rotate-180" : "")} />
                                         </button>
                                     </PopoverTrigger>
-                                    <PopoverContent className={cn("w-64 p-2", isDarkMode ? "bg-black border-white/10" : "bg-white border-slate-200")}>
-                                        <div className="max-h-60 overflow-y-auto space-y-1">
+                                    <PopoverContent isDarkMode={isDarkMode} className={cn("w-64 p-2 rounded-xl border shadow-xl")} align="end">
+                                        <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar">
                                             {filteredAgents.map((agent: any) => (
                                                 <button
                                                     key={agent.tenant_user_id}
@@ -731,7 +910,9 @@ export const LeadsView = () => {
                                         </div>
                                     </PopoverContent>
                                 </Popover>
-                            ) : (
+                            )}
+
+                            {filters.assignedTo === 'unassigned' && (
                                 <button
                                     onClick={handleBulkClaim}
                                     className={cn(
@@ -743,6 +924,21 @@ export const LeadsView = () => {
                                 >
                                     <ShieldCheck size={18} />
                                     Claim Selected
+                                </button>
+                            )}
+
+                            {isAdmin && filters.assignedTo !== 'unassigned' && filters.assignedTo !== 'all' && (
+                                <button
+                                    onClick={handleBulkUnassign}
+                                    className={cn(
+                                        "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md",
+                                        isDarkMode
+                                            ? "bg-rose-500 text-white hover:bg-rose-400"
+                                            : "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200"
+                                    )}
+                                >
+                                    <UserMinus size={18} />
+                                    Unassign Selected
                                 </button>
                             )}
 
@@ -764,10 +960,10 @@ export const LeadsView = () => {
                 {/* Tabs */}
                 <div className="flex items-center space-x-1 border-b border-white/5">
                     <button
-                        onClick={() => { setActiveTab('all'); setCurrentPage(1); setSearchQuery(''); }}
+                        onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: 'all' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
                         className={cn(
                             "px-4 py-2 text-sm font-medium border-b-2 transition-all",
-                            activeTab === 'all'
+                            activeTab === 'all' && filters.assignedTo === 'all'
                                 ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
                                 : 'border-transparent text-slate-500 hover:text-slate-700'
                         )}
@@ -775,7 +971,29 @@ export const LeadsView = () => {
                         All Leads
                     </button>
                     <button
-                        onClick={() => { setActiveTab('trash'); setCurrentPage(1); setSearchQuery(''); }}
+                        onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: isAdmin ? 'assigned' : (user?.tenant_user_id || 'all') })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium border-b-2 transition-all",
+                            activeTab === 'all' && (filters.assignedTo === (isAdmin ? 'assigned' : user?.tenant_user_id))
+                                ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                    >
+                        Assigned
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: 'unassigned' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium border-b-2 transition-all",
+                            activeTab === 'all' && filters.assignedTo === 'unassigned'
+                                ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                        )}
+                    >
+                        Unassigned
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('trash'); setFilters(prev => ({ ...prev, assignedTo: 'all' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
                         className={cn(
                             "px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center space-x-2",
                             activeTab === 'trash'

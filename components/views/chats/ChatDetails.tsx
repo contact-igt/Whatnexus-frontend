@@ -1,0 +1,245 @@
+import React from 'react';
+import { User, Search, Check, UserPlus, ChevronDown, ShieldCheck, Lock, Loader2, Brain, History as HistoryIcon } from 'lucide-react';
+import { cn } from "@/lib/utils";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { getDateLabel } from './ChatUtils';
+
+interface ChatDetailsProps {
+    isDarkMode: boolean;
+    selectedChat: any;
+    isAdmin: boolean;
+    isAssigning: boolean;
+    agentSearch: string;
+    setAgentSearch: (text: string) => void;
+    filteredAgents: any[];
+    assignAgentMutate: (params: any) => void;
+    setSelectedChat: React.Dispatch<React.SetStateAction<any>>;
+    user: any;
+    claimChatMutate: (contactId: string) => void;
+    isClaiming: boolean;
+    summarizeChat: () => void;
+    isSummarizing: boolean;
+    setIsWeeklySummaryOpen: (isOpen: boolean) => void;
+}
+
+export const ChatDetails: React.FC<ChatDetailsProps> = ({
+    isDarkMode,
+    selectedChat,
+    isAdmin,
+    isAssigning,
+    agentSearch,
+    setAgentSearch,
+    filteredAgents,
+    assignAgentMutate,
+    setSelectedChat,
+    user,
+    claimChatMutate,
+    isClaiming,
+    summarizeChat,
+    isSummarizing,
+    setIsWeeklySummaryOpen
+}) => {
+    return (
+        <div className={cn("w-1/4 min-w-[280px] border-l flex flex-col shrink-0", isDarkMode ? "bg-[#111b21] border-white/5" : "bg-white border-slate-200")}>
+            <div className="p-4 flex flex-col items-center border-b space-y-3">
+                <div className={cn("w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl overflow-hidden shadow-inner", isDarkMode ? 'bg-[#3b4a54] text-slate-300' : 'bg-slate-200 text-slate-500')}>
+                    {selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={40} />}
+                </div>
+                <div className="text-center">
+                    <h3 className={cn("font-bold text-base", isDarkMode ? "text-white" : "text-slate-900")}>
+                        {selectedChat?.name || selectedChat?.phone}
+                    </h3>
+                    <p className={cn("text-[11px] mt-0.5", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                        {selectedChat?.phone}
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-8 no-scrollbar">
+                {/* Agent Assignment Section */}
+                <div className="space-y-3">
+                    <h4 className={cn("text-[10px] font-bold uppercase tracking-[0.15em] opacity-60", isDarkMode ? "text-slate-300" : "text-slate-600")}>
+                        Agent Assignment
+                    </h4>
+
+                    <div className="space-y-3">
+                        {isAdmin && (
+                            <>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            disabled={isAssigning}
+                                            className={cn(
+                                                "w-full rounded-xl py-3 px-3 text-xs font-semibold flex items-center justify-between transition-all cursor-pointer shadow-sm border",
+                                                isDarkMode
+                                                    ? "bg-[#202c33] text-slate-200 border-white/5 hover:border-emerald-500/50"
+                                                    : "bg-white text-slate-700 border-slate-200 hover:border-emerald-500/50"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2 truncate">
+                                                <UserPlus size={14} className={isDarkMode ? "text-slate-500" : "text-slate-400"} />
+                                                <span className="truncate">
+                                                    {selectedChat?.assigned_agent_name || "Unassigned"}
+                                                </span>
+                                            </div>
+                                            <ChevronDown className={cn("shrink-0", isDarkMode ? "text-slate-500" : "text-slate-400")} size={14} />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        isDarkMode={isDarkMode}
+                                        align="start"
+                                        className="w-[var(--radix-popover-trigger-width)] p-0 overflow-hidden rounded-2xl border shadow-2xl"
+                                    >
+                                        <div className={cn("p-2 border-b", isDarkMode ? "border-white/5 bg-white/5 text-white" : "border-slate-100 bg-slate-50")}>
+                                            <Input
+                                                isDarkMode={isDarkMode}
+                                                placeholder="Search agents..."
+                                                value={agentSearch}
+                                                onChange={(e) => setAgentSearch(e.target.value)}
+                                                variant="secondary"
+                                                className="h-8 text-xs py-1"
+                                                icon={Search}
+                                            />
+                                        </div>
+                                        <div className="max-h-[420px] overflow-y-auto p-2 custom-scrollbar">
+                                            <button
+                                                onClick={() => {
+                                                    assignAgentMutate({ contact_id: selectedChat.contact_id, agent_id: "" });
+                                                    setSelectedChat((prev: any) => ({ ...prev, assigned_admin_id: "", assigned_agent_name: "Unassigned" }));
+                                                }}
+                                                className={cn(
+                                                    "w-full flex items-center justify-between px-3 py-4 rounded-xl text-xs font-medium transition-colors",
+                                                    !selectedChat?.assigned_admin_id
+                                                        ? (isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600")
+                                                        : (isDarkMode ? "hover:bg-white/5 text-slate-400" : "hover:bg-slate-50 text-slate-600")
+                                                )}
+                                            >
+                                                <span>Unassigned</span>
+                                                {!selectedChat?.assigned_admin_id && <Check size={14} />}
+                                            </button>
+                                            {filteredAgents.map((agent: any) => (
+                                                <button
+                                                    key={agent.tenant_user_id}
+                                                    onClick={() => {
+                                                        assignAgentMutate({ contact_id: selectedChat.contact_id, agent_id: agent.tenant_user_id });
+                                                        setSelectedChat((prev: any) => ({
+                                                            ...prev,
+                                                            assigned_admin_id: agent.tenant_user_id,
+                                                            assigned_agent_name: agent.username
+                                                        }));
+                                                    }}
+                                                    className={cn(
+                                                        "w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-xs font-semibold transition-all group",
+                                                        selectedChat?.assigned_admin_id === agent.tenant_user_id
+                                                            ? (isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600")
+                                                            : (isDarkMode ? "hover:bg-white/5 text-slate-300" : "hover:bg-slate-50 text-slate-700")
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        "w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 border",
+                                                        isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-100 border-slate-200"
+                                                    )}>
+                                                        {agent.username.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="flex flex-col items-start min-w-0 flex-1">
+                                                        <span className="truncate w-full text-left">{agent.username}</span>
+                                                        <Badge isDarkMode={isDarkMode} variant="default" size="sm" className="mt-0.5 text-[8px] py-0 px-1.5 uppercase tracking-tighter opacity-70">
+                                                            {agent.role}
+                                                        </Badge>
+                                                    </div>
+                                                    {selectedChat?.assigned_admin_id === agent.tenant_user_id && <Check size={14} className="shrink-0" />}
+                                                </button>
+                                            ))}
+                                            {filteredAgents.length === 0 && (
+                                                <div className="p-4 text-center text-[10px] opacity-40">No agents found</div>
+                                            )}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                <p className={cn("text-[10px] italic opacity-60 px-1", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                    Admins can reassign leads to any team member.
+                                </p>
+                            </>
+                        )}
+
+                        {selectedChat?.assigned_admin_id === user?.tenant_user_id ? (
+                            <div className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl border", isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-700")}>
+                                <ShieldCheck size={16} />
+                                <span className="text-xs font-bold uppercase tracking-wider">Assigned to You</span>
+                            </div>
+                        ) : selectedChat?.assigned_admin_id ? (
+                            <div className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl border", isDarkMode ? "bg-white/5 border-white/10 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-600")}>
+                                <Lock size={16} />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] uppercase tracking-wider opacity-60">Assigned To</span>
+                                    <span className="text-xs font-bold">{selectedChat?.assigned_agent_name}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => {
+                                    claimChatMutate(selectedChat.contact_id);
+                                    // Optimistic update
+                                    setSelectedChat((prev: any) => ({
+                                        ...prev,
+                                        assigned_admin_id: user?.tenant_user_id,
+                                        assigned_agent_name: user?.username
+                                    }));
+                                }}
+                                disabled={isClaiming}
+                                className="w-full h-10 cursor-pointer flex items-center justify-center space-x-2 bg-emerald-600 text-white px-4 rounded-xl text-xs font-bold uppercase hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/10 disabled:opacity-50"
+                            >
+                                {isClaiming ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                                <span className='text-[11px]'>Claim Lead</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 className={cn("text-[10px] font-bold uppercase tracking-[0.15em] mb-3 opacity-60", isDarkMode ? "text-slate-300" : "text-slate-600")}>
+                        Contact Details
+                    </h4>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-start gap-4">
+                            <span className={cn("text-[11px] shrink-0 font-medium", isDarkMode ? "text-slate-400" : "text-slate-500")}>Phone</span>
+                            <span className={cn("text-[11px] font-semibold text-right", isDarkMode ? "text-slate-200" : "text-slate-800")}>{selectedChat?.phone}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-4">
+                            <span className={cn("text-[11px] shrink-0 font-medium", isDarkMode ? "text-slate-400" : "text-slate-500")}>Last Active</span>
+                            <span className={cn("text-[11px] font-semibold text-right", isDarkMode ? "text-slate-200" : "text-slate-800")}>
+                                {selectedChat?.last_message_time ? getDateLabel(selectedChat.last_message_time) : "N/A"}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 dark:border-white/5">
+                    <div className="space-y-3">
+                        <button
+                            onClick={summarizeChat}
+                            disabled={isSummarizing}
+                            className="w-full h-10 flex items-center justify-center space-x-2 bg-blue-600/10 text-blue-500 px-4 rounded-xl text-xs font-bold uppercase hover:bg-blue-600/20 transition-colors disabled:opacity-50"
+                        >
+                            {isSummarizing ? (
+                                <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                                <Brain size={14} />
+                            )}
+                            <span>Neural Summary</span>
+                        </button>
+                        <button
+                            onClick={() => setIsWeeklySummaryOpen(true)}
+                            className="w-full h-10 flex items-center justify-center space-x-2 bg-emerald-600/10 text-emerald-500 px-4 rounded-xl text-xs font-bold uppercase hover:bg-emerald-600/20 transition-colors"
+                        >
+                            <HistoryIcon size={14} />
+                            <span>Weekly Summary</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};

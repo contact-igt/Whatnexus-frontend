@@ -106,3 +106,17 @@ export const useRestoreLeadMutation = () => {
     }
   });
 };
+
+export const useBulkUpdateLeadsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadIds, updates }: { leadIds: string[]; updates: Record<string, any> }) =>
+      leadIntelligenceApis.bulkUpdateLeads(leadIds, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to update leads");
+    }
+  });
+};

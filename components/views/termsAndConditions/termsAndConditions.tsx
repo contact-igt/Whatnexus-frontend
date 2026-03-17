@@ -49,7 +49,7 @@ export default function TermsAndConditionsPage() {
                             </span>
                         </div>
                         <span className={cn("text-[8.9px] font-bold tracking-widest uppercase", D ? "text-white/30" : "text-slate-400")}>
-                            Powered by Invictus Global Tech
+                            Powered by Kingpin Ventures
                         </span>
                     </div>
                 </Link>
@@ -73,7 +73,7 @@ export default function TermsAndConditionsPage() {
 
                 {/* Title block */}
                 <h1 className={cn("text-5xl sm:text-6xl font-black tracking-tight leading-none mb-4", strong)}>
-                    Terms & Conditions
+                    Terms of Service
                 </h1>
                 <p className={cn("text-sm mb-10", muted)}>Last Updated: {LAST_UPDATED}</p>
 
@@ -81,52 +81,48 @@ export default function TermsAndConditionsPage() {
 
                 {/* ── Intro ─────────────────────────────────────── */}
                 <P cls={body}>
-                    These Terms & Conditions (&quot;Terms&quot;) govern access to and use of <B d={D}>WhatsNexus</B> (the &quot;Platform&quot;), an AI-powered messaging automation platform operated by <B d={D}>Invictus Global Tech</B> (&quot;Invictus,&quot; &quot;we,&quot; &quot;us,&quot; &quot;our&quot;). By accessing or using WhatsNexus, you (&quot;Customer,&quot; &quot;you,&quot; &quot;your&quot;) agree to these Terms. If you are using WhatsNexus on behalf of an organization, you represent that you have authority to bind that organization to these Terms, <B d={D}>Invictus Global Tech Pvt Ltd</B> (formerly known as Invictus Global Tech).
+                    These Terms of Service (“Terms”) govern access to and use of the <B d={D}>WhatsNexus</B> platform, a messaging automation and customer communication platform operated by <B d={D}>Kingpin Ventures</B>. By accessing or using WhatsNexus, you agree to be bound by these Terms.
                 </P>
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 1. Definitions ────────────────────────────── */}
-                <section id="definitions">
-                    <SecHeading d={D}>1. Definitions</SecHeading>
+                {/* ── 1. Acceptance ────────────────────────────── */}
+                <section id="acceptance">
+                    <SecHeading d={D}>1. Acceptance of Terms</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet><B d={D}>&quot;Platform&quot;</B> means WhatsNexus, including dashboards, APIs, integrations, and related services.</Bullet>
-                        <Bullet><B d={D}>&quot;Customer&quot;</B> means the organization subscribing to or using the Platform.</Bullet>
-                        <Bullet><B d={D}>&quot;Authorized Users&quot;</B> means individuals permitted by Customer to access the Platform (admins, agents, staff).</Bullet>
-                        <Bullet><B d={D}>&quot;End Users&quot;</B> means individuals who communicate with Customer via WhatsApp or other connected channels.</Bullet>
-                        <Bullet><B d={D}>&quot;Customer Data&quot;</B> means data submitted, stored, processed, or transmitted by Customer through the Platform, including message content, contact data, templates, and campaign data.</Bullet>
-                        <Bullet><B d={D}>&quot;AI Features&quot;</B> means automated functions including message suggestions, automated responses, summarization, lead scoring, and intent detection.</Bullet>
+                        <Bullet>By creating an account, accessing, or using WhatsNexus, you agree to comply with and be legally bound by these Terms and any applicable policies referenced herein.</Bullet>
+                        <Bullet>If you are using the Platform on behalf of an organization, you represent that you have authority to bind that organization to these Terms.</Bullet>
+                        <Bullet>If you do not agree to these Terms, you must not use the Platform.</Bullet>
                     </ul>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 2. Eligibility and Account Registration ────── */}
-                <section id="eligibility">
-                    <SecHeading d={D}>2. Eligibility and Account Registration</SecHeading>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet><B d={D}>2.1</B> You must be able to form a legally binding contract to use the Platform.</Bullet>
-                        <Bullet><B d={D}>2.2</B> You are responsible for maintaining accurate account information and controlling access credentials.</Bullet>
-                        <Bullet><B d={D}>2.3</B> You are responsible for all activities conducted through your account and by your Authorized Users.</Bullet>
+                {/* ── 2. Description ────────────────────────────── */}
+                <section id="description">
+                    <SecHeading d={D}>2. Description of the Platform</SecHeading>
+                    <P cls={body}>WhatsNexus is an AI-powered messaging automation platform that enables organizations to:</P>
+                    <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                        <Bullet>manage customer conversations via the WhatsApp Business Platform</Bullet>
+                        <Bullet>automate responses and workflows</Bullet>
+                        <Bullet>manage leads and customer engagement</Bullet>
+                        <Bullet>enable collaboration between human agents and AI systems</Bullet>
+                        <Bullet>run messaging campaigns and analytics</Bullet>
                     </ul>
+                    <P cls={body}>The Platform may integrate with WhatsApp/Meta services and other third-party platforms.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 3. Services and Platform Functionality ─────── */}
-                <section id="services">
-                    <SecHeading d={D}>3. Services and Platform Functionality</SecHeading>
-                    <P cls={body}>3.1 WhatsNexus provides tools to help Customers manage and automate messaging operations, including:</P>
+                {/* ── 3. Account Registration ──────────────────── */}
+                <section id="accounts">
+                    <SecHeading d={D}>3. Account Registration and Access</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet>shared team inbox and collaboration</Bullet>
-                        <Bullet>AI-assisted messaging and automation workflows</Bullet>
-                        <Bullet>lead qualification, scoring, and analytics</Bullet>
-                        <Bullet>follow-up scheduling and nurturing sequences</Bullet>
-                        <Bullet>campaign/broadcast tooling using approved WhatsApp templates</Bullet>
-                        <Bullet>operational dashboards and monitoring metrics</Bullet>
+                        <Bullet><B d={D}>3.1</B> To use the Platform, you may need to create an account and provide accurate and complete information.</Bullet>
+                        <Bullet><B d={D}>3.2</B> You are responsible for maintaining the confidentiality of your login credentials.</Bullet>
+                        <Bullet><B d={D}>3.3</B> You are responsible for all activity that occurs under your account, including actions taken by authorized users.</Bullet>
+                        <Bullet><B d={D}>3.4</B> You must notify Kingpin Ventures immediately if you suspect unauthorized access to your account.</Bullet>
                     </ul>
-                    <P cls={body}>3.2 The Platform may integrate with third-party services such as the WhatsApp Business Platform (Cloud API), CRMs, automation tools, and analytics platforms. Use of such third-party services may be subject to their own terms and policies.</P>
-                    <P cls={body}>3.3 We may update, modify, or discontinue features to improve performance, security, or compliance.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
@@ -134,28 +130,28 @@ export default function TermsAndConditionsPage() {
                 {/* ── 4. Customer Responsibilities ──────────────── */}
                 <section id="responsibilities">
                     <SecHeading d={D}>4. Customer Responsibilities</SecHeading>
-                    <ul className={cn("mt-2 mb-5 space-y-3 text-sm leading-relaxed", body)}>
-                        <Bullet><B d={D}>4.1 Compliance.</B> You agree to use the Platform in compliance with all applicable laws and regulations, including data protection and messaging rules.</Bullet>
-                        <Bullet><B d={D}>4.2 WhatsApp Policy Compliance.</B> You must comply with WhatsApp Business policies, including rules for template messaging, opt-in, and prohibited content.</Bullet>
-                        <Bullet><B d={D}>4.3 Consent and Notice.</B> You are responsible for obtaining all required rights, consents, and notices to collect, store, use, and process Customer Data and End User communications.</Bullet>
-                        <Bullet><B d={D}>4.4 Content Accuracy.</B> You are responsible for the accuracy and legality of Customer Data, templates, campaigns, and messages sent through the Platform.</Bullet>
-                        <Bullet><B d={D}>4.5 Account Security.</B> You must ensure your Authorized Users maintain secure access and follow internal security practices.</Bullet>
+                    <P cls={body}>Customers using WhatsNexus agree to:</P>
+                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
+                        <Bullet>use the Platform only for lawful business purposes</Bullet>
+                        <Bullet>comply with WhatsApp Business Platform policies and messaging guidelines</Bullet>
+                        <Bullet>obtain necessary consent before sending messages where required by law</Bullet>
+                        <Bullet>ensure all Customer Data and message templates comply with applicable laws and regulations</Bullet>
                     </ul>
+                    <P cls={body}>Customers are responsible for the conduct of their users, agents, and administrators.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 5. Acceptable Use ─────────────────────────── */}
-                <section id="acceptable-use">
-                    <SecHeading d={D}>5. Acceptable Use</SecHeading>
-                    <P cls={body}>You must not use the Platform to:</P>
+                {/* ── 5. Prohibited Use ─────────────────────────── */}
+                <section id="prohibited">
+                    <SecHeading d={D}>5. Prohibited Use</SecHeading>
+                    <P cls={body}>You may not use WhatsNexus to:</P>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet>send spam, scams, or misleading communications</Bullet>
-                        <Bullet>violate privacy, data protection, or consumer protection laws</Bullet>
+                        <Bullet>violate any applicable laws or consumer protection laws</Bullet>
                         <Bullet>send unlawful, harmful, threatening, abusive, harassing, defamatory, or discriminatory content</Bullet>
                         <Bullet>impersonate others or misrepresent affiliation</Bullet>
                         <Bullet>transmit malware, malicious code, or attempt to compromise platform security</Bullet>
-                        <Bullet>engage in unauthorized scraping or automated access not approved by Invictus</Bullet>
+                        <Bullet>engage in unauthorized scraping or automated access not approved by <B d={D}>Kingpin Ventures</B></Bullet>
                         <Bullet>use the Platform for activities that could cause WhatsApp account suspension or policy violations</Bullet>
                     </ul>
                     <P cls={body}>We may suspend or terminate access for violations of these Terms or applicable policies.</P>
@@ -163,7 +159,7 @@ export default function TermsAndConditionsPage() {
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 6. AI Features and Human Oversight ────────── */}
+                {/* ── 6. AI Features ────────────────────────────── */}
                 <section id="ai-features">
                     <SecHeading d={D}>6. AI Features and Human Oversight</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
@@ -178,30 +174,30 @@ export default function TermsAndConditionsPage() {
                 {/* ── 7. Data and Privacy ───────────────────────── */}
                 <section id="data-privacy">
                     <SecHeading d={D}>7. Data and Privacy</SecHeading>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
+                    <ul className={cn("mt-2 mb-5 space-y-3 text-sm leading-relaxed", body)}>
                         <Bullet><B d={D}>7.1 Customer Data Ownership.</B> Customer retains ownership of Customer Data.</Bullet>
-                        <Bullet><B d={D}>7.2 Processing.</B> Invictus processes Customer Data to provide the Platform and related support.</Bullet>
+                        <Bullet><B d={D}>7.2 Processing.</B> <B d={D}>Kingpin Ventures</B> processes Customer Data to provide the Platform and related support.</Bullet>
                         <Bullet><B d={D}>7.3 Privacy Policy.</B> Your use of the Platform is also governed by our Privacy Policy available at: <A href="/privacyPolicy" d={D}>https://whatsnexus.com/privacy-policy</A>.</Bullet>
-                        <Bullet><B d={D}>7.4 Data Deletion Requests.</B> Customer may request deletion as described in the Privacy Policy or via <A href="mailto:contact@invictusglobaltech.com" d={D}>contact@invictusglobaltech.com</A>.</Bullet>
+                        <Bullet><B d={D}>7.4 Data Deletion Requests.</B> Customer may request deletion as described in the Privacy Policy or via <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A>.</Bullet>
                     </ul>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
 
                 {/* ── 8. Third-Party Services ────────────────────── */}
-                <section id="third-party-integrations">
+                <section id="third-party">
                     <SecHeading d={D}>8. Third-Party Services and Integrations</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
                         <Bullet><B d={D}>8.1</B> The Platform may connect to third-party services (e.g., WhatsApp/Meta, CRM systems).</Bullet>
-                        <Bullet><B d={D}>8.2</B> Invictus is not responsible for third-party services, their availability, their acts or omissions, or their terms.</Bullet>
+                        <Bullet><B d={D}>8.2</B> <B d={D}>Kingpin Ventures</B> is not responsible for third-party services, their availability, their acts or omissions, or their terms.</Bullet>
                         <Bullet><B d={D}>8.3</B> Third-party fees, restrictions, and policies may apply, and Customer is responsible for compliance.</Bullet>
                     </ul>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 9. Fees, Billing, and Taxes ────────────────── */}
-                <section id="fees-billing">
+                {/* ── 9. Fees and Billing ───────────────────────── */}
+                <section id="fees">
                     <SecHeading d={D}>9. Fees, Billing, and Taxes (If Applicable)</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
                         <Bullet><B d={D}>9.1</B> Some Platform features may require payment under a separate subscription or order form.</Bullet>
@@ -213,8 +209,8 @@ export default function TermsAndConditionsPage() {
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 10. Service Availability and Support ───────── */}
-                <section id="availability-support">
+                {/* ── 10. Availability ───────────────────────────── */}
+                <section id="availability">
                     <SecHeading d={D}>10. Service Availability and Support</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
                         <Bullet><B d={D}>10.1</B> We aim to provide reliable service but do not guarantee uninterrupted availability.</Bullet>
@@ -226,11 +222,11 @@ export default function TermsAndConditionsPage() {
                 <hr className={cn("my-10", hr)} />
 
                 {/* ── 11. Intellectual Property ──────────────────── */}
-                <section id="intellectual-property">
+                <section id="ip">
                     <SecHeading d={D}>11. Intellectual Property</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet><B d={D}>11.1</B> Invictus and its licensors own all rights in the Platform, including software, design, and documentation, except Customer Data.</Bullet>
-                        <Bullet><B d={D}>11.2</B> Subject to these Terms, Invictus grants Customer a limited, non-exclusive, non-transferable right to use the Platform for internal business purposes during the subscription term.</Bullet>
+                        <Bullet><B d={D}>11.1</B> <B d={D}>Kingpin Ventures</B> and its licensors own all rights in the Platform, including software, design, and documentation, except Customer Data.</Bullet>
+                        <Bullet><B d={D}>11.2</B> Subject to these Terms, <B d={D}>Kingpin Ventures</B> grants Customer a limited, non-exclusive, non-transferable right to use the Platform for internal business purposes during the subscription term.</Bullet>
                         <Bullet><B d={D}>11.3</B> Customer may not copy, modify, reverse engineer, or create derivative works of the Platform except as permitted by law.</Bullet>
                     </ul>
                 </section>
@@ -249,17 +245,17 @@ export default function TermsAndConditionsPage() {
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 13. Suspension and Termination ─────────────── */}
-                <section id="suspension-termination">
+                {/* ── 13. Suspension ─────────────────────────────── */}
+                <section id="termination">
                     <SecHeading d={D}>13. Suspension and Termination</SecHeading>
                     <P cls={body}>13.1 We may suspend access immediately if:</P>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
+                    <ul className={cn("ml-6 mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
                         <Bullet>you violate these Terms or applicable policies</Bullet>
                         <Bullet>your use poses a security or legal risk</Bullet>
                         <Bullet>required payments are overdue (if applicable)</Bullet>
                     </ul>
-                    <P cls={body}>13.2 Customer may terminate use by providing notice in accordance with applicable subscription terms.</P>
-                    <P cls={body}>13.3 Upon termination, access may be disabled and Customer Data retention/deletion will follow the Privacy Policy and any applicable agreement.</P>
+                    <P cls={body}><B d={D}>13.2</B> Customer may terminate use by providing notice in accordance with applicable subscription terms.</P>
+                    <P cls={body}><B d={D}>13.3</B> Upon termination, access may be disabled and Customer Data retention/deletion will follow the Privacy Policy and any applicable agreement.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
@@ -276,23 +272,27 @@ export default function TermsAndConditionsPage() {
 
                 <hr className={cn("my-10", hr)} />
 
-                {/* ── 15. Limitation of Liability ────────────────── */}
-                <section id="limitation-liability">
+                {/* ── 15. Liability ──────────────────────────────── */}
+                <section id="liability">
                     <SecHeading d={D}>15. Limitation of Liability</SecHeading>
                     <P cls={body}>To the maximum extent permitted by law:</P>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet>Invictus will not be liable for indirect, incidental, special, consequential, or punitive damages.</Bullet>
-                        <Bullet>Our total liability for claims related to the Platform will not exceed the amount paid by Customer to Invictus for the Platform in the [3/6/12] months preceding the event giving rise to the claim (or a different cap if agreed in writing).</Bullet>
+                    <ul className={cn("mt-2 mb-5 space-y-3 text-sm leading-relaxed", body)}>
+                        <Bullet>
+                            <B d={D}>Kingpin Ventures</B> will not be liable for indirect, incidental, special, consequential, or punitive damages.
+                        </Bullet>
+                        <Bullet>
+                            Our total liability for claims related to the Platform will not exceed the amount paid by Customer to <B d={D}>Kingpin Ventures</B> for the Platform in the [3/6/12] months preceding the event giving rise to the claim (or a different cap if agreed in writing).
+                        </Bullet>
                     </ul>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
 
                 {/* ── 16. Indemnification ────────────────────────── */}
-                <section id="indemnification-legal">
+                <section id="indemnification">
                     <SecHeading d={D}>16. Indemnification</SecHeading>
-                    <P cls={body}>Customer agrees to indemnify and hold harmless Invictus, its directors, officers, employees, and agents from claims, damages, liabilities, and expenses arising from:</P>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
+                    <P cls={body}>Customer agrees to indemnify and hold harmless <B d={D}>Kingpin Ventures</B>, its directors, officers, employees, and agents from claims, damages, liabilities, and expenses arising from:</P>
+                    <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
                         <Bullet>Customer Data, templates, campaigns, or messages</Bullet>
                         <Bullet>violation of laws or third-party rights</Bullet>
                         <Bullet>misuse of WhatsNexus or third-party platforms</Bullet>
@@ -303,15 +303,15 @@ export default function TermsAndConditionsPage() {
                 <hr className={cn("my-10", hr)} />
 
                 {/* ── 17. Governing Law ──────────────────────────── */}
-                <section id="governing-law-final">
+                <section id="law">
                     <SecHeading d={D}>17. Governing Law and Dispute Resolution</SecHeading>
-                    <P cls={body}>These Terms are governed by the laws of India. Courts located in Tamil Nadu will have exclusive jurisdiction, unless otherwise required by applicable law.</P>
+                    <P cls={body}>These Terms are governed by the laws of India. Courts located in Tamil Nadu will have exclusive jurisdiction unless otherwise required by applicable law.</P>
                 </section>
 
                 <hr className={cn("my-10", hr)} />
 
                 {/* ── 18. Changes ───────────────────────────────── */}
-                <section id="changes-terms">
+                <section id="changes">
                     <SecHeading d={D}>18. Changes to These Terms</SecHeading>
                     <P cls={body}>We may update these Terms from time to time. Updates will be posted on this page and the &quot;Last Updated&quot; date will be revised. Continued use of the Platform after updates constitutes acceptance of the updated Terms.</P>
                 </section>
@@ -319,13 +319,18 @@ export default function TermsAndConditionsPage() {
                 <hr className={cn("my-10", hr)} />
 
                 {/* ── 19. Contact ───────────────────────────────── */}
-                <section id="contact-final">
+                <section id="contact">
                     <SecHeading d={D}>19. Contact</SecHeading>
                     <P cls={body}>For questions about these Terms, contact:</P>
                     <P cls={body}>
-                        <B d={D}>Invictus Global Tech</B><br />
-                        Email: <A href="mailto:contact@invictusglobaltech.com" d={D}>contact@invictusglobaltech.com</A><br />
-                        Address: LIG 13/19, NH3, Vanjinathan Street, Maraimalai Nagar, Chennai - 603209
+                        <B d={D}>Kingpin Ventures</B><br />
+                        Email: <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A><br />
+                        Address:<br />
+                        LIG 13/19, NH3<br />
+                        Vanjinathan Street<br />
+                        Maraimalai Nagar<br />
+                        Chennai – 603209<br />
+                        India
                     </P>
                 </section>
 

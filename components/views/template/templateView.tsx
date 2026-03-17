@@ -249,7 +249,18 @@ export const TemplateView = () => {
                             id: generateId(),
                             type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type,
                             label: b.text || b.label || (b.type === 'CATALOG' ? 'View Catalog' : b.type === 'COPY_CODE' ? 'Copy Code' : 'Button'),
-                            value: b.url || b.phone_number || b.example || b.value || ''
+                            value: (() => {
+                                let val = b.url || b.phone_number || b.example || b.value || '';
+                                if (b.type === 'PHONE_NUMBER' || b.type === 'PHONE') {
+                                    if (val && !val.startsWith('+')) val = '+' + val;
+                                    if (val && !val.includes(' ') && val.length > 5) {
+                                        // Try to inject a space for the split UI: +XX XXXXXXXXXX
+                                        // We'll guess first 3 chars (+CC) if it's long enough
+                                        return val.substring(0, 3) + ' ' + val.substring(3);
+                                    }
+                                }
+                                return val;
+                            })()
                         }));
 
                         return {

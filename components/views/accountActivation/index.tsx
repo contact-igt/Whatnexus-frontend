@@ -50,7 +50,7 @@ export default function AccountActivation() {
     console.log("currentStatusDataState", currentStatusDataState)
     // Mock invitation data (in production, fetch from API using token)
     // const [invitationData] = useState({
-    //     organizationName: "Invictus Global Tech",
+    //     organizationName: "Kingpin Ventures",
     //     invitedBy: "Admin User",
     //     email: "user@example.com",
     //     invitedDate: new Date().toLocaleDateString(),
@@ -343,7 +343,7 @@ export default function AccountActivation() {
                             isDarkMode ? "text-slate-400" : "text-slate-500"
                         )}
                     >
-                        Powered by Invictus Global Tech
+                        Powered by Kingpin Ventures
                     </span>
                 </div>
                 {/* Dynamic Screen Content */}

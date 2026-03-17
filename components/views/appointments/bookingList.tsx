@@ -12,7 +12,6 @@ interface BookingListProps {
 }
 
 export interface Appointment {
-<<<<<<< Updated upstream
     id: string;
     patientName: string;
     contact: string;
@@ -20,15 +19,6 @@ export interface Appointment {
     time: string;
     type: string;
     status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
-=======
-    appointment_id: string;
-    patient_name: string;
-    contact_number: string;
-    age?: number;
-    appointment_date: string;
-    appointment_time: string;
-    status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed' | 'Noshow';
->>>>>>> Stashed changes
     notes?: string;
     doctorId?: string;
     doctorName?: string;

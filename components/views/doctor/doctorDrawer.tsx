@@ -9,6 +9,9 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useCreateDoctorMutation, useUpdateDoctorMutation } from '@/hooks/useDoctorQuery';
+import { useDeleteSpecializationMutation } from '@/hooks/useSpecializationsQuery';
+import { SpecializationDrawer } from '../specialization/specializationDrawer';
+import { ConfirmationModal } from "@/components/ui/confirmationModal";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,7 +27,7 @@ const doctorSchema = z.object({
     consultationDuration: z.coerce.number().min(5, "Duration must be at least 5 minutes"),
     bio: z.string().trim().min(10, "Bio is required (min 10 chars)").max(500, "Bio must be less than 500 characters").optional().or(z.literal('')),
     profile_pic: z.string().optional(),
-    experience_years: z.coerce.number({ message: "Experience is required" }).min(0, "Experience required (0+)"),
+    experience_years: z.preprocess((val) => Number(val), z.number({ message: "Experience is required" }).min(0, "Experience required (0+)")),
     qualification: z.string().trim().min(2, "Qualification is required (min 2 chars)"),
     specializations: z.array(z.string()).min(1, "At least one specialization is required"),
 });
@@ -53,7 +56,7 @@ export const DoctorDrawer = ({
     const specializationsList = specializationsData || [];
 
     const { control, register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DoctorFormValues>({
-        resolver: zodResolver(doctorSchema),
+        resolver: zodResolver(doctorSchema) as any,
         defaultValues: {
             title: 'Dr.',
             name: '',
@@ -76,6 +79,14 @@ export const DoctorDrawer = ({
 
     const createDoctorMutation = useCreateDoctorMutation();
     const updateDoctorMutation = useUpdateDoctorMutation();
+
+    // Specialization Management States
+    const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false);
+    const [specDrawerMode, setSpecDrawerMode] = useState<'create' | 'edit'>('create');
+    const [selectedSpec, setSelectedSpec] = useState<any>(null);
+    const [specToDelete, setSpecToDelete] = useState<string | null>(null);
+    const deleteSpecMutation = useDeleteSpecializationMutation();
+    const [isSpecDeleteModalOpen, setIsSpecDeleteModalOpen] = useState(false);
 
     useEffect(() => {
         if (doctor && (mode === 'view' || mode === 'edit')) {
@@ -207,6 +218,37 @@ export const DoctorDrawer = ({
         });
     };
 
+    const handleAddSpec = () => {
+        setSpecDrawerMode('create');
+        setSelectedSpec(null);
+        setIsSpecDrawerOpen(true);
+    };
+
+    const handleEditSpec = (specName: string) => {
+        const spec = specializationsList.find((s: any) => s.name === specName || s.specialization_id === specName);
+        if (spec && typeof spec === 'object') {
+            setSelectedSpec(spec);
+            setSpecDrawerMode('edit');
+            setIsSpecDrawerOpen(true);
+        }
+    };
+
+    const handleDeleteSpec = (specName: string) => {
+        const spec = specializationsList.find((s: any) => s.name === specName || s.specialization_id === specName);
+        if (spec && typeof spec === 'object' && spec.specialization_id) {
+            setSpecToDelete(spec.specialization_id);
+            setIsSpecDeleteModalOpen(true);
+        }
+    };
+
+    const confirmDeleteSpec = async () => {
+        if (specToDelete) {
+            await deleteSpecMutation.mutateAsync(specToDelete);
+            setSpecToDelete(null);
+            setIsSpecDeleteModalOpen(false);
+        }
+    };
+
     const onSubmit = async (data: DoctorFormValues) => {
         // Convert availability map to API format (Flat array)
         const availability = Object.keys(availabilityMap)
@@ -227,7 +269,7 @@ export const DoctorDrawer = ({
             return (typeof spec === 'object' ? spec.specialization_id : spec) || name;
         });
 
-        const apiData = {
+        const apiData: any = {
             ...data,
             specializations: specializationIds,
             availability: availability
@@ -257,6 +299,7 @@ export const DoctorDrawer = ({
             : 'View doctor information.';
 
     return (
+        <>
         <Drawer
             isOpen={isOpen}
             onClose={onClose}
@@ -282,7 +325,7 @@ export const DoctorDrawer = ({
                     </button>
                     {!isView && (
                         <button
-                            onClick={handleSubmit(onSubmit)}
+                            onClick={handleSubmit(onSubmit as any)}
                             disabled={isSaving}
                             className={cn(
                                 "px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg flex items-center space-x-2",
@@ -673,21 +716,40 @@ export const DoctorDrawer = ({
                                 name="specializations"
                                 control={control}
                                 render={({ field }) => (
-                                    <MultiSelect
-                                        isDarkMode={isDarkMode}
-                                        label="Specializations"
-                                        required
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        options={specializationsList.map((spec: any) => {
-                                            const name = typeof spec === 'string' ? spec : spec?.name || '';
-                                            return { value: name, label: name };
-                                        }).filter((opt: any) => opt.value)}
-                                        placeholder="Select specializations"
-                                        disabled={isView}
-                                        error={errors.specializations?.message}
-                                        variant="secondary"
-                                    />
+                                    <div className="flex items-end gap-2">
+                                        <div className="flex-1">
+                                            <MultiSelect
+                                                isDarkMode={isDarkMode}
+                                                label="Specializations"
+                                                required
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                options={specializationsList.map((spec: any) => {
+                                                    const name = typeof spec === 'string' ? spec : spec?.name || '';
+                                                    return { value: name, label: name };
+                                                }).filter((opt: any) => opt.value)}
+                                                placeholder={specializationsList.length === 0 ? "No specializations found in system" : "Select specializations"}
+                                                disabled={isView}
+                                                error={errors.specializations?.message}
+                                                variant="secondary"
+                                                onEditOption={handleEditSpec}
+                                                onDeleteOption={handleDeleteSpec}
+                                            />
+                                        </div>
+                                        {!isView && (
+                                            <button
+                                                type="button"
+                                                onClick={handleAddSpec}
+                                                className={cn(
+                                                    "h-[42px] px-3 rounded-xl flex items-center justify-center transition-all shadow-emerald-500/20",
+                                                    isDarkMode ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                )}
+                                                title="Add Specialization"
+                                            >
+                                                <Plus size={18} />
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                             />
                         </div>
@@ -812,5 +874,24 @@ export const DoctorDrawer = ({
                 )}
             </div>
         </Drawer>
+        <SpecializationDrawer 
+            isOpen={isSpecDrawerOpen}
+            onClose={() => setIsSpecDrawerOpen(false)}
+            specialization={selectedSpec}
+            mode={specDrawerMode}
+            isDarkMode={isDarkMode}
+        />
+        <ConfirmationModal
+            isOpen={isSpecDeleteModalOpen}
+            onClose={() => setIsSpecDeleteModalOpen(false)}
+            onConfirm={confirmDeleteSpec}
+            title="Delete Specialization"
+            message={`Are you sure you want to delete this specialization? `}
+            confirmText="Delete Specialization"
+            variant="danger"
+            isDarkMode={isDarkMode}
+            isLoading={deleteSpecMutation.isPending}
+        />
+        </>
     );
 };

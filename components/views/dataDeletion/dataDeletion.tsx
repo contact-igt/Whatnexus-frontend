@@ -48,7 +48,7 @@ export default function DataDeletionPage() {
                             </span>
                         </div>
                         <span className={cn("text-[8.9px] font-bold tracking-widest uppercase", D ? "text-white/30" : "text-slate-400")}>
-                            Powered by Invictus Global Tech
+                            Powered by Kingpin Ventures
                         </span>
                     </div>
                 </Link>
@@ -84,7 +84,7 @@ export default function DataDeletionPage() {
 
                 {/* ── Intro ─────────────────────────────────────── */}
                 <P cls={body}>
-                    <B d={D}>Invictus Global Tech</B> provides <B d={D}>WhatsNexus</B>, an AI-powered messaging automation
+                    <B d={D}>Kingpin Ventures</B> provides <B d={D}>WhatsNexus</B>, an AI-powered messaging automation
                     platform built for managing customer conversations and workflows on the WhatsApp Business Platform.
                     If you would like to request deletion of data associated with your use of WhatsNexus, this page
                     explains how to submit that request and what to expect.
@@ -101,7 +101,7 @@ export default function DataDeletionPage() {
                             <p className={cn("text-sm font-black mb-1", D ? "text-emerald-400" : "text-emerald-700")}>Quick Summary</p>
                             <p className={cn("text-sm leading-relaxed", body)}>
                                 Send an email to{" "}
-                                <A href="mailto:contact@invictusglobaltech.com" d={D}>contact@invictusglobaltech.com</A> with
+                                <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A> with
                                 the subject <B d={D}>Data Deletion Request</B>. Include your name, organisation, WhatsApp
                                 number(s), account email, and the type of deletion you need. After verifying your identity,
                                 we will process the deletion in accordance with applicable law.
@@ -127,7 +127,7 @@ export default function DataDeletionPage() {
                         <Mail className={cn("w-5 h-5 shrink-0", D ? "text-emerald-400" : "text-emerald-600")} />
                         <div>
                             <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-0.5", muted)}>Email</p>
-                            <A href="mailto:contact@invictusglobaltech.com" d={D}>contact@invictusglobaltech.com</A>
+                            <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A>
                         </div>
                     </div>
 
@@ -259,7 +259,7 @@ export default function DataDeletionPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                         {[
-                            { icon: <Mail className="w-5 h-5" />, step: "Step 1", title: "Submit Request", desc: "Send your email to contact@invictusglobaltech.com with all required details.", hex: "#10b981" },
+                            { icon: <Mail className="w-5 h-5" />, step: "Step 1", title: "Submit Request", desc: "Send your email to sushilathithiyaa@gmail.com with all required details.", hex: "#10b981" },
                             { icon: <ShieldCheck className="w-5 h-5" />, step: "Step 2", title: "Verification", desc: "We verify your identity and confirm your authorisation to make the request.", hex: "#6366f1" },
                             { icon: <CheckCircle2 className="w-5 h-5" />, step: "Step 3", title: "Deletion Processed", desc: "We process your deletion request within a commercially reasonable timeframe.", hex: "#3b82f6" },
                         ].map((card, i) => (
@@ -319,7 +319,7 @@ export default function DataDeletionPage() {
                         D ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"
                     )}>
                         <div>
-                            <p className={cn("text-base font-black mb-1", strong)}>Invictus Global Tech</p>
+                            <p className={cn("text-base font-black mb-1", strong)}>Kingpin Ventures</p>
                             <p className={cn("text-[10px] font-bold uppercase tracking-widest", muted)}>
                                 Data Controller / Platform Provider
                             </p>
@@ -329,7 +329,7 @@ export default function DataDeletionPage() {
                                 <Mail className={cn("w-4 h-4 shrink-0", D ? "text-emerald-400" : "text-emerald-600")} />
                                 <div>
                                     <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-0.5", muted)}>Email</p>
-                                    <A href="mailto:contact@invictusglobaltech.com" d={D}>contact@invictusglobaltech.com</A>
+                                    <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
@@ -337,8 +337,11 @@ export default function DataDeletionPage() {
                                 <div>
                                     <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-0.5", muted)}>Address</p>
                                     <p className={cn("text-sm", body)}>
-                                        LIG 13/19, NH3, Vanjinathan Street,<br />
-                                        Maraimalai Nagar, Chennai – 603209
+                                        LIG 13/19, NH3<br />
+                                        Vanjinathan Street<br />
+                                        Maraimalai Nagar<br />
+                                        Chennai – 603209<br />
+                                        India
                                     </p>
                                 </div>
                             </div>

@@ -14,7 +14,7 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({
     userName = "User",
-    organizationName = "Invictus Global Tech",
+    organizationName = "Kingpin Ventures",
 }: WelcomeScreenProps) {
     const { isDarkMode } = useTheme();
     const router = useRouter();

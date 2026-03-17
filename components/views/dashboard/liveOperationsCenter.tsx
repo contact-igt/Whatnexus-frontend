@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Flame, MessageSquareOff, AlertTriangle, UserCheck, ChevronRight } from 'lucide-react';
 import { glassCard, glassInner, tx, trackBg } from './glassStyles';
 import { AgentWorkload, HotLead } from '@/services/whatsappDashboard';
@@ -23,16 +24,43 @@ const agentColors = [
     { from: '#a855f7', to: '#c084fc', dot: '#c084fc' },
 ];
 
+import { NoDataFound } from './noDataFound';
+
 export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOperationsCenterProps) => {
     const [bars, setBars] = useState(false);
     const [show, setShow] = useState(false);
     const t = tx(isDarkMode);
+    const router = useRouter();
 
     useEffect(() => {
         const t1 = setTimeout(() => setShow(true), 100);
         const t2 = setTimeout(() => setBars(true), 200);
         return () => { clearTimeout(t1); clearTimeout(t2); };
     }, [liveOpsData]);
+
+    const hasData = liveOpsData && (liveOpsData.hotLeads.length > 0 || liveOpsData.metrics.unassigned > 0 || liveOpsData.metrics.escalated > 0);
+
+    if (liveOpsData && !hasData) {
+        return (
+            <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#f43f5e' }} />
+                        <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>Live Operations</span>
+                    </div>
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                    <NoDataFound 
+                        isDarkMode={isDarkMode}
+                        title="Quiet Operations"
+                        description="No urgent leads or escalated chats detected at the moment."
+                        icon={<Flame size={32} />}
+                        className="bg-transparent border-none shadow-none py-12"
+                    />
+                </div>
+            </div>
+        );
+    }
 
     const topLead = liveOpsData?.hotLeads?.[0];
     const agentWorkload = liveOpsData?.agentWorkload ?? [];
@@ -74,7 +102,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                 {!liveOpsData ? (
                     <div className="h-16 w-full sk rounded-xl" />
                 ) : topLead ? (
-                    <div className="p-3.5 rounded-xl flex items-center justify-between group cursor-pointer"
+                    <div onClick={() => router.push(topLead.phone ? `/shared-inbox?phone=${topLead.phone}` : '/shared-inbox')} className="p-3.5 rounded-xl flex items-center justify-between group cursor-pointer"
                         style={{ ...glassInner(isDarkMode), opacity: show ? 1 : 0, transition: 'opacity 0.4s ease 0.1s' }}>
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-xs shadow-lg"
@@ -83,6 +111,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                             </div>
                             <div>
                                 <p className="text-sm font-black tracking-tight leading-none" style={{ color: t.primary }}>{topLead.name}</p>
+                                <p className="text-[10px] font-semibold text-slate-500 mt-1">{topLead.phone}</p>
                                 <div className="flex items-center gap-2 mt-1">
                                     {/* status chip — coloured by heatState */}
                                     <span className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider"

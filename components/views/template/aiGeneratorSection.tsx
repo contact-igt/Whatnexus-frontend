@@ -11,13 +11,15 @@ interface AIGeneratorSectionProps {
     onGenerate: (prompt: string, style: MessageStyle, goal: OptimizationGoal, category: string) => Promise<void>;
     onGenerateTitle?: (prompt: string) => Promise<void>;
     generationsLeft?: number;
+    currentCategory?: string;
 }
 
 export const AIGeneratorSection = ({
     isDarkMode,
     onGenerate,
     onGenerateTitle,
-    generationsLeft = 3
+    generationsLeft = 3,
+    currentCategory
 }: AIGeneratorSectionProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [prompt, setPrompt] = useState('');
@@ -43,7 +45,12 @@ export const AIGeneratorSection = ({
 
         setIsGenerating(true);
         try {
-            await onGenerate(prompt, messageStyle, optimizationGoal, aiCategory);
+            // Use currentCategory if available, otherwise fall back to internal aiCategory
+            const finalCategory = currentCategory ? 
+                (currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1).toLowerCase()) : 
+                aiCategory;
+            
+            await onGenerate(prompt, messageStyle, optimizationGoal, finalCategory);
         } finally {
             setIsGenerating(false);
         }
@@ -139,30 +146,40 @@ export const AIGeneratorSection = ({
                     </div>
 
                     {/* Template Category Select */}
-                    <div className="space-y-2">
-                        <label className={cn("text-xs font-semibold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                            Template Focus:
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {aiCategories.map((cat) => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setAiCategory(cat as 'Utility' | 'Marketing')}
-                                    className={cn(
-                                        "py-2 px-3 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
-                                        aiCategory === cat
-                                            ? 'bg-purple-500 text-white border-purple-500 shadow-lg shadow-purple-500/20'
-                                            : isDarkMode
-                                                ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                    )}
-                                >
-                                    {cat === 'Marketing' ? '📢' : '🛠️'}
-                                    <span>{cat}</span>
-                                </button>
-                            ))}
+                    {!currentCategory && (
+                        <div className="space-y-2">
+                            <label className={cn("text-xs font-semibold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                Template Focus:
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {aiCategories.map((cat) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setAiCategory(cat as 'Utility' | 'Marketing')}
+                                        className={cn(
+                                            "py-2 px-3 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                                            aiCategory === cat
+                                                ? 'bg-purple-500 text-white border-purple-500 shadow-lg shadow-purple-500/20'
+                                                : isDarkMode
+                                                    ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                        )}
+                                    >
+                                        {cat === 'Marketing' ? '📢' : '🛠️'}
+                                        <span>{cat}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
+                    {currentCategory && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                            <span className="text-[10px] font-bold text-emerald-500 uppercase">Synced Category:</span>
+                            <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                {currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1).toLowerCase()}
+                            </span>
+                        </div>
+                    )}
 
                     {/* Message Style */}
                     <div className="space-y-2">

@@ -1,9 +1,8 @@
 "use client";
-
-import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { Megaphone, Zap, ShieldCheck, MessageCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { CATEGORY_DATA } from "./billing-mock-data";
+import { GlassCard } from "@/components/ui/glassCard";
 
 interface CategoryIntelligenceProps {
   isDarkMode: boolean;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     CalendarClock, CheckCircle, AlertCircle,
     Cpu, User, Sparkles, Clock, ArrowRight, TrendingUp
@@ -23,10 +24,13 @@ function parseTime(timeStr: string): string {
     return `${h12}:${m} ${period}`;
 }
 
+import { NoDataFound } from './noDataFound';
+
 export const FollowUpHub = ({ isDarkMode = true, followUpsData }: FollowUpHubProps) => {
     const [bars, setBars] = useState(false);
     const [show, setShow] = useState(false);
     const t = tx(isDarkMode);
+    const router = useRouter();
 
     useEffect(() => {
         if (followUpsData) {
@@ -35,6 +39,33 @@ export const FollowUpHub = ({ isDarkMode = true, followUpsData }: FollowUpHubPro
             return () => { clearTimeout(t1); clearTimeout(t2); };
         }
     }, [followUpsData]);
+
+    const hasData = followUpsData && (followUpsData.dueToday > 0 || followUpsData.completedToday > 0 || followUpsData.overdue > 0);
+
+    if (followUpsData && !hasData) {
+        return (
+            <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#f59e0b' }} />
+                        <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>
+                            Follow-up Intelligence
+                        </span>
+                    </div>
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                    <NoDataFound 
+                        isDarkMode={isDarkMode}
+                        title="No Follow-Ups Tasked"
+                        description="Your scheduled tasks and follow-up activities will be tracked here."
+                        icon={<CalendarClock size={32} />}
+                        className="bg-transparent border-none shadow-none"
+                    />
+                </div>
+            </div>
+        );
+    }
 
     // Tile config uses API values
     const tiles = followUpsData ? [
@@ -145,6 +176,7 @@ export const FollowUpHub = ({ isDarkMode = true, followUpsData }: FollowUpHubPro
                         const typeHex     = isPending ? '#f59e0b' : '#10b981';
                         return (
                             <div key={i}
+                                onClick={() => router.push('/followups')}
                                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl group cursor-pointer"
                                 style={{
                                     ...glassInner(isDarkMode),

@@ -40,4 +40,7 @@ export class LeadIntelligenceApiData {
     restoreLead = async (id: string) => {
         return await _axios("post", `/whatsapp/lead/${id}/restore`)
     }
+    bulkUpdateLeads = async (leadIds: string[], updates: any) => {
+        return await _axios("put", "/whatsapp/leads/bulk-update", { lead_ids: leadIds, updates });
+    }
 }

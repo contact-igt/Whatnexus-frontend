@@ -18,6 +18,8 @@ interface AIIntelligencePanelProps {
     aiData?: AiPerformanceData;
 }
 
+import { NoDataFound } from './noDataFound';
+
 export const AIIntelligencePanel = ({ isDarkMode = true, aiData }: AIIntelligencePanelProps) => {
     const [show, setShow] = useState(false);
     const [barW, setBarW] = useState(0);
@@ -30,6 +32,31 @@ export const AIIntelligencePanel = ({ isDarkMode = true, aiData }: AIIntelligenc
             return () => { clearTimeout(t1); clearTimeout(t2); };
         }
     }, [aiData]);
+
+    const hasData = aiData && (aiData.autoResolvedPct > 0 || aiData.urgentCount > 0 || aiData.missingKnowledge > 0 || aiData.outOfScope > 0 || aiData.sentimentAlerts > 0);
+
+    if (aiData && !hasData) {
+        return (
+            <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#10b981' }} />
+                        <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>AI Performance</span>
+                    </div>
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                    <NoDataFound 
+                        isDarkMode={isDarkMode}
+                        title="No AI Neural Activity"
+                        description="Automation metrics and intent analytics will appear as AI handles more chats."
+                        icon={<Brain size={32} />}
+                        className="bg-transparent border-none shadow-none py-12"
+                    />
+                </div>
+            </div>
+        );
+    }
 
     const isHubActive = aiData?.hubStatus === 'active';
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Brain, Wifi, Users, MessageSquare, Bell, Clock, CheckCircle, AlertTriangle, TrendingUp, Layers } from 'lucide-react';
 import { glassCard, glassInner, tx } from './glassStyles';
 import { cn } from "@/lib/utils";
@@ -63,6 +64,7 @@ export const GlobalCommandBar = ({
 }: GlobalCommandBarProps) => {
     const { time, date, greeting } = useLiveClock();
     const t = tx(isDarkMode);
+    const router = useRouter();
 
     const qualityHex = qualityColor[wabaInfo?.quality] ?? '#94a3b8';
 
@@ -172,7 +174,7 @@ export const GlobalCommandBar = ({
                     </div>
 
                     {/* Needs Attention bell */}
-                    <button className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl cursor-pointer group relative"
+                    <button onClick={() => router.push('/shared-inbox')} className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl cursor-pointer group relative"
                         style={{ background: 'rgba(244,63,94,0.18)', border: '1px solid rgba(244,63,94,0.30)' }}>
                         <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center">
                             <span className="text-[8px] font-black text-white">{headerData?.needsAttention ?? 0}</span>

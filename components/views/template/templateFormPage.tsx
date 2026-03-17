@@ -1,5 +1,5 @@
 "use client";
-
+import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,7 +28,6 @@ import { toast } from 'sonner';
 import { callOpenAI } from '@/lib/openai';
 import { useGenerateAiTemplateMutation } from '@/hooks/useTemplateQuery';
 import { FileUpload } from '@/components/ui/fileUpload';
-import { useEffect } from 'react';
 
 interface TemplateFormPageProps {
     templateId?: string;
@@ -49,8 +48,7 @@ const templateSchema = z.object({
     headerValue: z.string().optional(),
     content: z.string()
         .min(1, "Template content is required")
-        .max(1024, "Content exceeds 1024 characters")
-        .refine(val => !val.trim().endsWith('}}'), "Body cannot end with a variable. Please add point or text after the variable."),
+        .max(1024, "Content exceeds 1024 characters"),
     previous_content: z.string().optional(),
     footer: z.string().max(60, "Footer exceeds 60 characters").optional(),
     variables: z.record(z.string(), z.string().min(1, "Sample value is required")),
@@ -59,11 +57,85 @@ const templateSchema = z.object({
         z.object({
             id: z.string(),
             type: z.enum(['URL', 'PHONE', 'COPY_CODE', 'CATALOG', 'MPM']),
-            label: z.string().min(1),
-            value: z.string()
+            label: z.string().min(1, "Label is required").max(25, "Label too long"),
+            value: z.string().min(1, "Value is required")
+        }).superRefine((data, ctx) => {
+            if (data.type === 'PHONE') {
+                const parts = data.value.trim().split(/\s+/);
+                const cc = parts[0] || '';
+                const num = parts.slice(1).join('');
+                
+                if (!cc.startsWith('+')) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "Country code must start with + (e.g. +91)",
+                        path: ['value']
+                    });
+                } else if (!/^\+[1-9]\d{0,3}$/.test(cc)) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "Invalid country code",
+                        path: ['value']
+                    });
+                } else if (!num) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "Phone number is required",
+                        path: ['value']
+                    });
+                } else if (!/^\d{10,14}$/.test(num)) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "Phone number must be between 10 and 14 digits",
+                        path: ['value']
+                    });
+                }
+            }
+            if (data.type === 'URL') {
+                if (!/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(data.value)) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "Invalid URL format",
+                        path: ['value']
+                    });
+                }
+            }
         })
     ),
-    quickReplies: z.array(z.string())
+    quickReplies: z.array(z.string().max(25))
+}).superRefine((data, ctx) => {
+    // Utility Category Validation - No Marketing Language
+    if (data.category === 'UTILITY') {
+        const marketingKeywords = ['offer', 'discount', 'sale', 'buy', 'promo', 'free', 'limited', 'hurry', 'deal', 'shop', 'save', 'win', 'prize', 'get it now', 'order now'];
+        const contentLower = data.content.toLowerCase();
+        const foundKeywords = marketingKeywords.filter(word => contentLower.includes(word));
+        
+        if (foundKeywords.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Utility templates cannot contain marketing language (found: ${foundKeywords.slice(0, 3).join(', ')}). Please change category to MARKETING or remove promotional text.`,
+                path: ['content']
+            });
+        }
+    }
+
+    // Authentication Category Validation - Must have variables
+    if (data.category === 'AUTHENTICATION' && !data.content.includes('{{')) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Authentication templates must contain at least one variable (e.g., {{1}}) for the verification code.",
+            path: ['content']
+        });
+    }
+
+    // Body cannot end with a variable
+    if (data.content.trim().endsWith('}}')) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Body cannot end with a variable. Please add a period or closing text after the variable.",
+            path: ['content']
+        });
+    }
 });
 
 type FormValues = z.infer<typeof templateSchema>;
@@ -100,12 +172,9 @@ export const TemplateFormPage = ({
         if (Array.isArray(vars)) {
             const result: Record<string, string> = {};
             vars.forEach((v: any, index: number) => {
-                // Try to find the key (variable name like "1", "2")
-                // APIs usually return { custom_variable_name: "1", sample_value: "John" }
-                // Or sometimes just ordered values.
-                // We'll trust the custom_variable_name if present, else use index+1 string
-                const key = v.custom_variable_name || String(index + 1);
-                // The value we want to edit is the sample value
+                // Backend uses variable_key
+                const key = v.variable_key || v.custom_variable_name || String(index + 1);
+                // Backend uses sample_value
                 const value = v.sample_value || v.value || '';
                 result[key] = value;
             });
@@ -123,6 +192,7 @@ export const TemplateFormPage = ({
         getValues,
         reset,
         control,
+        trigger,
         formState: { errors, isSubmitting }
     } = useForm<FormValues>({
         resolver: zodResolver(templateSchema),
@@ -169,7 +239,28 @@ export const TemplateFormPage = ({
                 quickReplies: initialData.quickReplies || [],
             });
         }
-    }, [initialData, reset]);
+    }, [initialData, reset, getValues]);
+
+    // Auto-scroll to first validation error
+    useEffect(() => {
+        const errorKeys = Object.keys(errors);
+        if (errorKeys.length > 0) {
+            const firstErrorKey = errorKeys[0];
+            
+            // Try to find the element by name or ID
+            // React Hook Form fields use 'name'. Containers use custom ID.
+            const element = document.getElementsByName(firstErrorKey)[0] || 
+                          document.getElementById(firstErrorKey) ||
+                          document.getElementById(`field-section-${firstErrorKey}`);
+            
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (firstErrorKey === 'ctaButtons' || firstErrorKey === 'quickReplies') {
+                const section = document.getElementById('interactive-actions-section');
+                if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [errors]);
 
     // Watch form values for preview
     const category = watch('category');
@@ -460,7 +551,7 @@ IMPORTANT:
                                                 onChange={field.onChange}
                                                 options={categories.map(cat => ({ value: cat, label: cat }))}
                                                 error={errors.category?.message}
-                                                disabled={isViewMode}
+                                                disabled={isViewMode} // Category can be edited in edit mode even for existing templates
                                             />
                                         )}
                                     />
@@ -485,7 +576,7 @@ IMPORTANT:
                                                     onChange={field.onChange}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
-                                                    disabled={isViewMode}
+                                                    disabled={isViewMode || !!templateId} // Language cannot be changed for existing templates
                                                 />
                                             )
                                         }}
@@ -504,6 +595,7 @@ IMPORTANT:
                                 onGenerate={handleAIGenerate}
                                 onGenerateTitle={handleAIGenerateTitle}
                                 generationsLeft={3}
+                                currentCategory={category}
                             />
                         )}
 
@@ -522,7 +614,7 @@ IMPORTANT:
                                         placeholder="e.g. app_verification_code"
                                         onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
                                         error={errors.templateName?.message}
-                                        disabled={isViewMode}
+                                        disabled={isViewMode || !!templateId} // Name cannot be changed for existing templates
                                     />
                                 )}
                             />
@@ -545,7 +637,7 @@ IMPORTANT:
                                         onChange={field.onChange}
                                         options={templateTypes.map(type => ({ value: type, label: type }))}
                                         error={errors.templateType?.message}
-                                        disabled={isViewMode}
+                                        disabled={isViewMode || !!templateId} // Type cannot be changed for existing templates
                                     />
                                 )}
                             />
@@ -555,7 +647,7 @@ IMPORTANT:
                         </div>
 
                         {/* Template Header Section */}
-                        <div className="space-y-4">
+                        <div id="field-section-headerType" className="space-y-4">
                             <h2 className={cn("text-xs font-bold tracking-wide", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
                                 Template Header (Optional)
                             </h2>
@@ -739,15 +831,25 @@ IMPORTANT:
                         </div>
 
                         {/* Interactive Actions */}
-                        <InteractiveActionsSection
-                            isDarkMode={isDarkMode}
-                            actionType={interactiveActions}
-                            onActionTypeChange={(type) => setValue('interactiveActions', type)}
-                            ctaButtons={ctaButtons}
-                            onCTAButtonsChange={(buttons) => setValue('ctaButtons', buttons)}
-                            quickReplies={quickReplies}
-                            onQuickRepliesChange={(replies) => setValue('quickReplies', replies)}
-                        />
+                        <div id="interactive-actions-section">
+                            <InteractiveActionsSection
+                                isDarkMode={isDarkMode}
+                                actionType={interactiveActions}
+                                onActionTypeChange={(type) => setValue('interactiveActions', type)}
+                                ctaButtons={ctaButtons}
+                                onCTAButtonsChange={(buttons) => {
+                                    setValue('ctaButtons', buttons, { shouldValidate: true });
+                                    trigger('ctaButtons');
+                                }}
+                                quickReplies={quickReplies}
+                                onQuickRepliesChange={(replies) => {
+                                    setValue('quickReplies', replies, { shouldValidate: true });
+                                    trigger('quickReplies');
+                                }}
+                                ctaErrors={errors.ctaButtons as any}
+                                disabled={isViewMode}
+                            />
+                        </div>
                     </div>
 
                     {/* Right Column - Preview */}

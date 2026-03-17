@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Clock, MoreHorizontal } from 'lucide-react';
 import { glassCard, glassInner, tx, trackBg } from './glassStyles';
 import { AgentPerformanceData } from '@/services/whatsappDashboard';
@@ -33,10 +34,14 @@ const onlineBadge = {
     offline: { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8',  border: 'rgba(100,116,139,0.25)', dot: '#64748b' },
 };
 
+import { NoDataFound } from './noDataFound';
+import { Users2 } from 'lucide-react';
+
 export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerformanceProps) => {
     const [show, setShow] = useState(false);
     const [bars, setBars] = useState(false);
     const t = tx(isDarkMode);
+    const router = useRouter();
 
     useEffect(() => {
         if (agentData) {
@@ -50,18 +55,26 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
     const summary = agentData?.summary;
 
     return (
-        <div className="rounded-2xl p-5 flex flex-col gap-5" style={glassCard(isDarkMode)}>
+        <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#6366f1' }} />
                     <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>Agent Performance</span>
                 </div>
-                <MoreHorizontal size={14} style={{ color: t.micro, cursor: 'pointer' }} />
+                <MoreHorizontal size={14} style={{ color: t.micro, cursor: 'pointer' }} onClick={() => router.push('/team')} />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1 flex flex-col">
                 {!agentData ? (
                     Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 w-full sk rounded-xl" />)
+                ) : agents.length === 0 ? (
+                    <NoDataFound 
+                        isDarkMode={isDarkMode}
+                        title="No Agent Records"
+                        description="Team workload and response metrics will appear here."
+                        icon={<Users2 size={32} />}
+                        className="bg-transparent border-none shadow-none py-10"
+                    />
                 ) : agents.map((a, i) => {
                     const grad = agentGradients[i % agentGradients.length];
                     const barGrad = agentBarGradients[i % agentBarGradients.length];
@@ -70,7 +83,7 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                     const initials = a.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
                     return (
-                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-transform hover:-translate-y-px"
+                        <div key={i} onClick={() => router.push('/team')} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-transform hover:-translate-y-px"
                             style={{
                                 ...glassInner(isDarkMode),
                                 opacity: show ? 1 : 0,
