@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { BarChart3, Sparkles, TrendingUp, ArrowUpRight } from "lucide-react";
-import { DAILY_SPEND_DATA, WEEKLY_SPEND_DATA, MONTHLY_SPEND_DATA, COUNTRY_SPEND } from "./billing-mock-data";
+import { COUNTRY_SPEND } from "./billing-mock-data";
+import { useGetBillingSpendChartQuery } from "@/hooks/useBillingQuery";
+import { Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glassCard";
 
 interface BillingAnalyticsProps {
@@ -11,21 +13,26 @@ interface BillingAnalyticsProps {
 }
 
 export const BillingAnalytics = ({ isDarkMode }: BillingAnalyticsProps) => {
-  const [period, setPeriod] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
 
-  const getChartData = () => {
-    switch (period) {
-      case 'Weekly': return WEEKLY_SPEND_DATA.map(d => ({ label: d.week, marketing: d.marketing, utility: d.utility, auth: d.auth }));
-      case 'Monthly': return MONTHLY_SPEND_DATA.map(d => ({ label: d.month, marketing: d.marketing, utility: d.utility, auth: d.auth }));
-      default: return DAILY_SPEND_DATA.map(d => ({ label: d.day, marketing: d.marketing, utility: d.utility, auth: d.auth }));
-    }
-  };
+  const { data: responseData, isLoading } = useGetBillingSpendChartQuery();
+  const rawData = responseData?.data || [];
 
-  const chartData = getChartData();
-  const maxVal = Math.max(...chartData.map(d => d.marketing + d.utility + d.auth));
-  const totalSpend = chartData.reduce((sum, d) => sum + d.marketing + d.utility + d.auth, 0);
-  const avgSpend = Math.round(totalSpend / chartData.length);
-  const peakDay = chartData.reduce((max, d) => (d.marketing + d.utility + d.auth) > (max.marketing + max.utility + max.auth) ? d : max, chartData[0]);
+  // Map backend daily data to chart format
+  const chartData = rawData.length > 0 ? rawData.map((d: any) => ({
+    label: new Date(d.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+    marketing: d.marketing || 0,
+    utility: d.utility || 0,
+    auth: d.auth || 0
+  })) : [{ label: 'No Data', marketing: 0, utility: 0, auth: 0 }];
+
+  const maxVal = Math.max(...chartData.map((d: any) => d.marketing + d.utility + d.auth), 1); // Avoid div by 0
+  const totalSpend = chartData.reduce((sum: number, d: any) => sum + d.marketing + d.utility + d.auth, 0);
+  const avgSpend = chartData.length > 0 ? Math.round(totalSpend / chartData.length) : 0;
+  
+  // Find peak day
+  const peakDay = chartData.reduce((max: any, d: any) => 
+    (d.marketing + d.utility + d.auth) > (max.marketing + max.utility + max.auth) ? d : max
+  , chartData[0]);
 
   return (
     <div>
@@ -46,27 +53,18 @@ export const BillingAnalytics = ({ isDarkMode }: BillingAnalyticsProps) => {
                 Conversation-based cost breakdown
               </p>
             </div>
-            <div className={cn("flex p-0.5 rounded-lg border", isDarkMode ? 'bg-white/[0.03] border-white/5' : 'bg-slate-50 border-slate-200')}>
-              {(['Daily', 'Weekly', 'Monthly'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setPeriod(t)}
-                  className={cn(
-                    "px-3.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
-                    period === t
-                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                      : isDarkMode ? 'text-white/35 hover:text-white/60' : 'text-slate-400 hover:text-slate-700'
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
+            <div className={cn("flex p-0.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider", isDarkMode ? 'bg-white/[0.03] border-white/5 text-emerald-500' : 'bg-slate-50 border-slate-200 text-emerald-600')}>
+              Daily Spend
             </div>
           </div>
 
           {/* Stacked Bar Chart */}
-          <div className="flex items-end gap-1.5 h-[220px] px-1">
-            {chartData.map((d, i) => {
+          <div className="flex items-end gap-1.5 h-[220px] px-1 relative">
+            {isLoading ? (
+               <div className="absolute inset-0 flex items-center justify-center">
+                 <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+               </div>
+            ) : chartData.map((d: any, i: number) => {
               const total = d.marketing + d.utility + d.auth;
               const mH = (d.marketing / maxVal) * 100;
               const uH = (d.utility / maxVal) * 100;
@@ -74,7 +72,7 @@ export const BillingAnalytics = ({ isDarkMode }: BillingAnalyticsProps) => {
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-default">
                   <div className={cn("text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-y-1 group-hover:translate-y-0", isDarkMode ? 'text-white' : 'text-slate-700')}>
-                    ${total}
+                    ₹{total.toFixed(2)}
                   </div>
                   <div className="w-full flex flex-col gap-[2px] items-stretch rounded-t-lg overflow-hidden" style={{ height: `${((total / maxVal) * 100)}%` }}>
                     <div className="rounded-t-md bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500 group-hover:brightness-125 group-hover:shadow-[0_0_12px_rgba(147,51,234,0.3)]" style={{ flex: mH }} />
@@ -104,15 +102,15 @@ export const BillingAnalytics = ({ isDarkMode }: BillingAnalyticsProps) => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
                 <span className={cn("text-[9px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/25' : 'text-slate-400')}>Total:</span>
-                <span className={cn("text-[10px] font-black tabular-nums", isDarkMode ? 'text-white/70' : 'text-slate-700')}>${totalSpend}</span>
+                <span className={cn("text-[10px] font-black tabular-nums", isDarkMode ? 'text-white/70' : 'text-slate-700')}>₹{totalSpend}</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className={cn("text-[9px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/25' : 'text-slate-400')}>Avg:</span>
-                <span className={cn("text-[10px] font-black tabular-nums", isDarkMode ? 'text-white/70' : 'text-slate-700')}>${avgSpend}/day</span>
+                <span className={cn("text-[10px] font-black tabular-nums", isDarkMode ? 'text-white/70' : 'text-slate-700')}>₹{avgSpend}/day</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className={cn("text-[9px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/25' : 'text-slate-400')}>Peak:</span>
-                <span className={cn("text-[10px] font-black tabular-nums", isDarkMode ? 'text-emerald-400/80' : 'text-emerald-600')}>{peakDay.label}</span>
+                <span className={cn("text-[10px] font-black tabular-nums", isDarkMode ? 'text-emerald-400/80' : 'text-emerald-600')}>{peakDay?.label}</span>
               </div>
             </div>
           </div>

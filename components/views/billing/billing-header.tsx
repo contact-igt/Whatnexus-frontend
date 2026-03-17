@@ -1,21 +1,18 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { CreditCard, Download, FileText, Plus, Settings } from "lucide-react";
+import { CreditCard, Download } from "lucide-react";
 import { DateRangePicker } from "./billing-date-range-picker";
 
 interface BillingHeaderProps {
   isDarkMode: boolean;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
   startDate: Date | null;
   endDate: Date | null;
   onDateChange: (start: Date | null, end: Date | null) => void;
   onExport: () => void;
 }
 
-export const BillingHeader = ({ isDarkMode, activeTab, onTabChange, startDate, endDate, onDateChange, onExport }: BillingHeaderProps) => {
-  const topTabs = ['Billings', 'Wallet & Payments'];
+export const BillingHeader = ({ isDarkMode, startDate, endDate, onDateChange, onExport }: BillingHeaderProps) => {
 
   const actions = [
     { label: 'Export Report', icon: Download, variant: 'primary' as const, onClick: onExport },
@@ -45,7 +42,7 @@ export const BillingHeader = ({ isDarkMode, activeTab, onTabChange, startDate, e
                 Billing & Payments
               </h1>
               <p className={cn("font-medium text-sm mt-0.5", isDarkMode ? 'text-white/35' : 'text-slate-500')}>
-                Meta conversation spend, template costs, broadcast billing & wallet management
+                Meta conversation spend, template costs &amp; usage analytics — estimated costs only.
               </p>
             </div>
           </div>
@@ -83,27 +80,6 @@ export const BillingHeader = ({ isDarkMode, activeTab, onTabChange, startDate, e
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Top Navigation Tabs */}
-      <div className={cn("relative flex items-center gap-0 border-b", isDarkMode ? 'border-white/8' : 'border-slate-200')}>
-        {topTabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => onTabChange(tab)}
-            className={cn(
-              "relative px-5 py-3 text-sm font-semibold tracking-wide transition-all duration-300",
-              activeTab === tab
-                ? isDarkMode ? 'text-white' : 'text-slate-900'
-                : isDarkMode ? 'text-white/35 hover:text-white/60' : 'text-slate-400 hover:text-slate-600'
-            )}
-          >
-            {tab}
-            {activeTab === tab && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full" />
-            )}
-          </button>
-        ))}
       </div>
 
     </div>

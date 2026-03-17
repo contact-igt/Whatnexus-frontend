@@ -94,7 +94,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                 id: t.template_id || t.id || '',
                 name: t.name || t.template_name || (t as any).element_name || t.id || 'Untitled',
                 category: (t.category?.toLowerCase() as any) || 'marketing',
-                description: bodyTextData?.substring(0, 100) || 'No description',
+                description: bodyTextData || 'No description',
                 type: (headerType ? headerType.toLowerCase() : 'text') as any,
                 variables: t.variables_count || t.variables?.length || 0,
                 variableArray: t.variables || [],

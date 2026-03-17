@@ -44,8 +44,8 @@ const templateSchema = z.object({
     templateName: z.string()
         .min(1, "Template name is required")
         .regex(/^[a-z0-9_]+$/, "Name can only contain lowercase alphanumeric characters and underscores"),
-    templateType: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT']),
-    headerType: z.enum(['NONE', 'TEXT', 'text', 'MEDIA', 'media', 'DOCUMENT']),
+    templateType: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION']),
+    headerType: z.enum(['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION']),
     headerValue: z.string().optional(),
     content: z.string()
         .min(1, "Template content is required")
@@ -54,15 +54,16 @@ const templateSchema = z.object({
     previous_content: z.string().optional(),
     footer: z.string().max(60, "Footer exceeds 60 characters").optional(),
     variables: z.record(z.string(), z.string().min(1, "Sample value is required")),
-    // interactiveActions: z.enum(['None', 'CTA', 'QuickReplies', 'All']),
-    // ctaButtons: z.array(
-    //     z.object({
-    //         type: z.enum(['URL', 'PHONE', 'QUICK_REPLY']),
-    //         label: z.string().min(1),
-    //         value: z.string().optional()
-    //     })
-    // ),
-    // quickReplies: z.array(z.string())
+    interactiveActions: z.enum(['None', 'CTA', 'QuickReplies', 'Marketing', 'Authentication', 'All']),
+    ctaButtons: z.array(
+        z.object({
+            id: z.string(),
+            type: z.enum(['URL', 'PHONE', 'COPY_CODE', 'CATALOG', 'MPM']),
+            label: z.string().min(1),
+            value: z.string()
+        })
+    ),
+    quickReplies: z.array(z.string())
 });
 
 type FormValues = z.infer<typeof templateSchema>;
@@ -136,9 +137,9 @@ export const TemplateFormPage = ({
             previous_content: initialData?.previous_content || '',
             footer: initialData?.footer || '',
             variables: normalizeVariables(initialData?.variables),
-            // interactiveActions: initialData?.interactiveActions || 'None',
-            // ctaButtons: initialData?.ctaButtons || [],
-            // quickReplies: initialData?.quickReplies || []
+            interactiveActions: initialData?.interactiveActions || 'None',
+            ctaButtons: (initialData?.ctaButtons || []).map(b => ({ ...b, value: b.value || '' })),
+            quickReplies: initialData?.quickReplies || []
         }
     });
     console.log("initialData", initialData)
@@ -163,6 +164,9 @@ export const TemplateFormPage = ({
                 previous_content: initialData.previous_content || '',
                 footer: initialData.footer || '',
                 variables: normalizeVariables(initialData.variables),
+                interactiveActions: initialData.interactiveActions || 'None',
+                ctaButtons: (initialData.ctaButtons || []).map(b => ({ ...b, value: b.value || '' })),
+                quickReplies: initialData.quickReplies || [],
             });
         }
     }, [initialData, reset]);
@@ -178,13 +182,13 @@ export const TemplateFormPage = ({
     const previous_content = watch('previous_content');
     const footer = watch('footer');
     const variables = watch('variables');
-    // const interactiveActions = watch('interactiveActions');
-    // const ctaButtons = watch('ctaButtons');
-    // const quickReplies = watch('quickReplies');
+    const interactiveActions = watch('interactiveActions');
+    const ctaButtons = watch('ctaButtons');
+    const quickReplies = watch('quickReplies');
     console.log("initialData", initialData)
     const categories: TemplateCategory[] = ['UTILITY', 'MARKETING', 'AUTHENTICATION'];
-    const templateTypes: TemplateType[] = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'];
-    const headerTypes: HeaderType[] = ['NONE', 'TEXT', 'MEDIA', 'DOCUMENT'];
+    const templateTypes: TemplateType[] = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'];
+    const headerTypes: HeaderType[] = ['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'];
     const languages = ['English', 'Hindi', 'Spanish', 'French', 'German'];
     const SYSTEM_TEMPLATE_PROMPT = `
 You are a WhatsApp Business Template Generator for Meta approval.
@@ -321,10 +325,10 @@ IMPORTANT:
         if (data.headerType !== 'NONE' && data.headerValue) {
             const headerTypeMap: Record<string, string> = {
                 'TEXT': 'text',
-                'text': 'text',
-                'MEDIA': 'media',
-                'media': 'media',
-                'DOCUMENT': 'document'
+                'IMAGE': 'image',
+                'VIDEO': 'video',
+                'DOCUMENT': 'document',
+                'LOCATION': 'location'
             };
 
             const normalizedHeaderType = data.headerType.toUpperCase();
@@ -333,6 +337,8 @@ IMPORTANT:
                 type: headerTypeMap[data.headerType] || 'text',
                 [normalizedHeaderType === 'TEXT' ? 'text' : 'url']: data.headerValue
             };
+            
+            // Meta usually expects header variables if it's dynamic.
         }
 
         // Add footer if provided
@@ -346,6 +352,34 @@ IMPORTANT:
         // if (Object.keys(data.variables).length > 0) {
         //     payload.variables = transformVariables(data.variables as Record<string, string>);
         // }
+
+        // Add buttons
+        if (data.interactiveActions !== 'None') {
+            const buttons: any[] = [];
+            
+            if (data.interactiveActions === 'CTA' || data.interactiveActions === 'All') {
+                data.ctaButtons.forEach(btn => {
+                    buttons.push({
+                        type: btn.type === 'PHONE' ? 'PHONE_NUMBER' : btn.type,
+                        text: btn.label,
+                        value: btn.value
+                    });
+                });
+            }
+            
+            if (data.interactiveActions === 'QuickReplies' || data.interactiveActions === 'All') {
+                data.quickReplies.filter(r => r.trim() !== '').forEach(reply => {
+                    buttons.push({
+                        type: 'QUICK_REPLY',
+                        text: reply
+                    });
+                });
+            }
+            
+            if (buttons.length > 0) {
+                payload.components.buttons = buttons;
+            }
+        }
 
         // Call onSave with transformed payload
         onSave(payload);
@@ -587,7 +621,7 @@ IMPORTANT:
                                     </div>
                                 )}
 
-                                {headerType === 'MEDIA' && (
+                                {(headerType === 'IMAGE' || headerType === 'VIDEO') && (
                                     <div>
                                         <Controller
                                             name="headerValue"
@@ -595,18 +629,18 @@ IMPORTANT:
                                             render={({ field }) => (
                                                 <FileUpload
                                                     isDarkMode={isDarkMode}
-                                                    label="Media File"
-                                                    accept="image/*,video/*"
+                                                    label={headerType === 'IMAGE' ? "Image File" : "Video File"}
+                                                    accept={headerType === 'IMAGE' ? "image/*" : "video/*"}
                                                     value={field.value || ''}
                                                     onChange={(file, preview) => field.onChange(preview)}
-                                                    placeholder="Upload image or video"
-                                                    uploadType="image"
+                                                    placeholder={headerType === 'IMAGE' ? "Upload image" : "Upload video"}
+                                                    uploadType="image" // FileUpload might handle preview based on accept
                                                     disabled={isViewMode}
                                                 />
                                             )}
                                         />
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            Upload an image or video for the header
+                                            Upload {headerType === 'IMAGE' ? 'an image' : 'a video'} for the header
                                         </p>
                                     </div>
                                 )}
@@ -705,7 +739,7 @@ IMPORTANT:
                         </div>
 
                         {/* Interactive Actions */}
-                        {/* <InteractiveActionsSection
+                        <InteractiveActionsSection
                             isDarkMode={isDarkMode}
                             actionType={interactiveActions}
                             onActionTypeChange={(type) => setValue('interactiveActions', type)}
@@ -713,7 +747,7 @@ IMPORTANT:
                             onCTAButtonsChange={(buttons) => setValue('ctaButtons', buttons)}
                             quickReplies={quickReplies}
                             onQuickRepliesChange={(replies) => setValue('quickReplies', replies)}
-                        /> */}
+                        />
                     </div>
 
                     {/* Right Column - Preview */}
@@ -726,8 +760,8 @@ IMPORTANT:
                             content={content}
                             footer={footer}
                             variables={variables}
-                        // ctaButtons={ctaButtons}
-                        // quickReplies={quickReplies.filter(r => r.trim() !== '')}
+                            ctaButtons={ctaButtons}
+                            quickReplies={quickReplies.filter(r => r.trim() !== '')}
                         />
                     </div>
                 </div>

@@ -26,6 +26,7 @@ export const AppointmentModal = ({
     mode,
     isDarkMode
 }: AppointmentModalProps) => {
+<<<<<<< Updated upstream
     const [formData, setFormData] = useState<Partial<Appointment>>({
         patientName: '',
         contact: '',
@@ -33,6 +34,15 @@ export const AppointmentModal = ({
         time: '',
         type: 'Consultation',
         status: 'pending',
+=======
+    const [formData, setFormData] = useState({
+        patient_name: '',
+        contact_number: '',
+        age: '',
+        appointment_date: '',
+        appointment_time: '',
+        status: 'Pending' as string,
+>>>>>>> Stashed changes
         notes: '',
         doctorId: '',
         doctorName: ''
@@ -50,6 +60,7 @@ export const AppointmentModal = ({
 
     useEffect(() => {
         if (appointment && (mode === 'view' || mode === 'edit')) {
+<<<<<<< Updated upstream
             setFormData(appointment);
         } else if (mode === 'create') {
             setFormData({
@@ -59,6 +70,26 @@ export const AppointmentModal = ({
                 time: '',
                 type: 'Consultation',
                 status: 'pending',
+=======
+            setFormData({
+                patient_name: appointment.patient_name || '',
+                contact_number: appointment.contact_number || '',
+                age: appointment.age ? String(appointment.age) : '',
+                appointment_date: appointment.appointment_date || '',
+                appointment_time: appointment.appointment_time || '',
+                status: appointment.status || 'Pending',
+                notes: appointment.notes || '',
+                doctor_id: appointment.doctor_id || '',
+            });
+        } else if (mode === 'create') {
+            setFormData({
+                patient_name: '',
+                contact_number: '',
+                age: '',
+                appointment_date: '',
+                appointment_time: '',
+                status: 'Pending',
+>>>>>>> Stashed changes
                 notes: '',
                 doctorId: '',
                 doctorName: ''
@@ -93,7 +124,12 @@ export const AppointmentModal = ({
             toast.error('Time is required');
             return;
         }
+        if (!formData.age.trim() || isNaN(Number(formData.age)) || Number(formData.age) <= 0) {
+            toast.error('Valid age is required');
+            return;
+        }
 
+<<<<<<< Updated upstream
         setIsSaving(true);
 
         // Simulate API call
@@ -102,6 +138,35 @@ export const AppointmentModal = ({
             setIsSaving(false);
             toast.success(mode === 'create' ? 'Appointment created successfully' : 'Appointment updated successfully');
         }, 500);
+=======
+        if (mode === 'create') {
+            createMutation.mutate({
+                patient_name: formData.patient_name,
+                contact_number: formData.contact_number,
+                age: Number(formData.age),
+                appointment_date: formData.appointment_date,
+                appointment_time: formData.appointment_time,
+                doctor_id: formData.doctor_id || undefined,
+                notes: formData.notes || undefined,
+                status: formData.status,
+            }, { onSuccess: () => onSave() });
+        } else if (mode === 'edit' && appointment) {
+            updateMutation.mutate({
+                appointmentId: appointment.appointment_id,
+                data: {
+                    patient_name: formData.patient_name,
+                    contact_number: formData.contact_number,
+                    age: Number(formData.age),
+                    appointment_date: formData.appointment_date,
+                    appointment_time: formData.appointment_time,
+                    doctor_id: formData.doctor_id || undefined,
+                    notes: formData.notes || undefined,
+                    status: formData.status,
+                },
+            }, { onSuccess: () => onSave() });
+        }
+        // ...existing code...
+>>>>>>> Stashed changes
     };
 
     const isView = mode === 'view';
@@ -200,6 +265,54 @@ export const AppointmentModal = ({
                             placeholder="+91 98765 43210"
                             className={cn(
                                 "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                                isView && "opacity-60 cursor-not-allowed",
+                                isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
+                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30'
+                            )}
+                        />
+                    </div>
+                </div>
+
+                {/* Age */}
+                <div>
+                    <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                        Age *
+                    </label>
+                    <div className="relative">
+                        <input
+                            type="number"
+                            min="0"
+                            disabled={isView}
+                            value={formData.age}
+                            onChange={(e) => handleChange('age', e.target.value)}
+                            placeholder="Enter age"
+                            className={cn(
+                                "w-full pl-4 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                                isView && "opacity-60 cursor-not-allowed",
+                                isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
+                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30'
+                            )}
+                        />
+                    </div>
+                </div>
+
+                {/* Age */}
+                <div>
+                    <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                        Age *
+                    </label>
+                    <div className="relative">
+                        <input
+                            type="number"
+                            min="0"
+                            disabled={isView}
+                            value={formData.age}
+                            onChange={(e) => handleChange('age', e.target.value)}
+                            placeholder="Enter age"
+                            className={cn(
+                                "w-full pl-4 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                 isView && "opacity-60 cursor-not-allowed",
                                 isDarkMode
                                     ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
@@ -363,6 +476,6 @@ export const AppointmentModal = ({
                     </div>
                 </div>
             </div>
-        </Modal>
+        </Modal >
     );
 };

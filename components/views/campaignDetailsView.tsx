@@ -327,12 +327,19 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                                             </p>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <span className={cn(
-                                                "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                                                getRecipientStatusColor(recipient.status)
-                                            )}>
-                                                {recipient.status}
-                                            </span>
+                                            <div className="flex flex-col gap-1">
+                                                <span className={cn(
+                                                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide w-fit",
+                                                    getRecipientStatusColor(recipient.status)
+                                                )}>
+                                                    {recipient.status}
+                                                </span>
+                                                {recipient.status === 'failed' && recipient.error_message && (
+                                                    <span className="text-[10px] text-red-500 font-medium leading-tight max-w-[200px]">
+                                                        {recipient.error_message}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex flex-wrap gap-1">

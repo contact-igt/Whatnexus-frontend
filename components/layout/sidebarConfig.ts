@@ -221,6 +221,30 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 icon: UserCog,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
+<<<<<<< Updated upstream
+=======
+            },
+            {
+                label: "Tenant Invitations",
+                route: "/admin/invitations",
+                icon: MessageSquare,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Onboarded Tenants",
+                route: "/admin/tenants",
+                icon: Users,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Pricing & Rates",
+                route: "/pricing",
+                icon: CreditCard,
+                requiresWhatsApp: false,
+                roles: ['super_admin']
+>>>>>>> Stashed changes
             }
         ]
     }

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation, useGetDeletedTemplatesQuery, useRestoreTemplateMutation } from '@/hooks/useTemplateQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
+import { generateId } from './templateUtils';
 
 // const SAMPLE_TEMPLATES: Template[] = [
 //     {
@@ -233,9 +234,35 @@ export const TemplateView = () => {
             footer: (selectedTemplateData.components.find((c: any) => c.component_type === "footer")?.text_content || ''),
             previous_content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),
             variables: selectedTemplateData.variables,
-            // interactiveActions: selectedTemplateData.interactive_actions,
-            // ctaButtons: selectedTemplateData.ctaButtons || [],
-            // quickReplies: selectedTemplateData.quickReplies || [],
+            
+            // Handle Buttons
+            ...((() => {
+                const buttonsComp = selectedTemplateData.components.find((c: any) => c.component_type === "buttons");
+                if (buttonsComp && buttonsComp.text_content) {
+                    try {
+                        const buttons = JSON.parse(buttonsComp.text_content);
+                        const ctaButtons = buttons.filter((b: any) => ['URL', 'PHONE', 'COPY_CODE', 'PHONE_NUMBER', 'CATALOG', 'MPM'].includes(b.type));
+                        const quickReplies = buttons.filter((b: any) => b.type === 'QUICK_REPLY').map((b: any) => b.text || b.label);
+                        
+                        // Normalize types
+                        const normalizedCTA = ctaButtons.map((b: any) => ({
+                            id: generateId(),
+                            type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type,
+                            label: b.text || b.label || (b.type === 'CATALOG' ? 'View Catalog' : b.type === 'COPY_CODE' ? 'Copy Code' : 'Button'),
+                            value: b.url || b.phone_number || b.example || b.value || ''
+                        }));
+
+                        return {
+                            interactiveActions: normalizedCTA.length > 0 && quickReplies.length > 0 ? 'All' : normalizedCTA.length > 0 ? 'CTA' : quickReplies.length > 0 ? 'QuickReplies' : 'None',
+                            ctaButtons: normalizedCTA,
+                            quickReplies: quickReplies
+                        };
+                    } catch (e) {
+                        return { interactiveActions: 'None', ctaButtons: [], quickReplies: [] };
+                    }
+                }
+                return { interactiveActions: 'None', ctaButtons: [], quickReplies: [] };
+            })())
         } : undefined;
         console.log("initialData1", initialData)
         return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Image as ImageIcon, Video, FileText, Check, Type } from 'lucide-react';
+import { MessageCircle, Image as ImageIcon, Video, FileText, Check, MapPin, ShoppingBag, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TemplateType, CTAButton, HeaderType } from './templateTypes';
 import { replaceVariables, formatWhatsAppText } from './templateUtils';
@@ -42,11 +42,11 @@ export const WhatsAppPreviewPanel = ({
     const renderHeaderPlaceholder = () => {
         if (!headerType || headerType === 'NONE') return null;
 
-        if ((headerType == 'TEXT' || headerType == 'text') && headerValue) {
+        const normalizedType = headerType.toUpperCase();
+
+        if (normalizedType === 'TEXT' && headerValue) {
             return (
-                <div className={cn(
-                    "w-full px-4 pt-3 pb-2"
-                )}>
+                <div className="w-full px-4 pt-3 pb-2">
                     <p className={cn(
                         "text-base font-semibold leading-tight",
                         isDarkMode ? 'text-white' : 'text-slate-900'
@@ -57,39 +57,29 @@ export const WhatsAppPreviewPanel = ({
             );
         }
 
-        if (headerType === 'media') {
+        if (normalizedType === 'IMAGE' || normalizedType === 'VIDEO' || headerType === 'media') {
             if (headerValue) {
-                // Check if it's a video (base64 starts with data:video or has video extension)
-                const isVideo = headerValue.startsWith('data:video') ||
-                    headerValue.match(/\.(mp4|webm|ogg)$/i);
+                const isVideo = normalizedType === 'VIDEO' || headerValue.startsWith('data:video') || headerValue.match(/\.(mp4|webm|ogg)$/i);
 
                 return (
                     <div className="w-full">
                         {isVideo ? (
-                            <video
-                                src={headerValue}
-                                className="w-full max-h-64 object-cover rounded-t-xl"
-                                controls
-                            />
+                            <video src={headerValue} className="w-full max-h-64 object-cover rounded-t-xl" controls />
                         ) : (
-                            <img
-                                src={headerValue}
-                                alt="Header media"
-                                className="w-full max-h-64 object-cover rounded-t-xl"
-                            />
+                            <img src={headerValue} alt="Header media" className="w-full max-h-64 object-cover rounded-t-xl" />
                         )}
                     </div>
                 );
             }
             return (
                 <div className={cn("w-full h-40 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-500/10 to-purple-500/10")}>
-                    <ImageIcon size={48} className="text-blue-400" />
-                    <span className="text-xs font-semibold text-blue-400">Media Header</span>
+                    {normalizedType === 'VIDEO' ? <Video size={48} className="text-blue-400" /> : <ImageIcon size={48} className="text-blue-400" />}
+                    <span className="text-xs font-semibold text-blue-400">{normalizedType === 'VIDEO' ? 'Video' : 'Image'} Header</span>
                 </div>
             );
         }
 
-        if (headerType === 'DOCUMENT') {
+        if (normalizedType === 'DOCUMENT') {
             if (headerValue) {
                 return (
                     <div className={cn(
@@ -97,25 +87,12 @@ export const WhatsAppPreviewPanel = ({
                         isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'
                     )}>
                         <div className="flex items-center gap-3">
-                            <div className={cn(
-                                "p-2.5 rounded-lg",
-                                isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
-                            )}>
+                            <div className={cn("p-2.5 rounded-lg", isDarkMode ? "bg-purple-500/20" : "bg-purple-100")}>
                                 <FileText size={20} className="text-purple-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className={cn(
-                                    "text-sm font-medium",
-                                    isDarkMode ? "text-white" : "text-slate-900"
-                                )}>
-                                    Document.pdf
-                                </p>
-                                <p className={cn(
-                                    "text-xs",
-                                    isDarkMode ? "text-white/50" : "text-slate-500"
-                                )}>
-                                    PDF Document
-                                </p>
+                                <p className={cn("text-sm font-medium", isDarkMode ? "text-white" : "text-slate-900")}>Document.pdf</p>
+                                <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>PDF Document</p>
                             </div>
                         </div>
                     </div>
@@ -125,6 +102,15 @@ export const WhatsAppPreviewPanel = ({
                 <div className={cn("w-full h-32 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-purple-500/10 to-pink-500/10")}>
                     <FileText size={48} className="text-purple-400" />
                     <span className="text-xs font-semibold text-purple-400">Document Header</span>
+                </div>
+            );
+        }
+
+        if (normalizedType === 'LOCATION') {
+            return (
+                <div className={cn("w-full h-40 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-500/10 to-teal-500/10")}>
+                    <MapPin size={48} className="text-emerald-400" />
+                    <span className="text-xs font-semibold text-emerald-400">Location Preview</span>
                 </div>
             );
         }
@@ -295,7 +281,7 @@ export const WhatsAppPreviewPanel = ({
                             </div>
 
                             {/* CTA Buttons */}
-                            {/* {ctaButtons.length > 0 && (
+                            {ctaButtons.length > 0 && (
                                 <div className="mt-2 space-y-1">
                                     {ctaButtons.map((button) => (
                                         <button
@@ -307,17 +293,21 @@ export const WhatsAppPreviewPanel = ({
                                                     : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 shadow-sm'
                                             )}
                                         >
-                                            {button.type === 'URL' && '🔗 '}
-                                            {button.type === 'PHONE' && '📞 '}
-                                            {button.type === 'COPY_CODE' && '📋 '}
-                                            {button.label || 'Button'}
+                                            <div className="flex items-center justify-center gap-2">
+                                                {button.type === 'URL' && <MessageCircle size={14} />}
+                                                {button.type === 'PHONE' && <MessageCircle size={14} />}
+                                                {button.type === 'COPY_CODE' && <Copy size={14} />}
+                                                {button.type === 'CATALOG' && <ShoppingBag size={14} />}
+                                                {button.type === 'MPM' && <ShoppingBag size={14} />}
+                                                <span>{button.label || 'CTA Button'}</span>
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
-                            )} */}
+                            )}
 
                             {/* Quick Replies */}
-                            {/* {quickReplies.length > 0 && (
+                            {quickReplies.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {quickReplies.map((reply, index) => (
                                         <button
@@ -333,7 +323,7 @@ export const WhatsAppPreviewPanel = ({
                                         </button>
                                     ))}
                                 </div>
-                            )} */}
+                            )}
                         </div>
                     </div>
                 </div>

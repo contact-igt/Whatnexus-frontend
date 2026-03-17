@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Zap, Plus, X, Link, Phone, Copy } from 'lucide-react';
+import { Zap, Plus, X, Link, Phone, Copy, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { InteractiveActionType, CTAButton, CTAType } from './templateTypes';
@@ -37,11 +37,20 @@ export const InteractiveActionsSection = ({
         if (type === 'COPY_CODE' && ctaButtons.some(b => b.type === 'COPY_CODE')) {
             return; // Max 1 copy code button
         }
+        if (type === 'CATALOG' && ctaButtons.some(b => b.type === 'CATALOG')) {
+            return; // Max 1 catalog button
+        }
+        if (type === 'MPM' && ctaButtons.some(b => b.type === 'MPM')) {
+            return; // Max 1 MPM button
+        }
 
         const newButton: CTAButton = {
             id: generateId(),
             type,
-            label: type === 'URL' ? 'Visit Website' : type === 'PHONE' ? 'Call Us' : 'Copy Code',
+            label: type === 'URL' ? 'Visit Website' : 
+                   type === 'PHONE' ? 'Call Us' : 
+                   type === 'COPY_CODE' ? 'Copy Code' :
+                   type === 'CATALOG' ? 'View Catalog' : 'View Products',
             value: ''
         };
         onCTAButtonsChange([...ctaButtons, newButton]);
@@ -160,6 +169,32 @@ export const InteractiveActionsSection = ({
                             <Copy size={14} />
                             Copy Code ({ctaButtons.some(b => b.type === 'COPY_CODE') ? '1' : '0'}/1)
                         </button>
+                        <button
+                            onClick={() => addCTAButton('CATALOG')}
+                            disabled={ctaButtons.some(b => b.type === 'CATALOG')}
+                            className={cn(
+                                "py-2 px-4 rounded-lg border text-xs font-semibold transition-all flex items-center gap-2",
+                                isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 disabled:opacity-40'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40'
+                            )}
+                        >
+                            <ShoppingBag size={14} />
+                            Catalog ({ctaButtons.some(b => b.type === 'CATALOG') ? '1' : '0'}/1)
+                        </button>
+                        <button
+                            onClick={() => addCTAButton('MPM')}
+                            disabled={ctaButtons.some(b => b.type === 'MPM')}
+                            className={cn(
+                                "py-2 px-4 rounded-lg border text-xs font-semibold transition-all flex items-center gap-2",
+                                isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 disabled:opacity-40'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40'
+                            )}
+                        >
+                            <ShoppingBag size={14} />
+                            MPM ({ctaButtons.some(b => b.type === 'MPM') ? '1' : '0'}/1)
+                        </button>
                     </div>
 
                     {/* CTA Button Inputs */}
@@ -170,7 +205,11 @@ export const InteractiveActionsSection = ({
                         )}>
                             <div className="flex items-center justify-between">
                                 <span className={cn("text-xs font-bold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                    {button.type === 'URL' ? '🔗 URL Button' : button.type === 'PHONE' ? '📞 Phone Button' : '📋 Copy Code'}
+                                    {button.type === 'URL' ? '🔗 URL Button' : 
+                                     button.type === 'PHONE' ? '📞 Phone Button' : 
+                                     button.type === 'CATALOG' ? '🛍️ Catalog' :
+                                     button.type === 'MPM' ? '🛍️ Products (MPM)' :
+                                     '📋 Copy Code'}
                                 </span>
                                 <button
                                     onClick={() => removeCTAButton(button.id)}
@@ -194,8 +233,10 @@ export const InteractiveActionsSection = ({
                                 placeholder={
                                     button.type === 'URL' ? 'https://example.com' :
                                         button.type === 'PHONE' ? '+1234567890' :
-                                            'CODE123'
+                                        button.type === 'COPY_CODE' ? 'CODE123' :
+                                        'No value required for this button type'
                                 }
+                                disabled={button.type === 'CATALOG' || button.type === 'MPM'}
                             />
                             <span className={cn("text-[10px]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 {button.label.length}/25 characters
