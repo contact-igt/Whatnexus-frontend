@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertCircle, BookOpen, Ban, Frown, Activity } from 'lucide-react';
 import { glassCard, glassInner, tx } from './glassStyles';
 import { ActivityEvent } from '@/services/whatsappDashboard';
@@ -27,9 +28,17 @@ const statusChipStyle: Record<string, { bg: string; color: string; label: string
     ignored:  { bg: 'rgba(148,163,184,0.1)', color: '#94a3b8', label: 'Ignored'  },
 };
 
+import { NoDataFound } from './noDataFound';
+
 export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeedProps) => {
     const [visible, setVisible] = useState<boolean[]>([]);
     const t = tx(isDarkMode);
+    const router = useRouter();
+
+    const handleViewSystemLogs = () => {
+        localStorage.setItem('selectedTab', 'aiLogs');
+        router.push('/knowledge');
+    };
 
     useEffect(() => {
         if (recentActivity) {
@@ -41,6 +50,30 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
             });
         }
     }, [recentActivity]);
+
+    const hasData = recentActivity && recentActivity.length > 0;
+
+    if (recentActivity && !hasData) {
+        return (
+            <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#a855f7' }} />
+                        <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>Activity Feed</span>
+                    </div>
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                    <NoDataFound 
+                        isDarkMode={isDarkMode}
+                        title="No Recent Activity"
+                        description="Your team's latest actions and system events will stream here."
+                        icon={<Activity size={32} />}
+                        className="bg-transparent border-none shadow-none py-12"
+                    />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
@@ -105,7 +138,7 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
                 )}
             </div>
 
-            <button className="w-full py-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all mt-auto"
+            <button onClick={handleViewSystemLogs} className="w-full py-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all mt-auto"
                 style={{ ...glassInner(isDarkMode), color: t.secondary }}>
                 View System Logs
             </button>

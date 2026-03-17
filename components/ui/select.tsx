@@ -140,24 +140,33 @@ export const Select = ({
                             : "bg-white border-slate-200"
                     )}
                 >
-                    {options.map((option) => (
-                        <div
-                            key={option.value}
-                            className={cn(
-                                "px-4 py-2.5 font-sans text-sm cursor-pointer flex items-center justify-between transition-colors",
-                                isDarkMode
-                                    ? "text-slate-200 hover:bg-white/5"
-                                    : "text-slate-700 hover:bg-slate-50",
-                                option.value === value && (isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600")
-                            )}
-                            onClick={() => handleSelect(option.value)}
-                        >
-                            <span>{option.label}</span>
-                            {option.value === value && (
-                                <Check size={16} className={isDarkMode ? "text-emerald-400" : "text-emerald-600"} />
-                            )}
+                    {options.length > 0 ? (
+                        options.map((option) => (
+                            <div
+                                key={option.value}
+                                className={cn(
+                                    "px-4 py-2.5 font-sans text-sm cursor-pointer flex items-center justify-between transition-colors",
+                                    isDarkMode
+                                        ? "text-slate-200 hover:bg-white/5"
+                                        : "text-slate-700 hover:bg-slate-50",
+                                    option.value === value && (isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600")
+                                )}
+                                onClick={() => handleSelect(option.value)}
+                            >
+                                <span>{option.label}</span>
+                                {option.value === value && (
+                                    <Check size={16} className={isDarkMode ? "text-emerald-400" : "text-emerald-600"} />
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className={cn(
+                            "px-4 py-8 text-center text-xs opacity-50 italic",
+                            isDarkMode ? "text-white" : "text-slate-500"
+                        )}>
+                            No options found
                         </div>
-                    ))}
+                    )}
                 </div>,
                 document.body
             )}

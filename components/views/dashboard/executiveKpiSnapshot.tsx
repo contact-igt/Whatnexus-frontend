@@ -94,6 +94,8 @@ const trendText = (trend: number | null, suffix = '% vs prev') => {
     return `${trend > 0 ? '+' : ''}${trend}${suffix}`;
 };
 
+import { NoDataFound } from './noDataFound';
+
 export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPILayerProps) => {
     const [show, setShow] = useState(false);
     
@@ -174,6 +176,18 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
             status: kpisData?.appointmentsToday?.status ?? 'great',
         },
     ];
+
+    const hasData = kpisData && Object.values(kpisData).some((kpi: any) => kpi?.value > 0);
+
+    if (kpisData && !hasData) {
+        return (
+            <NoDataFound 
+                isDarkMode={isDarkMode} 
+                title="KPI Snapshot Unavailable"
+                description="No performance metrics detected for the selected period."
+            />
+        );
+    }
 
     return (
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">

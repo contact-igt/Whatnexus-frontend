@@ -27,7 +27,7 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
                             <span className="font-black text-2xl tracking-tighter">WhatsNexus<span className="text-emerald-500">.</span></span>
                             <span className="text-[9px] mb-1 font-black bg-white/10 px-2 py-0.5 rounded-full uppercase text-emerald-400 border border-white/5">Beta</span>
                         </div>
-                        <span className="text-[8.9px] text-white/30 font-bold tracking-widest uppercase">Powered by Invictus Global Tech</span>
+                        <span className="text-[8.9px] text-white/30 font-bold tracking-widest uppercase">Powered by Kingpin Ventures</span>
                     </div>
                 </div>
                 <div className="hidden min-[992px]:flex items-center gap-8">

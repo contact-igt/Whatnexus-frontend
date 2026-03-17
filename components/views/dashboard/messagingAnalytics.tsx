@@ -38,6 +38,8 @@ const CustomTooltip = ({ active, payload, label, isDark }: any) => {
     );
 };
 
+import { NoDataFound } from './noDataFound';
+
 export const MessagingAnalytics = ({ isDarkMode = true, messagingData }: MessagingAnalyticsProps) => {
     const [show, setShow] = useState(false);
     const [tab, setTab] = useState<'trend' | 'stats'>('trend');
@@ -49,6 +51,35 @@ export const MessagingAnalytics = ({ isDarkMode = true, messagingData }: Messagi
             return () => clearTimeout(t1);
         }
     }, [messagingData]);
+
+    const hasData = messagingData && messagingData.totalMessages > 0;
+
+    if (messagingData && !hasData) {
+        return (
+            <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#3b82f6' }} />
+                            <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>
+                                Messaging Analytics
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                    <NoDataFound 
+                        isDarkMode={isDarkMode}
+                        title="No Messaging Data"
+                        description="Communication volume and activity trends will be visualized here."
+                        icon={<MessageSquare size={32} />}
+                        className="bg-transparent border-none shadow-none py-12"
+                    />
+                </div>
+            </div>
+        );
+    }
 
     // totalMessages → .toLocaleString()
     const totalMsg = messagingData?.totalMessages?.toLocaleString() ?? '—';

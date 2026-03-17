@@ -22,6 +22,9 @@ const stepGradients = [
     ['#3b82f6', '#06b6d4'], ['#6366f1', '#3b82f6'], ['#8b5cf6', '#6366f1'],
 ];
 
+import { NoDataFound } from './noDataFound';
+import { Layers3 } from 'lucide-react';
+
 export const ConversionFunnel = ({ isDarkMode = true, funnelData, funnelSummary }: ConversionFunnelProps) => {
     const [phase, setPhase] = useState<'loading' | 'ready'>('loading');
     const [visibleBars, setVisibleBars] = useState<boolean[]>([]);
@@ -69,7 +72,7 @@ export const ConversionFunnel = ({ isDarkMode = true, funnelData, funnelSummary 
                 </div>
 
                 {/* Steps */}
-                <div className="min-h-[400px]">
+                <div className="min-h-[400px] flex flex-col justify-center">
                     {!funnelData ? (
                          Array.from({ length: 6 }).map((_, i) => (
                              <div key={i} className="mb-4">
@@ -77,6 +80,14 @@ export const ConversionFunnel = ({ isDarkMode = true, funnelData, funnelSummary 
                                  <div className="h-[7px] w-full sk rounded-full" />
                              </div>
                          ))
+                    ) : funnelData.length === 0 ? (
+                        <NoDataFound 
+                            isDarkMode={isDarkMode}
+                            title="No Funnel Data"
+                            description="Revenue and conversion flows will appear here once leads progress."
+                            icon={<Layers3 size={32} />}
+                            className="bg-transparent border-none shadow-none"
+                        />
                     ) : (
                         activeSteps.map((step, i) => {
                             const [from, to] = stepGradients[i % stepGradients.length];

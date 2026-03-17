@@ -195,14 +195,14 @@ export const TemplateListPage = ({
                     <ActionMenu
                         isDarkMode={isDarkMode}
                         isView={true}
-                        isEdit={['draft', 'paused', 'rejected'].includes(row?.status)}
-                        isSubmitTemplate={['draft', 'paused', 'rejected'].includes(row?.status)}
-                        onSubmitTemplate={() => { (row?.status === 'paused' || row?.status === 'rejected') ? onResubmitTemplate(row?.template_id) : onSubmitTemplate(row?.template_id) }}
+                        isEdit={['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
+                        isSubmitTemplate={['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
+                        onSubmitTemplate={() => { (row?.status === 'paused' || row?.status === 'rejected' || row?.status === 'approved') ? onResubmitTemplate(row?.template_id) : onSubmitTemplate(row?.template_id) }}
                         isSyncTemplate={row?.status === 'pending'}
                         onSyncTemplate={() => onSyncTemplate(row?.template_id)}
                         onView={() => onView(row)}
                         onEdit={() => onEdit(row)}
-                        isDelete={['draft', 'paused', 'rejected'].includes(row?.status)}
+                        isDelete={['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
                         onDelete={() => handleActionClick(row.template_id, 'soft')}
                         isPermanentDelete={activeTab === 'trash' && user?.role === 'tenant_admin'}
                         onPermanentDelete={() => handleActionClick(row.template_id, 'permanent')}

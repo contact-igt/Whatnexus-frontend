@@ -66,13 +66,6 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 icon: Stethoscope,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
-            },
-            {
-                label: "Specialization",
-                route: "/specialization",
-                icon: BadgeCheck,
-                requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff']
             }
         ]
     },
@@ -221,8 +214,6 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 icon: UserCog,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
-<<<<<<< Updated upstream
-=======
             },
             {
                 label: "Tenant Invitations",
@@ -244,7 +235,6 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 icon: CreditCard,
                 requiresWhatsApp: false,
                 roles: ['super_admin']
->>>>>>> Stashed changes
             }
         ]
     }

@@ -1,9 +1,8 @@
 "use client";
-
-import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { Wallet, CreditCard, Download, Plus, RefreshCw, Calendar, Zap } from "lucide-react";
 import { WALLET_DATA, INVOICES } from "./billing-mock-data";
+import { GlassCard } from "@/components/ui/glassCard";
 
 interface BillingWalletProps {
   isDarkMode: boolean;

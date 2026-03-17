@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Send, Eye, MessageSquare, ChevronRight, Plus, TrendingUp } from 'lucide-react';
 import { glassCard, glassInner, tx, trackBg } from './glassStyles';
 import { Campaign } from '@/services/whatsappDashboard';
@@ -18,9 +19,12 @@ const statusColor: Record<string, string> = {
     paused:    '#94a3b8',
 };
 
+import { NoDataFound } from './noDataFound';
+
 export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: CampaignIntelligenceProps) => {
     const [show, setShow] = useState(false);
     const t = tx(isDarkMode);
+    const router = useRouter();
     
     useEffect(() => { 
         if (campaignsData) {
@@ -38,21 +42,28 @@ export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: Campa
                     <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#14b8a6' }} />
                     <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>Campaign Intelligence</span>
                 </div>
-                <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-emerald-500 transition-all hover:scale-105"
+                <button onClick={() => router.push('/campaign')} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-emerald-500 transition-all hover:scale-105"
                     style={glassInner(isDarkMode)}>
                     <Plus size={11} /> New
                 </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 flex flex-col justify-center">
                 {!campaignsData ? (
                     Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-32 w-full sk rounded-xl" />)
+                ) : activeCampaigns.length === 0 ? (
+                    <NoDataFound 
+                        isDarkMode={isDarkMode}
+                        title="No Active Campaigns"
+                        description="Start a broadcast campaign to track metrics and performance."
+                        className="bg-transparent border-none shadow-none py-12"
+                    />
                 ) : (
                     activeCampaigns.map((c, i) => {
                         const tagHex = statusColor[c.status] ?? '#94a3b8';
                         
                         return (
-                            <div key={i} className="rounded-xl p-4 flex flex-col gap-3 group cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
+                            <div key={i} onClick={() => router.push('/campaign')} className="rounded-xl p-4 flex flex-col gap-3 group cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
                                 style={{
                                     ...glassInner(isDarkMode), borderLeft: `2px solid ${tagHex}`,
                                     opacity: show ? 1 : 0, transform: show ? 'translateY(0)' : 'translateY(8px)',
@@ -124,7 +135,7 @@ export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: Campa
                     <TrendingUp size={11} />
                     <span className="text-[9px] font-black uppercase tracking-widest">Live Campaign Data</span>
                 </div>
-                <button className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all"
+                <button onClick={() => router.push('/campaign')} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all"
                     style={{ ...glassInner(isDarkMode), color: t.secondary }}>
                     View All
                 </button>

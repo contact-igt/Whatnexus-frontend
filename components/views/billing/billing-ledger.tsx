@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { Receipt, Search, Download, Loader2 } from "lucide-react";
 import { useGetBillingLedgerQuery } from "@/hooks/useBillingQuery";
+import { GlassCard } from "@/components/ui/glassCard";
 
 interface BillingLedgerProps {
   isDarkMode: boolean;
