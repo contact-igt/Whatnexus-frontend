@@ -42,7 +42,7 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                 const parsed = JSON.parse(stored);
                 const appointmentsWithDates = parsed.map((apt: any) => ({
                     ...apt,
-                    date: new Date(apt.date)
+                    date: apt.date ? new Date(apt.date) : new Date(apt.appointment_date)
                 }));
                 setAppointments(appointmentsWithDates);
             }
@@ -65,10 +65,10 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
         return appointments.map(apt => ({
             id: apt.id,
             title: apt.doctorName
-                ? `${apt.doctorName} - ${apt.patientName}`
-                : apt.patientName,
-            start: apt.date,
-            end: new Date(apt.date.getTime() + 30 * 60000), // 30 minutes
+                ? `${apt.doctorName} - ${apt.patient_name}`
+                : apt.patient_name,
+            start: apt.date || new Date(),
+            end: new Date((apt.date?.getTime() || Date.now()) + 30 * 60000), // 30 minutes
             resource: apt,
         }));
     }, [appointments]);
@@ -90,7 +90,7 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
         const appointment = event.resource as Appointment;
         let backgroundColor = '#10b981'; // emerald-500
 
-        switch (appointment.status) {
+        switch (appointment.status.toLowerCase()) {
             case 'confirmed':
                 backgroundColor = '#10b981'; // emerald-500
                 break;

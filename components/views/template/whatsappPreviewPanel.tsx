@@ -57,7 +57,7 @@ export const WhatsAppPreviewPanel = ({
             );
         }
 
-        if (normalizedType === 'IMAGE' || normalizedType === 'VIDEO' || headerType === 'media') {
+        if (normalizedType === 'IMAGE' || normalizedType === 'VIDEO') {
             if (headerValue) {
                 const isVideo = normalizedType === 'VIDEO' || headerValue.startsWith('data:video') || headerValue.match(/\.(mp4|webm|ogg)$/i);
 
@@ -71,10 +71,15 @@ export const WhatsAppPreviewPanel = ({
                     </div>
                 );
             }
+            const isVideo = normalizedType === 'VIDEO';
             return (
-                <div className={cn("w-full h-40 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-500/10 to-purple-500/10")}>
-                    {normalizedType === 'VIDEO' ? <Video size={48} className="text-blue-400" /> : <ImageIcon size={48} className="text-blue-400" />}
-                    <span className="text-xs font-semibold text-blue-400">{normalizedType === 'VIDEO' ? 'Video' : 'Image'} Header</span>
+                <div className={cn("w-full h-48 rounded-t-xl flex flex-col items-center justify-center gap-2", 
+                    isVideo ? "bg-blue-500/10" : "bg-orange-500/10"
+                )}>
+                    {isVideo ? <Video size={56} className="text-blue-400" /> : <ImageIcon size={56} className="text-orange-400" />}
+                    <span className={cn("text-xs font-semibold", isVideo ? "text-blue-400" : "text-orange-400")}>
+                        {isVideo ? 'Video' : 'Image'} Preview
+                    </span>
                 </div>
             );
         }
@@ -99,17 +104,17 @@ export const WhatsAppPreviewPanel = ({
                 );
             }
             return (
-                <div className={cn("w-full h-32 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-purple-500/10 to-pink-500/10")}>
-                    <FileText size={48} className="text-purple-400" />
-                    <span className="text-xs font-semibold text-purple-400">Document Header</span>
+                <div className={cn("w-full h-48 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-purple-500/10")}>
+                    <FileText size={56} className="text-purple-400" />
+                    <span className="text-xs font-semibold text-purple-400">Document Preview</span>
                 </div>
             );
         }
 
         if (normalizedType === 'LOCATION') {
             return (
-                <div className={cn("w-full h-40 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-500/10 to-teal-500/10")}>
-                    <MapPin size={48} className="text-emerald-400" />
+                <div className={cn("w-full h-48 rounded-t-xl flex flex-col items-center justify-center gap-2 bg-emerald-500/10")}>
+                    <MapPin size={56} className="text-emerald-400" />
                     <span className="text-xs font-semibold text-emerald-400">Location Preview</span>
                 </div>
             );
@@ -118,27 +123,7 @@ export const WhatsAppPreviewPanel = ({
         return null;
     };
 
-    const renderMediaPlaceholder = () => {
-        if (templateType === 'TEXT') return null;
 
-        const icons = {
-            IMAGE: { Icon: ImageIcon, color: 'text-orange-400', bg: 'bg-orange-500/10', label: 'Image' },
-            VIDEO: { Icon: Video, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Video' },
-            DOCUMENT: { Icon: FileText, color: 'text-purple-400', bg: 'bg-purple-500/10', label: 'Document' },
-        };
-
-        const config = icons[templateType];
-        if (!config) return null;
-
-        const { Icon, color, bg, label } = config;
-
-        return (
-            <div className={cn("w-full h-48 rounded-t-xl flex flex-col items-center justify-center gap-2", bg)}>
-                <Icon size={56} className={color} />
-                <span className={cn("text-xs font-semibold", color)}>{label} Preview</span>
-            </div>
-        );
-    };
 
     return (
         <div className="sticky top-6 space-y-4">
@@ -214,9 +199,6 @@ export const WhatsAppPreviewPanel = ({
                             )}>
                                 {/* Header Placeholder */}
                                 {renderHeaderPlaceholder()}
-
-                                {/* Media Placeholder */}
-                                {renderMediaPlaceholder()}
 
                                 {/* Content */}
                                 <div className="p-3 space-y-0.5">

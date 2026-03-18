@@ -264,7 +264,6 @@ export const TemplateFormPage = ({
 
     // Watch form values for preview
     const category = watch('category');
-    const language = watch('language');
     const templateName = watch('templateName');
     const templateType = watch('templateType');
     const headerType = watch('headerType');
@@ -279,55 +278,7 @@ export const TemplateFormPage = ({
     console.log("initialData", initialData)
     const categories: TemplateCategory[] = ['UTILITY', 'MARKETING', 'AUTHENTICATION'];
     const templateTypes: TemplateType[] = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'];
-    const headerTypes: HeaderType[] = ['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'];
     const languages = ['English', 'Hindi', 'Spanish', 'French', 'German'];
-    const SYSTEM_TEMPLATE_PROMPT = `
-You are a WhatsApp Business Template Generator for Meta approval.
-
-GENERAL RULES:
-- Generate ONLY Meta-approved WhatsApp message templates.
-- Use professional, polite, and neutral language.
-- Do NOT include emojis, symbols, or excessive formatting.
-- Do NOT include URLs unless explicitly required.
-- Output ONLY the template body text (no headings, no explanations).
-- Keep content concise and business-appropriate.
-- Use placeholders in double curly braces {{ }} only.
-- Placeholders must be generic and reusable.
-
-ALLOWED PLACEHOLDERS (use only when relevant):
-{{customer_name}}, {{user_name}}, {{business_name}}, {{event_name}},
-{{date}}, {{time}}, {{location}}, {{order_id}}, {{amount}}, {{otp}}
-
-TEMPLATE CATEGORY RULES:
-
-UTILITY:
-- Purpose: transactional, informational, reminders, confirmations, alerts.
-- Tone: neutral, helpful, non-promotional.
-- Allowed CTAs: "View details", "Confirm", "Track order".
-- Examples: appointment reminders, service updates, webinar details.
-
-MARKETING:
-- Purpose: promotions, announcements, product or service awareness.
-- Tone: informative, soft promotional.
-- MUST avoid urgency, pressure, discounts, or misleading claims.
-- Avoid words like: "Buy now", "Limited time", "Hurry", "Free".
-- Allowed CTAs: "Learn more", "View details".
-
-AUTHENTICATION:
-- Purpose: login verification, OTP, account security.
-- Must include {{otp}} or verification code.
-- Must mention validity duration if possible.
-- No branding, offers, or extra text allowed.
-
-CATEGORY SELECTION:
-- If a category is provided, STRICTLY generate content for that category.
-- If user intent conflicts with the selected category, adapt the message to fit the category safely.
-- If intent is unclear, default to a GENERAL UTILITY template.
-
-IMPORTANT:
-- Ensure high likelihood of Meta approval.
-- Avoid policy violations.
-`;
 
     const { mutateAsync: generateTemplate } = useGenerateAiTemplateMutation();
     const handleAIGenerate = async (prompt: string, style: MessageStyle, goal: OptimizationGoal, aiCategory: string) => {
@@ -412,8 +363,9 @@ IMPORTANT:
             variables: Object.entries(data?.variables)?.map(([key, value]) => ({ key: key, sample: value }))
         };
 
-        // Add header if provided
-        if (data.headerType !== 'NONE' && data.headerValue) {
+        // Add header if provided or if the selected template type inherently requires a header
+        // Since we force headerType to equal templateType (or NONE), we can just use templateType directly
+        if (data.headerType !== 'NONE' && (data.headerValue || data.templateType !== 'TEXT')) {
             const headerTypeMap: Record<string, string> = {
                 'TEXT': 'text',
                 'IMAGE': 'image',
@@ -422,11 +374,15 @@ IMPORTANT:
                 'LOCATION': 'location'
             };
 
-            const normalizedHeaderType = data.headerType.toUpperCase();
+            const typeToUse = (data.headerType as string) === 'NONE' ? data.templateType : (data.headerType as string);
+            const normalizedHeaderType = typeToUse.toUpperCase();
+
+            // Set text if TEXT or LOCATION, else url for media links
+            const valueKey = (normalizedHeaderType === 'TEXT' || normalizedHeaderType === 'LOCATION') ? 'text' : 'url';
 
             payload.components.header = {
-                type: headerTypeMap[data.headerType] || 'text',
-                [normalizedHeaderType === 'TEXT' ? 'text' : 'url']: data.headerValue
+                type: headerTypeMap[typeToUse] || 'text',
+                [valueKey]: data.headerValue || '' // Some APIs might allow empty fields for drafts
             };
             
             // Meta usually expects header variables if it's dynamic.
@@ -634,7 +590,15 @@ IMPORTANT:
                                         label="Template Type"
                                         required
                                         value={field.value}
-                                        onChange={field.onChange}
+                                        onChange={(val) => {
+                                            field.onChange(val);
+                                            setValue('headerValue', '');
+                                            if (val === 'TEXT') {
+                                                setValue('headerType', 'NONE');
+                                            } else {
+                                                setValue('headerType', val as HeaderType);
+                                            }
+                                        }}
                                         options={templateTypes.map(type => ({ value: type, label: type }))}
                                         error={errors.templateType?.message}
                                         disabled={isViewMode || !!templateId} // Type cannot be changed for existing templates
@@ -648,119 +612,134 @@ IMPORTANT:
 
                         {/* Template Header Section */}
                         <div id="field-section-headerType" className="space-y-4">
-                            <h2 className={cn("text-xs font-bold tracking-wide", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                Template Header (Optional)
-                            </h2>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Header Type */}
+                            {templateType === 'TEXT' && (
                                 <div>
+                                    <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                        Template Header (Optional)
+                                    </h2>
                                     <Controller
-                                        name="headerType"
+                                        name="headerValue"
                                         control={control}
                                         render={({ field }) => (
-                                            <Select
+                                            <Input
+                                                {...field}
                                                 isDarkMode={isDarkMode}
-                                                label="Header Type"
-                                                value={field.value}
-                                                onChange={(value) => {
-                                                    field.onChange(value);
-                                                    setValue('headerValue', '');
+                                                label="Header Text"
+                                                type="text"
+                                                placeholder="Enter header text"
+                                                value={field.value || ''}
+                                                onChange={(e) => {
+                                                    field.onChange(e.target.value.slice(0, 60));
+                                                    setValue('headerType', e.target.value ? 'TEXT' : 'NONE');
                                                 }}
-                                                options={headerTypes.map(type => ({
-                                                    value: type,
-                                                    label: type === 'NONE' ? 'None' : type.charAt(0) + type.slice(1).toLowerCase()
-                                                }))}
-                                                error={errors.headerType?.message}
+                                                maxLength={60}
+                                                error={errors.headerValue?.message}
+                                                disabled={isViewMode}
+                                            />
+                                        )}
+                                    />
+                                    <div className="flex justify-between mt-1">
+                                        <p className={cn("text-[10px] ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                            Header text, up to 60 characters
+                                        </p>
+                                        <span className={cn("text-xs mr-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                            {(headerValue || '').length}/60
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {templateType === 'IMAGE' && (
+                                <div className="w-full md:max-w-[320px]">
+                                    <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                        Image Upload
+                                    </h2>
+                                    <Controller
+                                        name="headerValue"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <FileUpload
+                                                isDarkMode={isDarkMode}
+                                                label="Image File"
+                                                accept="image/*"
+                                                value={field.value || ''}
+                                                onChange={(file, preview) => {
+                                                    field.onChange(preview);
+                                                    setValue('headerType', 'IMAGE');
+                                                }}
+                                                placeholder="Upload image"
+                                                uploadType="image"
                                                 disabled={isViewMode}
                                             />
                                         )}
                                     />
                                     <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                        Select the type of header for your template
+                                        Upload an image for the header
                                     </p>
                                 </div>
+                            )}
 
-                                {/* Header Value - Conditional based on type */}
-                                {headerType === 'TEXT' && (
-                                    <div>
-                                        <Controller
-                                            name="headerValue"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Input
-                                                    {...field}
-                                                    isDarkMode={isDarkMode}
-                                                    label="Header Text"
-                                                    type="text"
-                                                    placeholder="Enter header text"
-                                                    value={field.value || ''}
-                                                    onChange={(e) => field.onChange(e.target.value.slice(0, 60))}
-                                                    maxLength={60}
-                                                    error={errors.headerValue?.message}
-                                                    disabled={isViewMode}
-                                                />
-                                            )}
-                                        />
-                                        <div className="flex justify-between mt-1">
-                                            <p className={cn("text-[10px] ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                Header text, up to 60 characters
-                                            </p>
-                                            <span className={cn("text-xs mr-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                                {(headerValue || '').length}/60
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
+                            {templateType === 'VIDEO' && (
+                                <div className="w-full md:max-w-[320px]">
+                                    <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                        Video Upload
+                                    </h2>
+                                    <Controller
+                                        name="headerValue"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <FileUpload
+                                                isDarkMode={isDarkMode}
+                                                label="Video File"
+                                                accept="video/*"
+                                                value={field.value || ''}
+                                                onChange={(file, preview) => {
+                                                    field.onChange(preview);
+                                                    setValue('headerType', 'VIDEO');
+                                                }}
+                                                placeholder="Upload video"
+                                                uploadType="video"
+                                                disabled={isViewMode}
+                                            />
+                                        )}
+                                    />
+                                    <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                        Upload a video file for the header
+                                    </p>
+                                </div>
+                            )}
 
-                                {(headerType === 'IMAGE' || headerType === 'VIDEO') && (
-                                    <div>
-                                        <Controller
-                                            name="headerValue"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <FileUpload
-                                                    isDarkMode={isDarkMode}
-                                                    label={headerType === 'IMAGE' ? "Image File" : "Video File"}
-                                                    accept={headerType === 'IMAGE' ? "image/*" : "video/*"}
-                                                    value={field.value || ''}
-                                                    onChange={(file, preview) => field.onChange(preview)}
-                                                    placeholder={headerType === 'IMAGE' ? "Upload image" : "Upload video"}
-                                                    uploadType="image" // FileUpload might handle preview based on accept
-                                                    disabled={isViewMode}
-                                                />
-                                            )}
-                                        />
-                                        <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            Upload {headerType === 'IMAGE' ? 'an image' : 'a video'} for the header
-                                        </p>
-                                    </div>
-                                )}
+                            {templateType === 'DOCUMENT' && (
+                                <div className="w-full md:max-w-[320px]">
+                                    <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                        Document Upload
+                                    </h2>
+                                    <Controller
+                                        name="headerValue"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <FileUpload
+                                                isDarkMode={isDarkMode}
+                                                label="Document File"
+                                                accept=".pdf,.doc,.docx,.txt"
+                                                value={field.value || ''}
+                                                onChange={(file, preview) => {
+                                                    field.onChange(preview);
+                                                    setValue('headerType', 'DOCUMENT');
+                                                }}
+                                                placeholder="Upload document (PDF, DOC, etc.)"
+                                                uploadType="document"
+                                                disabled={isViewMode}
+                                            />
+                                        )}
+                                    />
+                                    <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                        Upload a document file for the header
+                                    </p>
+                                </div>
+                            )}
 
-                                {headerType === 'DOCUMENT' && (
-                                    <div>
-                                        <Controller
-                                            name="headerValue"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <FileUpload
-                                                    isDarkMode={isDarkMode}
-                                                    label="Document File"
-                                                    accept=".pdf,.doc,.docx,.txt"
-                                                    value={field.value || ''}
-                                                    onChange={(file, preview) => field.onChange(preview)}
-                                                    placeholder="Upload document (PDF, DOC, etc.)"
-                                                    uploadType="document"
-                                                    disabled={isViewMode}
-                                                />
-                                            )}
-                                        />
-                                        <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            Upload a document file for the header
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+
                         </div>
 
                         {/* Template Content */}
