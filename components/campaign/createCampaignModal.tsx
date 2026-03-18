@@ -35,6 +35,12 @@ interface FormData {
     csv_data: CSVRecipient[] | null;
     group_id: string | null;
     manual_recipients: any[] | null;
+    location_params: {
+        latitude: string;
+        longitude: string;
+        name: string;
+        address: string;
+    } | null;
 }
 
 export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampaignModalProps) => {
@@ -52,6 +58,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         csv_data: null,
         group_id: null,
         manual_recipients: null,
+        location_params: {
+            latitude: '',
+            longitude: '',
+            name: '',
+            address: ''
+        }
     });
 
     // CSV Upload State
@@ -174,6 +186,22 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 if (['image', 'video', 'document'].includes(selectedTemplate?.type || '') && !(formData as any).header_media_url) {
                     setError(`Please provide or upload a ${selectedTemplate?.type} for the header`);
                     return false;
+                }
+
+                // Validate Location Params
+                if ((selectedTemplate?.type as string) === 'location') {
+                    if (!formData.location_params?.latitude || !formData.location_params?.longitude || !formData.location_params?.name || !formData.location_params?.address) {
+                        setError('Please fill in all the location details (Latitude, Longitude, Name, and Address).');
+                        return false;
+                    }
+                    if (Number(formData.location_params.latitude) < -90 || Number(formData.location_params.latitude) > 90) {
+                        setError('Latitude must be between -90 and 90.');
+                        return false;
+                    }
+                    if (Number(formData.location_params.longitude) < -180 || Number(formData.location_params.longitude) > 180) {
+                        setError('Longitude must be between -180 and 180.');
+                        return false;
+                    }
                 }
                 return true;
 
@@ -327,6 +355,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 scheduled_at: formData.scheduled_at,
                 variable_values: variableValues, // Kept for reference, though backend uses audience_data
                 header_media_url: (formData as any).header_media_url || null,
+                location_params: (selectedTemplate?.type as string) === 'location' ? formData.location_params : null,
             };
 
             const response = await campaignService.createCampaign(request);
@@ -699,6 +728,84 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     : `Providing a direct link or upload your ${selectedTemplate.type} file (max 20MB)`
                                                 }
                                             </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Location Header Input */}
+                                {(selectedTemplate?.type as string) === 'location' && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                Location Details *
+                                            </label>
+                                        </div>
+                                        <p className={cn("text-xs mb-2", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
+                                            Fill in the latitude, longitude, name, and address to send location message
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <input
+                                                type="number"
+                                                value={formData.location_params?.latitude || ''}
+                                                onChange={(e) => setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    location_params: { ...prev.location_params!, latitude: e.target.value } 
+                                                }))}
+                                                placeholder="Latitude (e.g. 77.0797)"
+                                                step="any"
+                                                className={cn(
+                                                    "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                                )}
+                                            />
+                                            <input
+                                                type="number"
+                                                value={formData.location_params?.longitude || ''}
+                                                onChange={(e) => setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    location_params: { ...prev.location_params!, longitude: e.target.value } 
+                                                }))}
+                                                placeholder="Longitude (e.g. 28.4968)"
+                                                step="any"
+                                                className={cn(
+                                                    "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                                )}
+                                            />
+                                            <input
+                                                type="text"
+                                                value={formData.location_params?.name || ''}
+                                                onChange={(e) => setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    location_params: { ...prev.location_params!, name: e.target.value } 
+                                                }))}
+                                                placeholder="Location Name"
+                                                className={cn(
+                                                    "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all md:col-span-2",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                                )}
+                                            />
+                                            <textarea
+                                                value={formData.location_params?.address || ''}
+                                                onChange={(e) => setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    location_params: { ...prev.location_params!, address: e.target.value } 
+                                                }))}
+                                                placeholder="Full Address"
+                                                rows={2}
+                                                className={cn(
+                                                    "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all md:col-span-2 resize-none",
+                                                    isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
+                                                        : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                                )}
+                                            />
                                         </div>
                                     </div>
                                 )}
