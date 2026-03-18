@@ -134,13 +134,13 @@ export const FileUpload = ({
                             <img
                                 src={value}
                                 alt="Preview"
-                                className="w-full h-48 object-cover"
+                                className="w-full h-64 object-cover"
                             />
                         )}
                         {uploadType === 'video' && (
                             <video
                                 src={value}
-                                className="w-full h-48 object-cover"
+                                className="w-full h-64 object-cover"
                                 controls
                             />
                         )}
@@ -184,7 +184,7 @@ export const FileUpload = ({
                         )}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-8 px-4">
+                    <div className="flex flex-col items-center justify-center py-16 px-4">
                         <div className={cn(
                             "p-3 rounded-full mb-3",
                             isDarkMode ? "bg-white/5" : "bg-slate-200"

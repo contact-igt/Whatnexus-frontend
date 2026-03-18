@@ -33,7 +33,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </div>
             </div>
             <div className="flex items-center space-x-2">
-                {isSearching || messageSearchText === " " ? (
+                {isSearching || messageSearchText === "" ? (
                     <div className="relative animate-in slide-in-from-right-2 fade-in duration-200">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input

@@ -286,12 +286,14 @@ export const InteractiveActionsSection = ({
                                     type="text"
                                     value={button.value}
                                     onChange={(e) => updateCTAButton(button.id, 'value', e.target.value)}
-                                    placeholder={
+                                placeholder={
                                         button.type === 'URL' ? 'https://example.com' :
                                             button.type === 'COPY_CODE' ? 'CODE123' :
-                                            'No value required for this button type'
+                                            button.type === 'CATALOG' ? 'Catalog Value / ID' :
+                                            button.type === 'MPM' ? 'MPM Value' :
+                                            'Value'
                                     }
-                                    disabled={disabled || button.type === 'CATALOG' || button.type === 'MPM'}
+                                    disabled={disabled}
                                     error={ctaErrors && ctaErrors[index]?.value?.message}
                                 />
                             )}
