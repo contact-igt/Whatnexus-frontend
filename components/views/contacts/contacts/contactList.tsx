@@ -2,10 +2,10 @@ import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Contact } from "@/types/contact";
 import { ActionMenu } from "@/components/ui/actionMenu";
-import { Checkbox } from "@/components/ui/checkbox";
 import { User, Phone } from "lucide-react";
 import { DataTable, ColumnDef } from "@/components/ui/dataTable";
 import { Pagination } from "@/components/ui/pagination";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ContactListProps {
     isDarkMode: boolean;
