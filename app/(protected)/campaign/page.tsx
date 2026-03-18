@@ -1,4 +1,4 @@
-import { CampaignView } from "@/components/views/campaign-view";
+import { CampaignView } from "@/components/views/campaignView";
 
 
 

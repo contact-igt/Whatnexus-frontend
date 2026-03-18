@@ -1,5 +1,5 @@
-import { SystemGovernanceView } from "@/components/views/system-view";
-import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
+import { SystemGovernanceView } from "@/components/views/systemView";
+import { RoleBasedWrapper } from "@/components/ui/roleBasedWrapper";
 
 export default function SystemPage() {
     return (

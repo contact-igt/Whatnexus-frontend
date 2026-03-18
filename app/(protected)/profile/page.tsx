@@ -1,4 +1,4 @@
-import { ProfileView } from "@/components/views/profile/profile-view";
+import { ProfileView } from "@/components/views/profile/profileView";
 
 
 export default function ProfilePage() {

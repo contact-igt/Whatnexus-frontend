@@ -1,6 +1,6 @@
 "use client";
 
-import { NotFoundView } from "@/components/views/not-found-view";
+import { NotFoundView } from "@/components/views/notFoundView";
 import { useTheme } from "@/hooks/useTheme";
 
 export default function NotFound() {

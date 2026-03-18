@@ -1,4 +1,4 @@
-import { CampaignDetailsView } from "@/components/views/campaign-details-view";
+import { CampaignDetailsView } from "@/components/views/campaignDetailsView";
 
 interface CampaignDetailsPageProps {
     params: Promise<{

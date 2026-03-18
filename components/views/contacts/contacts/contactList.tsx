@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Contact } from "@/types/contact";
-import { ActionMenu } from "@/components/ui/action-menu";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { ActionMenu } from "@/components/ui/actionMenu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { User, Phone } from "lucide-react";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { DataTable, ColumnDef } from "@/components/ui/dataTable";
 import { Pagination } from "@/components/ui/pagination";
 
 interface ContactListProps {
@@ -148,7 +148,7 @@ export const ContactList = ({
     // The current DataTable implementation defines headerName as string.
     // I should modify DataTable to allow ReactNode for headerName or just accept the limitation and put it in a custom header row?
     // A better approach for the generic component is to allow `headerName` to be ReactNode.
-    // Let me check `ColumnDef` definition in `components/ui/data-table.tsx`.
+    // Let me check `ColumnDef` definition in `components/ui/dataTable.tsx`.
     // It is `headerName: string;`. I should update it to `ReactNode` first.
 
     return (

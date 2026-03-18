@@ -33,6 +33,7 @@ export interface CreateCampaignRequest {
     audience_data: CSVRecipient[] | string; // Array for csv/manual, String (group_id) for group
     scheduled_at?: string | null; // ISO 8601 format, required if campaign_type = 'scheduled'
     variable_values?: Record<string, string>; // Optional variable values for template
+    header_media_url?: string | null;
 }
 
 export interface CampaignListParams {
@@ -83,6 +84,7 @@ export interface Campaign {
     read_count: number;
     replied_count: number;
     scheduled_at: string | null;
+    header_media_url?: string | null;
     createdAt: string; // API uses camelCase
     updatedAt?: string; // API uses camelCase
     template: TemplateInfo;
@@ -105,6 +107,7 @@ export interface Recipient {
     dynamic_variables: string[] | string; // API may return string or array
     meta_message_id: string | null;
     sent_at?: string | null; // Backend might not return this explicitly in recipient model
+    error_message?: string | null;
 }
 
 export interface CampaignDetails {

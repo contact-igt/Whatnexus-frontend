@@ -1,4 +1,4 @@
-import { DoctorsView } from "@/components/views/doctor/doctors-view";
+import { DoctorsView } from "@/components/views/doctor/doctorsView";
 
 
 export default function DoctorsPage() {

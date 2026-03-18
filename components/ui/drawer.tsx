@@ -48,7 +48,7 @@ export const Drawer = ({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
+            className="fixed inset-0 z-[99999] flex items-center justify-end bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
             onClick={onClose}
         >
             <div

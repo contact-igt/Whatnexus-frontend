@@ -151,3 +151,55 @@ export const useRestoreManagementMutation = () => {
         }
     })
 }
+
+// --- Pricing Hooks ---
+
+export const useGetPricingRulesQuery = () => {
+    return useQuery({
+        queryKey: ["pricing-rules"],
+        queryFn: () => managementApis.getPricingRules(),
+        staleTime: 5 * 60 * 1000,
+    })
+}
+
+export const useCreatePricingRuleMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { category: string, country: string, rate: number, markup_percent?: number }) => managementApis.createPricingRule(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["pricing-rules"] });
+            toast.success("Pricing rule created successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to create pricing rule")
+        }
+    })
+}
+
+export const useUpdatePricingRuleMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: number, data: { rate?: number, markup_percent?: number } }) => managementApis.updatePricingRule(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["pricing-rules"] });
+            toast.success("Pricing rule updated successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to update pricing rule")
+        }
+    })
+}
+
+export const useDeletePricingRuleMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => managementApis.deletePricingRule(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["pricing-rules"] });
+            toast.success("Pricing rule deleted successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to delete pricing rule")
+        }
+    })
+}

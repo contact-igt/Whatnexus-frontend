@@ -174,6 +174,34 @@ export class CampaignService {
             throw error;
         }
     };
+
+    /**
+     * Upload media file for campaign header
+     * @param file File object to upload
+     * @param type Media type (image, video, document)
+     * @returns Uploaded media URL
+     */
+    uploadMedia = async (
+        file: File,
+        type: "image" | "video" | "document"
+    ): Promise<{ url: string }> => {
+        try {
+            const formData = new FormData();
+            formData.append("media", file);
+            formData.append("type", type);
+
+            const response = await _axios(
+                "post",
+                "/whatsapp/whatsapp-campaign/upload-media",
+                formData,
+                "multipart/form-data"
+            );
+            return response;
+        } catch (error) {
+            console.error("Error uploading media:", error);
+            throw error;
+        }
+    };
 }
 
 // Export singleton instance

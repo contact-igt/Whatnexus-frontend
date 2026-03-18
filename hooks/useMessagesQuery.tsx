@@ -141,3 +141,51 @@ export const useSendTemplateMessageMutation = () => {
         },
     });
 };
+
+export const useClaimChatMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (contact_id: string) => {
+            return MessagesApis.claimChat(contact_id);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            toast.success('Chat claimed successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to claim chat');
+        },
+    });
+};
+
+export const useAssignAgentMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { contact_id: string, agent_id: string }) => {
+            return MessagesApis.assignAgent(data.contact_id, data.agent_id);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            toast.success('Agent assigned successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to assign agent');
+        },
+    });
+};
+
+export const useGetAgentsQuery = () => {
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ['agents'],
+        queryFn: () => MessagesApis.getAgents(),
+        staleTime: 5 * 60 * 1000,
+    });
+
+    return { data, isLoading, isError };
+};

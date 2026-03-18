@@ -1,5 +1,5 @@
-import { OrganizationView } from "@/components/views/organization/organization-view";
-import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
+import { OrganizationView } from "@/components/views/organization/organizationView";
+import { RoleBasedWrapper } from "@/components/ui/roleBasedWrapper";
 
 export default function OrganizationPage() {
   return (

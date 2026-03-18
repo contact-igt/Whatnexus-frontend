@@ -1,6 +1,6 @@
 
-import { RoleBasedWrapper } from "@/components/ui/role-based-wrapper";
-import { WhatsAppConnectionView } from "@/components/views/whatsappConfiguration/whatsapp-connection-view";
+import { RoleBasedWrapper } from "@/components/ui/roleBasedWrapper";
+import { WhatsAppConnectionView } from "@/components/views/whatsappConfiguration/whatsappConnectionView";
 
 export default function WhatsAppSettingsPage() {
     return (
@@ -17,4 +17,4 @@ export default function WhatsAppSettingsPage() {
             <WhatsAppConnectionView />
         </RoleBasedWrapper>
     );
-}
+};

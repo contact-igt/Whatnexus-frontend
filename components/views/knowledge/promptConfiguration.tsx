@@ -3,9 +3,9 @@
 
 import { useRef, useState } from 'react';
 import { Upload, FileText, FileUp, Loader2, Trash2 } from 'lucide-react';
-import { GlassCard } from "@/components/ui/glass-card";
+import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
-import { ActionMenu } from "@/components/ui/action-menu";
+import { ActionMenu } from "@/components/ui/actionMenu";
 import { useGetPromptConfigurationQuery, useActivatePromptMutation, useCreatePromptMutation, useDeletedPromptList } from '@/hooks/usePromptQuery';
 import { toast } from "sonner";
 import { extractTextFromFile } from '@/utils/ocr';

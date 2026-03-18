@@ -1,23 +1,56 @@
 
 "use client";
 
-import { Globe, Bell, Sun, Moon } from 'lucide-react';
+import { Globe, Bell, Sun, Moon, Power, Flag, MessageSquare, Bell as BellIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';
-import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
+import { UserProfileDropdown } from '@/components/ui/userProfileDropdown';
 import { useDispatch } from 'react-redux';
 import { clearAuthData } from '@/redux/slices/auth/authSlice';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 
+/** Derive a messaging-tier label from the messaging_limit_tier field from Meta */
+function formatTierLabel(tier: string | undefined | null): string {
+    if (!tier) return 'TIER_1: 1K MSG LIMIT';
+    const upper = tier.toUpperCase();
+    if (upper.includes('UNLIMITED')) return 'TIER_UNLTD: UNLIMITED';
+    if (upper.includes('100K')) return 'TIER_3: 100K MSG LIMIT';
+    if (upper.includes('10K')) return 'TIER_2: 10K MSG LIMIT';
+    if (upper.includes('2000') || upper.includes('2K')) return 'TIER_1: 2K MSG LIMIT';
+    if (upper.includes('1K') || upper.includes('1000')) return 'TIER_1: 1K MSG LIMIT';
+    return `${tier.toUpperCase()} LIMIT`;
+}
+
+/** Map quality_rating to label + dot colour */
+function formatQuality(quality: string | undefined | null): { label: string; dot: string; text: string } {
+    const q = (quality || '').toUpperCase();
+    if (q === 'GREEN'  || q === 'HIGH')   return { label: 'GREEN',  dot: 'bg-emerald-500', text: 'text-emerald-600' };
+    if (q === 'YELLOW' || q === 'MEDIUM') return { label: 'YELLOW', dot: 'bg-amber-400',   text: 'text-amber-600'  };
+    if (q === 'RED'    || q === 'LOW')    return { label: 'RED',    dot: 'bg-rose-500',    text: 'text-rose-600'   };
+    return { label: 'GREEN', dot: 'bg-emerald-500', text: 'text-emerald-600' };
+}
+
+// ── WhatsApp-style circular icon badge ──────────────────────────────────────
+const IconBadge = ({ children, color }: { children: React.ReactNode; color: string }) => (
+    <span className={cn('flex items-center justify-center w-5 h-5 rounded-full shrink-0', color)}>
+        {children}
+    </span>
+);
+
+// ── Thin vertical separator ──────────────────────────────────────────────────
+const Sep = ({ isDarkMode }: { isDarkMode: boolean }) => (
+    <div className={cn('h-4 w-px shrink-0', isDarkMode ? 'bg-white/10' : 'bg-slate-300/60')} />
+);
 
 export const Header = () => {
-    const { user } = useAuth();
+    const { user, whatsappApiDetails } = useAuth();
     const { setTheme, isDarkMode } = useTheme();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const dispatch = useDispatch();
     const router = useRouter();
+
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
     };
@@ -26,75 +59,193 @@ export const Header = () => {
         router.replace('/login');
     };
 
+    // ── WABA info from Redux (populated by useGetWhatsappConfigQuery) ──────────
+    const wabaNumber = whatsappApiDetails?.whatsapp_number ?? whatsappApiDetails?.wabaNumber ?? null;
+    const wabaStatus = whatsappApiDetails?.status ?? null;
+    const isLive     = wabaStatus === 'active';
+    const quality    = formatQuality(whatsappApiDetails?.quality_rating ?? whatsappApiDetails?.quality);
+    const tierLabel  = formatTierLabel(whatsappApiDetails?.messaging_limit_tier ?? whatsappApiDetails?.tier);
+
+    // ── Shared text styles ───────────────────────────────────────────────────
+    const labelCls = cn('text-[10px] font-semibold', isDarkMode ? 'text-white/40' : 'text-slate-400');
+    const valueCls = cn('text-[10px] font-bold',     isDarkMode ? 'text-white/80' : 'text-slate-700');
+
     return (
-        <header className={cn("h-20 shrink-0 flex items-center justify-between px-10 transition-all duration-700 border-b", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
-            <div className="flex items-center space-x-8">
+        <header className={cn(
+            "h-14 shrink-0 flex items-center justify-between px-6 transition-all duration-700 border-b",
+            isDarkMode ? 'border-white/5 bg-[#0D0D0F]' : 'border-slate-200 bg-white'
+        )}>
+
+            {/* ── LEFT: Logo ──────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-4 shrink-0">
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-3">
-                        <span className={cn("text-[20px] font-black tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                    <div className="flex items-center gap-2">
+                        <span className={cn("text-[18px] font-black tracking-tighter leading-none", isDarkMode ? 'text-white' : 'text-slate-900')}>
                             WhatsNexus<span className="text-emerald-500">.</span>
                         </span>
-                        <div className={cn("px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border",
+                        <div className={cn("px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wider border",
                             isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200')}>
                             Beta
                         </div>
                     </div>
-                    <span className={cn("text-[8px] font-bold tracking-[0.15em] uppercase opacity-50 whitespace-nowrap",
+                    <span className={cn("text-[7px] font-bold tracking-[0.12em] uppercase opacity-40 mt-0.5 whitespace-nowrap",
                         isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-                        Powered by Invictus Global Tech
+                        Powered by Kingpin Ventures
                     </span>
                 </div>
+
+                {/* Vertical divider */}
                 <div className={cn("h-8 w-px", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
-                <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2.5">
-                        <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Receptionist: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>Active</span></span>
+
+                {/* ── WABA info pills — WhatsApp-bar style ────────────────────── */}
+                <div className="flex items-center gap-3">
+
+                    {/* WABA Number */}
+                    <div className="flex items-center gap-1.5">
+                        <IconBadge color="bg-emerald-500">
+                            {/* WhatsApp-like phone/device icon */}
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12a19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 3.04 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/>
+                            </svg>
+                        </IconBadge>
+                        <span className={labelCls}>WABA Number:</span>
+                        <span className={valueCls}>{wabaNumber ?? '—'}</span>
                     </div>
-                    <div className="flex items-center space-x-2.5">
-                        <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                        <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Region: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>GLOBAL_X</span></span>
+
+                    <Sep isDarkMode={isDarkMode} />
+
+                    {/* Status */}
+                    <div className="flex items-center gap-1.5">
+                        <IconBadge color={isLive ? 'bg-emerald-500' : 'bg-slate-400'}>
+                            <Power size={10} color="white" strokeWidth={2.5} />
+                        </IconBadge>
+                        <span className={labelCls}>Status:</span>
+                        <span className={cn('text-[10px] font-bold flex items-center gap-1',
+                            isLive
+                                ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                                : isDarkMode ? 'text-white/40'   : 'text-slate-500'
+                        )}>
+                            {isLive && (
+                                <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                                </span>
+                            )}
+                            {wabaNumber
+                                ? (isLive ? 'Live' : wabaStatus ? wabaStatus.charAt(0).toUpperCase() + wabaStatus.slice(1) : 'Inactive')
+                                : '—'
+                            }
+                        </span>
+                    </div>
+
+                    <Sep isDarkMode={isDarkMode} />
+
+                    {/* Quality */}
+                    <div className="flex items-center gap-1.5">
+                        <IconBadge color="bg-emerald-500">
+                            <Flag size={10} color="white" strokeWidth={2.5} />
+                        </IconBadge>
+                        <span className={labelCls}>Quality:</span>
+                        <span className={cn('text-[10px] font-bold flex items-center gap-1',
+                            wabaNumber
+                                ? isDarkMode
+                                    ? quality.dot === 'bg-emerald-500' ? 'text-emerald-400' : quality.dot === 'bg-amber-400' ? 'text-amber-400' : 'text-rose-400'
+                                    : quality.text
+                                : isDarkMode ? 'text-white/40' : 'text-slate-400'
+                        )}>
+                            {wabaNumber && (
+                                <span className={cn('inline-block w-1.5 h-1.5 rounded-full', quality.dot)} />
+                            )}
+                            {wabaNumber ? quality.label : '—'}
+                        </span>
+                    </div>
+
+                    <Sep isDarkMode={isDarkMode} />
+
+                    {/* Region */}
+                    <div className="flex items-center gap-1.5 transition-all hover:scale-105">
+                        <IconBadge color="bg-emerald-500">
+                            <Globe size={10} color="white" strokeWidth={2.5} />
+                        </IconBadge>
+                        <span className={labelCls}>Region:</span>
+                        <span className={valueCls}>{whatsappApiDetails?.region || 'Global'}</span>
+                    </div>
+
+                    <Sep isDarkMode={isDarkMode} />
+
+                    {/* Messaging Tier */}
+                    <div className="flex items-center gap-1.5 transition-all hover:scale-105">
+                        <IconBadge color="bg-emerald-500">
+                            <MessageSquare size={10} color="white" strokeWidth={2.5} />
+                        </IconBadge>
+                        <span className={cn('text-[10px] font-bold',
+                            wabaNumber
+                                ? isDarkMode ? 'text-white/70' : 'text-slate-700'
+                                : isDarkMode ? 'text-white/40' : 'text-slate-400'
+                        )}>
+                            {wabaNumber ? tierLabel : '—'}
+                        </span>
                     </div>
                 </div>
             </div>
-            <div className="flex items-center space-x-10">
-                <div className={cn("flex items-center space-x-4 group cursor-pointer transition-all", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                    <Globe size={18} className="text-emerald-500 group-hover:rotate-180 transition-transform duration-1000" />
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Strategic Sync</span>
-                        <span className={cn("text-[11px] font-black uppercase tracking-widest", isDarkMode ? 'text-white' : 'text-slate-900')}>Optimized Hub</span>
-                    </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <button className={cn("p-3.5 rounded-2xl transition-all relative border", isDarkMode ? 'border-white/5 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-50 text-slate-400')}>
-                        <Bell size={20} />
-                        <div className="absolute top-3.5 right-3.5 w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
-                    </button>
-                    <button onClick={toggleTheme} className={cn("p-3 rounded-2xl mt-0 transition-all border group relative", isDarkMode ? 'border-white/5 hover:bg-white/5 text-emerald-400' : 'border-slate-200 hover:bg-slate-100 text-slate-500')}>
-                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                    </button>
-                    <div className="relative">
-                        <div
-                            onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            className={cn(
-                                "rounded-2xl flex items-center font-black text-xs border cursor-pointer transition-all duration-300 overflow-hidden",
-                                "w-12 h-12 justify-center hover:rotate-6",
-                                isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-900 text-white border-slate-700'
-                            )}
-                        >
 
-                            <div className={cn("shrink-0 flex items-center justify-center")}>
-                                {user?.username?.split("")[0].toUpperCase()}
-                            </div>
+            {/* ── RIGHT: Bell + Theme + Org name + Avatar ─────────────────────── */}
+            <div className="flex items-center gap-3">
+
+                {/* Bell */}
+                <button className={cn(
+                    "p-2.5 rounded-xl transition-all relative",
+                    isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
+                )}>
+                    <Bell size={18} />
+                    <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
+                </button>
+
+                {/* Theme toggle */}
+                <button
+                    onClick={toggleTheme}
+                    className={cn(
+                        "p-2.5 rounded-xl transition-all",
+                        isDarkMode ? 'hover:bg-white/5 text-white/50' : 'hover:bg-slate-100 text-slate-500'
+                    )}
+                >
+                    {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+
+                {/* Org / user name + avatar — matching reference "SIVAKUMAR LAW ASSOCIATES" style */}
+                <div className="relative">
+                    <div
+                        onClick={() => setIsProfileOpen(!isProfileOpen)}
+                        className="flex items-center gap-2.5 cursor-pointer group"
+                    >
+                        {/* Org / user name text */}
+                        <span className={cn(
+                            "text-[11px] font-bold uppercase tracking-wider transition-colors",
+                            isDarkMode ? 'text-white/70 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'
+                        )}>
+                            {user?.name || user?.organization_name || user?.username || 'Account'}
+                        </span>
+
+                        {/* Avatar circle */}
+                        <div className={cn(
+                            "w-9 h-9 rounded-full flex items-center justify-center font-black text-[12px] border-2 transition-all duration-300 shrink-0",
+                            isDarkMode
+                                ? 'bg-emerald-600 border-emerald-500/40 text-white'
+                                : 'bg-slate-900 border-slate-700 text-white',
+                            'group-hover:scale-105'
+                        )}>
+                            {user?.username?.split('')[0]?.toUpperCase() ?? '?'}
                         </div>
-                        {isProfileOpen && (
-                            <UserProfileDropdown
-                                isDarkMode={isDarkMode}
-                                user={user}
-                                onClose={() => setIsProfileOpen(false)}
-                                onLogout={handleLogout}
-                            />
-                        )}
                     </div>
+
+                    {isProfileOpen && (
+                        <UserProfileDropdown
+                            isDarkMode={isDarkMode}
+                            user={user}
+                            onClose={() => setIsProfileOpen(false)}
+                            onLogout={handleLogout}
+                        />
+                    )}
                 </div>
             </div>
         </header>
