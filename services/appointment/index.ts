@@ -12,6 +12,7 @@ export interface CreateAppointmentDto {
     notes?: string;
     age?: number;
     email?: string;
+    type?: string;
 }
 
 export interface UpdateAppointmentStatusDto {
@@ -28,6 +29,7 @@ export interface UpdateAppointmentDto {
     status?: string;
     notes?: string;
     age?: number;
+    type?: string;
 }
 
 export class AppointmentApiData {

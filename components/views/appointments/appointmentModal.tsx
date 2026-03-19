@@ -37,6 +37,7 @@ export const AppointmentModal = ({
         status: 'Pending' as string,
         notes: '',
         doctor_id: '',
+        type: 'General',
     });
 
     const createMutation = useCreateAppointmentMutation();
@@ -45,6 +46,7 @@ export const AppointmentModal = ({
     useEffect(() => {
         if (appointment && (mode === 'view' || mode === 'edit')) {
             setFormData({
+<<<<<<< HEAD
                 patient_name: appointment?.patient_name || '',
                 country_code: appointment?.country_code || (appointment as any).country_code || '+91',
                 contact_number: appointment?.contact_number || (appointment as any).contact_number || '',
@@ -52,8 +54,18 @@ export const AppointmentModal = ({
                 appointment_date: appointment?.appointment_date || '',
                 appointment_time: appointment?.appointment_time || '',
                 status: appointment?.status || 'Pending',
+=======
+                patient_name: appointment.patient_name || appointment.patientName || '',
+                country_code: appointment.country_code || '+91',
+                contact_number: appointment.contact_number || appointment.contact || '',
+                age: appointment.age ? String(appointment.age) : '',
+                appointment_date: appointment.appointment_date || '',
+                appointment_time: appointment.appointment_time || appointment.time || '',
+                status: appointment.status || 'Pending',
+>>>>>>> a0b6ad2 (frontend ui)
                 notes: appointment.notes || '',
-                doctor_id: (appointment as any).doctor_id || '',
+                doctor_id: appointment.doctor_id || appointment.doctorId || '',
+                type: appointment.type || 'General',
             });
         } else if (mode === 'create') {
             setFormData({
@@ -66,6 +78,7 @@ export const AppointmentModal = ({
                 status: 'Pending',
                 notes: '',
                 doctor_id: '',
+                type: 'General',
             });
         }
     }, [appointment, mode, isOpen]);
@@ -107,10 +120,15 @@ export const AppointmentModal = ({
                 doctor_id: formData.doctor_id || undefined,
                 notes: formData.notes || undefined,
                 status: formData.status,
+                type: formData.type,
             }, { onSuccess: () => onSave() });
         } else if (mode === 'edit' && appointment) {
             updateMutation.mutate({
+<<<<<<< HEAD
                 appointmentId: appointment.appointment_id || appointment.id,
+=======
+                appointmentId: appointment.appointment_id || (appointment as any).id,
+>>>>>>> a0b6ad2 (frontend ui)
                 data: {
                     patient_name: formData.patient_name,
                     country_code: formData.country_code,
@@ -121,10 +139,10 @@ export const AppointmentModal = ({
                     doctor_id: formData.doctor_id || undefined,
                     notes: formData.notes || undefined,
                     status: formData.status,
+                    type: formData.type,
                 },
             }, { onSuccess: () => onSave() });
         }
-        // ...existing code...
     };
 
     const isSaving = createMutation.isPending || updateMutation.isPending;
