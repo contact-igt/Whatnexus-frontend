@@ -42,7 +42,7 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                 const parsed = JSON.parse(stored);
                 const appointmentsWithDates = parsed.map((apt: any) => ({
                     ...apt,
-                    date: apt.date ? new Date(apt.date) : new Date(apt.appointment_date)
+                    date: new Date(apt.date)
                 }));
                 setAppointments(appointmentsWithDates);
             }
@@ -62,15 +62,18 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
 
     // Convert appointments to calendar events
     const events = useMemo(() => {
-        return appointments.map(apt => ({
-            id: apt.id,
-            title: apt.doctorName
-                ? `${apt.doctorName} - ${apt.patient_name}`
-                : apt.patient_name,
-            start: apt.date || new Date(),
-            end: new Date((apt.date?.getTime() || Date.now()) + 30 * 60000), // 30 minutes
-            resource: apt,
-        }));
+        return appointments.map(apt => {
+            const startDate = apt.appointment_date ? new Date(apt.appointment_date + 'T' + (apt.appointment_time || '00:00')) : new Date();
+            return {
+                id: apt.id,
+                title: apt.doctor_name
+                    ? `${apt.doctor_name} - ${apt.patient_name}`
+                    : apt.patient_name,
+                start: startDate,
+                end: new Date(startDate.getTime() + 30 * 60000), // 30 minutes
+                resource: apt,
+            };
+        });
     }, [appointments]);
 
     const handleSelectEvent = useCallback((event: any) => {
@@ -90,17 +93,17 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
         const appointment = event.resource as Appointment;
         let backgroundColor = '#10b981'; // emerald-500
 
-        switch (appointment.status.toLowerCase()) {
-            case 'confirmed':
+        switch (appointment.status) {
+            case 'Confirmed':
                 backgroundColor = '#10b981'; // emerald-500
                 break;
-            case 'pending':
+            case 'Pending':
                 backgroundColor = '#f59e0b'; // amber-500
                 break;
-            case 'cancelled':
+            case 'Cancelled':
                 backgroundColor = '#ef4444'; // red-500
                 break;
-            case 'completed':
+            case 'Completed':
                 backgroundColor = '#3b82f6'; // blue-500
                 break;
         }

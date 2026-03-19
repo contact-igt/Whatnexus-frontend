@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Send, FileUp, ArrowLeft, Upload } from "lucide-react";
+import { Send, FileUp, ArrowLeft, Upload, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { TemplateSelectionModal } from "@/components/ui/templateSelectionModal";
 import { CSVPreviewModal, CSVRow } from "@/components/ui/csvPreviewModal";
 import { ProcessedTemplate } from "@/components/ui/templateSelectionModal";
+import { _axios } from '@/helper/axios';
 
 type TabType = 'single' | 'group' | 'csv';
 
@@ -55,6 +56,9 @@ export const ComposeMessageView = () => {
     const [csvFile, setCsvFile] = useState<File | null>(null);
     const [csvCountryCode, setCsvCountryCode] = useState("+91");
     const [csvMobileField, setCsvMobileField] = useState("");
+    const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
+    const [isSending, setIsSending] = useState(false);
+    const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
 
     const countryCodeOptions = [
         { value: "+91", label: "+91 (India)" },
@@ -83,7 +87,7 @@ export const ComposeMessageView = () => {
         setCsvMobileField("");
     };
 
-    const handleSendNow = () => {
+    const handleSendNow = async () => {
         const data = {
             name: campaignName,
             tabType: activeTab,
@@ -99,9 +103,43 @@ export const ComposeMessageView = () => {
             csvMobileField: activeTab === 'csv' ? csvMobileField : undefined,
         };
 
-        console.log('Campaign Data:', data);
-        // Handle the campaign launch logic here
-        // You can add API calls or navigation as needed
+
+        setIsSending(true);
+        setSendResult(null);
+
+        try {
+            // Authentication template in single mode — use the dedicated OTP send endpoint
+            if (activeTab === 'single' && selectedTemplate?.category === 'authentication') {
+                const phone = `${countryCode.replace(/\+/, '')}${mobileNumber}`;
+                await _axios('post', '/whatsapp/whatsapp-otp/send', { phone, template_id: selectedTemplate.id });
+                setSendResult({ success: true, message: `OTP sent successfully to +${phone}` });
+                return;
+            }
+
+            // Non-auth or group/CSV — create a campaign
+
+            const payload: any = {
+                campaign_name: data.name,
+                campaign_type: scheduleType === 'now' ? 'immediate' : 'scheduled',
+                template_id: selectedTemplate?.id || '',
+                audience_type: activeTab === 'single' ? 'manual' : activeTab,
+                scheduled_at: scheduleType === 'scheduled' ? `${scheduledDate}T${scheduledTime}` : null,
+            };
+
+            if (activeTab === 'single') {
+                const phone = `${countryCode.replace(/\+/, '')}${mobileNumber}`;
+                payload.audience_data = [{ mobile_number: phone, dynamic_variables: [] }];
+            } else if (activeTab === 'group') {
+                payload.audience_data = contactGroup;
+            }
+
+            await _axios('post', '/whatsapp/whatsapp-campaign', payload);
+            setSendResult({ success: true, message: 'Campaign created successfully!' });
+        } catch (err: any) {
+            setSendResult({ success: false, message: err.message || 'An error occurred' });
+        } finally {
+            setIsSending(false);
+        }
     };
 
     const isFormValid = () => {
@@ -167,6 +205,7 @@ export const ComposeMessageView = () => {
     };
 
     const handleTemplateSelect = (template: ProcessedTemplate) => {
+        setSelectedTemplate(template);
         setMessageContent(template.description);
     };
 
@@ -499,38 +538,50 @@ export const ComposeMessageView = () => {
 
                 {/* Footer */}
                 <div className={cn(
-                    "p-6 border-t flex justify-end gap-3",
+                    "p-6 border-t space-y-3",
                     isDarkMode ? 'border-white/5' : 'border-slate-100'
                 )}>
-                    <button
-                        onClick={handleClear}
-                        className={cn(
-                            "px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200",
-                            isDarkMode
-                                ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
-                                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                        )}
-                    >
-                        Clear
-                    </button>
-                    <button
-                        onClick={handleSendNow}
-                        disabled={!isFormValid()}
-                        className={cn(
-                            "px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg flex items-center gap-2",
-                            !isFormValid()
-                                ? 'bg-slate-600 text-white/50 cursor-not-allowed'
-                                : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-105 active:scale-95 shadow-emerald-500/20'
-                        )}
-                    >
-                        <Send size={16} />
-                        Send Now
-                        <span className={cn(
-                            "ml-1 text-xs",
-                            !isFormValid() ? 'text-white/30' : 'text-white/70'
-                        )}>▼</span>
-                    </button>
+                    {/* Send Result Banner */}
+                    {sendResult && (
+                        <div className={cn(
+                            "flex items-center gap-3 p-3 rounded-xl border text-sm font-semibold",
+                            sendResult.success
+                                ? isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : isDarkMode ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-600'
+                        )}>
+                            {sendResult.success ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                            {sendResult.message}
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={handleClear}
+                            className={cn(
+                                "px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200",
+                                isDarkMode
+                                    ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                                    : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                            )}
+                        >
+                            Clear
+                        </button>
+                        <button
+                            onClick={handleSendNow}
+                            disabled={!isFormValid() || isSending}
+                            className={cn(
+                                "px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg flex items-center gap-2",
+                                !isFormValid() || isSending
+                                    ? 'bg-slate-600 text-white/50 cursor-not-allowed'
+                                    : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-105 active:scale-95 shadow-emerald-500/20'
+                            )}
+                        >
+                            {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                            {isSending ? 'Sending...' : selectedTemplate?.category === 'authentication' ? 'Send OTP' : 'Send Now'}
+                        </button>
+                    </div>
                 </div>
+
             </div>
 
             {/* Template Selection Modal */}

@@ -40,6 +40,7 @@ export interface CreateCampaignRequest {
         name: string;
         address: string;
     } | null;
+    card_media_urls?: Record<number, string> | null;
 }
 
 export interface CampaignListParams {

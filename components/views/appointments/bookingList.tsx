@@ -13,19 +13,18 @@ interface BookingListProps {
 
 export interface Appointment {
     id: string;
-    appointment_id?: string;
     patient_name: string;
     contact_number: string;
     country_code?: string;
     age?: number;
     appointment_date: string;
     appointment_time: string;
-    status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed' | 'Noshow' | string;
+    status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed';
     notes?: string;
     type?: string;
     date?: Date;
     doctor_id?: string;
-    doctorName?: string;
+    doctor_name?: string;
     token_number?: number;
   
 }
@@ -56,42 +55,39 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                 const mockAppointments: Appointment[] = [
                     {
                         id: '1',
-                        patient_name: 'John Doe',
-                        contact_number: '+91 98765 43210',
-                        age: 30,
-                        appointment_date: '2026-01-15',
+                        patient_name: 'Sarah Johnson',
+                        contact_number: '+1 234-567-8900',
+                        age: 34,
+                        appointment_date: '2024-03-20',
                         appointment_time: '10:00 AM',
                         status: 'Confirmed',
                         notes: 'Regular eye checkup - Patient experiencing mild blurred vision',
-                        doctor_id: '1',
-                        doctorName: 'Dr. Sarah Johnson',
-                        date: new Date('2026-01-15T10:00:00')
+                        doctor_id: 'dr_001',
+                        doctor_name: 'Dr. Emily Chen'
                     },
                     {
                         id: '2',
-                        patient_name: 'Jane Smith',
-                        contact_number: '+91 98765 43211',
-                        appointment_date: '2026-01-15',
-                        appointment_time: '02:30 PM',
-                        type: 'Follow-up',
-                        status: 'pending',
+                        patient_name: 'Michael Brown',
+                        contact_number: '+1 234-567-8901',
+                        age: 45,
+                        appointment_date: '2024-03-20',
+                        appointment_time: '11:30 AM',
+                        status: 'Pending',
                         notes: 'Post-surgery follow-up appointment to check healing progress',
-                        doctor_id: '2',
-                        doctorName: 'Dr. Michael Chen',
-                        date: new Date(2026, 0, 15, 14, 30)
+                        doctor_id: 'dr_002',
+                        doctor_name: 'Dr. James Wilson'
                     },
                     {
                         id: '3',
-                        patient_name: 'Robert Johnson',
-                        contact_number: '+91 98765 43212',
-                        appointment_date: '2026-01-12',
-                        appointment_time: '11:00 AM',
-                        type: 'Surgery',
-                        status: 'completed',
+                        patient_name: 'Emma Davis',
+                        contact_number: '+1 234-567-8902',
+                        age: 28,
+                        appointment_date: '2024-03-20',
+                        appointment_time: '02:00 PM',
+                        status: 'Completed',
                         notes: 'Cataract surgery completed successfully',
-                        doctor_id: '1',
-                        doctorName: 'Dr. Sarah Johnson',
-                        date: new Date(2026, 0, 12, 11, 0)
+                        doctor_id: 'dr_001',
+                        doctor_name: 'Dr. Emily Chen'
                     }
                 ];
                 setAppointments(mockAppointments);
@@ -109,13 +105,14 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         if (searchQuery.trim() === '') {
             setFilteredAppointments(appointments);
         } else {
-            const filtered = appointments.filter(apt =>
-                apt.patient_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                apt.contact_number.includes(searchQuery) ||
-                (apt.type?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-                (apt.doctorName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-                (apt.notes?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-            );
+            const filtered = appointments.filter(appointment => {
+                const matchesSearch =
+                    appointment.patient_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    appointment.contact_number.includes(searchQuery) ||
+                    (appointment.doctor_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                    (appointment.notes?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+                return matchesSearch;
+            });
             setFilteredAppointments(filtered);
         }
     }, [searchQuery, appointments]);
@@ -148,16 +145,25 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
 
     const handleSaveAppointment = () => {
         setIsModalOpen(false);
+        // Refetch appointments if using API, or reload from storage
+        const stored = localStorage.getItem('appointments');
+        if (stored) {
+            setAppointments(JSON.parse(stored));
+        }
     };
 
-    const getStatusColor = (status: string) => {
-        const s = status.toLowerCase();
-        switch (s) {
-            case 'confirmed': return 'text-emerald-500 bg-emerald-500/10';
-            case 'pending': return 'text-amber-500 bg-amber-500/10';
-            case 'cancelled': return 'text-red-500 bg-red-500/10';
-            case 'completed': return 'text-blue-500 bg-blue-500/10';
-            default: return 'text-slate-500 bg-slate-500/10';
+    const getStatusColor = (status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed') => {
+        switch (status) {
+            case 'Confirmed':
+                return isDarkMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'Pending':
+                return isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'Cancelled':
+                return isDarkMode ? 'bg-red-500/20 text-red-400 border-red-500/20' : 'bg-red-50 text-red-700 border-red-200';
+            case 'Completed':
+                return isDarkMode ? 'bg-blue-500/20 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-700 border-blue-200';
+            default:
+                return isDarkMode ? 'bg-slate-500/20 text-slate-400 border-slate-500/20' : 'bg-slate-50 text-slate-700 border-slate-200';
         }
     };
 
@@ -234,17 +240,17 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                                 {appointment.patient_name}
                                             </h3>
                                             <span className={cn("px-3 py-1 rounded-full text-xs font-medium capitalize", getStatusColor(appointment.status))}>
-                                                {appointment.status}
+                                                {appointment.status.toLowerCase()}
                                             </span>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {appointment.doctorName && (
-                                            <div className="flex items-center space-x-2">
-                                                <UserCircle className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-600")} size={16} />
-                                                <span className={cn("text-sm font-medium", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>
-                                                    {appointment.doctorName}
+                                        {appointment.doctor_name && (
+                                            <div className="flex items-center gap-2">
+                                                <User size={14} className={cn(isDarkMode ? 'text-white/40' : 'text-slate-400')} />
+                                                <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>
+                                                    {appointment.doctor_name}
                                                 </span>
                                             </div>
                                         )}
@@ -257,7 +263,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                         <div className="flex items-center space-x-2">
                                             <CalendarIcon className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={16} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {appointment.date ? format(appointment.date, 'MMM dd, yyyy') : appointment.appointment_date}
+                                                {format(new Date(appointment.appointment_date), 'MMM dd, yyyy')}
                                             </span>
                                         </div>
                                         <div className="flex items-center space-x-2">
@@ -266,19 +272,23 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                                 {appointment.appointment_time}
                                             </span>
                                         </div>
+                                        {/* The original code had 'type' here, but the new mock data and interface don't have it.
+                                            Keeping it commented out or removing it for now to match the new data structure.
                                         <div className="flex items-center space-x-2">
                                             <FileText className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={16} />
                                             <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {appointment.type || 'Appointment'}
+                                                {appointment.type}
                                             </span>
                                         </div>
+                                        */}
                                     </div>
 
                                     {appointment.notes && (
-                                        <div className={cn(
-                                            "mt-3 pt-3 border-t",
-                                            isDarkMode ? "border-white/10" : "border-slate-200"
-                                        )}>
+                                        <div
+                                            className={cn(
+                                                "mt-3 pt-3 border-t",
+                                                isDarkMode ? "border-white/10" : "border-slate-200"
+                                            )}>
                                             <p className={cn("text-sm", isDarkMode ? "text-white/70" : "text-slate-600")}>
                                                 <span className="font-semibold">Summary: </span>
                                                 {appointment.notes.length > 80 ? appointment.notes.substring(0, 80) + '...' : appointment.notes}
@@ -336,7 +346,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
             <AppointmentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSave={handleSaveAppointment as any}
+                onSave={handleSaveAppointment}
                 appointment={selectedAppointment}
                 mode={modalMode}
                 isDarkMode={isDarkMode}

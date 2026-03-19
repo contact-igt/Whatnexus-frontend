@@ -17,6 +17,9 @@ import { TemplateSelectionModal, ProcessedTemplate } from './templateSelectionMo
 import { CSVPreviewModal } from './csvPreviewModal';
 import { useGetAllGroupsQuery } from '@/hooks/useContactGroupQuery';
 import type { ContactGroup } from "@/types/contactGroup";
+import { WhatsAppPreviewPanel } from '@/components/views/template/whatsappPreviewPanel';
+import { CarouselCard } from '@/components/views/template/templateTypes';
+import { FileUpload } from '@/components/ui/fileUpload';
 
 interface CreateCampaignModalProps {
     isOpen: boolean;
@@ -41,6 +44,8 @@ interface FormData {
         name: string;
         address: string;
     } | null;
+    header_media_url?: string | null;
+    card_media_urls?: Record<number, string> | null;
 }
 
 export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampaignModalProps) => {
@@ -63,8 +68,11 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             longitude: '',
             name: '',
             address: ''
-        }
+        },
+        card_media_urls: {}
     });
+
+    const [cardUploading, setCardUploading] = useState<Record<number, boolean>>({});
 
     // CSV Upload State
     const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -80,25 +88,17 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [manualPhoneInput, setManualPhoneInput] = useState('');
     const [manualInputError, setManualInputError] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [headerFileName, setHeaderFileName] = useState<string | null>(null);
+    const [cardFileNames, setCardFileNames] = useState<Record<number, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
+    const handleHeaderFileUpload = async (file: File) => {
         if (!file || !selectedTemplate) return;
 
         const headerFormat = selectedTemplate.type; // image, video, document
-        const fileType = file.type;
-
-        if (headerFormat === 'image' && !fileType.startsWith('image/')) {
-            setError('Please upload an image file');
-            return;
-        }
-        if (headerFormat === 'video' && !fileType.startsWith('video/')) {
-            setError('Please upload a video file');
-            return;
-        }
-
+        
         setIsUploading(true);
+        setHeaderFileName(file.name);
         setError(null);
 
         try {
@@ -108,6 +108,27 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             setError(err.message || 'Failed to upload media');
         } finally {
             setIsUploading(false);
+        }
+    };
+
+    const handleCardMediaUpload = async (cardIndex: number, file: File, type: 'image' | 'video') => {
+        setCardUploading(prev => ({ ...prev, [cardIndex]: true }));
+        setCardFileNames(prev => ({ ...prev, [cardIndex]: file.name }));
+        setError(null);
+
+        try {
+            const result = await campaignService.uploadMedia(file, type as any);
+            setFormData(prev => ({
+                ...prev,
+                card_media_urls: {
+                    ...(prev.card_media_urls || {}),
+                    [cardIndex]: result.url
+                }
+            }));
+        } catch (err: any) {
+            setError(err.message || `Failed to upload media for Card ${cardIndex + 1}`);
+        } finally {
+            setCardUploading(prev => ({ ...prev, [cardIndex]: false }));
         }
     };
 
@@ -170,15 +191,18 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     return false;
                 }
 
-                // Strictly validate all template variables are filled
-                if (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) {
-                    const missingVars = selectedTemplate.variableArray.filter(
-                        (v: any) => !variableValues[v.variable_key]?.trim()
-                    );
+                // Skip variable check for authentication templates — OTP is auto-generated
+                if (selectedTemplate?.category !== 'authentication') {
+                    // Strictly validate all template variables are filled
+                    if (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) {
+                        const missingVars = selectedTemplate.variableArray.filter(
+                            (v: any) => !variableValues[v.variable_key]?.trim()
+                        );
 
-                    if (missingVars.length > 0) {
-                        setError(`Please fill all template variables: ${missingVars.map(v => '{{' + v.variable_key + '}}').join(', ')}`);
-                        return false;
+                        if (missingVars.length > 0) {
+                            setError(`Please fill all template variables: ${missingVars.map(v => '{{' + v.variable_key + '}}').join(', ')}`);
+                            return false;
+                        }
                     }
                 }
 
@@ -194,13 +218,20 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                         setError('Please fill in all the location details (Latitude, Longitude, Name, and Address).');
                         return false;
                     }
-                    if (Number(formData.location_params.latitude) < -90 || Number(formData.location_params.latitude) > 90) {
-                        setError('Latitude must be between -90 and 90.');
-                        return false;
-                    }
-                    if (Number(formData.location_params.longitude) < -180 || Number(formData.location_params.longitude) > 180) {
-                        setError('Longitude must be between -180 and 180.');
-                        return false;
+                }
+
+                // Validate Carousel Media
+                if (selectedTemplate?.type === 'carousel') {
+                    const cards = selectedTemplate.carouselCards || [];
+                    for (let i = 0; i < cards.length; i++) {
+                        const card = cards[i];
+                        const header = card.components?.find((c: any) => c.type === 'HEADER');
+                        if (header && (header.format === 'IMAGE' || header.format === 'VIDEO')) {
+                            if (!formData.card_media_urls?.[i]) {
+                                setError(`Please upload media for Card ${i + 1}`);
+                                return false;
+                            }
+                        }
                     }
                 }
                 return true;
@@ -354,8 +385,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 audience_data: audienceData,
                 scheduled_at: formData.scheduled_at,
                 variable_values: variableValues, // Kept for reference, though backend uses audience_data
-                header_media_url: (formData as any).header_media_url || null,
+                header_media_url: formData.header_media_url || null,
                 location_params: (selectedTemplate?.type as string) === 'location' ? formData.location_params : null,
+                card_media_urls: (selectedTemplate?.type as string) === 'carousel' ? formData.card_media_urls : null,
             };
 
             const response = await campaignService.createCampaign(request);
@@ -565,10 +597,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             {/* Preview Header */}
                                             {selectedTemplate.type !== 'text' && (
                                                 <div className="mb-2 w-full min-h-[128px] bg-black/10 rounded overflow-hidden flex items-center justify-center text-xs opacity-80 flex-col gap-2">
-                                                    {(formData as any).header_media_url ? (
+                                                    {formData.header_media_url ? (
                                                         selectedTemplate.type === 'image' ? (
                                                             <img 
-                                                                src={(formData as any).header_media_url} 
+                                                                src={formData.header_media_url} 
                                                                 alt="Header" 
                                                                 className="w-full h-full object-cover"
                                                                 onError={(e) => {
@@ -577,7 +609,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                             />
                                                         ) : selectedTemplate.type === 'video' ? (
                                                             <video 
-                                                                src={(formData as any).header_media_url} 
+                                                                src={formData.header_media_url} 
                                                                 className="w-full h-full object-cover"
                                                                 muted
                                                             />
@@ -636,8 +668,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 )}
 
-                                {/* Variable Inputs */}
-                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && (
+                                {/* Variable Inputs — hidden for Authentication templates (OTP auto-generated) */}
+                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication' && (
                                     <div className="mt-4 space-y-3">
                                         <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             Template Variables
@@ -671,6 +703,34 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 )}
 
+                                {/* Authentication OTP Info Banner */}
+                                {selectedTemplate?.category === 'authentication' && (
+                                    <div className={cn(
+                                        "mt-4 rounded-xl p-4 border flex gap-3 items-start",
+                                        isDarkMode ? 'bg-violet-500/10 border-violet-500/30' : 'bg-violet-50 border-violet-200'
+                                    )}>
+                                        <div className="text-2xl shrink-0">🔐</div>
+                                        <div className="space-y-1">
+                                            <p className={cn("text-sm font-bold", isDarkMode ? 'text-violet-300' : 'text-violet-800')}>
+                                                OTP Template — Auto-Generated Per Recipient
+                                            </p>
+                                            <p className={cn("text-xs leading-relaxed", isDarkMode ? 'text-violet-300/70' : 'text-violet-700')}>
+                                                A unique 6-digit OTP will be automatically generated for each recipient when the campaign runs.<br />
+                                                You do not need to fill in any variables — the system handles it.
+                                            </p>
+                                            <div className={cn("flex items-center gap-3 mt-2 p-2.5 rounded-lg", isDarkMode ? 'bg-white/5' : 'bg-white')}>
+                                                <span className={cn("text-xs font-mono font-bold px-2 py-1 rounded", isDarkMode ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700')}>
+                                                    {'{{1}}'} = ••••••
+                                                </span>
+                                                <span className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                                    OTP expires in 10 minutes after send
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+
                                 {/* Media Header Input */}
                                 {selectedTemplate && ['image', 'video', 'document'].includes(selectedTemplate.type) && (
                                     <div className="mt-4 space-y-3">
@@ -685,48 +745,23 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             )}
                                         </div>
                                         
-                                        <div className="flex flex-col gap-3">
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={(formData as any).header_media_url || ''}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, header_media_url: e.target.value }))}
-                                                    placeholder={`Paste ${selectedTemplate.type} URL here`}
-                                                    className={cn(
-                                                        "flex-1 px-4 py-3 rounded-xl border text-sm outline-none transition-all",
-                                                        isDarkMode
-                                                            ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
-                                                            : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
-                                                    )}
-                                                />
-                                                <input
-                                                    type="file"
-                                                    ref={fileInputRef}
-                                                    onChange={handleFileUpload}
-                                                    className="hidden"
-                                                    accept={selectedTemplate.type === 'image' ? 'image/*' : selectedTemplate.type === 'video' ? 'video/*' : '*/*'}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    disabled={isUploading}
-                                                    className={cn(
-                                                        "px-4 py-3 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all min-w-[120px] justify-center",
-                                                        isDarkMode
-                                                            ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
-                                                            : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100",
-                                                        isUploading && "opacity-50 cursor-not-allowed"
-                                                    )}
-                                                >
-                                                    <Upload size={16} />
-                                                    {isUploading ? 'Uploading...' : 'Upload'}
-                                                </button>
-                                            </div>
-                                            <p className={cn("text-xs opacity-60", isDarkMode ? 'text-white' : 'text-slate-500')}>
-                                                {isUploading 
-                                                    ? 'Your file is being uploaded to our secure servers...' 
-                                                    : `Providing a direct link or upload your ${selectedTemplate.type} file (max 20MB)`
-                                                }
+                                        <div className="w-full md:w-2/5">
+                                            <FileUpload
+                                                isDarkMode={isDarkMode}
+                                                accept={selectedTemplate.type === 'image' ? 'image/*' : selectedTemplate.type === 'video' ? 'video/*' : '*/*'}
+                                                uploadedUrl={formData.header_media_url || ''}
+                                                onFileSelected={handleHeaderFileUpload}
+                                                onRemove={() => {
+                                                    setFormData(prev => ({ ...prev, header_media_url: '' }));
+                                                    setHeaderFileName(null);
+                                                }}
+                                                uploadType={selectedTemplate.type as any}
+                                                isUploading={isUploading}
+                                                fileName={headerFileName}
+                                                compact
+                                            />
+                                            <p className={cn("text-[10px] mt-2 opacity-60", isDarkMode ? 'text-white' : 'text-slate-500')}>
+                                                Upload your {selectedTemplate.type} file (max 20MB) to be sent as the message header
                                             </p>
                                         </div>
                                     </div>
@@ -806,6 +841,72 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                         : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
                                                 )}
                                             />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Carousel Media Headers Input */}
+                                {(selectedTemplate?.type as string) === 'carousel' && (
+                                    <div className="mt-4 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                Carousel Card Media *
+                                            </label>
+                                        </div>
+                                        <p className={cn("text-xs mb-4", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
+                                            Upload media for each card in the carousel.
+                                        </p>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {selectedTemplate?.carouselCards?.map((card: any, idx: number) => {
+                                                const headerComp = card.components?.find((c: any) => c.type === 'HEADER');
+                                                const isMediaHeader = headerComp && (headerComp.format === 'IMAGE' || headerComp.format === 'VIDEO');
+                                                
+                                                if (!isMediaHeader) return null;
+                                                
+                                                const cardMediaUrl = formData.card_media_urls?.[idx];
+                                                const isCardUploading = !!cardUploading[idx];
+                                                
+                                                return (
+                                                    <div key={idx} className={cn(
+                                                        "p-4 rounded-xl border flex flex-col gap-3",
+                                                        isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
+                                                    )}>
+                                                        <div className="flex items-center justify-between border-b border-dashed pb-2 mb-1" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                                                            <span className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                                                Card {idx + 1}
+                                                            </span>
+                                                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", 
+                                                                headerComp.format === 'IMAGE' ? "bg-blue-500/10 text-blue-500" : "bg-purple-500/10 text-purple-500"
+                                                            )}>
+                                                                {headerComp.format}
+                                                            </span>
+                                                        </div>
+                                                        
+                                                        <FileUpload
+                                                            isDarkMode={isDarkMode}
+                                                            accept={headerComp.format === 'IMAGE' ? 'image/*' : 'video/*'}
+                                                            uploadedUrl={cardMediaUrl || ''}
+                                                            onFileSelected={(file) => handleCardMediaUpload(idx, file, headerComp.format.toLowerCase() as any)}
+                                                            onRemove={() => {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    card_media_urls: { ...(prev.card_media_urls || {}), [idx]: '' }
+                                                                }));
+                                                                setCardFileNames(prev => {
+                                                                    const next = { ...prev };
+                                                                    delete next[idx];
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                            uploadType={headerComp.format.toLowerCase() as any}
+                                                            isUploading={isCardUploading}
+                                                            fileName={cardFileNames[idx]}
+                                                            compact
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -1053,53 +1154,95 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     )}
 
                     {/* Step 4: Review */}
-                    {
-                        currentStep === 4 && (
-                            <div className="space-y-6">
-                                <div className={cn(
-                                    "p-6 rounded-xl border",
-                                    isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
-                                )}>
-                                    <h3 className={cn("text-lg font-bold mb-4", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                        Campaign Summary
-                                    </h3>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Campaign Name:</span>
-                                            <span className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{formData.campaign_name}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Type:</span>
-                                            <span className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>{formData.campaign_type}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Template:</span>
-                                            <span className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedTemplate?.name || formData.template_id}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Recipients:</span>
-                                            <span className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                                {formData.recipient_source === 'csv'
-                                                    ? (formData.csv_data?.length || 0)
-                                                    : formData.recipient_source === 'manual'
-                                                        ? (formData.manual_recipients?.length || 0)
-                                                        : formData.recipient_source === 'group'
-                                                            ? (groups.find(g => g.group_id === formData.group_id)?.members?.length || groups.find(g => g.group_id === formData.group_id)?.total_contacts || 0)
-                                                            : 0
-                                                } contacts
-                                            </span>
-                                        </div>
+                    {currentStep === 4 && (
+                        <div className="space-y-6">
+                            <div className={cn(
+                                "p-6 rounded-xl border",
+                                isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                            )}>
+                                <h3 className={cn("text-lg font-bold mb-4", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                    Campaign Summary
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Campaign Name:</span>
+                                        <span className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{formData.campaign_name}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Type:</span>
+                                        <span className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>{formData.campaign_type}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Template:</span>
+                                        <span className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{selectedTemplate?.name || formData.template_id}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Recipients:</span>
+                                        <span className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            {formData.recipient_source === 'csv'
+                                                ? (formData.csv_data?.length || 0)
+                                                : formData.recipient_source === 'manual'
+                                                    ? (formData.manual_recipients?.length || 0)
+                                                    : formData.recipient_source === 'group'
+                                                        ? (groups.find(g => (g as any).group_id === formData.group_id)?.group_name || 'Selected Group')
+                                                        : 0
+                                            }
+                                        </span>
                                     </div>
                                 </div>
-
-                                {error && (
-                                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                                        <p className="text-red-500 text-sm">{error}</p>
-                                    </div>
-                                )}
                             </div>
-                        )
-                    }
+
+                            {/* WhatsApp Preview for Review */}
+                            <div className="space-y-4">
+                                <h3 className={cn("text-lg font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                    Message Preview
+                                </h3>
+                                <div className="flex justify-center bg-black/5 rounded-2xl p-6">
+                                    <div className="w-full max-w-[320px]">
+                                        <WhatsAppPreviewPanel
+                                            isDarkMode={isDarkMode}
+                                            templateType={selectedTemplate?.type?.toUpperCase() as any || 'MARKETING'}
+                                            content={selectedTemplate?.description || ''}
+                                            footer={selectedTemplate?.originalDetails?.components?.find((c: any) => c.type === 'FOOTER')?.text || ''}
+                                            headerType={(selectedTemplate?.type?.toUpperCase() as any) || 'NONE'}
+                                            headerValue={(formData as any).header_media_url || ''}
+                                            variables={variableValues}
+                                            fileName={headerFileName}
+                                            carouselCards={(() => {
+                                                if (selectedTemplate?.type !== 'carousel') return undefined;
+                                                const cards = selectedTemplate.carouselCards || [];
+                                                
+                                                return cards.map((card: any, idx: number) => {
+                                                    const header = card.components?.find((c: any) => c.type === 'HEADER');
+                                                    const body = card.components?.find((c: any) => c.type === 'BODY');
+                                                    const btnComp = card.components?.find((c: any) => c.type === 'BUTTONS');
+                                                    
+                                                    return {
+                                                        id: `card-${idx}`,
+                                                        mediaType: (header?.format || 'IMAGE') as any,
+                                                        mediaUrl: formData.card_media_urls?.[idx] || (header?.example?.header_handle?.[0] || ''),
+                                                        bodyText: body?.text || '',
+                                                        buttons: btnComp?.buttons?.map((b: any, bIdx: number) => ({
+                                                            id: `card-${idx}-btn-${bIdx}`,
+                                                            type: (b.type === 'PHONE_NUMBER' ? 'PHONE' : 'URL') as any,
+                                                            label: b.text,
+                                                            value: b.url || b.phone_number
+                                                        })) || []
+                                                    };
+                                                });
+                                            })()}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                                    <p className="text-red-500 text-sm">{error}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}

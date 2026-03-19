@@ -183,3 +183,14 @@ export const useGetDeletedTemplatesQuery = () => {
         queryFn: () => templateApis.getDeletedTemplates()
     })
 }
+
+export const useUploadTemplateMediaMutation = () => {
+    return useMutation({
+        mutationFn: ({ file, type }: { file: File; type: 'image' | 'video' | 'document' }) => {
+            return templateApis.uploadMedia(file, type);
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Media upload failed!');
+        }
+    });
+}

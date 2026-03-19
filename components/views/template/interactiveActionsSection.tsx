@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Zap, Plus, X, Link, Phone, Copy, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { InteractiveActionType, CTAButton, CTAType } from './templateTypes';
 import { generateId } from './templateUtils';
 
@@ -17,7 +18,37 @@ interface InteractiveActionsSectionProps {
     onQuickRepliesChange: (replies: string[]) => void;
     ctaErrors?: any[];
     disabled?: boolean;
+    isCarousel?: boolean;
 }
+
+const COUNTRY_CODES = [
+    { value: '+91', label: '🇮🇳 India (+91)' },
+    { value: '+1', label: '🇺🇸 USA (+1)' },
+    { value: '+44', label: '🇬🇧 UK (+44)' },
+    { value: '+971', label: '🇦🇪 UAE (+971)' },
+    { value: '+65', label: '🇸🇬 Singapore (+65)' },
+    { value: '+61', label: '🇦🇺 Australia (+61)' },
+    { value: '+966', label: '🇸🇦 Saudi Arabia (+966)' },
+    { value: '+92', label: '🇵🇰 Pakistan (+92)' },
+    { value: '+880', label: '🇧🇩 Bangladesh (+880)' },
+    { value: '+62', label: '🇮🇩 Indonesia (+62)' },
+    { value: '+60', label: '🇲🇾 Malaysia (+60)' },
+    { value: '+63', label: '🇵🇭 Philippines (+63)' },
+    { value: '+84', label: '🇻🇳 Vietnam (+84)' },
+    { value: '+234', label: '🇳🇬 Nigeria (+234)' },
+    { value: '+27', label: '🇿🇦 South Africa (+27)' },
+    { value: '+20', label: '🇪🇬 Egypt (+20)' },
+    { value: '+55', label: '🇧🇷 Brazil (+55)' },
+    { value: '+52', label: '🇲🇽 Mexico (+52)' },
+    { value: '+33', label: '🇫🇷 France (+33)' },
+    { value: '+49', label: '🇩🇪 Germany (+49)' },
+    { value: '+39', label: '🇮🇹 Italy (+39)' },
+    { value: '+34', label: '🇪🇸 Spain (+34)' },
+    { value: '+7', label: '🇷🇺 Russia (+7)' },
+    { value: '+86', label: '🇨🇳 China (+86)' },
+    { value: '+81', label: '🇯🇵 Japan (+81)' },
+    { value: '+82', label: '🇰🇷 South Korea (+82)' },
+];
 
 export const InteractiveActionsSection = ({
     isDarkMode,
@@ -28,25 +59,24 @@ export const InteractiveActionsSection = ({
     quickReplies,
     onQuickRepliesChange,
     ctaErrors = [],
-    disabled = false
+    disabled = false,
+    isCarousel = false
 }: InteractiveActionsSectionProps) => {
 
     const addCTAButton = (type: CTAType) => {
-        if (type === 'URL' && ctaButtons.filter(b => b.type === 'URL').length >= 2) {
-            return; // Max 2 URL buttons
-        }
-        if (type === 'PHONE' && ctaButtons.some(b => b.type === 'PHONE')) {
-            return; // Max 1 phone button
-        }
-        if (type === 'COPY_CODE' && ctaButtons.some(b => b.type === 'COPY_CODE')) {
-            return; // Max 1 copy code button
-        }
-        if (type === 'CATALOG' && ctaButtons.some(b => b.type === 'CATALOG')) {
-            return; // Max 1 catalog button
-        }
-        if (type === 'MPM' && ctaButtons.some(b => b.type === 'MPM')) {
-            return; // Max 1 MPM button
-        }
+        const urlButtons = ctaButtons.filter(b => b.type === 'URL').length;
+        const phoneButtons = ctaButtons.filter(b => b.type === 'PHONE').length;
+        const copyCodeButtons = ctaButtons.filter(b => b.type === 'COPY_CODE').length;
+        const commerceButtons = ctaButtons.filter(b => (b.type === 'CATALOG' || b.type === 'MPM')).length;
+
+        // Carousel specific limit check
+        const maxTotalButtons = isCarousel ? 2 : 3;
+        if (ctaButtons.length >= maxTotalButtons) return;
+
+        if (type === 'URL' && urlButtons >= 2) return;
+        if (type === 'PHONE' && phoneButtons >= 1) return;
+        if (type === 'COPY_CODE' && copyCodeButtons >= 1) return;
+        if ((type === 'CATALOG' || type === 'MPM') && commerceButtons >= 1) return;
 
         const newButton: CTAButton = {
             id: generateId(),
@@ -55,7 +85,7 @@ export const InteractiveActionsSection = ({
                    type === 'PHONE' ? 'Call Us' : 
                    type === 'COPY_CODE' ? 'Copy Code' :
                    type === 'CATALOG' ? 'View Catalog' : 'View Products',
-            value: type === 'PHONE' ? '+ ' : ''
+            value: type === 'PHONE' ? '+91 ' : ''
         };
         onCTAButtonsChange([...ctaButtons, newButton]);
     };
@@ -71,7 +101,7 @@ export const InteractiveActionsSection = ({
     };
 
     const addQuickReply = () => {
-        if (quickReplies.length >= 10) return; // Max 10 quick replies
+        if (quickReplies.length >= 3) return; // maximum of 3 quick reply button is applicable
         onQuickRepliesChange([...quickReplies, '']);
     };
 
@@ -86,8 +116,14 @@ export const InteractiveActionsSection = ({
         onQuickRepliesChange(quickReplies.filter((_, i) => i !== index));
     };
 
-    const showCTA = actionType === 'CTA' || actionType === 'All';
-    const showQuickReplies = actionType === 'QuickReplies' || actionType === 'All';
+    const isAuthMode = actionType === 'Authentication';
+    const showCTA = !isAuthMode && (actionType === 'CTA' || actionType === 'All');
+    const showQuickReplies = !isAuthMode && !isCarousel && (actionType === 'QuickReplies' || actionType === 'All');
+
+    // Filter action types for Carousel
+    const allowedActionTypes: InteractiveActionType[] = isCarousel 
+        ? ['None', 'CTA'] 
+        : ['None', 'CTA', 'QuickReplies', 'All'];
 
     return (
         <div className="space-y-4">
@@ -99,31 +135,67 @@ export const InteractiveActionsSection = ({
             </div>
 
             <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                In addition to your message, you can send actions with your message.
-                Maximum 25 characters are allowed in CTA button title & Quick Replies.
+                {isCarousel 
+                    ? "Add common Call to Action buttons that will be applied to all your carousel cards. Maximum 2 buttons are allowed."
+                    : "In addition to your message, you can send actions with your message. Maximum 25 characters are allowed in CTA button title & Quick Replies."
+                }
             </p>
 
-            {/* Action Type Radio Group */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {(['None', 'CTA', 'QuickReplies', 'All'] as InteractiveActionType[]).map((type) => (
-                    <button
-                        key={type}
-                        onClick={() => onActionTypeChange(type)}
-                        disabled={disabled}
-                        className={cn(
-                            "py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all",
-                            actionType === type
-                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20'
-                                : isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50',
-                            disabled && "opacity-50 cursor-not-allowed"
-                        )}
-                    >
-                        {type === 'CTA' ? 'Call to Actions' : type === 'QuickReplies' ? 'Quick Replies' : type}
-                    </button>
-                ))}
-            </div>
+            {/* Action Type Radio Group — hide for Authentication mode */}
+            {!isAuthMode && (
+                <div className={cn(
+                    "grid gap-3",
+                    isCarousel ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"
+                )}>
+                    {allowedActionTypes.map((type) => (
+                        <button
+                            key={type}
+                            onClick={() => onActionTypeChange(type)}
+                            disabled={disabled}
+                            className={cn(
+                                "py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all",
+                                actionType === type
+                                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20'
+                                    : isDarkMode
+                                        ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50',
+                                disabled && "opacity-50 cursor-not-allowed"
+                            )}
+                        >
+                            {type === 'CTA' ? 'Call to Actions' : type === 'QuickReplies' ? 'Quick Replies' : type}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Authentication OTP Button — locked, read-only */}
+            {isAuthMode && (
+                <div className={cn(
+                    "rounded-xl p-4 border space-y-3",
+                    isDarkMode ? 'bg-violet-500/10 border-violet-500/30' : 'bg-violet-50 border-violet-200'
+                )}>
+                    <p className={cn("text-xs font-bold uppercase tracking-wide", isDarkMode ? 'text-violet-400' : 'text-violet-700')}>
+                        🔐 OTP Button — Managed by Meta
+                    </p>
+                    <div className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border",
+                        isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'
+                    )}>
+                        <Copy size={16} className={isDarkMode ? 'text-violet-400' : 'text-violet-600'} />
+                        <div>
+                            <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>Copy Code</p>
+                            <p className={cn("text-[10px]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>Type: OTP · otp_type: COPY_CODE · Auto-added by Meta</p>
+                        </div>
+                        <span className={cn(
+                            "ml-auto text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide",
+                            isDarkMode ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-100 text-violet-700'
+                        )}>LOCKED</span>
+                    </div>
+                    <p className={cn("text-[10px]", isDarkMode ? 'text-violet-400/60' : 'text-violet-600')}>
+                        This button is automatically added by Meta for all Authentication templates. It cannot be customized.
+                    </p>
+                </div>
+            )}
 
             {/* CTA Buttons Section */}
             {showCTA && (
@@ -152,7 +224,7 @@ export const InteractiveActionsSection = ({
                             </button>
                             <button
                                 onClick={() => addCTAButton('PHONE')}
-                                disabled={ctaButtons.some(b => b.type === 'PHONE')}
+                                disabled={ctaButtons.some(b => b.type === 'PHONE') || ctaButtons.length >= 3}
                                 className={cn(
                                     "py-2 px-4 rounded-lg border text-xs font-semibold transition-all flex items-center gap-2",
                                     isDarkMode
@@ -240,25 +312,24 @@ export const InteractiveActionsSection = ({
                             {button.type === 'PHONE' ? (
                                 <div className="space-y-2">
                                     <div className="flex gap-2">
-                                        <div className="w-[100px] shrink-0">
-                                            <Input
+                                        <div className="w-[180px] shrink-0">
+                                            <Select
                                                 isDarkMode={isDarkMode}
-                                                type="text"
-                                                value={button.value.split(' ')[0] || ''}
-                                                onChange={(e) => {
+                                                label="Code"
+                                                value={button.value.split(' ')[0] || '+91'}
+                                                onChange={(val: string) => {
                                                     const parts = button.value.split(' ');
                                                     const num = parts.slice(1).join(' ');
-                                                    updateCTAButton(button.id, 'value', `${e.target.value} ${num}`);
+                                                    updateCTAButton(button.id, 'value', `${val} ${num}`);
                                                 }}
-                                                placeholder="+91"
-                                                variant="secondary"
-                                                error={ctaErrors?.[index]?.value?.message?.toLowerCase().includes('country') ? ctaErrors[index].value.message : undefined}
+                                                options={COUNTRY_CODES}
                                                 disabled={disabled}
                                             />
                                         </div>
                                         <div className="flex-1">
                                             <Input
                                                 isDarkMode={isDarkMode}
+                                                label="Mobile Number"
                                                 type="text"
                                                 value={button.value.split(' ').slice(1).join(' ') || ''}
                                                 onChange={(e) => {
@@ -266,7 +337,7 @@ export const InteractiveActionsSection = ({
                                                     const cc = parts[0] || '';
                                                     updateCTAButton(button.id, 'value', `${cc} ${e.target.value}`);
                                                 }}
-                                                placeholder="Mobile Number"
+                                                placeholder="e.g. 9876543210"
                                                 variant="secondary"
                                                 error={ctaErrors?.[index]?.value?.message?.toLowerCase().includes('phone') || ctaErrors?.[index]?.value?.message?.toLowerCase().includes('digit') ? ctaErrors[index].value.message : undefined}
                                                 disabled={disabled}
@@ -316,7 +387,7 @@ export const InteractiveActionsSection = ({
                         {!disabled && (
                             <button
                                 onClick={addQuickReply}
-                                disabled={quickReplies.length >= 10}
+                                disabled={quickReplies.length >= 3}
                                 className={cn(
                                     "py-1.5 px-3 rounded-lg border text-xs font-semibold transition-all flex items-center gap-1",
                                     isDarkMode
@@ -325,7 +396,7 @@ export const InteractiveActionsSection = ({
                                 )}
                             >
                                 <Plus size={12} />
-                                Add Reply ({quickReplies.length}/10)
+                                Add Reply ({quickReplies.length}/3)
                             </button>
                         )}
                     </div>
