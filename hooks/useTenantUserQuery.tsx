@@ -156,3 +156,19 @@ export const useGetTenantProfileQuery = () => {
 
     return { data, isLoading, isError, refetch }
 }
+
+export const useUpdateTenantOrganizationMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => tenantUserApis.updateTenantOrganization(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["tenant-profile"],
+            });
+            toast.success("Organization details updated successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "Failed to update organization details")
+        }
+    })
+}

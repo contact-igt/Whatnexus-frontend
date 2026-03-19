@@ -1,13 +1,13 @@
-"use client";
-
 import { useState } from "react";
+import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { Receipt, Search, Download, Loader2 } from "lucide-react";
 import { useGetBillingLedgerQuery } from "@/hooks/useBillingQuery";
-import { GlassCard } from "@/components/ui/glassCard";
 
 interface BillingLedgerProps {
   isDarkMode: boolean;
+  startDate?: Date | null;
+  endDate?: Date | null;
 }
 
 const statusStyles = (isDarkMode: boolean) => ({
@@ -47,14 +47,16 @@ const catBorderColor: Record<string, string> = {
   Free: 'border-l-emerald-500/40',
 };
 
-export const BillingLedger = ({ isDarkMode }: BillingLedgerProps) => {
+export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerProps) => {
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [page, setPage] = useState(1);
 
   const { data: responseData, isLoading } = useGetBillingLedgerQuery({
     category: filterCategory,
     page,
-    limit: 50
+    limit: 50,
+    startDate: startDate?.toISOString(),
+    endDate: endDate?.toISOString()
   });
 
   const records = responseData?.data?.records || [];

@@ -9,7 +9,7 @@ import {
 } from "@/hooks/useManagementQuery";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Modal } from "@/components/ui/modal";
+import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Loader2, Plus, Pencil, Trash2, DollarSign, Percent, Globe } from "lucide-react";
@@ -252,26 +252,31 @@ export const PricingView = () => {
             </GlassCard>
 
             {/* ── Add Rule Modal ─────────────────────────────────────────── */}
-            <Modal
+            <Drawer
                 isOpen={isAddOpen}
                 onClose={() => setIsAddOpen(false)}
                 title="Add Pricing Rule"
                 description="Create a new rate for a country & message category"
                 isDarkMode={isDarkMode}
-                className="font-sans"
+                className="font-sans max-w-xl"
                 footer={
                     <div className="flex justify-end font-sans space-x-3 pt-4">
                         <button
                             onClick={() => setIsAddOpen(false)}
                             disabled={createMutation.isPending}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                                isDarkMode
+                                    ? 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                            )}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleAdd}
                             disabled={createMutation.isPending}
-                            className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700"
                         >
                             {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                             {createMutation.isPending ? "Saving..." : "Save Rule"}
@@ -328,29 +333,34 @@ export const PricingView = () => {
                         required
                     />
                 </div>
-            </Modal>
+            </Drawer>
 
             {/* ── Edit Rule Modal ────────────────────────────────────────── */}
-            <Modal
+            <Drawer
                 isOpen={isEditOpen}
                 onClose={() => setIsEditOpen(false)}
                 title={`Edit Pricing Rule`}
                 description={selectedRule ? `${selectedRule.category} / ${selectedRule.country}` : ""}
                 isDarkMode={isDarkMode}
-                className="font-sans"
+                className="font-sans max-w-xl"
                 footer={
                     <div className="flex justify-end font-sans space-x-3 pt-4">
                         <button
                             onClick={() => setIsEditOpen(false)}
                             disabled={updateMutation.isPending}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                                isDarkMode
+                                    ? 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                            )}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleEdit}
                             disabled={updateMutation.isPending}
-                            className="px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700"
                         >
                             {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                             {updateMutation.isPending ? "Saving..." : "Save Changes"}
@@ -382,7 +392,7 @@ export const PricingView = () => {
                         required
                     />
                 </div>
-            </Modal>
+            </Drawer>
         </div>
     );
 };

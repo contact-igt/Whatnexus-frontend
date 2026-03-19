@@ -3,14 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 
 const billingApis = new billingApiData();
 
-export const useGetBillingKpiQuery = () => {
+export const useGetBillingKpiQuery = (startDate?: string, endDate?: string) => {
     return useQuery({
-        queryKey: ['billing-kpi'],
-        queryFn: () => billingApis.getBillingKpi()
+        queryKey: ['billing-kpi', startDate, endDate],
+        queryFn: () => billingApis.getBillingKpi(startDate, endDate)
     });
 };
 
-export const useGetBillingLedgerQuery = (params?: BillingLedgerParams) => {
+export const useGetBillingLedgerQuery = (params?: BillingLedgerParams & { startDate?: string; endDate?: string }) => {
     return useQuery({
         queryKey: ['billing-ledger', params],
         queryFn: () => billingApis.getBillingLedger(params),
@@ -18,9 +18,9 @@ export const useGetBillingLedgerQuery = (params?: BillingLedgerParams) => {
     });
 };
 
-export const useGetBillingSpendChartQuery = () => {
+export const useGetBillingSpendChartQuery = (startDate?: string, endDate?: string) => {
     return useQuery({
-        queryKey: ['billing-spend-chart'],
-        queryFn: () => billingApis.getBillingSpendChart()
+        queryKey: ['billing-spend-chart', startDate, endDate],
+        queryFn: () => billingApis.getBillingSpendChart(startDate, endDate)
     });
 };

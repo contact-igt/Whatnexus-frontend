@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { User, Phone, Calendar, Clock, FileText, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Appointment } from './bookingList';
 import { toast } from "sonner";
 import { useCreateAppointmentMutation, useUpdateAppointmentMutation } from '@/hooks/useAppointmentQuery';
@@ -28,6 +29,7 @@ export const AppointmentModal = ({
 }: AppointmentModalProps) => {
     const [formData, setFormData] = useState({
         patient_name: '',
+        country_code: '+91',
         contact_number: '',
         age: '',
         appointment_date: '',
@@ -44,17 +46,19 @@ export const AppointmentModal = ({
         if (appointment && (mode === 'view' || mode === 'edit')) {
             setFormData({
                 patient_name: appointment?.patient_name || '',
-                contact_number: appointment?.contact_number || '',
+                country_code: appointment?.country_code || (appointment as any).country_code || '+91',
+                contact_number: appointment?.contact_number || (appointment as any).contact_number || '',
                 age: appointment?.age ? String(appointment.age) : '',
                 appointment_date: appointment?.appointment_date || '',
                 appointment_time: appointment?.appointment_time || '',
                 status: appointment?.status || 'Pending',
                 notes: appointment.notes || '',
-                doctor_id: appointment.doctor_id || '',
+                doctor_id: (appointment as any).doctor_id || '',
             });
         } else if (mode === 'create') {
             setFormData({
                 patient_name: '',
+                country_code: '+91',
                 contact_number: '',
                 age: '',
                 appointment_date: '',
@@ -75,8 +79,8 @@ export const AppointmentModal = ({
             toast.error('Patient name is required');
             return;
         }
-        if (!formData.contact_number.trim()) {
-            toast.error('Contact number is required');
+        if (!formData.contact_number.trim() || formData.contact_number.length !== 10) {
+            toast.error('Contact number must be exactly 10 digits');
             return;
         }
         if (!formData.appointment_date) {
@@ -95,6 +99,7 @@ export const AppointmentModal = ({
         if (mode === 'create') {
             createMutation.mutate({
                 patient_name: formData.patient_name,
+                country_code: formData.country_code,
                 contact_number: formData.contact_number,
                 age: Number(formData.age),
                 appointment_date: formData.appointment_date,
@@ -108,6 +113,7 @@ export const AppointmentModal = ({
                 appointmentId: appointment.appointment_id || appointment.id,
                 data: {
                     patient_name: formData.patient_name,
+                    country_code: formData.country_code,
                     contact_number: formData.contact_number,
                     age: Number(formData.age),
                     appointment_date: formData.appointment_date,
@@ -201,28 +207,45 @@ export const AppointmentModal = ({
                 </div>
 
                 {/* Contact */}
-                <div>
-                    <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                        Contact Number *
-                    </label>
-                    <div className="relative">
-                        <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                            <Phone size={16} />
+                <div className="grid grid-cols-3 gap-4">
+                    <Select
+                        isDarkMode={isDarkMode}
+                        label="Country Code"
+                        value={formData.country_code}
+                        onChange={(value) => handleChange('country_code', value)}
+                        disabled={isView}
+                        options={[
+                            { value: '+91', label: 'India (+91)' },
+                            { value: '+1', label: 'USA (+1)' },
+                            { value: '+44', label: 'UK (+44)' },
+                            { value: '+971', label: 'UAE (+971)' }
+                        ]}
+                        className="col-span-1"
+                    />
+                    <div className="col-span-2">
+                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                            Contact Number *
+                        </label>
+                        <div className="relative">
+                            <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                <Phone size={16} />
+                            </div>
+                            <input
+                                type="tel"
+                                maxLength={10}
+                                disabled={isView}
+                                value={formData.contact_number}
+                                onChange={(e) => handleChange('contact_number', e.target.value.replace(/\D/g, ''))}
+                                placeholder="98765 43210"
+                                className={cn(
+                                    "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                                    isView && "opacity-60 cursor-not-allowed",
+                                    isDarkMode
+                                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
+                                        : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30'
+                                )}
+                            />
                         </div>
-                        <input
-                            type="tel"
-                            disabled={isView}
-                            value={formData.contact_number}
-                            onChange={(e) => handleChange('contact_number', e.target.value)}
-                            placeholder="+91 98765 43210"
-                            className={cn(
-                                "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
-                                isView && "opacity-60 cursor-not-allowed",
-                                isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
-                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30'
-                            )}
-                        />
                     </div>
                 </div>
 
@@ -249,7 +272,6 @@ export const AppointmentModal = ({
                         />
                     </div>
                 </div>
-
 
 
                 {/* Date and Time */}

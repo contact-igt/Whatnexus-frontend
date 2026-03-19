@@ -43,13 +43,8 @@ export const EditContactDrawer = ({
 
             // Parse phone number for display
             const phone = contact.phone || '';
-            let code = '+91';
+            let code = contact.country_code || '+91';
             let number = phone;
-
-            if (phone.startsWith('+91')) { code = '+91'; number = phone.slice(3); }
-            else if (phone.startsWith('+1')) { code = '+1'; number = phone.slice(2); }
-            else if (phone.startsWith('+44')) { code = '+44'; number = phone.slice(3); }
-            else if (phone.startsWith('+971')) { code = '+971'; number = phone.slice(4); }
 
             setDisplayPhone({ code, number });
         }

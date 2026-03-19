@@ -49,6 +49,20 @@ export const Input = ({
                 <input
                     autoComplete='new-password'
                     {...props}
+                    onChange={(e) => {
+                        const isMobile = 
+                            props.name?.toLowerCase().includes('mobile') || 
+                            props.name?.toLowerCase().includes('phone') ||
+                            label?.toLowerCase().includes('mobile') ||
+                            label?.toLowerCase().includes('phone') ||
+                            props.type === 'number';
+                            
+                        if (isMobile) {
+                            e.target.value = e.target.value.replace(/\s+/g, '');
+                        }
+                        
+                        props.onChange?.(e);
+                    }}
                     required={required}
                     className={cn(
                         "w-full py-2.5 rounded-xl text-sm border transition-all focus:outline-none",

@@ -1,16 +1,20 @@
-"use client";
+import { GlassCard } from "@/components/ui/glassCard";
+import { PulseMetric } from "@/components/ui/pulseMetric";
 import { cn } from "@/lib/utils";
 import { Wallet, TrendingUp, Megaphone, Zap, ShieldCheck, MessageCircle, Send, CheckCircle, BarChart3, Loader2 } from "lucide-react";
 import { useGetBillingKpiQuery } from "@/hooks/useBillingQuery";
-import { GlassCard } from "../../ui/glassCard";
-import { PulseMetric } from "@/components/ui/pulseMetric";
 
 interface BillingKpiCardsProps {
   isDarkMode: boolean;
+  startDate?: Date | null;
+  endDate?: Date | null;
 }
 
-export const BillingKpiCards = ({ isDarkMode }: BillingKpiCardsProps) => {
-  const { data: responseData, isLoading, error } = useGetBillingKpiQuery();
+export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCardsProps) => {
+  const { data: responseData, isLoading, error } = useGetBillingKpiQuery(
+    startDate?.toISOString(),
+    endDate?.toISOString()
+  );
   
   // Unwrap the API response
   const kpiData = responseData?.data || {

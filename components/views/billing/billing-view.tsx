@@ -9,8 +9,13 @@ import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { WhatsAppConnectionPlaceholder } from "../whatsappConfiguration/whatsappConnectionPlaceholder";
 
 export const BillingView = () => {
+  const { whatsappApiDetails } = useAuth();
+  if (whatsappApiDetails?.status !== 'active') {
+      return <WhatsAppConnectionPlaceholder />;
+  }
   const { isDarkMode } = useTheme();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -72,8 +77,16 @@ export const BillingView = () => {
         onExport={handleExport}
       />
 
-      <BillingKpiCards isDarkMode={isDarkMode} />
-      <BillingLedger isDarkMode={isDarkMode} />
+      <BillingKpiCards 
+        isDarkMode={isDarkMode} 
+        startDate={startDate} 
+        endDate={endDate} 
+      />
+      <BillingLedger 
+        isDarkMode={isDarkMode} 
+        startDate={startDate} 
+        endDate={endDate} 
+      />
     </div>
   );
 };

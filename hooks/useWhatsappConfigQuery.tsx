@@ -10,10 +10,10 @@ const whatsappConfigApis = new whatsappConfigApiData();
 
 export const useGetWhatsappConfigQuery = () => {
     const dispatch = useDispatch();
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const { data, isLoading, isError, refetch } = useQuery({
         queryKey: ['whatsapp-config'],
-        enabled: !!token,
+        enabled: !!token && (user?.role !== 'super_admin' && user?.role !== 'platform_admin'),
         queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
         staleTime: 2 * 60 * 1000,
     })

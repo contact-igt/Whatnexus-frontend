@@ -2,7 +2,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, Search } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 
@@ -32,7 +32,8 @@ export const Select = ({
     disabled
 }: SelectProps) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [position, setPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 240 });
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -45,10 +46,23 @@ export const Select = ({
         } else {
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom - 10;
+                const spaceAbove = rect.top - 10;
+                
+                let maxHeight = Math.min(240, spaceBelow); 
+                let topOffset = rect.bottom + 5;
+
+                // Drop upwards if there's very little space below and more space above
+                if (spaceBelow < 150 && spaceAbove > spaceBelow) {
+                    maxHeight = Math.min(240, spaceAbove);
+                    topOffset = rect.top - maxHeight - 5;
+                }
+
                 setPosition({
-                    top: rect.bottom + window.scrollY + 5,
-                    left: rect.left + window.scrollX,
-                    width: rect.width
+                    top: topOffset,
+                    left: rect.left,
+                    width: rect.width,
+                    maxHeight
                 });
             }
             setIsOpen(true);
@@ -67,19 +81,30 @@ export const Select = ({
             }
         };
 
-        const handleScroll = () => {
+        const handleScroll = (event: Event) => {
+            if (dropdownRef.current && dropdownRef.current.contains(event.target as Node)) {
+                return;
+            }
             if (isOpen) setIsOpen(false);
         };
 
         if (isOpen) {
             document.addEventListener("mousedown", handleClickOutside);
+            window.addEventListener('scroll', handleScroll, true);
             window.addEventListener('resize', handleScroll);
+        } else {
+            setSearchTerm(""); // Reset search term on close
         }
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
+            window.removeEventListener('scroll', handleScroll, true);
             window.removeEventListener('resize', handleScroll);
         };
     }, [isOpen]);
+
+    const filteredOptions = options.filter(opt => 
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const handleSelect = (optionValue: string) => {
         onChange?.(optionValue);
@@ -131,17 +156,39 @@ export const Select = ({
                         top: position.top,
                         left: position.left,
                         width: position.width,
-                        position: 'absolute'
+                        maxHeight: position.maxHeight,
+                        position: 'fixed'
                     }}
                     className={cn(
-                        "z-[9999] mt-2 rounded-xl border shadow-xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100",
+                        "z-[999999] rounded-xl border shadow-xl overflow-hidden overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100",
                         isDarkMode
                             ? "bg-[#1c1c21] border-white/10"
                             : "bg-white border-slate-200"
                     )}
                 >
-                    {options.length > 0 ? (
-                        options.map((option) => (
+                    {/* Search Bar */}
+                    <div className={cn(
+                        "sticky top-0 z-10 px-3 py-2 border-b backdrop-blur-md",
+                        isDarkMode ? "bg-[#1c1c21]/80 border-white/10" : "bg-white/80 border-slate-100"
+                    )}>
+                        <div className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
+                            isDarkMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                        )}>
+                            <Search size={14} className={isDarkMode ? "text-white/40" : "text-slate-400"} />
+                            <input 
+                                type="text"
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-transparent border-none outline-none text-xs w-full placeholder:opacity-50"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    {filteredOptions.length > 0 ? (
+                        filteredOptions.map((option) => (
                             <div
                                 key={option.value}
                                 className={cn(

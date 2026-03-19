@@ -1,8 +1,7 @@
-"use client";
+import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { FileText, Megaphone, ArrowUpRight, Users } from "lucide-react";
 import { TOP_TEMPLATES, TOP_CAMPAIGNS } from "./billing-mock-data";
-import { GlassCard } from "@/components/ui/glassCard";
 
 interface BillingInsightsProps {
   isDarkMode: boolean;

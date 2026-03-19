@@ -1,6 +1,7 @@
 export interface Contact {
     contact_id: string;
     tenant_id?: string;
+    country_code?: string;
     phone: string; // ⚠️ Phone is immutable after creation
     name: string;
     email?: string;
@@ -14,7 +15,8 @@ export interface Contact {
 }
 
 export interface CreateContactDto {
-    phone: string; // Required field - format: 91XXXXXXXXXX
+    country_code?: string;
+    phone: string; // Required field - format: 10 digits
     name: string; // Required field
     profile_pic?: string;
 }

@@ -1,24 +1,22 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { PlaygroundApiData, PlaygroundChatPayload } from "@/services/playground";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-const PlaygroundApis = new PlaygroundApiData();
+const playgroundApi = new PlaygroundApiData();
 
 export const usePlaygroundChatMutation = () => {
     return useMutation({
-        mutationFn: (data: PlaygroundChatPayload) => PlaygroundApis.sendMessage(data),
-        onError: (error: Error) => {
-            toast.error(error?.message || "Failed to get AI response");
+        mutationFn: (data: PlaygroundChatPayload) => playgroundApi.sendMessage(data),
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "Failed to send message");
         },
     });
 };
 
 export const usePlaygroundKnowledgeSources = () => {
-    const { data, isLoading, isError } = useQuery({
-        queryKey: ["playground-knowledge-sources"],
-        queryFn: () => PlaygroundApis.getKnowledgeSources(),
+    return useQuery({
+        queryKey: ["playground_knowledge_sources"],
+        queryFn: () => playgroundApi.getKnowledgeSources(),
         staleTime: 5 * 60 * 1000,
     });
-
-    return { data, isLoading, isError };
 };

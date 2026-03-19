@@ -52,9 +52,12 @@ const SectionHeader = ({ icon, title, subtitle, accentColor = '#10b981', isDarkM
 import { useGetWhatsappDashboardQuery } from '@/hooks/useWhatsappDashboardQuery';
 import { useState } from 'react';
 import { Loader2, RefreshCcw, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 
 export const DashboardView = () => {
     const { isDarkMode } = useTheme();
+    const { user } = useAuth();
+    const isManagement = user?.role === 'super_admin' || user?.role === 'platform_admin';
     const [period, setPeriod] = useState<string>("30days");
     const { data: dashboardResult, isLoading, isError, refetch } = useGetWhatsappDashboardQuery(period);
 
@@ -125,6 +128,7 @@ export const DashboardView = () => {
                     wabaInfo={dashboardData?.wabaInfo}
                     period={period}
                     setPeriod={setPeriod}
+                    isManagement={isManagement}
                 />
 
                 {/* 2. KPI Cards */}
