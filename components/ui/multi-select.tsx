@@ -40,7 +40,7 @@ export const MultiSelect = ({
 }: MultiSelectProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+    const [position, setPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 240 });
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -57,10 +57,23 @@ export const MultiSelect = ({
         } else {
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom - 10;
+                const spaceAbove = rect.top - 10;
+                
+                let maxHeight = Math.min(240, spaceBelow); 
+                let topOffset = rect.bottom + 5;
+
+                // Drop upwards if there's very little space below and more space above
+                if (spaceBelow < 150 && spaceAbove > spaceBelow) {
+                    maxHeight = Math.min(240, spaceAbove);
+                    topOffset = rect.top - maxHeight - 5;
+                }
+
                 setPosition({
-                    top: rect.bottom + window.scrollY + 5,
-                    left: rect.left + window.scrollX,
-                    width: rect.width
+                    top: topOffset,
+                    left: rect.left,
+                    width: rect.width,
+                    maxHeight
                 });
             }
             setIsOpen(true);
@@ -194,10 +207,11 @@ export const MultiSelect = ({
                         top: position.top,
                         left: position.left,
                         width: position.width,
-                        position: 'absolute'
+                        maxHeight: position.maxHeight,
+                        position: 'fixed'
                     }}
                     className={cn(
-                        "z-[999999] mt-2 rounded-xl border shadow-xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in duration-100",
+                        "z-[999999] rounded-xl border shadow-xl overflow-hidden overflow-y-auto custom-scrollbar animate-in fade-in duration-100",
                         isDarkMode
                             ? "bg-[#1c1c21] border-white/10"
                             : "bg-white border-slate-200"

@@ -270,6 +270,8 @@ export const TeamUserDrawer = ({
                                 isDarkMode={isDarkMode}
                                 label="Mobile Number"
                                 {...register('mobile')}
+                                onInput={(e) => { e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '') }}
+                                maxLength={10}
                                 icon={Phone}
                                 placeholder="10-digit mobile"
                                 disabled={isSaving}

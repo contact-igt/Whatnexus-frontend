@@ -506,10 +506,11 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                         <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
                             The AI will automatically re-crawl this URL every 24 hours.
                         </p>
+
                         <button onClick={() => {
                             handleUploadKnowledge("url")
                         }} disabled={isPending || uploading} className={cn("w-full px-6 py-2.5 flex justify-center items-center rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20", (isPending || uploading) && 'opacity-50 cursor-not-allowed')}>
-                            {isPending && isUpdating.status == true && isUpdating.type == "url" ? <Loader2 className={cn("animate-spin w-6 h-6", isDarkMode ? 'text-white/40' : 'text-slate-400')} size={32} /> : "Add"}
+                            {isPending && isUpdating.status == true && isUpdating.type == "url" ? <Loader2 className={cn("animate-spin w-6 h-6", isDarkMode ? 'text-white/40' : 'text-slate-400')} size={32} /> : "Add Knowledge"}
                         </button>
                     </div>
                 </GlassCard>
@@ -624,7 +625,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                         activeKnowledgeData?.map((source: any, index: number) => {
                             const createdAt = new Date(source?.created_at).getTime();
                             const now = Date.now();
-                            const isProcessing = now - createdAt < 5 * 60 * 1000;
+                            const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
                             return (
                                 <div
                                     key={index}
@@ -664,7 +665,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                     ) : (
                                                         <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-500/10 text-slate-500 border border-slate-500/20">
                                                             <Clock size={12} />
-                                                            <span className="text-xs font-semibold">Processing</span>
+                                                            <span className="text-xs font-semibold">{source?.type === 'url' ? 'Scraping...' : 'Processing...'}</span>
                                                         </span>
                                                     )}
                                                 </div>
@@ -776,7 +777,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     ) : inactiveKnowledgeData?.map((source: any, index: number) => {
                         const createdAt = new Date(source?.created_at).getTime();
                         const now = Date.now();
-                        const isProcessing = now - createdAt < 5 * 60 * 1000;
+                        const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
                         return (
                             <div
                                 key={index}
@@ -816,7 +817,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                 ) : (
                                                     <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-500/10 text-slate-500 border border-slate-500/20">
                                                         <Clock size={12} />
-                                                        <span className="text-xs font-semibold">Processing</span>
+                                                        <span className="text-xs font-semibold">{source?.type === 'url' ? 'Scraping...' : 'Processing...'}</span>
                                                     </span>
                                                 )}
                                             </div>
@@ -959,7 +960,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                     ) : (
                                                         <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-500/10 text-slate-500 border border-slate-500/20">
                                                             <Clock size={12} />
-                                                            <span className="text-xs font-semibold">Processing</span>
+                                                            <span className="text-xs font-semibold">{source?.type === 'url' ? 'Scraping...' : 'Processing...'}</span>
                                                         </span>
                                                     )}
                                                 </div>

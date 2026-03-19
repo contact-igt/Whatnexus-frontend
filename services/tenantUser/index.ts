@@ -54,6 +54,11 @@ export class tenantUserApiData {
         return await _axios("get", `/tenant/user/profile`)
     }
 
+    // PUT /api/whatsapp/tenant/user/organization - Update organization details for logged-in tenant admin
+    updateTenantOrganization = async (data: any) => {
+        return await _axios("put", `/tenant/user/organization`, data)
+    }
+
     // DELETE /api/whatsapp/tenant-user/:id - Soft delete tenant user
     softDeleteTenantUser = async (tenantUserId: string) => {
         return await _axios("delete", `/tenant/user/${tenantUserId}/soft`)

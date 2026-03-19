@@ -2,18 +2,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Modal } from "@/components/ui/modal";
+import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Organization } from "./organizationView";
 import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation } from "@/hooks/useTenantQuery";
+import { Country, State, City } from 'country-state-city';
 
 interface OrganizationModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (org: Partial<Organization>) => void;
     organization?: Organization | null;
     mode: 'create' | 'edit' | 'view';
     isDarkMode: boolean;
@@ -22,7 +22,6 @@ interface OrganizationModalProps {
 export const OrganizationModal = ({
     isOpen,
     onClose,
-    onSave,
     organization,
     mode,
     isDarkMode
@@ -33,6 +32,10 @@ export const OrganizationModal = ({
         owner_email: '',
         owner_mobile: '',
         address: '',
+        city: '',
+        country: '',
+        state: '',
+        pincode: '',
         subscriptionStatus: 'trial',
         subscriptionPlan: 'basic',
         maxUsers: 10,
@@ -43,22 +46,102 @@ export const OrganizationModal = ({
         owner_country_code: '+91',
         password: ''
     });
+    // ISO codes used to drive cascading dropdowns
+    const [countryIso, setCountryIso] = useState('');
+    const [stateIso, setStateIso] = useState('');
+
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { mutate: createTenantMutate, isPending: isCreateTenantPending } = useCreateTenantMutation();
     const { mutate: updateTenantMutate, isPending: isUpdateTenantPending } = useUpdateTenantMutation();
 
+    // Derived Location Options
+    const countryOptions = Country.getAllCountries().map(c => ({
+        label: c.name,
+        value: c.isoCode
+    }));
 
+    const stateOptions = countryIso
+        ? State.getStatesOfCountry(countryIso).map(s => ({
+            label: s.name,
+            value: s.isoCode
+        }))
+        : [];
+
+    const cityOptions = (countryIso && stateIso)
+        ? City.getCitiesOfState(countryIso, stateIso).map(c => ({
+            label: c.name,
+            value: c.name
+        }))
+        : [];
 
     useEffect(() => {
         if (organization && (mode === 'edit' || mode === 'view')) {
-            setFormData(organization);
+            let profileData = {};
+            try {
+                if (typeof organization.profile === 'string') {
+                    profileData = JSON.parse(organization.profile);
+                } else if (typeof organization.profile === 'object') {
+                    profileData = organization.profile || {};
+                }
+            } catch (e) {
+                console.error("Failed to parse profile JSON", e);
+            }
+
+            // Resolve stored country name → ISO code for driving dependent dropdowns
+            const storedCountry = (organization as any).country || '';
+            const storedState = (organization as any).state || '';
+
+            // Try to find matching ISO code from stored value (could be ISO already or full name)
+            const matchedCountry = Country.getAllCountries().find(
+                c => c.isoCode.toUpperCase() === storedCountry.toUpperCase() || 
+                     c.name.toLowerCase() === storedCountry.toLowerCase()
+            );
+            const resolvedCountryIso = matchedCountry?.isoCode || storedCountry;
+
+            const matchedState = resolvedCountryIso
+                ? State.getStatesOfCountry(resolvedCountryIso).find(
+                    s => s.isoCode.toUpperCase() === (storedState || "").toUpperCase() || 
+                         s.name.toLowerCase() === (storedState || "").toLowerCase()
+                ) : undefined;
+            const resolvedStateIso = matchedState?.isoCode || storedState;
+
+            setCountryIso(resolvedCountryIso);
+            setStateIso(resolvedStateIso);
+
+            // Normalize all API field aliases into formData keys
+            const org = organization as any;
+            setFormData({
+                ...org,
+                ...profileData,
+                // Location fields — store ISO codes in form for dropdown driving
+                country: resolvedCountryIso,
+                state: resolvedStateIso,
+                city: org.city || '',
+                pincode: org.pincode || '',
+                address: org.address || '',
+                // Status — API may return 'status' or 'tenant_status'
+                subscriptionStatus: (org.tenant_status || org.status || org.subscriptionStatus || 'active').toLowerCase(),
+                // Plan — API returns 'subscription_plan', form uses 'subscriptionPlan'
+                subscriptionPlan: (org.subscription_plan || org.subscriptionPlan || 'basic').toLowerCase(),
+                // Users — API returns 'max_users', form uses 'maxUsers'
+                maxUsers: Number(org.max_users ?? org.maxUsers ?? 10),
+                // Phone
+                owner_country_code: org.owner_country_code || '+91',
+                owner_mobile: org.owner_mobile || '',
+            });
         } else {
+            setCountryIso('');
+            setStateIso('');
             setFormData({
                 company_name: '',
                 owner_name: '',
                 owner_email: '',
                 owner_mobile: '',
                 address: '',
+                city: '',
+                country: '',
+                state: '',
+                pincode: '',
                 subscriptionStatus: 'trial',
                 subscriptionPlan: 'basic',
                 maxUsers: 10,
@@ -112,14 +195,35 @@ export const OrganizationModal = ({
 
     const handleSubmit = () => {
         if (validate()) {
+            // Resolve ISO codes to full names for storage
+            const selectedCountry = Country.getAllCountries().find(c => c.isoCode === formData.country);
+            const selectedState = countryIso
+                ? State.getStatesOfCountry(countryIso).find(s => s.isoCode === formData.state)
+                : undefined;
+
+            const { address, city, country, state, pincode, maxUsers, subscriptionPlan, profile, ...rest } = formData;
+            const submitData = {
+                ...rest,
+                address,
+                city,
+                country: selectedCountry?.name || country, // store full name
+                state: selectedState?.name || state,       // store full name
+                pincode,
+                maxUsers,
+                subscriptionPlan,
+                profile: profile ? JSON.stringify(profile) : null,
+                subscription_start_date: (organization as any)?.subscription_start_date,
+                subscription_end_date: (organization as any)?.subscription_end_date,
+            };
+
             if (mode === 'create') {
-                createTenantMutate(formData, {
+                createTenantMutate(submitData, {
                     onSuccess: () => {
                         onClose();
                     }
                 });
-            } else if (mode === 'edit' && organization?.id) {
-                updateTenantMutate({ tenantId: organization.tenant_id, data: formData }, {
+            } else if (mode === 'edit' && (organization?.id || organization?.tenant_id)) {
+                updateTenantMutate({ tenantId: organization.tenant_id, data: submitData }, {
                     onSuccess: () => {
                         onClose();
                     }
@@ -131,13 +235,16 @@ export const OrganizationModal = ({
     const isView = mode === 'view';
 
     return (
-        <Modal
+        <Drawer
             isOpen={isOpen}
             onClose={onClose}
             title={mode === 'create' ? "Add Organization" : mode === 'edit' ? "Edit Organization" : "Organization Details"}
             description={mode === 'create' ? "Register a new hospital or clinic" : "View and manage organization details"}
             isDarkMode={isDarkMode}
-            className="font-sans"
+            className={cn(
+                "max-w-xl font-sans [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']",
+                isDarkMode ? 'bg-black' : 'bg-white'
+            )}
             footer={
                 !isView && (
                     <div className="flex justify-end font-sans space-x-3 pt-4">
@@ -215,7 +322,7 @@ export const OrganizationModal = ({
                         <Select
                             isDarkMode={isDarkMode}
                             label="Country Code"
-                            value={formData.owner_country_code || '+91'}
+                            value={formData.owner_country_code ? (formData.owner_country_code.toString().startsWith('+') ? formData.owner_country_code : `+${formData.owner_country_code}`) : '+91'}
                             onChange={(value) => handleChange('owner_country_code', value)}
                             options={[
                                 { value: '+91', label: 'India (+91)' },
@@ -225,7 +332,7 @@ export const OrganizationModal = ({
                             ]}
                             disabled={isView}
                             className="col-span-1"
-                            error={errors.country_code}
+                            error={errors.owner_country_code}
                             required
                         />
                         <Input
@@ -248,7 +355,8 @@ export const OrganizationModal = ({
                         onChange={(value) => handleChange('type', value)}
                         options={[
                             { value: 'hospital', label: 'Hospital' },
-                            { value: 'clinic', label: 'Clinic' }
+                            { value: 'clinic', label: 'Clinic' },
+                            { value: 'organization', label: 'Organization' }
                         ]}
                         disabled={isView}
                         required
@@ -269,10 +377,10 @@ export const OrganizationModal = ({
                         />
                     )} */}
 
-                    {/* <Select
+                    <Select
                         isDarkMode={isDarkMode}
                         label="Subscription Plan"
-                        value={formData.subscriptionPlan}
+                        value={formData.subscriptionPlan || 'basic'}
                         onChange={(value) => handleChange('subscriptionPlan', value)}
                         options={[
                             { value: 'basic', label: 'Basic Plan' },
@@ -281,10 +389,10 @@ export const OrganizationModal = ({
                         ]}
                         disabled={isView}
                         required
-                    /> */}
+                    />
 
-                    {/* <div className="col-span-full">
-                        <Textarea
+                    <div className="col-span-full">
+                        <Input
                             isDarkMode={isDarkMode}
                             label="Address"
                             icon={MapPin}
@@ -292,41 +400,64 @@ export const OrganizationModal = ({
                             value={formData.address}
                             onChange={(e) => handleChange('address', e.target.value)}
                             disabled={isView}
-                            rows={3}
                         />
-                    </div> */}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-full">
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="Country"
+                            value={formData.country || ''}
+                            onChange={(value) => {
+                                setCountryIso(value);
+                                setStateIso('');
+                                handleChange('country', value);
+                                handleChange('state', '');
+                                handleChange('city', '');
+                            }}
+                            options={countryOptions}
+                            disabled={isView}
+                        />
+
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="State / Province"
+                            value={formData.state || ''}
+                            onChange={(value) => {
+                                setStateIso(value);
+                                handleChange('state', value);
+                                handleChange('city', '');
+                            }}
+                            options={stateOptions}
+                            disabled={isView || !countryIso || stateOptions.length === 0}
+                        />
+
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="City / Town"
+                            value={formData.city || ''}
+                            onChange={(value) => handleChange('city', value)}
+                            options={cityOptions}
+                            disabled={isView || !stateIso || cityOptions.length === 0}
+                        />
+
+                        <Input
+                            isDarkMode={isDarkMode}
+                            label="Pincode / Zip Code"
+                            icon={MapPin}
+                            placeholder="e.g. 00000"
+                            value={formData.pincode}
+                            onChange={(e) => handleChange('pincode', e.target.value)}
+                            disabled={isView}
+                        />
+                    </div>
                 </div>
 
-                {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
                     <div className="col-span-full">
                         <h3 className={`text-sm font-bold mb-3 ${isDarkMode ? 'text-white/40' : 'text-slate-400'} uppercase tracking-wider`}>
-                            Administrator Details
+                            Management Details
                         </h3>
                     </div>
-
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Admin Name"
-                        icon={User}
-                        placeholder="Dr. Name"
-                        value={formData.adminName}
-                        onChange={(e) => handleChange('adminName', e.target.value)}
-                        error={errors.adminName}
-                        disabled={isView}
-                        required
-                    />
-
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Admin Email"
-                        icon={Mail}
-                        placeholder="admin@hospital.com"
-                        value={formData.adminEmail}
-                        onChange={(e) => handleChange('adminEmail', e.target.value)}
-                        error={errors.adminEmail}
-                        disabled={isView}
-                        required
-                    />
 
                     <Input
                         isDarkMode={isDarkMode}
@@ -348,13 +479,19 @@ export const OrganizationModal = ({
                         options={[
                             { value: 'active', label: 'Active' },
                             { value: 'trial', label: 'Trial' },
-                            { value: 'expired', label: 'Expired' }
+                            { value: 'invited', label: 'Invited' },
+                            { value: 'inactive', label: 'Inactive' },
+                            { value: 'expired', label: 'Expired' },
+                            { value: 'suspended', label: 'Suspended' },
+                            { value: 'pending_setup', label: 'Pending Setup' },
+                            { value: 'grace_period', label: 'Grace Period' },
+                            { value: 'maintenance', label: 'Maintenance' },
                         ]}
                         disabled={isView}
                         required
                     />
-                </div> */}
+                </div>
             </div>
-        </Modal>
+        </Drawer>
     );
 };

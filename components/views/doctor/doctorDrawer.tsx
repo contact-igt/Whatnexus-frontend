@@ -581,6 +581,8 @@ export const DoctorDrawer = ({
                                         type="tel"
                                         disabled={isView}
                                         {...register("mobile")}
+                                        onInput={(e) => { e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '') }}
+                                        maxLength={10}
                                         placeholder="9876543210"
                                         error={errors.mobile?.message}
                                         variant="secondary"

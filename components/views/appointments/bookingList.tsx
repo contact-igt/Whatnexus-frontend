@@ -16,6 +16,7 @@ export interface Appointment {
     appointment_id?: string;
     patient_name: string;
     contact_number: string;
+    country_code?: string;
     age?: number;
     appointment_date: string;
     appointment_time: string;
@@ -23,8 +24,8 @@ export interface Appointment {
     notes?: string;
     doctor_id?: string;
     doctorName?: string;
+    token_number?: number;
     type?: string;
-    token_number?: string;
     date?: Date;
 }
 

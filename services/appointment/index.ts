@@ -2,6 +2,7 @@ import { _axios } from "@/helper/axios";
 
 export interface CreateAppointmentDto {
     patient_name: string;
+    country_code?: string;
     contact_number: string;
     appointment_date: string;
     appointment_time: string;
@@ -19,6 +20,7 @@ export interface UpdateAppointmentStatusDto {
 
 export interface UpdateAppointmentDto {
     patient_name?: string;
+    country_code?: string;
     contact_number?: string;
     appointment_date?: string;
     appointment_time?: string;

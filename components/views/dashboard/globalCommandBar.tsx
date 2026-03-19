@@ -12,6 +12,7 @@ interface GlobalCommandBarProps {
     wabaInfo?: any;
     period?: string;
     setPeriod?: (p: string) => void;
+    isManagement?: boolean;
 }
 
 function useLiveClock() {
@@ -60,7 +61,8 @@ export const GlobalCommandBar = ({
     headerData, 
     wabaInfo,
     period = "30days",
-    setPeriod 
+    setPeriod,
+    isManagement = false
 }: GlobalCommandBarProps) => {
     const { time, date, greeting } = useLiveClock();
     const t = tx(isDarkMode);
@@ -68,14 +70,19 @@ export const GlobalCommandBar = ({
 
     const qualityHex = qualityColor[wabaInfo?.quality] ?? '#94a3b8';
 
-    const systemHealth: Array<{ icon: any; label: string; status: 'online' | 'offline' | 'warning'; value: string }> = [
+    const systemHealth: Array<{ icon: any; label: string; status: 'online' | 'offline' | 'warning'; value: string }> = ([
         // wabaInfo.status "Live" → green dot
         { icon: <Wifi size={14} />, label: 'WhatsApp', status: wabaInfo?.status === 'Live' ? 'online' : 'offline', value: wabaInfo?.status || 'Offline' },
         { icon: <Brain size={14} />, label: 'AI Engine', status: 'online', value: 'Running' },
         // wabaInfo.quality → coloured badge
         { icon: <Layers size={14} />, label: 'Quality', status: wabaInfo?.quality === 'GREEN' ? 'online' : wabaInfo?.quality === 'YELLOW' ? 'warning' : 'offline', value: wabaInfo?.quality || '—' },
         { icon: <Users size={14} />, label: 'Tier', status: 'online', value: wabaInfo?.tier || '—' },
-    ];
+    ] as const).filter(s => {
+        if (isManagement && (s.label === 'WhatsApp' || s.label === 'Quality' || s.label === 'Tier')) {
+            return false;
+        }
+        return true;
+    }) as Array<{ icon: any; label: string; status: 'online' | 'offline' | 'warning'; value: string }>;
 
     return (
         <div className="rounded-2xl overflow-hidden" style={glassCard(isDarkMode)}>
@@ -125,7 +132,7 @@ export const GlobalCommandBar = ({
                     </div>
 
                     {/* WABA number + quality chip */}
-                    {wabaInfo?.number && (
+                    {wabaInfo?.number && !isManagement && (
                         <>
                             <div style={{ width: 1, height: 44, background: t.divider }} className="hidden lg:block" />
                             <div className="hidden lg:flex flex-col gap-1">

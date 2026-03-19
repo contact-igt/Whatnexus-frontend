@@ -10,11 +10,16 @@ import { GlassCard } from "@/components/ui/glassCard";
 
 interface BillingAnalyticsProps {
   isDarkMode: boolean;
+  startDate?: Date | null;
+  endDate?: Date | null;
 }
 
-export const BillingAnalytics = ({ isDarkMode }: BillingAnalyticsProps) => {
+export const BillingAnalytics = ({ isDarkMode, startDate, endDate }: BillingAnalyticsProps) => {
 
-  const { data: responseData, isLoading } = useGetBillingSpendChartQuery();
+  const { data: responseData, isLoading } = useGetBillingSpendChartQuery(
+    startDate?.toISOString(),
+    endDate?.toISOString()
+  );
   const rawData = responseData?.data || [];
 
   // Map backend daily data to chart format

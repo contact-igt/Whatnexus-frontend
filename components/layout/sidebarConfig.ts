@@ -21,7 +21,10 @@ import {
     Clock,
     Workflow,
     BadgeCheck,
-    CreditCard
+    CreditCard,
+    Mail,
+    Trash2,
+    Terminal
 } from 'lucide-react';
 
 export interface SidebarItem {
@@ -156,6 +159,12 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 route: "/knowledge",
                 icon: Database,
                 requiresWhatsApp: false,
+            },
+            {
+                label: "Playground",
+                route: "/playground",
+                icon: Terminal,
+                requiresWhatsApp: true,
             }
         ]
     },
@@ -166,7 +175,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Billing & Payments",
                 route: "/billing",
                 icon: CreditCard,
-                requiresWhatsApp: false,
+                requiresWhatsApp: true,
                 roles: ['tenant_admin']
             }
         ]
@@ -209,23 +218,23 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 roles: ['super_admin', 'platform_admin']
             },
             {
+                label: "Onboard Tenants",
+                route: "/management/onboarded",
+                icon: Building2,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Tenant Invitation",
+                route: "/management/invitations",
+                icon: Mail,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
                 label: "System Admins",
                 route: "/platformAdmins",
                 icon: UserCog,
-                requiresWhatsApp: false,
-                roles: ['super_admin', 'platform_admin']
-            },
-            {
-                label: "Tenant Invitations",
-                route: "/admin/invitations",
-                icon: MessageSquare,
-                requiresWhatsApp: false,
-                roles: ['super_admin', 'platform_admin']
-            },
-            {
-                label: "Onboarded Tenants",
-                route: "/admin/tenants",
-                icon: Users,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             },

@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play, Sparkles, RefreshCw, MessageSquare } from 'lucide-react';
+import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play, Sparkles, RefreshCw, MessageSquare, RotateCcw, CheckCircle, Ban } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 
@@ -37,11 +37,15 @@ interface ActionMenuProps {
     onMessage?: () => void;
     isRefresh?: boolean;
     onRefresh?: () => void;
+    isActivate?: boolean;
+    onActivate?: () => void;
+    isDeactivate?: boolean;
+    onDeactivate?: () => void;
 
 
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, isRestore, onRestore, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute, isAnswer, onAnswer, isSummary, onSummary, isMessage, onMessage, isRefresh, onRefresh }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, isRestore, onRestore, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute, isAnswer, onAnswer, isSummary, onSummary, isMessage, onMessage, isRefresh, onRefresh, isActivate, onActivate, isDeactivate, onDeactivate }: ActionMenuProps) => {
     const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -214,22 +218,25 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                             { show: !!isView && !!onView }, { show: !!isMessage && !!onMessage }, { show: !!isEdit && !!onEdit }, { show: !!isAnswer && !!onAnswer }, { show: !!isWhatsAppConfig && !!onWhatsAppConfig },
                             { show: !!isSummary && !!onSummary }, { show: !!isRefresh && !!onRefresh }, { show: !!isSubmitTemplate && !!onSubmitTemplate }, { show: !!isSyncTemplate && !!onSyncTemplate }, { show: !!isExecute && !!onExecute }
                         ].some(i => i.show)) && ([
-                            { show: !!isDelete && !!onDelete }, { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isRestore && !!onRestore }, { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isPermanentDelete && !!onPermanentDelete }
-                        ].some(i => i.show)) && (
-                                <div className={cn("mx-3 my-1.5 h-px", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
-                            )}
+                            { show: !!isDelete && !!onDelete }, { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isRestore && !!onRestore }, { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isPermanentDelete && !!onPermanentDelete },
+                        { show: !!isActivate && !!onActivate }, { show: !!isDeactivate && !!onDeactivate }
+                    ].some(i => i.show)) && (
+                            <div className={cn("mx-3 my-1.5 h-px", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+                        )}
 
                         {/* Group 3: Destructive Actions */}
                         {[
                             { show: !!isDelete && !!onDelete, onClick: () => onDelete?.(), icon: Trash2, label: "Remove", customClass: isDarkMode ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50' },
-                            { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isRestore && !!onRestore, onClick: () => onRestore?.(), icon: Save, label: "Restore", customClass: isDarkMode ? 'text-green-400 hover:bg-green-500/10' : 'text-green-500 hover:bg-green-50' },
+                            { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isRestore && !!onRestore, onClick: () => onRestore?.(), icon: RotateCcw, label: "Restore", customClass: isDarkMode ? 'text-green-400 hover:bg-green-500/10' : 'text-green-500 hover:bg-green-50' },
                             { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isPermanentDelete && !!onPermanentDelete, onClick: () => onPermanentDelete?.(), icon: Trash2, label: "Delete Forever", customClass: isDarkMode ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50' },
                         ].filter((item: any) => item.show).length > 0 && (
                                 <div className="px-1.5 space-y-0.5">
                                     {[
                                         { show: !!isDelete && !!onDelete, onClick: () => onDelete?.(), icon: Trash2, label: "Remove", customClass: isDarkMode ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50' },
-                                        { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isRestore && !!onRestore, onClick: () => onRestore?.(), icon: Save, label: "Restore", customClass: isDarkMode ? 'text-green-400 hover:bg-green-500/10' : 'text-green-500 hover:bg-green-50' },
+                                        { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isRestore && !!onRestore, onClick: () => onRestore?.(), icon: RotateCcw, label: "Restore", customClass: isDarkMode ? 'text-green-400 hover:bg-green-500/10' : 'text-green-500 hover:bg-green-50' },
                                         { show: (user?.role === "tenant_admin" || user?.role === "super_admin") && !!isPermanentDelete && !!onPermanentDelete, onClick: () => onPermanentDelete?.(), icon: Trash2, label: "Delete Forever", customClass: isDarkMode ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50' },
+                                        { show: !!isActivate && !!onActivate, onClick: () => onActivate?.(), icon: CheckCircle, label: "Activate", customClass: isDarkMode ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-emerald-500 hover:bg-emerald-50' },
+                                        { show: !!isDeactivate && !!onDeactivate, onClick: () => onDeactivate?.(), icon: Ban, label: "Deactivate", customClass: isDarkMode ? 'text-orange-400 hover:bg-orange-500/10' : 'text-orange-500 hover:bg-orange-50' },
                                     ].map((item: any, index) => {
                                         if (!item.show) return null;
                                         const Icon = item.icon;

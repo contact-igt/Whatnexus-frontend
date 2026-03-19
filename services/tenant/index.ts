@@ -28,6 +28,10 @@ export class TenantApiData {
     permanentDeleteTenant = async (tenantId: string) => {
         return await _axios("delete", `/tenant/${tenantId}/permanent`)
     }
+    resendInvitation = async (tenantUserId: string) => {
+        return await _axios("post", `/tenant/${tenantUserId}/resend-invite`);
+    }
+
     // WhatsApp Configuration APIs
     getWhatsAppConfig = async (tenantId: string) => {
         return await _axios("get", `/tenant/${tenantId}/whatsapp-config`);
@@ -43,5 +47,21 @@ export class TenantApiData {
 
     getWebhookStatus = async (tenantId: string) => {
         return await _axios("get", `/tenant/${tenantId}/webhook-status`);
+    };
+
+    getOnboardedTenants = async () => {
+        return await _axios("get", "/tenant/onboarded");
+    };
+
+    getTenantInvitations = async () => {
+        return await _axios("get", "/tenant/invitations");
+    };
+
+    getDeletedTenants = async () => {
+        return await _axios("get", "/tenant/deleted-list");
+    };
+
+    restoreTenant = async (tenantId: string) => {
+        return await _axios("post", `/tenant/${tenantId}/restore`);
     };
 }

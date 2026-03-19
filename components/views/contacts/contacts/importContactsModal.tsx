@@ -84,7 +84,7 @@ export const ImportContactsModal = ({
     };
 
     const downloadSampleCSV = () => {
-        const csvContent = "name,phone\nAarav Patel,+919876543210\nPriya Sharma,+919988776655\nRahul Singh,+919123456789\nAnanya Gupta,+919898989898\nVikram Kumar,+919012345678";
+        const csvContent = "name,phone,email\nAarav Patel,+919876543210,aarav@example.com\nPriya Sharma,+919988776655,priya@example.com\nRahul Singh,+919123456789,rahul@example.com\nAnanya Gupta,+919898989898,ananya@example.com\nVikram Kumar,+919012345678,vikram@example.com";
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -113,7 +113,7 @@ export const ImportContactsModal = ({
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         )}
                     >
-                        <Upload size={14} />
+                        <DownloadIcon size={14} />
                         <span>Download Sample CSV</span>
                     </button>
                     <div className="flex items-center space-x-3">
