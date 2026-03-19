@@ -14,7 +14,6 @@ interface BookingListProps {
 export interface Appointment {
     id: string;
     appointment_id?: string;
-<<<<<<< HEAD
     patient_name: string;
     contact_number: string;
     country_code?: string;
@@ -23,27 +22,12 @@ export interface Appointment {
     appointment_time: string;
     status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed' | 'Noshow' | string;
     notes?: string;
-=======
-    patientName: string;
-    patient_name?: string;
-    contact: string;
-    contact_number?: string;
-    country_code?: string;
-    age?: number;
-    date: Date;
-    appointment_date?: string;
-    time: string;
-    appointment_time?: string;
-    status: 'confirmed' | 'pending' | 'cancelled' | 'completed' | 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed' | 'Noshow' | string;
-    type: string;
-    notes?: string;
-    doctorId?: string;
->>>>>>> a0b6ad2 (frontend ui)
+    type?: string;
+    date?: Date;
     doctor_id?: string;
     doctorName?: string;
     token_number?: number;
-    type?: string;
-    date?: Date;
+  
 }
 
 export const BookingList = ({ isDarkMode }: BookingListProps) => {
