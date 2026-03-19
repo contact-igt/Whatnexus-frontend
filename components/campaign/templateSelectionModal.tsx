@@ -22,6 +22,7 @@ export interface ProcessedTemplate {
     headerText?: string;
     footerText?: string;
     bodyText?: string;
+    carouselCards?: any[];
 }
 
 interface TemplateSelectionModalProps {
@@ -61,7 +62,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
 
     // Map API templates to component format
     const templates: ProcessedTemplate[] = apiTemplates
-        .filter(t => t.status?.toUpperCase() === 'APPROVED')
+        .filter(t => (t.status?.toUpperCase() === 'APPROVED' || t.status === 'approved'))
         .map(t => {
             // Extract data from components if standard fields are missing
             let bodyTextData = t.body;
@@ -95,26 +96,35 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                 name: t.name || t.template_name || (t as any).element_name || t.id || 'Untitled',
                 category: (t.category?.toLowerCase() as any) || 'marketing',
                 description: bodyTextData || 'No description',
-                type: (headerType ? headerType.toLowerCase() : 'text') as any,
+                type: (() => {
+                    // Check for carousel component
+                    const isCarousel = Array.isArray(t.components) && t.components.some((c: any) =>
+                        c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
+                    );
+                    if (isCarousel) return 'carousel';
+                    if (!headerType) return 'text';
+                    const ht = headerType.toLowerCase();
+                    if (ht === 'image') return 'image';
+                    if (ht === 'video') return 'video';
+                    if (ht === 'document') return 'file';
+                    return 'text';
+                })() as any,
                 variables: t.variables_count || t.variables?.length || 0,
                 variableArray: t.variables || [],
                 headerText,
                 footerText,
                 bodyText: bodyTextData || '',
+                carouselCards: (() => {
+                    const carouselComp = Array.isArray(t.components) && t.components.find((c: any) =>
+                        c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
+                    );
+                    return carouselComp?.cards || [];
+                })(),
+                originalDetails: t,
             };
         });
 
     const filteredTemplates = templates.filter(template => {
-        // Filter by status (APPROVED only) - Check original API template status if available
-        // Since we mapped it, we need to access original from apiTemplates or ensure mapping carries it.
-        // Better approach: Filter apiTemplates BEFORE mapping or check matching apiTemplate here.
-        // But since we already mapped, let's just make sure we map status or check it.
-        // Wait, ProcessedTemplate doesn't have status. 
-        // Let's modify the map function to include filtering source.
-        return true;
-    }).filter(template => {
-        // ... existing name/category filters
-
         const matchesCategory = template.category === activeCategory;
         const matchesType = activeType === 'all' || template.type === activeType;
         const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -289,9 +299,15 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                             >
                                                 <div className={cn(
                                                     "w-12 h-12 rounded-lg flex items-center justify-center mb-3",
-                                                    isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                                                    template.category === 'authentication'
+                                                        ? isDarkMode ? 'bg-violet-500/20' : 'bg-violet-100'
+                                                        : isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
                                                 )}>
-                                                    <FileText size={24} className="text-emerald-500" />
+                                                    {template.category === 'authentication' ? (
+                                                        <span className="text-2xl">🔐</span>
+                                                    ) : (
+                                                        <FileText size={24} className="text-emerald-500" />
+                                                    )}
                                                 </div>
                                                 <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                                     {template.name}
@@ -300,13 +316,15 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                                     {template.description}
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-3">
-                                                    <span className={cn(
-                                                        "text-[10px] px-2 py-0.5 rounded uppercase font-bold",
-                                                        isDarkMode ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-600'
-                                                    )}>
-                                                        {template.id}
-                                                    </span>
-                                                    {template.variables > 0 && (
+                                                    {template.category === 'authentication' && (
+                                                        <span className={cn(
+                                                            "text-[10px] px-2 py-0.5 rounded-full uppercase font-bold",
+                                                            isDarkMode ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-100 text-violet-700'
+                                                        )}>
+                                                            OTP Template
+                                                        </span>
+                                                    )}
+                                                    {template.variables > 0 && template.category !== 'authentication' && (
                                                         <span className={cn(
                                                             "text-[10px] px-2 py-0.5 rounded font-semibold",
                                                             isDarkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'

@@ -3,6 +3,7 @@ import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, 
 import storage from 'redux-persist/lib/storage';
 import storageSession from 'redux-persist/lib/storage/session';
 import authReducer from './slices/auth/authSlice';
+import templateReducer from './slices/template/templateSlice';
 import { combineReducers } from 'redux';
 
 const persistConfig = {
@@ -16,8 +17,15 @@ const authPersistConfig = {
   whitelist: ['activeStatus', 'currentStatusDataState', 'token', 'refreshToken', 'user', 'whatsappApiDetails'],
 };
 
+const templatePersistConfig = {
+  key: 'template',
+  storage,
+  whitelist: ['uploadedMediaUrl', 'uploadedMediaType'],
+};
+
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
+  template: persistReducer(templatePersistConfig, templateReducer),
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

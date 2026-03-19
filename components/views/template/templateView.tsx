@@ -1,7 +1,7 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '@/hooks/useTheme';
-import { Template, TemplateFormData } from './templateTypes';
+import { Template, TemplateCategory, TemplateFormData, TemplateStatus, TemplateType, HeaderType, InteractiveActionType } from './templateTypes';
 import { TemplateListPage } from './templateListPage';
 import { TemplateFormPage } from './templateFormPage';
 import { TemplatePreviewModal } from './templatePreviewModal';
@@ -213,19 +213,40 @@ export const TemplateView = () => {
         }
     };
 
-    // Render based on view mode
-    if (viewMode === 'create' || viewMode === 'edit' || viewMode === 'view') {
-        const selectedTemplateData = templateDataById?.data;
-        const initialData: Partial<TemplateFormData> | undefined = selectedTemplateData ? {
+    const selectedTemplateData = templateDataById?.data;
+    const initialData: TemplateFormData | undefined = useMemo(() => {
+        if (!selectedTemplateData) return undefined;
+        // Derive the correct template type from the header component when it's a media type.
+        // The backend may store template_type as "text" even when there's an image/video/document header.
+        const headerComp = selectedTemplateData.components.find((c: any) => c.component_type === "header");
+        const headerFormat = (headerComp?.header_format || '').toUpperCase(); // e.g. "IMAGE", "VIDEO", "DOCUMENT", "TEXT", ""
+        const MEDIA_TYPES = ['IMAGE', 'VIDEO', 'DOCUMENT'];
+
+        // If header has a media type, use it as the definitive templateType; otherwise fall back to backend value
+        const derivedType = MEDIA_TYPES.includes(headerFormat)
+            ? headerFormat  // e.g. "IMAGE"
+            : ((selectedTemplateData.template_type || selectedTemplateData.type || 'TEXT').toUpperCase());
+
+        const derivedHeaderType = headerFormat || 'NONE'; // "IMAGE" | "VIDEO" | "DOCUMENT" | "TEXT" | "NONE"
+
+        // Derive headerValue: media types use media_url; text header uses text_content
+        const derivedHeaderValue = (() => {
+            if (!headerComp) return '';
+            const MEDIA_TYPES = ['IMAGE', 'VIDEO', 'DOCUMENT'];
+            if (MEDIA_TYPES.includes(headerFormat)) {
+                return (headerComp.media_url || headerComp.text_content || '');
+            }
+            return (headerComp.text_content || '');
+        })();
+
+        return {
             category: selectedTemplateData.category,
             language: selectedTemplateData.language,
             name: selectedTemplateData.template_name || selectedTemplateData.name,
-            type: selectedTemplateData.template_type || selectedTemplateData.type,
-
-            // Handle Header
-            headerType: (selectedTemplateData.components.find((c: any) => c.component_type === "header")?.header_format || 'NONE'),
-
-            headerValue: (selectedTemplateData.components.find((c: any) => c.component_type === "header")?.text_content || ''),
+            type: derivedType as TemplateType,
+            status: selectedTemplateData.status,
+            headerType: derivedHeaderType as HeaderType,
+            headerValue: derivedHeaderValue,
 
             // Handle Content (Body)
             content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),
@@ -234,47 +255,89 @@ export const TemplateView = () => {
             footer: (selectedTemplateData.components.find((c: any) => c.component_type === "footer")?.text_content || ''),
             previous_content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),
             variables: selectedTemplateData.variables,
-            
+
             // Handle Buttons
             ...((() => {
                 const buttonsComp = selectedTemplateData.components.find((c: any) => c.component_type === "buttons");
                 if (buttonsComp && buttonsComp.text_content) {
                     try {
-                        const buttons = JSON.parse(buttonsComp.text_content);
+                        const buttons = typeof buttonsComp.text_content === 'string' ? JSON.parse(buttonsComp.text_content) : buttonsComp.text_content;
                         const ctaButtons = buttons.filter((b: any) => ['URL', 'PHONE', 'COPY_CODE', 'PHONE_NUMBER', 'CATALOG', 'MPM'].includes(b.type));
                         const quickReplies = buttons.filter((b: any) => b.type === 'QUICK_REPLY').map((b: any) => b.text || b.label);
-                        
+
                         // Normalize types
                         const normalizedCTA = ctaButtons.map((b: any) => ({
                             id: generateId(),
                             type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type,
                             label: b.text || b.label || (b.type === 'CATALOG' ? 'View Catalog' : b.type === 'COPY_CODE' ? 'Copy Code' : 'Button'),
                             value: (() => {
-                                let val = b.url || b.phone_number || b.example || b.value || '';
-                                if (b.type === 'PHONE_NUMBER' || b.type === 'PHONE') {
+                                let val = b.url || b.phone_number || b.example || b.value || (b.type === 'URL' ? b.url : '');
+                                if ((b.type === 'PHONE_NUMBER' || b.type === 'PHONE') && val) {
                                     if (val && !val.startsWith('+')) val = '+' + val;
-                                    if (val && !val.includes(' ') && val.length > 5) {
-                                        // Try to inject a space for the split UI: +XX XXXXXXXXXX
-                                        // We'll guess first 3 chars (+CC) if it's long enough
-                                        return val.substring(0, 3) + ' ' + val.substring(3);
-                                    }
                                 }
                                 return val;
                             })()
                         }));
 
                         return {
-                            interactiveActions: normalizedCTA.length > 0 && quickReplies.length > 0 ? 'All' : normalizedCTA.length > 0 ? 'CTA' : quickReplies.length > 0 ? 'QuickReplies' : 'None',
+                            interactiveActions: (normalizedCTA.length > 0 && quickReplies.length > 0 ? 'All' : normalizedCTA.length > 0 ? 'CTA' : quickReplies.length > 0 ? 'QuickReplies' : 'None') as InteractiveActionType,
                             ctaButtons: normalizedCTA,
                             quickReplies: quickReplies
                         };
                     } catch (e) {
-                        return { interactiveActions: 'None', ctaButtons: [], quickReplies: [] };
+                        return { interactiveActions: 'None' as InteractiveActionType, ctaButtons: [], quickReplies: [] };
                     }
                 }
-                return { interactiveActions: 'None', ctaButtons: [], quickReplies: [] };
+                return { interactiveActions: 'None' as InteractiveActionType, ctaButtons: [], quickReplies: [] };
+            })()),
+
+            // Handle Carousel
+            ...((() => {
+                const carouselComp = selectedTemplateData.components.find((c: any) => c.component_type === "carousel");
+                if (carouselComp && carouselComp.text_content) {
+                    try {
+                        const carousel = typeof carouselComp.text_content === 'string' ? JSON.parse(carouselComp.text_content) : carouselComp.text_content;
+                        if (carousel.cards && Array.isArray(carousel.cards)) {
+                            const carouselCards = carousel.cards.map((card: any) => {
+                                // Find components within the card. These follow Meta structure (HEADER, BODY, BUTTONS)
+                                const header = card.components?.find((c: any) => c.type === 'HEADER');
+                                const body = card.components?.find((c: any) => c.type === 'BODY');
+                                const buttonsComp = card.components?.find((c: any) => c.type === 'BUTTONS');
+
+                                return {
+                                    id: generateId(),
+                                    mediaType: (header?.format || 'IMAGE').toUpperCase(),
+                                    // Handle both our internal 'media_url' and Meta's 'example.header_handle'
+                                    mediaUrl: header?.media_url || header?.example?.header_handle?.[0] || '',
+                                    bodyText: body?.text || '',
+                                    buttons: (buttonsComp?.buttons || []).map((b: any) => ({
+                                        id: generateId(),
+                                        type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type,
+                                        label: b.text || b.label || 'Button',
+                                        value: b.url || b.phone_number || b.value || ''
+                                    }))
+                                };
+                            });
+
+                            return {
+                                carouselCards,
+                                carouselMediaType: (carouselCards[0]?.mediaType || 'IMAGE') as 'IMAGE' | 'VIDEO',
+                                // If carousel has buttons, extract them from the first card to use as "common" buttons in form
+                                ctaButtons: carouselCards[0]?.buttons || []
+                            };
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse carousel json", e);
+                    }
+                }
+                return {};
             })())
-        } : undefined;
+        };
+    }, [selectedTemplateData]);
+
+    // Render based on view mode
+    if (viewMode === 'create' || viewMode === 'edit' || viewMode === 'view') {
+
         console.log("initialData1", initialData)
         return (
             <TemplateFormPage

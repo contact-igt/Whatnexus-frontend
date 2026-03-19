@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from 'react';
 import { Sparkles, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
