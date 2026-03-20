@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Link2, File, Database } from 'lucide-react';
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { GlassCard } from "@/components/ui/glassCard";
@@ -100,6 +100,15 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
         urlTitle: "",
         textTitle: ""
     });
+
+    const [currentTime, setCurrentTime] = useState(Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(Date.now());
+        }, 5000);
+        return () => clearInterval(timer);
+    }, []);
 
     const handleFileButtonClick = () => {
         fileInputRef.current?.click();
@@ -624,7 +633,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     ) : activeKnowledgeData?.length > 0 ? (
                         activeKnowledgeData?.map((source: any, index: number) => {
                             const createdAt = new Date(source?.created_at).getTime();
-                            const now = Date.now();
+                            const now = currentTime;
                             const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
                             return (
                                 <div
@@ -709,7 +718,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                             isDarkMode={isDarkMode}
                                             isView={source?.type == "text" || source?.type == "file"}
                                             isEdit={source?.type == "text" || source?.type == "file"}
-                                            isDelete={source?.type == "text" || source?.type == "file"}
+                                            isDelete={source?.type == "text" || source?.type == "file" || source?.type == "url"}
                                             onView={() => handleView(source, 'knowledge')}
                                             onEdit={() => handleEdit(source, 'knowledge')}
                                             onDelete={() => handleDeleteClick(source, 'knowledge')}
@@ -776,7 +785,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                         ))
                     ) : inactiveKnowledgeData?.map((source: any, index: number) => {
                         const createdAt = new Date(source?.created_at).getTime();
-                        const now = Date.now();
+                        const now = currentTime;
                         const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
                         return (
                             <div
@@ -861,7 +870,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         isDarkMode={isDarkMode}
                                         isView={source?.type == "text" || source?.type == "file"}
                                         isEdit={source?.type == "text" || source?.type == "file"}
-                                        isDelete={source?.type == "text" || source?.type == "file"}
+                                        isDelete={source?.type == "text" || source?.type == "file" || source?.type == "url"}
                                         onView={() => handleView(source, 'knowledge')}
                                         onEdit={() => handleEdit(source, 'knowledge')}
                                         onDelete={() => handleDeleteClick(source, 'knowledge')}
@@ -919,7 +928,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     ) : deletedKnowledgesData?.data?.sources?.length > 0 ? (
                         deletedKnowledgesData?.data?.sources?.map((source: any, index: number) => {
                             const createdAt = new Date(source?.created_at).getTime();
-                            const now = Date.now();
+                            const now = currentTime;
                             const isProcessing = now - createdAt < 5 * 60 * 1000;
                             return (
                                 <div
@@ -984,7 +993,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         </div>
                                         {user?.role == "tenant_admin" && <ActionMenu
                                             isDarkMode={isDarkMode}
-                                            isPermanentDelete={source?.type == "text" || source?.type == "file"}
+                                            isPermanentDelete={source?.type == "text" || source?.type == "file" || source?.type == "url"}
                                             isRestore={true}
                                             onPermanentDelete={() => handlePermanentDeleteClick(source, "knowledge", true)}
                                             onRestore={() => handleRestore(source, "knowledge")}

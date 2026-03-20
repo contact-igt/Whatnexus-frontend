@@ -116,24 +116,24 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             },
-            {
-                label: "Follow-ups",
-                route: "/followups",
-                icon: Clock,
-                requiresWhatsApp: true,
-            },
+            // {
+            //     label: "Follow-ups",
+            //     route: "/followups",
+            //     icon: Clock,
+            //     requiresWhatsApp: true,
+            // },
             {
                 label: "Appointment",
                 route: "/appointments",
                 icon: Calendar,
                 requiresWhatsApp: false,
             },
-            {
-                label: "Logic",
-                route: "/logic",
-                icon: Workflow,
-                requiresWhatsApp: false,
-            }
+            // {
+            //     label: "Logic",
+            //     route: "/logic",
+            //     icon: Workflow,
+            //     requiresWhatsApp: false,
+            // }
         ]
     },
     {

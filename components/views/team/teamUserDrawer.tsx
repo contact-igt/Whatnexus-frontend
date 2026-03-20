@@ -12,12 +12,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 const teamUserSchema = z.object({
-    username: z.string().trim().min(2, "Username must be at least 2 characters"),
-    email: z.string().trim().email("Invalid email address"),
-    country_code: z.string().default("+91"),
-    mobile: z.string().regex(/^\d{10}$/, "Mobile number must be 10 digits"),
-    role: z.enum(["staff", "agent", "doctor", "tenant_admin"], { message: "Role is required" }),
-    status: z.string().optional(),
+    username: z.string().trim().optional().or(z.literal('')),
+    email: z.string().trim().email("Invalid email address").optional().or(z.literal('')),
+    country_code: z.string().optional().or(z.literal('')),
+    mobile: z.string().optional().or(z.literal('')).refine(val => !val || /^\d+$/.test(val), "Follow phone number format"),
+    role: z.string().optional().or(z.literal('')),
+    status: z.string().optional().or(z.literal('')),
 });
 
 type TeamUserFormValues = z.infer<typeof teamUserSchema>;
@@ -62,23 +62,16 @@ export const TeamUserDrawer = ({
             let countryCode = user.country_code || '+91';
 
             // Normalize country code
-            if (!countryCode.startsWith('+')) countryCode = `+${countryCode}`;
+            if (countryCode && !countryCode.startsWith('+')) {
+                countryCode = `+${countryCode}`;
+            }
 
-            const knownCodes = ['+91', '+1', '+44', '+971'];
-            let foundCode = false;
-
+            // Strip country code from mobile if it's already there
+            const rawCC = countryCode.replace('+', '');
             if (mobile.startsWith(countryCode)) {
                 mobile = mobile.slice(countryCode.length).trim();
-                foundCode = true;
-            } else {
-                for (const code of knownCodes) {
-                    if (mobile.startsWith(code)) {
-                        countryCode = code;
-                        mobile = mobile.slice(code.length).trim();
-                        foundCode = true;
-                        break;
-                    }
-                }
+            } else if (mobile.startsWith(rawCC)) {
+                mobile = mobile.slice(rawCC.length).trim();
             }
 
             reset({
@@ -184,7 +177,10 @@ export const TeamUserDrawer = ({
                                     </span>
                                     <span className={cn(
                                         "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                                        isDarkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"
+                                        user?.role === 'tenant_admin' ? (isDarkMode ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-purple-50 text-purple-700 border-purple-200') :
+                                            user?.role === 'admin' ? (isDarkMode ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-700 border-blue-200') :
+                                                user?.role === 'doctor' ? (isDarkMode ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' : 'bg-teal-50 text-teal-700 border-teal-200') :
+                                                    (isDarkMode ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' : 'bg-slate-100 text-slate-600 border-slate-200')
                                     )}>
                                         {user?.role}
                                     </span>
@@ -212,7 +208,7 @@ export const TeamUserDrawer = ({
                                     <div className="flex items-center gap-2">
                                         <Phone size={14} className="opacity-40" />
                                         <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
-                                            {user?.country_code} {user?.mobile}
+                                            {user?.country_code?.startsWith('+') ? user.country_code : `+${user?.country_code || '91'}`} {user?.mobile?.startsWith(user?.country_code?.replace('+', '')) ? user.mobile.slice(user.country_code.replace('+', '').length) : user?.mobile}
                                         </p>
                                     </div>
                                 </div>
@@ -294,7 +290,7 @@ export const TeamUserDrawer = ({
                                         { value: 'staff', label: 'Staff' },
                                         { value: 'agent', label: 'Agent' },
                                         { value: 'doctor', label: 'Doctor' },
-                                        ...(user?.role === 'tenant_admin' ? [{ value: 'tenant_admin', label: 'Admin (Node Controller)' }] : [])
+                                        { value: 'tenant_admin', label: 'Node Controller (Admin)' }
                                     ]}
                                     disabled={isSaving}
                                     error={errors.role?.message}

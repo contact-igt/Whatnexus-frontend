@@ -69,7 +69,7 @@ export const KnowledgeView = () => {
     const knowledgeTabs = [
         { value: "data-sources", label: "Data Sources" },
         { value: "prompts", label: "Prompts" },
-        { value: "aiLogs", label: "AI Logs" },
+        // { value: "aiLogs", label: "AI Logs" },
         // { value: "settings", label: "Settings" }
     ];
     console.log("user", user)
