@@ -3,6 +3,8 @@ import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { Receipt, Search, Download, Loader2 } from "lucide-react";
 import { useGetBillingLedgerQuery } from "@/hooks/useBillingQuery";
+import { Pagination } from "@/components/ui/pagination";
+
 
 interface BillingLedgerProps {
   isDarkMode: boolean;
@@ -54,13 +56,16 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
   const { data: responseData, isLoading } = useGetBillingLedgerQuery({
     category: filterCategory,
     page,
-    limit: 50,
+    limit: 10,
     startDate: startDate?.toISOString(),
     endDate: endDate?.toISOString()
   });
 
   const records = responseData?.data?.records || [];
-  const pagination = responseData?.data?.pagination || { total: 0, page: 1, limit: 50 };
+  const pagination = responseData?.data?.pagination || { total: 0, page: 1, limit: 10 };
+
+  const totalPages = Math.ceil(pagination.total / pagination.limit);
+
 
   // Note: For Category counts in Stage 1, we pull total from the pagination count 
   // since the actual counts per category require a separate aggregation endpoint.
@@ -83,30 +88,30 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                 const filterValue = cat === 'Free' ? 'Service' : cat;
                 const isActive = filterCategory === filterValue;
                 return (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setFilterCategory(filterValue);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5",
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                      : isDarkMode ? 'text-white/35 hover:text-white/60' : 'text-slate-400 hover:text-slate-700'
-                  )}
-                >
-                  {cat}
-                  {isActive && (
-                    <span className={cn(
-                      "text-[8px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full tabular-nums",
-                      'bg-white/20 text-white'
-                    )}>
-                      {totalCount}
-                    </span>
-                  )}
-                </button>
-              );
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setFilterCategory(filterValue);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5",
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                        : isDarkMode ? 'text-white/35 hover:text-white/60' : 'text-slate-400 hover:text-slate-700'
+                    )}
+                  >
+                    {cat}
+                    {isActive && (
+                      <span className={cn(
+                        "text-[8px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full tabular-nums",
+                        'bg-white/20 text-white'
+                      )}>
+                        {totalCount}
+                      </span>
+                    )}
+                  </button>
+                );
               })}
             </div>
           </div>
@@ -189,13 +194,15 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
         </div>
 
         {/* Footer */}
-        <div className={cn("flex items-center justify-between px-4 py-3 border-t", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
-          <span className={cn("text-[10px] font-semibold", isDarkMode ? 'text-white/25' : 'text-slate-400')}>
-            Showing {records.length} of {totalCount} records
-          </span>
-          <span className={cn("text-[10px] font-semibold", isDarkMode ? 'text-white/25' : 'text-slate-400')}>
-            Meta bills per conversation category × country rate card
-          </span>
+        <div className={cn("px-4 py-3 border-t", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            isDarkMode={isDarkMode}
+          />
         </div>
       </GlassCard>
     </div>

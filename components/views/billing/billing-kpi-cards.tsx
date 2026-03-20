@@ -28,16 +28,19 @@ export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCa
     freeConversations: 0
   };
 
-  // Convert raw values into the UI format (with mock trends mapped temporarily until we build actual history comparison)
+  // Convert raw values into the UI format
+  const total = kpiData.totalSpentEstimated || 1; // Avoid div by 0
+  
   const kpis = [
     { label: 'Wallet Balance', value: '₹0.00', trend: 'up', percent: 0, color: 'emerald', icon: Wallet },
-    { label: 'Total Estimated Spend', value: `₹${kpiData.totalSpentEstimated.toFixed(2)}`, trend: 'up', percent: 70, color: 'blue', icon: TrendingUp },
-    { label: 'Marketing Spend', value: `₹${kpiData.marketingSpent.toFixed(2)}`, trend: 'up', percent: 45, color: 'purple', icon: Megaphone },
-    { label: 'Utility Spend', value: `₹${kpiData.utilitySpent.toFixed(2)}`, trend: 'down', percent: 20, color: 'orange', icon: Zap },
-    { label: 'Auth Spend', value: `₹${kpiData.authSpent.toFixed(2)}`, trend: 'up', percent: 5, color: 'rose', icon: ShieldCheck },
-    { label: 'Free Tier Campaigns', value: (kpiData.freeConversations || 0).toLocaleString(), trend: 'down', percent: 0, color: 'emerald', icon: MessageCircle },
+    { label: 'Total Estimated Spend', value: `₹${kpiData.totalSpentEstimated.toFixed(2)}`, trend: 'up', percent: 100, color: 'blue', icon: TrendingUp },
+    { label: 'Marketing Spend', value: `₹${kpiData.marketingSpent.toFixed(2)}`, trend: 'up', percent: Math.round((kpiData.marketingSpent / total) * 100), color: 'purple', icon: Megaphone },
+    { label: 'Utility Spend', value: `₹${kpiData.utilitySpent.toFixed(2)}`, trend: 'down', percent: Math.round((kpiData.utilitySpent / total) * 100), color: 'orange', icon: Zap },
+    { label: 'Auth Spend', value: `₹${kpiData.authSpent.toFixed(2)}`, trend: 'up', percent: Math.round((kpiData.authSpent / total) * 100), color: 'rose', icon: ShieldCheck },
+    { label: 'Free Tier Campaigns', value: (kpiData.freeConversations || 0).toLocaleString(), trend: 'up', percent: 0, color: 'emerald', icon: MessageCircle },
     { label: 'Messages Sent', value: kpiData.totalMessagesSent.toLocaleString(), trend: 'up', percent: 100, color: 'blue', icon: Send },
   ];
+
 
   if (isLoading) {
     return (
@@ -51,12 +54,22 @@ export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCa
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {kpis.map((kpi, i) => (
         <GlassCard key={i} isDarkMode={isDarkMode} delay={i * 80} className="p-0">
-          <PulseMetric label={kpi.label} value={kpi.value} trend={kpi.trend} color={kpi.color} isDarkMode={isDarkMode} percent={kpi.percent} />
+          <PulseMetric 
+            label={kpi.label} 
+            value={kpi.value} 
+            trend={kpi.trend} 
+            color={kpi.color} 
+            isDarkMode={isDarkMode} 
+            percent={kpi.percent}
+            icon={kpi.icon}
+          />
         </GlassCard>
       ))}
+
       {/* Billing Status Card */}
       <GlassCard isDarkMode={isDarkMode} delay={560} className="p-0">
-        <div className="relative group p-6 cursor-default h-full flex flex-col justify-between">
+        <div className="relative group p-6 cursor-default h-full flex flex-col justify-between min-h-[160px]">
+
           {/* Subtle glow on hover */}
           <div className={cn(
             "absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-3xl",
