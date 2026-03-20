@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/redux/store';
@@ -18,17 +17,17 @@ import { useUpdateTenantOrganizationMutation } from '@/hooks/useTenantUserQuery'
 
 // Form Schema
 const editProfileSchema = z.object({
-    username: z.string().min(2, { message: "Name must be at least 2 characters." }),
-    country_code: z.string().min(2, { message: "Country code is required." }),
-    mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
-    // Organization fields
-    company_name: z.string().min(2, { message: "Organization name is required." }),
-    type: z.enum(['hospital', 'clinic']),
-    address: z.string().min(5, { message: "Address is too short." }),
-    country: z.string().min(1, { message: "Country is required." }),
-    state: z.string().min(1, { message: "State is required." }),
-    city: z.string().min(2, { message: "City is required." }),
-    pincode: z.string().min(4, { message: "Pincode is required." }),
+    username: z.string().optional().or(z.literal('')),
+    country_code: z.string().optional().or(z.literal('')),
+    mobile: z.string().optional().or(z.literal('')).refine((val) => !val || /^[0-9]{10}$/.test(val), { message: "Phone number must be 10 digits." }),
+    // Organization fields (optional if not admin or not yet set)
+    company_name: z.string().optional().or(z.literal('')),
+    type: z.string().optional().or(z.literal('')),
+    address: z.string().optional().or(z.literal('')),
+    country: z.string().optional().or(z.literal('')),
+    state: z.string().optional().or(z.literal('')),
+    city: z.string().optional().or(z.literal('')),
+    pincode: z.string().optional().or(z.literal('')),
 });
 
 type EditProfileData = z.infer<typeof editProfileSchema>;
@@ -62,48 +61,55 @@ export default function TenantProfileView() {
         resolver: zodResolver(editProfileSchema)
     });
 
-    const onSubmit = (data: EditProfileData) => {
+    const onSubmit = async (data: EditProfileData) => {
         const tenantUserId = user?.tenant_user_id;
-        if (!tenantUserId) {
-            return;
-        }
+        if (!tenantUserId) return;
 
-        // Prepare user update data
-        const userData = {
-            username: data.username,
-            country_code: data.country_code,
-            mobile: data.mobile
-        };
+        try {
+            // 1. User Profile Update (Always)
+            const userData = {
+                username: data.username,
+                country_code: data.country_code,
+                mobile: data.mobile
+            };
 
-        // Prepare organization update data
-        const orgData = {
-            company_name: data.company_name,
-            type: data.type,
-            address: data.address,
-            country: data.country,
-            state: data.state,
-            city: data.city,
-            pincode: data.pincode
-        };
+            const userUpdatePromise = new Promise((resolve, reject) => {
+                updateProfile({ tenantUserId, data: userData }, { onSuccess: resolve, onError: reject });
+            });
 
-        // Run both mutations
-        const userUpdatePromise = new Promise((resolve, reject) => {
-            updateProfile({ tenantUserId, data: userData }, { onSuccess: resolve, onError: reject });
-        });
+            const promises: Promise<any>[] = [userUpdatePromise];
 
-        const orgUpdatePromise = new Promise((resolve, reject) => {
-            updateOrganization(orgData, { onSuccess: resolve, onError: reject });
-        });
+            // 2. Organization Update (Only for tenant_admin)
+            if (user?.role === 'tenant_admin' && data.company_name) {
+                const orgData = {
+                    company_name: data.company_name,
+                    type: data.type || 'organization',
+                    address: data.address || '',
+                    country: data.country || '',
+                    state: data.state || '',
+                    city: data.city || '',
+                    pincode: data.pincode || ''
+                };
 
-        Promise.all([userUpdatePromise, orgUpdatePromise]).then(async () => {
+                const orgUpdatePromise = new Promise((resolve, reject) => {
+                    updateOrganization(orgData, { onSuccess: resolve, onError: reject });
+                });
+                promises.push(orgUpdatePromise);
+            }
+
+            // Wait for all mutations to settle
+            await Promise.all(promises);
+
+            // Re-fetch and sync state
             setIsEditMode(false);
             const result = await refetchProfile();
             if (result.data?.data) {
                 dispatch(updateUserData(result.data.data));
             }
-        }).catch(() => {
-            // Errors are handled by the mutation toast
-        });
+        } catch (error) {
+            console.error('Update failed:', error);
+            // Error toasts are handled by mutation hooks
+        }
     };
 
     const handleCancel = () => {
@@ -535,8 +541,8 @@ export default function TenantProfileView() {
                                                 <span className={cn(
                                                     "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
                                                     (user as any).organization.subscription_plan === 'enterprise' ? 'bg-amber-500/10 text-amber-500' :
-                                                    (user as any).organization.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-500' :
-                                                    'bg-emerald-500/10 text-emerald-500'
+                                                        (user as any).organization.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-500' :
+                                                            'bg-emerald-500/10 text-emerald-500'
                                                 )}>
                                                     {(user as any).organization.subscription_plan || 'Basic'} Plan
                                                 </span>

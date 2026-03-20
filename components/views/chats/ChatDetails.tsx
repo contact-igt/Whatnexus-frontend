@@ -165,16 +165,30 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                         )}
 
                         {selectedChat?.assigned_admin_id === user?.tenant_user_id ? (
-                            <div className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl border", isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-700")}>
-                                <ShieldCheck size={16} />
-                                <span className="text-xs font-bold uppercase tracking-wider">Assigned to You</span>
+                            <div className={cn("relative overflow-hidden flex items-center justify-between px-4 py-3 rounded-xl border transition-all", isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm")}>
+                                <div className="absolute -top-4 -right-4 w-20 h-20 bg-emerald-500/20 rounded-full blur-2xl animate-pulse" />
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <div className={cn("p-1.5 rounded-lg", isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100")}>
+                                        <ShieldCheck size={16} className={isDarkMode ? "text-emerald-400" : "text-emerald-600"} />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-emerald-400 dark:from-emerald-400 dark:to-emerald-200">
+                                        Assigned to You
+                                    </span>
+                                </div>
                             </div>
                         ) : selectedChat?.assigned_admin_id ? (
-                            <div className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl border", isDarkMode ? "bg-white/5 border-white/10 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-600")}>
-                                <Lock size={16} />
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] uppercase tracking-wider opacity-60">Assigned To</span>
-                                    <span className="text-xs font-bold">{selectedChat?.assigned_agent_name}</span>
+                            <div className={cn("flex items-center justify-between px-4 py-3 rounded-xl border transition-all", isDarkMode ? "bg-[#202c33]/80 border-white/5 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700 shadow-sm")}>
+                                <div className="flex items-center gap-3">
+                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border", isDarkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-slate-200 text-slate-600 shadow-sm")}>
+                                        {selectedChat?.assigned_agent_name?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest opacity-50 mb-0.5">Assigned To</span>
+                                        <span className={cn("text-xs font-bold", isDarkMode ? "text-white" : "text-slate-900")}>{selectedChat?.assigned_agent_name}</span>
+                                    </div>
+                                </div>
+                                <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-white/5" : "bg-slate-100")}>
+                                    <Lock size={12} className={isDarkMode ? "text-slate-400" : "text-slate-500"} />
                                 </div>
                             </div>
                         ) : (

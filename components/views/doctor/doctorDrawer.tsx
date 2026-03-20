@@ -126,7 +126,7 @@ export const DoctorDrawer = ({
             }
 
             reset({
-                title: doctor.title || 'Dr',
+                title: (doctor.title || 'Dr').replace(".", ""),
                 name: doctor.name || '',
                 country_code: countryCode,
                 mobile: doctor.mobile || '',
@@ -187,7 +187,8 @@ export const DoctorDrawer = ({
             isInitialized.current = true;
             lastDoctorId.current = 'new';
         }
-    }, [doctor, mode, isOpen, reset, specializationsList]);
+    }, [doctor?.doctor_id, mode, isOpen, reset]); 
+    // ^ Removed specializationsList from dependencies to avoid unwanted resets
 
     const handleDayToggle = (day: string) => {
         const dayData = availabilityMap[day] || { enabled: false, slots: [] };
@@ -369,7 +370,7 @@ export const DoctorDrawer = ({
                                         Name
                                     </label>
                                     <p className={cn("text-sm font-medium", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                        {formData.title} {formData.name}
+                                        {formData.title ? `${formData.title.replace(".", "")}.` : ''} {formData.name}
                                     </p>
                                 </div>
                                 <div>
@@ -499,11 +500,25 @@ export const DoctorDrawer = ({
                                                 </span>
                                             </div>
                                             <div className="space-y-1">
-                                                {dayData.slots.map((slot, index) => (
-                                                    <div key={index} className={cn("text-xs px-2 py-1 rounded", isDarkMode ? "bg-white/10 text-white/80" : "bg-white text-slate-600 border border-slate-100")}>
-                                                        {slot.start} - {slot.end}
-                                                    </div>
-                                                ))}
+                                                {dayData.slots.map((slot, index) => {
+                                                    const formatTime = (time: string | undefined) => {
+                                                        if (!time) return '';
+                                                        try {
+                                                            const [hour, minute] = time.split(':');
+                                                            const h = parseInt(hour, 10);
+                                                            const ampm = h >= 12 ? 'PM' : 'AM';
+                                                            const h12 = h % 12 || 12;
+                                                            return `${h12}:${minute || '00'} ${ampm}`;
+                                                        } catch (e) {
+                                                            return time;
+                                                        }
+                                                    };
+                                                    return (
+                                                        <div key={index} className={cn("text-[11px] px-2 py-1.5 rounded-lg font-medium", isDarkMode ? "bg-white/10 text-white/90" : "bg-white text-slate-700 border border-slate-200")}>
+                                                            {formatTime(slot.start)} — {formatTime(slot.end)}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     );
@@ -615,7 +630,7 @@ export const DoctorDrawer = ({
                                     isDarkMode={isDarkMode}
                                     icon={Mail}
                                     type="email"
-                                    disabled={isView}
+                                    disabled={isView || mode === 'edit'}
                                     {...register("email")}
                                     placeholder="john.smith@example.com"
                                     error={errors.email?.message}
@@ -789,15 +804,14 @@ export const DoctorDrawer = ({
                                             )}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <label className="flex items-center cursor-pointer group select-none">
+                                                <div
+                                                    onClick={() => !isView && handleDayToggle(day)}
+                                                    className={cn(
+                                                        "flex items-center flex-1 cursor-pointer group select-none",
+                                                        isView && "cursor-default pointer-events-none"
+                                                    )}
+                                                >
                                                     <div className="relative">
-                                                        <input
-                                                            type="checkbox"
-                                                            disabled={isView}
-                                                            checked={dayData.enabled}
-                                                            onChange={() => handleDayToggle(day)}
-                                                            className="sr-only"
-                                                        />
                                                         <div className={cn(
                                                             "w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200",
                                                             isDarkMode
@@ -817,7 +831,7 @@ export const DoctorDrawer = ({
                                                     <span className={cn("ml-3 font-medium transition-colors duration-200", isDarkMode ? "text-white" : "text-slate-900")}>
                                                         {day}
                                                     </span>
-                                                </label>
+                                                </div>
                                                 {!isView && dayData.enabled && (
                                                     <button
                                                         type="button"

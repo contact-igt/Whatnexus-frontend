@@ -169,6 +169,7 @@ export const useClaimChatMutation = () => {
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Failed to claim chat');
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
         },
     });
 };
@@ -194,6 +195,7 @@ export const useAssignAgentMutation = () => {
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Failed to assign agent');
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
         },
     });
 };

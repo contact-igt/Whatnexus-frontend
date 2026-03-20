@@ -1,7 +1,8 @@
-"use client";
-import { X, Calendar, MessageSquare, TrendingUp, TrendingDown, Clock, ChevronRight, Download, Tag, CheckCircle2, AlertCircle, Smile, Meh, Frown, Zap, Target, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { X, Calendar, MessageSquare, TrendingUp, TrendingDown, Clock, ChevronRight, Download, Tag, CheckCircle2, AlertCircle, Smile, Meh, Frown, Zap, Target, ArrowUpRight, ArrowDownRight, Minus, Copy, Check } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
+import { toast } from 'sonner';
+import React from 'react';
 
 interface WeeklySummary {
     weekNumber: number;
@@ -120,7 +121,16 @@ export const WeeklyChatSummaryModal = ({
     isDarkMode,
     weeklySummaries
 }: WeeklyChatSummaryModalProps) => {
+    const [copiedId, setCopiedId] = React.useState<number | null>(null);
+
     if (!isOpen) return null;
+
+    const handleCopy = (summary: string, id: number) => {
+        navigator.clipboard.writeText(summary);
+        setCopiedId(id);
+        toast.success("Summary copied to clipboard");
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
     const summaries = weeklySummaries || generateMockSummaries(chatName);
     const totalMessages = summaries.reduce((sum, week) => sum + week.messageCount, 0);
@@ -416,11 +426,23 @@ export const WeeklyChatSummaryModal = ({
                                     ? "bg-white/5 border-white/5"
                                     : "bg-slate-50 border-slate-100"
                             )}>
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <Clock size={12} className="text-emerald-500" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-500">
-                                        AI Summary
-                                    </span>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Clock size={12} className="text-emerald-500" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-500">
+                                            AI Summary
+                                        </span>
+                                    </div>
+                                    <button 
+                                        onClick={() => handleCopy(week.summary, week.weekNumber)}
+                                        className={cn(
+                                            "p-1 rounded hover:bg-emerald-500/10 transition-all",
+                                            isDarkMode ? "text-slate-500 hover:text-emerald-400" : "text-slate-400 hover:text-emerald-600"
+                                        )}
+                                        title="Copy summary"
+                                    >
+                                        {copiedId === week.weekNumber ? <Check size={12} /> : <Copy size={12} />}
+                                    </button>
                                 </div>
                                 <p className={cn(
                                     "text-sm leading-relaxed",

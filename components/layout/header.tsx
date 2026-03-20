@@ -12,16 +12,36 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { socket } from '@/utils/socket';
 
-/** Derive a messaging-tier label from the messaging_limit_tier field from Meta */
-function formatTierLabel(tier: string | undefined | null): string {
-    if (!tier) return 'TIER_1: 1K MSG LIMIT';
-    const upper = tier.toUpperCase();
-    if (upper.includes('UNLIMITED')) return 'TIER_UNLTD: UNLIMITED';
-    if (upper.includes('100K')) return 'TIER_3: 100K MSG LIMIT';
-    if (upper.includes('10K')) return 'TIER_2: 10K MSG LIMIT';
-    if (upper.includes('2000') || upper.includes('2K')) return 'TIER_1: 2K MSG LIMIT';
-    if (upper.includes('1K') || upper.includes('1000')) return 'TIER_1: 1K MSG LIMIT';
-    return `${tier.toUpperCase()} LIMIT`;
+export const META_TIER_CONFIG: Record<string, { name: string, limit: string | number }> = {
+  TIER_NOT_SET: {
+    name: "Trial",
+    limit: 250,
+  },
+  TIER_50: {
+    name: "Tier 1",
+    limit: 1000,
+  },
+  TIER_250: {
+    name: "Tier 2",
+    limit: 10000,
+  },
+  TIER_1K: {
+    name: "Tier 3",
+    limit: 100000,
+  },
+  TIER_10K: {
+    name: "Tier 4",
+    limit: "Unlimited",
+  },
+  TIER_100K: {
+    name: "Tier 4",
+    limit: "Unlimited",
+  },
+};
+
+function getTierInfo(tier: string | undefined | null) {
+    const rawTier = tier ? tier.toUpperCase() : "TIER_NOT_SET";
+    return META_TIER_CONFIG[rawTier] || META_TIER_CONFIG.TIER_NOT_SET;
 }
 
 /** Map quality_rating to label + dot colour */
@@ -96,7 +116,7 @@ export const Header = () => {
     const wabaStatus = whatsappApiDetails?.status ?? null;
     const isLive     = wabaStatus === 'active';
     const quality    = formatQuality(whatsappApiDetails?.quality_rating ?? whatsappApiDetails?.quality);
-    const tierLabel  = formatTierLabel(whatsappApiDetails?.messaging_limit_tier ?? whatsappApiDetails?.tier);
+    const tierInfo   = getTierInfo(whatsappApiDetails?.messaging_limit_tier ?? whatsappApiDetails?.tier);
 
     // ── Shared text styles ───────────────────────────────────────────────────
     const labelCls = cn('text-[10px] font-semibold', isDarkMode ? 'text-white/40' : 'text-slate-400');
@@ -205,17 +225,32 @@ export const Header = () => {
 
                     <Sep isDarkMode={isDarkMode} />
 
-                    {/* Messaging Tier */}
+                    {/* Messaging Limit */}
                     <div className="flex items-center gap-1.5 transition-all hover:scale-105">
                         <IconBadge color="bg-emerald-500">
                             <MessageSquare size={10} color="white" strokeWidth={2.5} />
                         </IconBadge>
+                        <span className={labelCls}>Messaging Limit:</span>
                         <span className={cn('text-[10px] font-bold',
                             wabaNumber
                                 ? isDarkMode ? 'text-white/70' : 'text-slate-700'
                                 : isDarkMode ? 'text-white/40' : 'text-slate-400'
                         )}>
-                            {wabaNumber ? tierLabel : '—'}
+                            {wabaNumber ? (tierInfo.limit === "Unlimited" ? "Unlimited" : `${tierInfo.limit.toLocaleString()} conversations / 24 hours`) : '—'}
+                        </span>
+                    </div>
+
+                    <Sep isDarkMode={isDarkMode} />
+
+                    {/* Tier */}
+                    <div className="flex items-center gap-1.5 transition-all hover:scale-105">
+                        <span className={labelCls}>Tier:</span>
+                        <span className={cn('text-[10px] font-bold',
+                            wabaNumber
+                                ? isDarkMode ? 'text-white/70' : 'text-slate-700'
+                                : isDarkMode ? 'text-white/40' : 'text-slate-400'
+                        )}>
+                            {wabaNumber ? tierInfo.name : '—'}
                         </span>
                     </div>
                 </div>

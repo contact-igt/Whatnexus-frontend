@@ -33,7 +33,7 @@ export const ChatView = () => {
         data: chatList,
         isLoading: isChatsLoading,
     } = useGetAllLiveChatsQuery();
-    
+
     const [filteredChats, setFilteredChats] = useState(chatList?.data);
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");
@@ -101,14 +101,16 @@ export const ChatView = () => {
         if (!selectedChat?.phone) return;
         if (!chatList?.data?.length) return;
 
-        const chat = chatList?.data?.find((c: any) => c.phone === selectedChat?.phone);
-        if (chat && Number(chat.unread_count) > 0) {
+        const currentChat = chatList.data.find((c: any) => c.phone === selectedChat.phone);
+        const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
+
+        if (hasUnreadUserMessages) {
             updateSeenMutate(selectedChat?.phone);
             // Optimistic: clear unread count immediately in local state
             setFilteredChats((prev: any) => {
                 if (!prev) return prev;
                 return prev.map((c: any) =>
-                    c.phone === selectedChat?.phone ? { ...c, unread_count: 0 } : c
+                    c.phone === selectedChat?.phone ? { ...c, unread_count: 0, seen: "true" } : c
                 );
             });
         }
@@ -196,9 +198,6 @@ export const ChatView = () => {
             // If we are currently waiting for the router to catch up to our UI click, ignore the old URL param
             if (navigatingPhoneRef.current) return;
 
-            // Skip sync if current selection already matches phoneParam (prevents clobbering optimistic state)
-            if (selectedChat?.phone === phoneParam) return;
-
             const chatFromUrl = chatList.data.find(
                 (c: any) => {
                     const cleanPhone = String(c.phone).replace(/\D/g, "");
@@ -207,13 +206,20 @@ export const ChatView = () => {
             );
 
             if (chatFromUrl) {
-                setSelectedChat({
-                    phone: chatFromUrl.phone,
-                    contact_id: chatFromUrl.contact_id,
-                    name: chatFromUrl.name ?? chatFromUrl.phone,
-                    assigned_admin_id: chatFromUrl.assigned_admin_id,
-                    assigned_agent_name: chatFromUrl.assigned_agent_name,
-                });
+                if (
+                    selectedChat?.phone !== chatFromUrl.phone ||
+                    selectedChat?.assigned_admin_id !== chatFromUrl.assigned_admin_id ||
+                    selectedChat?.assigned_agent_name !== chatFromUrl.assigned_agent_name ||
+                    selectedChat?.name !== (chatFromUrl.name ?? chatFromUrl.phone)
+                ) {
+                    setSelectedChat({
+                        phone: chatFromUrl.phone,
+                        contact_id: chatFromUrl.contact_id,
+                        name: chatFromUrl.name ?? chatFromUrl.phone,
+                        assigned_admin_id: chatFromUrl.assigned_admin_id,
+                        assigned_agent_name: chatFromUrl.assigned_agent_name,
+                    });
+                }
                 return;
             }
 
@@ -225,13 +231,20 @@ export const ChatView = () => {
             );
 
             if (chatFromFiltered) {
-                setSelectedChat({
-                    phone: chatFromFiltered.phone,
-                    contact_id: chatFromFiltered.contact_id,
-                    name: chatFromFiltered.name ?? chatFromFiltered.phone,
-                    assigned_admin_id: chatFromFiltered.assigned_admin_id,
-                    assigned_agent_name: chatFromFiltered.assigned_agent_name,
-                });
+                if (
+                    selectedChat?.phone !== chatFromFiltered.phone ||
+                    selectedChat?.assigned_admin_id !== chatFromFiltered.assigned_admin_id ||
+                    selectedChat?.assigned_agent_name !== chatFromFiltered.assigned_agent_name ||
+                    selectedChat?.name !== (chatFromFiltered.name ?? chatFromFiltered.phone)
+                ) {
+                    setSelectedChat({
+                        phone: chatFromFiltered.phone,
+                        contact_id: chatFromFiltered.contact_id,
+                        name: chatFromFiltered.name ?? chatFromFiltered.phone,
+                        assigned_admin_id: chatFromFiltered.assigned_admin_id,
+                        assigned_agent_name: chatFromFiltered.assigned_agent_name,
+                    });
+                }
                 return;
             }
         }
@@ -280,9 +293,7 @@ export const ChatView = () => {
         return [...dbMessages, ...uniqueSocketMessages];
     }, [messagesData?.data, newMessage]);
 
-    const displayMessages = isSearching
-        ? filteredMessage ?? []
-        : updatedMessageData ?? [];
+    const displayMessages = updatedMessageData ?? [];
     const groupedMessages = groupMessagesByDate(displayMessages);
     const groupedEntries = Object.entries(groupedMessages);
 
@@ -325,6 +336,8 @@ export const ChatView = () => {
             queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
         }
 
+        const isUser = data.sender === 'user';
+
         setFilteredChats((prev: any) => {
             if (!prev) return prev;
             const index = prev.findIndex((c: any) => c.phone === data.phone);
@@ -336,7 +349,8 @@ export const ChatView = () => {
                     contact_id: data.contact_id || updated[index].contact_id,
                     message: data.message,
                     last_message_time: data.created_at,
-                    unread_count: (updated[index].unread_count || 0) + (data.sender === 'user' ? 1 : 0),
+                    seen: isUser ? "false" : updated[index].seen,
+                    unread_count: isUser ? (Number(updated[index].unread_count) || 0) + 1 : updated[index].unread_count
                 };
                 return [updated[index], ...updated.filter((_, i) => i !== index)];
             }
@@ -347,7 +361,8 @@ export const ChatView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    unread_count: data.sender === 'user' ? 1 : 0,
+                    seen: isUser ? "false" : "true",
+                    unread_count: isUser ? 1 : 0
                 },
                 ...prev,
             ];
@@ -361,16 +376,19 @@ export const ChatView = () => {
         socket.on("connect", () => {
             socket.emit("join-tenant", user.tenant_id);
         });
-        socket.off("new-message");
         socket.on("new-message", handleIncomingMessage);
         socket.off("message-status-update");
         socket.on("message-status-update", (data: any) => {
             // Update message status (ticks) in real-time
             queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
         });
+        socket.on("chat-assignment-updated", () => {
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
+        });
         return () => {
             socket.off("new-message", handleIncomingMessage);
             socket.off("message-status-update");
+            socket.off("chat-assignment-updated");
             socket.off("connect");
         };
     }, []);
@@ -436,7 +454,7 @@ export const ChatView = () => {
 
     return (
         <div className={cn("flex h-[calc(100vh-56px)] overflow-hidden", isDarkMode ? "bg-[#0b141a]" : "bg-[#f0f2f5]")}>
-            <ChatSidebar 
+            <ChatSidebar
                 isDarkMode={isDarkMode}
                 chatSearchText={chatSearchText}
                 handleChatSearch={handleChatSearch}
@@ -450,7 +468,7 @@ export const ChatView = () => {
                 user={user}
             />
             <div className="flex-1 flex flex-col min-w-0 relative">
-                <ChatSummaryOverlay 
+                <ChatSummaryOverlay
                     isDarkMode={isDarkMode}
                     chatSummary={chatSummary}
                     setChatSummary={setChatSummary}
@@ -459,49 +477,57 @@ export const ChatView = () => {
                 <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
                     {selectedChat ? (
                         <>
-                            <ChatHeader 
+                            <ChatHeader
                                 isDarkMode={isDarkMode}
                                 selectedChat={selectedChat}
                                 messageSearchText={messageSearchText}
                                 setMessageSearchText={setMessageSearchText}
                             />
 
-                            <MessageList 
-                                isDarkMode={isDarkMode}
-                                isMessagesLoading={isMessagesLoading}
-                                isSearching={isSearching}
-                                filteredMessage={filteredMessage}
-                                groupedEntries={groupedEntries}
-                                bottomRef={bottomRef}
-                                selectedChat={selectedChat}
-                            />
+                            <div className="flex-1 min-h-0 relative flex flex-col">
+                                <MessageList
+                                    isDarkMode={isDarkMode}
+                                    isMessagesLoading={isMessagesLoading}
+                                    isSearching={isSearching}
+                                    filteredMessage={filteredMessage}
+                                    groupedEntries={groupedEntries}
+                                    bottomRef={bottomRef}
+                                    selectedChat={selectedChat}
+                                    searchText={messageSearchText}
+                                />
 
-                            {/* Smart Reply Suggestion */}
-                            <div className="px-6 py-2 flex justify-end">
-                                <button
-                                    onClick={() => suggestReply()}
-                                    disabled={isSuggesting}
-                                    className={cn(
-                                        "flex items-center space-x-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm",
-                                        isDarkMode 
-                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20" 
-                                            : "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100"
-                                    )}
-                                >
-                                    {isSuggesting ? (
-                                        <span className="animate-pulse flex items-center gap-2">
-                                            <Sparkles size={14} className="text-amber-500" /> Connecting to Neural Engine...
-                                        </span>
-                                    ) : (
-                                        <>
-                                            <Wand2 size={16} className="text-emerald-500" />
-                                            <span>Suggest Smart Reply</span>
-                                        </>
-                                    )}
-                                </button>
+                                {/* Smart Suggestion Sticky Button */}
+                                {groupedEntries?.length > 0 && selectedChat && (
+                                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                                        <div className="pointer-events-auto">
+                                            <button
+                                                onClick={suggestReply}
+                                                disabled={isSuggesting}
+                                                className={cn(
+                                                    "flex items-center space-x-2 px-4 py-2 rounded-full text-[13px] font-bold transition-all shadow-lg backdrop-blur-md",
+                                                    isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95',
+                                                    isDarkMode
+                                                        ? 'bg-[#182229]/90 text-emerald-400 border border-[#222d34]'
+                                                        : 'bg-white/90 text-emerald-700 border border-emerald-100'
+                                                )}
+                                            >
+                                                {isSuggesting ? (
+                                                    <span className="animate-pulse flex items-center gap-2">
+                                                        <Sparkles size={14} className="text-amber-500" /> Connecting to Neural Engine...
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        <Wand2 size={16} className="text-emerald-500" />
+                                                        <span>Suggest Smart Reply</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <MessageInput 
+                            <MessageInput
                                 isDarkMode={isDarkMode}
                                 message={message}
                                 handleInputChange={handleInputChange}
@@ -529,7 +555,7 @@ export const ChatView = () => {
             </div>
 
             {selectedChat && (
-                <ChatDetails 
+                <ChatDetails
                     isDarkMode={isDarkMode}
                     selectedChat={selectedChat}
                     isAdmin={isAdmin}

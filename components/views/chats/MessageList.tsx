@@ -11,6 +11,7 @@ interface MessageListProps {
     groupedEntries: any[];
     bottomRef: React.RefObject<HTMLDivElement | null>;
     selectedChat: any;
+    searchText?: string;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -20,7 +21,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     filteredMessage,
     groupedEntries,
     bottomRef,
-    selectedChat
+    selectedChat,
+    searchText = ""
 }) => {
     return (
         <div className={cn(
@@ -89,7 +91,15 @@ export const MessageList: React.FC<MessageListProps> = ({
                                             : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
                                     )}>
                                         <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                                            {msg.message}
+                                            {searchText && msg?.message?.toLowerCase().includes(searchText.toLowerCase()) ? (
+                                                msg.message.split(new RegExp(`(${searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, i: number) => (
+                                                    part.toLowerCase() === searchText.toLowerCase() ? (
+                                                        <mark key={i} className={cn("p-0 px-0.5 rounded-sm inline-block", isDarkMode ? "bg-emerald-500/30 text-emerald-400" : "bg-yellow-200 text-slate-900")}>
+                                                            {part}
+                                                        </mark>
+                                                    ) : part
+                                                ))
+                                            ) : msg.message}
                                         </p>
                                         <div className="flex items-center justify-end space-x-1 opacity-60">
                                             <span className="text-[10px]">

@@ -34,7 +34,7 @@ export const HistoryView = () => {
         data: chatHistoryList,
         isLoading: isChatsLoading,
     } = useGetAllHistoryChatsQuery();
-    
+
     const [filteredChats, setFilteredChats] = useState(chatHistoryList?.data?.chats);
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -82,8 +82,10 @@ export const HistoryView = () => {
         if (!selectedChat?.phone) return;
         if (!chatHistoryList?.data?.chats?.length) return;
 
-        const chat = chatHistoryList.data.chats.find((c: any) => c.phone === selectedChat?.phone);
-        if (chat && Number(chat.unread_count) > 0) {
+        const currentChat = chatHistoryList.data.chats.find((c: any) => c.phone === selectedChat.phone);
+        const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
+
+        if (hasUnreadUserMessages) {
             updateSeenMutate(selectedChat?.phone);
             setFilteredChats((prev: any) => {
                 if (!prev) return prev;
@@ -223,6 +225,8 @@ export const HistoryView = () => {
             setNewMessage(prev => [...prev, data]);
         }
 
+        const isUser = data.sender === 'user';
+
         setFilteredChats((prev: any) => {
             if (!prev) return prev;
             const index = prev.findIndex((c: any) => c.phone === data.phone);
@@ -233,21 +237,15 @@ export const HistoryView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    unread_count: (updated[index].unread_count || 0) + (data.sender === 'user' ? 1 : 0),
+                    seen: isUser ? "false" : updated[index].seen,
+                    unread_count: isUser ? (Number(updated[index].unread_count) || 0) + 1 : updated[index].unread_count
                 };
                 return [updated[index], ...updated.filter((_, i) => i !== index)];
             }
-            return [
-                {
-                    phone: data.phone,
-                    name: data.name,
-                    message: data.message,
-                    last_message_time: data.created_at,
-                    unread_count: data.sender === 'user' ? 1 : 0,
-                },
-                ...prev,
-            ];
+            return prev;
         });
+
+        queryClient.invalidateQueries({ queryKey: ["historychats"] });
     };
 
     useEffect(() => {
@@ -295,7 +293,7 @@ export const HistoryView = () => {
 
     return (
         <div className={cn("flex h-[calc(100vh-56px)] overflow-hidden", isDarkMode ? "bg-[#0b141a]" : "bg-[#f0f2f5]")}>
-            <HistorySidebar 
+            <HistorySidebar
                 isDarkMode={isDarkMode}
                 chatSearchText={chatSearchText}
                 handleChatSearch={handleChatSearch}
@@ -307,7 +305,7 @@ export const HistoryView = () => {
                 handleSelectChat={handleSelectChat}
             />
             <div className="flex-1 flex flex-col min-w-0 relative">
-                <ChatSummaryOverlay 
+                <ChatSummaryOverlay
                     isDarkMode={isDarkMode}
                     chatSummary={chatSummary}
                     setChatSummary={setChatSummary}
@@ -316,7 +314,7 @@ export const HistoryView = () => {
                 <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
                     {selectedChat ? (
                         <>
-                            <HistoryHeader 
+                            <HistoryHeader
                                 isDarkMode={isDarkMode}
                                 selectedChat={selectedChat}
                                 isSearchVisible={isSearchVisible}
@@ -326,7 +324,7 @@ export const HistoryView = () => {
                                 handleMessageSearch={handleMessageSearch}
                             />
 
-                            <HistoryMessageList 
+                            <HistoryMessageList
                                 isDarkMode={isDarkMode}
                                 isMessagesLoading={isMessagesLoading}
                                 isSearching={isSearching}
@@ -382,7 +380,7 @@ export const HistoryView = () => {
             </div>
 
             {selectedChat && (
-                <HistoryDetails 
+                <HistoryDetails
                     isDarkMode={isDarkMode}
                     selectedChat={selectedChat}
                     summarizeChat={summarizeChat}

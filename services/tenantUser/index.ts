@@ -68,4 +68,14 @@ export class tenantUserApiData {
     permanentDeleteTenantUser = async (tenantUserId: string) => {
         return await _axios("delete", `/tenant/user/${tenantUserId}/permanent`)
     }
+
+    // GET /api/whatsapp/tenant/user/deleted/list - Get deleted tenant users
+    getDeletedTenantUserList = async () => {
+        return await _axios("get", "/tenant/user/deleted/list")
+    }
+
+    // PUT /api/whatsapp/tenant/user/:id/restore - Restore tenant user
+    restoreTenantUser = async (tenantUserId: string) => {
+        return await _axios("put", `/tenant/user/${tenantUserId}/restore`)
+    }
 }
