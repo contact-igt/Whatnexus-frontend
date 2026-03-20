@@ -24,7 +24,9 @@ import {
     CreditCard,
     Mail,
     Trash2,
-    Terminal
+    Terminal,
+    FlaskConical
+
 } from 'lucide-react';
 
 export interface SidebarItem {
@@ -159,12 +161,6 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 route: "/knowledge",
                 icon: Database,
                 requiresWhatsApp: false,
-            },
-            {
-                label: "Playground",
-                route: "/playground",
-                icon: Terminal,
-                requiresWhatsApp: true,
             }
         ]
     },
@@ -187,6 +183,13 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "WhatsApp Settings",
                 route: "/settings/whatsapp-settings",
                 icon: MessageSquare,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "WhatsApp Playground",
+                route: "/settings/whatsapp-playground",
+                icon: FlaskConical,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }
@@ -244,6 +247,21 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 icon: CreditCard,
                 requiresWhatsApp: false,
                 roles: ['super_admin']
+            },
+            {
+                label: "Tenant Invitations",
+                route: "/admin/invitations",
+                icon: MessageSquare,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Onboarded Tenants",
+                route: "/admin/tenants",
+                icon: Users,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+
             }
         ]
     }

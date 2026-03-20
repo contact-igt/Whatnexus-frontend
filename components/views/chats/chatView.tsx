@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
+// Extracted Components
 
 // Extracted Components
 import { getDateLabel } from './ChatUtils';
@@ -65,7 +66,7 @@ export const ChatView = () => {
         const agents = agentsList?.data || [];
         const nonAdminAgents = agents.filter((agent: any) => agent.role !== 'tenant_admin');
         if (!agentSearch) return nonAdminAgents;
-        return nonAdminAgents.filter((agent: any) => 
+        return nonAdminAgents.filter((agent: any) =>
             agent.username.toLowerCase().includes(agentSearch.toLowerCase()) ||
             agent.role.toLowerCase().includes(agentSearch.toLowerCase())
         );
@@ -100,11 +101,10 @@ export const ChatView = () => {
         if (!selectedChat?.phone) return;
         if (!chatList?.data?.length) return;
 
-        const hasUnreadUserMessages = chatList?.data?.some(
-            (msg: any) => msg.seen === "false"
-        );
-        if (hasUnreadUserMessages) {
+        const chat = chatList?.data?.find((c: any) => c.phone === selectedChat?.phone);
+        if (chat && Number(chat.unread_count) > 0) {
             updateSeenMutate(selectedChat?.phone);
+            // Optimistic: clear unread count immediately in local state
             setFilteredChats((prev: any) => {
                 if (!prev) return prev;
                 return prev.map((c: any) =>
@@ -149,15 +149,15 @@ export const ChatView = () => {
             if (value) {
                 filtered = filtered?.filter((chat: any) => {
                     const cleanChatPhone = chat?.phone?.replace(/\D/g, "");
-                    return chat?.name?.toLowerCase().includes(value) || 
-                           chat?.phone?.includes(value) ||
-                           (cleanSearch && cleanChatPhone?.includes(cleanSearch));
+                    return chat?.name?.toLowerCase().includes(value) ||
+                        chat?.phone?.includes(value) ||
+                        (cleanSearch && cleanChatPhone?.includes(cleanSearch));
                 });
             }
             if (chatFilter === 'read') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "true");
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) === 0);
             } else if (chatFilter === 'unread') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "false" || chat?.seen == null);
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) > 0);
             } else if (chatFilter === 'assigned') {
                 filtered = filtered?.filter((chat: any) => chat?.assigned_admin_id === user?.tenant_user_id);
             } else if (chatFilter === 'unassigned') {
@@ -188,7 +188,6 @@ export const ChatView = () => {
         if (!chatList?.data?.length) return;
         if (phoneParam) {
             const cleanParam = phoneParam.replace(/\D/g, "");
-            
             // If the URL finally matched the explicit selection, clear the ref
             if (navigatingPhoneRef.current && (navigatingPhoneRef.current === phoneParam || navigatingPhoneRef.current.replace(/\D/g, "") === cleanParam)) {
                 navigatingPhoneRef.current = null;
@@ -197,6 +196,7 @@ export const ChatView = () => {
             // If we are currently waiting for the router to catch up to our UI click, ignore the old URL param
             if (navigatingPhoneRef.current) return;
 
+            // Skip sync if current selection already matches phoneParam (prevents clobbering optimistic state)
             if (selectedChat?.phone === phoneParam) return;
 
             const chatFromUrl = chatList.data.find(
@@ -315,6 +315,8 @@ export const ChatView = () => {
     };
 
     const handleIncomingMessage = (data: any) => {
+        console.log("📩 New message received:", data);
+
         const cleanIncomingPhone = data.phone?.replace(/\D/g, "");
         const cleanSelectedPhone = selectedChatRef.current?.phone?.replace(/\D/g, "");
 
@@ -334,7 +336,7 @@ export const ChatView = () => {
                     contact_id: data.contact_id || updated[index].contact_id,
                     message: data.message,
                     last_message_time: data.created_at,
-                    seen: "false",
+                    unread_count: (updated[index].unread_count || 0) + (data.sender === 'user' ? 1 : 0),
                 };
                 return [updated[index], ...updated.filter((_, i) => i !== index)];
             }
@@ -345,7 +347,7 @@ export const ChatView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    seen: "false",
+                    unread_count: data.sender === 'user' ? 1 : 0,
                 },
                 ...prev,
             ];
@@ -361,11 +363,14 @@ export const ChatView = () => {
         });
         socket.off("new-message");
         socket.on("new-message", handleIncomingMessage);
+        socket.off("message-status-update");
         socket.on("message-status-update", (data: any) => {
+            // Update message status (ticks) in real-time
             queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
         });
         return () => {
             socket.off("new-message", handleIncomingMessage);
+            socket.off("message-status-update");
             socket.off("connect");
         };
     }, []);
@@ -444,7 +449,6 @@ export const ChatView = () => {
                 handleSelectChat={handleSelectChat}
                 user={user}
             />
-
             <div className="flex-1 flex flex-col min-w-0 relative">
                 <ChatSummaryOverlay 
                     isDarkMode={isDarkMode}
@@ -462,46 +466,39 @@ export const ChatView = () => {
                                 setMessageSearchText={setMessageSearchText}
                             />
 
-                            <div className="flex-1 min-h-0 relative flex flex-col">
-                                <MessageList 
-                                    isDarkMode={isDarkMode}
-                                    isMessagesLoading={isMessagesLoading}
-                                    isSearching={isSearching}
-                                    filteredMessage={filteredMessage}
-                                    groupedEntries={groupedEntries}
-                                    bottomRef={bottomRef}
-                                    selectedChat={selectedChat}
-                                />
-                                
-                                {/* Smart Suggestion Sticky Button */}
-                                {groupedEntries?.length > 0 && selectedChat && (
-                                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-20 pointer-events-none">
-                                        <div className="pointer-events-auto">
-                                            <button
-                                                onClick={suggestReply}
-                                                disabled={isSuggesting}
-                                                className={cn(
-                                                    "flex items-center space-x-2 px-4 py-2 rounded-full text-[13px] font-bold transition-all shadow-lg backdrop-blur-md",
-                                                    isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95',
-                                                    isDarkMode
-                                                        ? 'bg-[#182229]/90 text-emerald-400 border border-[#222d34]'
-                                                        : 'bg-white/90 text-emerald-700 border border-emerald-100'
-                                                )}
-                                            >
-                                                {isSuggesting ? (
-                                                    <span className="animate-pulse flex items-center gap-2">
-                                                        <Sparkles size={14} className="text-amber-500" /> Connecting to Neural Engine...
-                                                    </span>
-                                                ) : (
-                                                    <>
-                                                        <Wand2 size={16} className="text-emerald-500" />
-                                                        <span>Suggest Smart Reply</span>
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                            <MessageList 
+                                isDarkMode={isDarkMode}
+                                isMessagesLoading={isMessagesLoading}
+                                isSearching={isSearching}
+                                filteredMessage={filteredMessage}
+                                groupedEntries={groupedEntries}
+                                bottomRef={bottomRef}
+                                selectedChat={selectedChat}
+                            />
+
+                            {/* Smart Reply Suggestion */}
+                            <div className="px-6 py-2 flex justify-end">
+                                <button
+                                    onClick={() => suggestReply()}
+                                    disabled={isSuggesting}
+                                    className={cn(
+                                        "flex items-center space-x-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm",
+                                        isDarkMode 
+                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20" 
+                                            : "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100"
+                                    )}
+                                >
+                                    {isSuggesting ? (
+                                        <span className="animate-pulse flex items-center gap-2">
+                                            <Sparkles size={14} className="text-amber-500" /> Connecting to Neural Engine...
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <Wand2 size={16} className="text-emerald-500" />
+                                            <span>Suggest Smart Reply</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
 
                             <MessageInput 

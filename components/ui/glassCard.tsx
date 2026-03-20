@@ -2,8 +2,9 @@
 import { cn } from "@/lib/utils";
 
 interface GlassCardProps {
-    children: React.ReactNode;
+    children?: React.ReactNode;
     className?: string;
+    style?: React.CSSProperties;
     isDarkMode?: boolean;
     delay?: number;
     onDragEnter?: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -15,6 +16,7 @@ interface GlassCardProps {
 export const GlassCard = ({
     children,
     className = "",
+    style = {},
     isDarkMode = true,
     delay = 0,
     onDragEnter,
@@ -30,7 +32,7 @@ export const GlassCard = ({
                 : 'bg-white/70 border-slate-200 shadow-slate-200/50 hover:border-emerald-500/20',
             className
         )}
-        style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+        style={{ ...style, animationDelay: `${delay}ms`, animationFillMode: 'both' }}
         onDragEnter={onDragEnter}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}

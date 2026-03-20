@@ -1,3 +1,4 @@
+"use client";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { Wallet, CreditCard, Download, Plus, RefreshCw, Calendar, Zap } from "lucide-react";

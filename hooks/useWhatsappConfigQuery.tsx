@@ -76,6 +76,23 @@ export const useSendTestWhatsAppConfigQuery = () => {
     })
 }
 
+export const useUpdateAccessTokenMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { access_token: string }) => {
+            return whatsappConfigApis.updateAccessToken(data);
+        },
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] });
+            toast.success(response?.data?.message || response?.message || 'Access token updated successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to update access token');
+        },
+    });
+};
+
 export const useStatusWhatsAppConfigQuery = () => {
     const queryClient = useQueryClient();
 

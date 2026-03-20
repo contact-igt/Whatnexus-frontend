@@ -114,7 +114,7 @@ export const AppointmentModal = ({
             }, { onSuccess: () => onSave() });
         } else if (mode === 'edit' && appointment) {
             updateMutation.mutate({
-                appointmentId: appointment.id,
+                appointmentId: appointment.appointment_id,
                 data: {
                     patient_name: formData.patient_name,
                     country_code: formData.country_code,

@@ -1,3 +1,4 @@
+"use client";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { FileText, Megaphone, ArrowUpRight, Users } from "lucide-react";

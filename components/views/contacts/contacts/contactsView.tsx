@@ -1,8 +1,10 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { socket } from '@/utils/socket';
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Contact, CreateContactDto, UpdateContactDto } from "@/types/contact";
 import {
     useGetAllContactsQuery,
@@ -46,7 +48,24 @@ export const ContactsView = () => {
     const [searchQuery, setSearchQuery] = useState("");
 
     // React Query Hooks
-    const { data: contactsData, isLoading: isLoadingContacts } = useGetAllContactsQuery();
+    const { data: contactsData, isLoading: isLoadingContacts, refetch: refetchContacts } = useGetAllContactsQuery();
+
+    // Socket: auto-refresh when new contact is created via WhatsApp
+    const { user } = useAuth();
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+        if (!socket.connected) socket.connect();
+        socket.on('connect', () => {
+            socket.emit('join-tenant', user.tenant_id);
+        });
+        socket.on('contact-created', () => {
+            if (activeTab === 'all') refetchContacts();
+        });
+        return () => {
+            socket.off('contact-created');
+            socket.off('connect');
+        };
+    }, [user?.tenant_id, activeTab]);
     const { data: deletedContactsData, isLoading: isLoadingDeleted } = useGetDeletedContactsQuery();
 
     const { mutate: createContact, isPending: isCreating } = useCreateContactMutation();
