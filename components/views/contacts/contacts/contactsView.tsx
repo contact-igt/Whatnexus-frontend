@@ -19,10 +19,11 @@ import {
 import { handleCSVDownloadData } from "@/hooks/useExportDataToExcel";
 import { ContactsHeader } from "./contactsHeader";
 import { ContactList } from "./contactList";
-import { AddContactModal } from "./addContactModal";
+import { AddContactDrawer } from "./addContactDrawer";
 import { EditContactDrawer } from "./editContactDrawer";
 import { ImportContactsModal } from "./importContactsModal";
-import { ConfirmationModal } from "@/components/ui/confirmationModal";
+import { ConfirmationDrawer } from "@/components/ui/confirmationDrawer";
+
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -290,14 +291,15 @@ export const ContactsView = () => {
                 isTrash={activeTab === 'trash'}
             />
 
-            {/* Add Contact Modal */}
-            <AddContactModal
+            {/* Add Contact Drawer */}
+            <AddContactDrawer
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 onSubmit={handleAddContact}
                 isDarkMode={isDarkMode}
                 isLoading={isCreating}
             />
+
 
             {/* Edit Contact Drawer */}
             <EditContactDrawer
@@ -321,8 +323,8 @@ export const ContactsView = () => {
                 isLoading={isImporting}
             />
 
-            {/* Confirmation Modal */}
-            <ConfirmationModal
+            {/* Confirmation Drawer */}
+            <ConfirmationDrawer
                 isOpen={isDeleteModalOpen}
                 onClose={() => {
                     setIsDeleteModalOpen(false);
@@ -352,8 +354,9 @@ export const ContactsView = () => {
                 variant={actionType === 'restore' ? 'info' : 'danger'}
             />
 
-            {/* Bulk Delete Confirmation Modal */}
-            <ConfirmationModal
+
+            {/* Bulk Delete Confirmation Drawer */}
+            <ConfirmationDrawer
                 isOpen={isBulkDeleteModalOpen}
                 onClose={() => setIsBulkDeleteModalOpen(false)}
                 onConfirm={handleBulkDelete}
@@ -365,6 +368,7 @@ export const ContactsView = () => {
                 isLoading={isDeleting || isPermanentlyDeleting}
                 variant="danger"
             />
+
         </div>
     );
 };

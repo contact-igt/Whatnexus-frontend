@@ -92,6 +92,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [headerFileName, setHeaderFileName] = useState<string | null>(null);
     const [cardFileNames, setCardFileNames] = useState<Record<number, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // { [contactId]: { [varKey]: value } }
+    const [groupMemberVariables, setGroupMemberVariables] = useState<Record<string, Record<string, string>>>({});
+    const [selectedGroupMembers, setSelectedGroupMembers] = useState<any[]>([]);
 
     const handleHeaderFileUpload = async (file: File) => {
         if (!file || !selectedTemplate) return;
@@ -184,6 +187,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     setError('Schedule date and time is required for scheduled campaigns');
                     return false;
                 }
+                if (!formData.recipient_source) {
+                    setError('Please select a recipient source');
+                    return false;
+                }
                 return true;
 
             case 2: // Template
@@ -192,8 +199,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     return false;
                 }
 
-                // Skip variable check for authentication templates — OTP is auto-generated
-                if (selectedTemplate?.category !== 'authentication') {
+                // Skip variable check for authentication, CSV, and group sources (per-member inputs)
+                if (selectedTemplate?.category !== 'authentication' && 
+                    formData.recipient_source !== 'csv' &&
+                    formData.recipient_source !== 'group') {
                     // Strictly validate all template variables are filled
                     if (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) {
                         const missingVars = selectedTemplate.variableArray.filter(
@@ -253,8 +262,19 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     }
                 } else if (formData.recipient_source === 'group') {
                     if (!formData.group_id?.trim()) {
-                        setError('Group ID is required');
+                        setError('Please select a group');
                         return false;
+                    }
+                    // If template has variables, ensure all members have all variables filled
+                    if (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication') {
+                        for (const member of selectedGroupMembers) {
+                            const memberVars = groupMemberVariables[member.contact?.contact_id || member.contact_id] || {};
+                            const missing = selectedTemplate.variableArray.filter((v: any) => !memberVars[v.variable_key]?.trim());
+                            if (missing.length > 0) {
+                                setError(`Fill all variables for ${member.contact?.name || member.mobile_number || 'a member'}: ${missing.map((v: any) => '{{' + v.variable_key + '}}').join(', ')}`);
+                                return false;
+                            }
+                        }
                     }
                 } else if (formData.recipient_source === 'manual') {
                     if (!formData.manual_recipients || formData.manual_recipients.length === 0) {
@@ -281,16 +301,16 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             // Remove header row
             const dataRows = rows.slice(1);
 
-            // Parse CSV data into CSVRecipient format
-            const parsedData: CSVRecipient[] = dataRows.map(row => ({
-                mobile_number: row[0] || '',
-                dynamic_variables: row.slice(1) // All columns after phone number
-            }));
-
             // Validate using template variable count
             const validation = validateCSVData(dataRows, templateVariableCount);
             setCsvValidation(validation);
-            setCsvRawData(parsedData);
+            
+            // Raw data for preview (unvalidated)
+            const rawParsedData: CSVRecipient[] = dataRows.map(row => ({
+                mobile_number: (row[0] || '') + (row[1] || ''),
+                dynamic_variables: row.slice(2)
+            }));
+            setCsvRawData(rawParsedData);
 
             // Open preview modal
             setIsCSVPreviewOpen(true);
@@ -364,8 +384,20 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             let audienceData: CSVRecipient[] | string;
 
             if (formData.recipient_source === 'group') {
-                // For group, audience_data is just the group_id string
-                audienceData = formData.group_id || '';
+                const hasVars = selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication';
+                if (hasVars && selectedGroupMembers.length > 0) {
+                    // Send as per-member CSVRecipient array for personalized group campaigns
+                    audienceData = selectedGroupMembers.map(member => {
+                        const contactId = member.contact?.contact_id || member.contact_id;
+                        const phone = member.contact?.phone || member.mobile_number || '';
+                        const memberVars = groupMemberVariables[contactId] || {};
+                        const dynVars = (selectedTemplate?.variableArray || []).map((v: any) => memberVars[v.variable_key] || '');
+                        return { mobile_number: phone, dynamic_variables: dynVars };
+                    });
+                } else {
+                    // No variables — use plain group_id so backend sends same message to all
+                    audienceData = formData.group_id || '';
+                }
             } else if (formData.recipient_source === 'csv') {
                 // For CSV, we respect the variables defining in the CSV file itself
                 audienceData = formData.csv_data || [];
@@ -528,6 +560,30 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 </div>
                             </div>
 
+                            <div>
+                                <label className={cn("block text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                    Recipient Source *
+                                </label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {(['csv', 'group', 'manual'] as RecipientSource[]).map((source) => (
+                                        <button
+                                            key={source}
+                                            onClick={() => setFormData(prev => ({ ...prev, recipient_source: source }))}
+                                            className={cn(
+                                                "px-4 py-3 rounded-xl border text-sm font-semibold capitalize transition-all",
+                                                formData.recipient_source === source
+                                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                    : isDarkMode
+                                                        ? 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            )}
+                                        >
+                                            {source}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {formData.campaign_type === 'scheduled' && (
                                 <div>
                                     <label className={cn("block text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
@@ -671,8 +727,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 )}
 
-                                {/* Variable Inputs — hidden for Authentication templates (OTP auto-generated) */}
-                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication' && (
+                                {/* Variable Inputs — only for 'manual' source with non-auth templates */}
+                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && 
+                                 selectedTemplate.category !== 'authentication' && 
+                                 formData.recipient_source === 'manual' && (
                                     <div className="mt-4 space-y-3">
                                         <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             Template Variables
@@ -688,7 +746,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                         value={variableValues[v.variable_key] || ''}
                                                         onChange={(e) => {
                                                             setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
-                                                            if (error) setError(null); // Clear error when typing
+                                                            if (error) setError(null);
                                                         }}
                                                         placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Value'}
                                                         className={cn(
@@ -702,6 +760,29 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     />
                                                 </div>
                                             ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Info banner for CSV/Group — variables filled per-recipient in Step 3 */}
+                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 &&
+                                 selectedTemplate.category !== 'authentication' &&
+                                 (formData.recipient_source === 'csv' || formData.recipient_source === 'group') && (
+                                    <div className={cn(
+                                        "mt-4 p-3 rounded-xl border flex items-start gap-3",
+                                        isDarkMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                                    )}>
+                                        <Check size={15} className="text-emerald-500 mt-0.5 shrink-0" />
+                                        <div>
+                                            <p className={cn("text-xs font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-700')}>
+                                                {formData.recipient_source === 'csv' ? 'Variables go in your CSV file' : 'Variables filled per-member in Step 3'}
+                                            </p>
+                                            <p className={cn("text-xs mt-0.5", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                                {formData.recipient_source === 'csv'
+                                                    ? `Columns: country_code, mobile_number, ${selectedTemplate.variableArray.map((v: any) => v.variable_key).join(', ')}`
+                                                    : `You'll fill ${selectedTemplate.variableArray.length} variable(s) for each group member in the next step.`
+                                                }
+                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -928,50 +1009,83 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     {currentStep === 3 && (
                         <div className="space-y-6">
                             <div>
-                                <label className={cn("block text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                    Recipient Source *
+                                <label className={cn("block text-sm font-semibold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                    Selected Recipient Source: <span className="text-emerald-500 capitalize">{formData.recipient_source}</span>
                                 </label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {(['csv', 'group', 'manual'] as RecipientSource[]).map((source) => (
-                                        <button
-                                            key={source}
-                                            onClick={() => setFormData(prev => ({ ...prev, recipient_source: source }))}
-                                            className={cn(
-                                                "px-4 py-3 rounded-xl border text-sm font-semibold capitalize transition-all",
-                                                formData.recipient_source === source
-                                                    ? 'bg-emerald-500 border-emerald-500 text-white'
-                                                    : isDarkMode
-                                                        ? 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
-                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                            )}
-                                        >
-                                            {source}
-                                        </button>
-                                    ))}
-                                </div>
+                                <p className={cn("text-xs mb-4", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                    You can change the source in Step 1 if needed.
+                                </p>
                             </div>
 
-                            {/* Group Warning for Variables */}
-                            {formData.recipient_source === 'group' && selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && (
-                                <div className={cn(
-                                    "p-4 rounded-xl border flex gap-3 items-start",
-                                    isDarkMode ? "bg-orange-500/10 border-orange-500/20" : "bg-orange-50 border-orange-200"
-                                )}>
-                                    <AlertTriangle className="text-orange-500 shrink-0" size={18} />
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-semibold text-orange-500">
-                                            Variables Not Supported for Groups
-                                        </p>
-                                        <p className={cn("text-xs leading-relaxed", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                            You selected a template with variables, but "Contact Groups" currently do not support dynamic variables. The variables you entered will be ignored. Use "Manual" or "CSV" if you need variables.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
 
                             {/* CSV Upload */}
                             {formData.recipient_source === 'csv' && (
                                 <div className="space-y-4">
+                                    {/* CSV Data Requirements Banner */}
+                                    <div className={cn(
+                                        "p-4 rounded-xl border flex flex-col gap-3 transition-all",
+                                        csvValidation?.isValid 
+                                            ? (isDarkMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200')
+                                            : (isDarkMode ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-200')
+                                    )}>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                {csvValidation?.isValid ? (
+                                                    <Check size={16} className="text-emerald-500" />
+                                                ) : (
+                                                    <AlertTriangle size={16} className="text-blue-500" />
+                                                )}
+                                                <span className={cn("text-sm font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                    {csvValidation?.isValid ? 'CSV Verification Successful' : 'CSV Data Requirements'}
+                                                </span>
+                                            </div>
+                                            {csvValidation?.isValid && (
+                                                <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">
+                                                    READY
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {!csvValidation?.isValid ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <p className={cn("text-xs font-semibold", isDarkMode ? 'text-white/80' : 'text-slate-700')}>Required Columns (Fixed):</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20">1. country_code (e.g. 91)</span>
+                                                        <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20">2. mobile_number (10 digits)</span>
+                                                    </div>
+                                                </div>
+                                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication' && (
+                                                    <div className="space-y-2">
+                                                        <p className={cn("text-xs font-semibold", isDarkMode ? 'text-white/80' : 'text-slate-700')}>Template Variables (Required):</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {selectedTemplate.variableArray.map((v, i) => (
+                                                                <span key={i} className="px-2 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-bold rounded border border-blue-500/20">
+                                                                    {i + 3}. {v.variable_key || v.name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-xs space-y-2">
+                                                <p className={isDarkMode ? 'text-white/60' : 'text-slate-600'}>
+                                                    All columns verified. Found {csvValidation.validRows.length} valid recipients with the following variables:
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <span className="text-[10px] font-medium text-emerald-500 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10">✓ country_code</span>
+                                                    <span className="text-[10px] font-medium text-emerald-500 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10">✓ mobile_number</span>
+                                                    {selectedTemplate?.variableArray?.map((v, i) => (
+                                                        <span key={i} className="text-[10px] font-medium text-emerald-500 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10">
+                                                            ✓ {v.variable_key || v.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className={cn(
                                         "border-2 border-dashed rounded-xl p-8 text-center transition-all",
                                         isDarkMode ? 'border-white/20 hover:border-white/40' : 'border-slate-300 hover:border-slate-400'
@@ -1023,7 +1137,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     )}
 
                                     <button
-                                        onClick={() => downloadCSVTemplate(2, formData.template_id || 'template')}
+                                        onClick={() => downloadCSVTemplate(selectedTemplate?.variableArray || [], selectedTemplate?.name || 'template')}
                                         className={cn(
                                             "text-xs font-semibold underline",
                                             isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'
@@ -1035,35 +1149,138 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                             )}
 
                             {/* Group Selection */}
-                            {formData.recipient_source === 'group' && (
-                                <div className="space-y-4">
-                                    <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                        {groups.length === 0 ? 'No groups found' : 'Choose a group to send this campaign to'}
-                                    </p>
+                            {formData.recipient_source === 'group' && (() => {
+                                const hasTemplateVars = selectedTemplate?.variableArray && 
+                                    selectedTemplate.variableArray.length > 0 && 
+                                    selectedTemplate.category !== 'authentication';
+                                const selectedGroup = groups.find(g => g.group_id === formData.group_id);
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                                        {groups.map((group) => (
-                                            <button
-                                                key={group.group_id}
-                                                onClick={() => setFormData(prev => ({ ...prev, group_id: group.group_id }))}
-                                                className={cn(
-                                                    "p-3 rounded-lg border text-left transition-all",
-                                                    formData.group_id === group.group_id
-                                                        ? 'bg-emerald-500 border-emerald-500 text-white'
-                                                        : isDarkMode
-                                                            ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                                                            : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50'
-                                                )}
-                                            >
-                                                <div className="font-semibold text-sm">{group.group_name}</div>
-                                                <div className={cn("text-xs opacity-80", formData.group_id === group.group_id ? 'text-white/80' : 'text-slate-500')}>
-                                                    {group.members?.length || group.total_contacts || 0} contacts
+                                return (
+                                    <div className="space-y-4">
+                                        {/* Step A: Group Picker */}
+                                        <div>
+                                            <p className={cn("text-xs mb-3", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                {groups.length === 0 ? 'No groups found' : 'Step 1: Choose a group'}
+                                            </p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                                                {groups.map((group) => (
+                                                    <button
+                                                        key={group.group_id}
+                                                        onClick={() => {
+                                                            setFormData(prev => ({ ...prev, group_id: group.group_id }));
+                                                            // Pre-load members into selectedGroupMembers
+                                                            setSelectedGroupMembers((group as any).members || []);
+                                                            setGroupMemberVariables({});
+                                                        }}
+                                                        className={cn(
+                                                            "p-3 rounded-lg border text-left transition-all",
+                                                            formData.group_id === group.group_id
+                                                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                                : isDarkMode
+                                                                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                                                                    : 'bg-white border-slate-200 text-slate-900 hover:bg-slate-50'
+                                                        )}
+                                                    >
+                                                        <div className="font-semibold text-sm">{group.group_name}</div>
+                                                        <div className={cn("text-xs opacity-80", formData.group_id === group.group_id ? 'text-white/80' : 'text-slate-500')}>
+                                                            {(group as any).members?.length || (group as any).total_contacts || 0} contacts
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Step B: Per-Member Variable Inputs */}
+                                        {selectedGroup && hasTemplateVars && selectedGroupMembers.length > 0 && (
+                                            <div className="space-y-3">
+                                                <div className={cn("p-3 rounded-lg border flex items-center gap-2",
+                                                    isDarkMode ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-200'
+                                                )}>
+                                                    <AlertTriangle size={14} className="text-blue-500 shrink-0" />
+                                                    <p className={cn("text-xs", isDarkMode ? 'text-blue-300' : 'text-blue-700')}>
+                                                        <strong>Step 2:</strong> Fill personalized variables for each member below.
+                                                    </p>
                                                 </div>
-                                            </button>
-                                        ))}
+
+                                                <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                                                    {selectedGroupMembers.map((member: any, idx: number) => {
+                                                        const contactId = member.contact?.contact_id || member.contact_id;
+                                                        const phone = member.contact?.phone || member.mobile_number || '';
+                                                        const name = member.contact?.name || phone || `Contact ${idx + 1}`;
+                                                        const memberVars = groupMemberVariables[contactId] || {};
+
+                                                        return (
+                                                            <div key={contactId || idx} className={cn(
+                                                                "p-4 rounded-xl border",
+                                                                isDarkMode ? 'bg-white/3 border-white/10' : 'bg-white border-slate-200'
+                                                            )}>
+                                                                {/* Member Header */}
+                                                                <div className="flex items-center gap-2 mb-3">
+                                                                    <div className={cn(
+                                                                        "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                                                                        isDarkMode ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'
+                                                                    )}>
+                                                                        {name.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>{name}</p>
+                                                                        <p className={cn("text-[10px]", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{phone}</p>
+                                                                    </div>
+                                                                    {/* Completion badge */}
+                                                                    {selectedTemplate?.variableArray?.every((v: any) => memberVars[v.variable_key]?.trim()) && (
+                                                                        <span className="ml-auto text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">✓ Done</span>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Variable Inputs */}
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                                    {selectedTemplate?.variableArray?.map((v: any) => (
+                                                                        <div key={v.variable_key}>
+                                                                            <label className={cn("text-[10px] font-semibold mb-1 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                                                                {'{{'}{v.variable_key}{'}}'}
+                                                                            </label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={memberVars[v.variable_key] || ''}
+                                                                                onChange={(e) => {
+                                                                                    setGroupMemberVariables(prev => ({
+                                                                                        ...prev,
+                                                                                        [contactId]: { ...(prev[contactId] || {}), [v.variable_key]: e.target.value }
+                                                                                    }));
+                                                                                    setError(null);
+                                                                                }}
+                                                                                placeholder={v.sample_value ? `e.g. ${v.sample_value}` : `Value for ${name}`}
+                                                                                className={cn(
+                                                                                    "w-full px-3 py-2 rounded-lg border text-xs outline-none transition-all",
+                                                                                    isDarkMode
+                                                                                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-emerald-500'
+                                                                                        : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500'
+                                                                                )}
+                                                                            />
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* No variables — plain group selected confirmation */}
+                                        {selectedGroup && !hasTemplateVars && (
+                                            <div className={cn("p-3 rounded-lg border flex items-center gap-2",
+                                                isDarkMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                                            )}>
+                                                <Check size={14} className="text-emerald-500 shrink-0" />
+                                                <p className={cn("text-xs font-medium", isDarkMode ? 'text-emerald-400' : 'text-emerald-700')}>
+                                                    All members of <strong>{selectedGroup.group_name}</strong> will receive the same message.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Manual Selection */}
                             {formData.recipient_source === 'manual' && (

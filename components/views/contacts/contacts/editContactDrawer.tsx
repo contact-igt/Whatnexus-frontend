@@ -265,7 +265,7 @@ export const EditContactDrawer = ({
                 </div>
 
                 {/* Email */}
-                {/* <Input
+                <Input
                     isDarkMode={isDarkMode}
                     label="Email"
                     type="email"
@@ -274,7 +274,8 @@ export const EditContactDrawer = ({
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     error={errors.email}
                     icon={Mail}
-                /> */}
+                />
+
 
                 {/* Tags */}
                 {/* <div>

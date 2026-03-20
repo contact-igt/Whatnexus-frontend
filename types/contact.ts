@@ -18,8 +18,10 @@ export interface CreateContactDto {
     country_code?: string;
     phone: string; // Required field - format: 10 digits
     name: string; // Required field
+    email?: string;
     profile_pic?: string;
 }
+
 
 export interface UpdateContactDto {
     // ⚠️ Phone cannot be edited after creation

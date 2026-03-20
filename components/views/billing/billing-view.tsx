@@ -19,8 +19,9 @@ export const BillingView = () => {
   const { isDarkMode } = useTheme();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [startDate, setStartDate] = useState<Date | null>(new Date());
-  const [endDate, setEndDate] = useState<Date | null>(new Date());
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+
 
   useEffect(() => {
     if (!user?.tenant_id) return;

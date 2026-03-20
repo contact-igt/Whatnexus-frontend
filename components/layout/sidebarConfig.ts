@@ -247,22 +247,8 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 icon: CreditCard,
                 requiresWhatsApp: false,
                 roles: ['super_admin']
-            },
-            {
-                label: "Tenant Invitations",
-                route: "/admin/invitations",
-                icon: MessageSquare,
-                requiresWhatsApp: false,
-                roles: ['super_admin', 'platform_admin']
-            },
-            {
-                label: "Onboarded Tenants",
-                route: "/admin/tenants",
-                icon: Users,
-                requiresWhatsApp: false,
-                roles: ['super_admin', 'platform_admin']
-
             }
         ]
     }
 ];
+

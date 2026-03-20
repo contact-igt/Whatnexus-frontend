@@ -13,8 +13,8 @@ import type {
  * @returns true if valid, false otherwise
  */
 export const validatePhoneNumber = (phone: string): boolean => {
-    // Must be exactly 12 digits starting with 91
-    const phoneRegex = /^91\d{10}$/;
+    // Standard E.164-like (10 to 15 digits)
+    const phoneRegex = /^\d{10,15}$/;
     return phoneRegex.test(phone);
 };
 
@@ -62,25 +62,36 @@ export const validateCSVData = (
     data.forEach((row, index) => {
         const rowNumber = index + 2; // +2 because index is 0-based and row 1 is header
 
-        // Check if row has enough columns (phone + variables)
-        if (row.length < templateVariableCount + 1) {
+        const countryCode = row[0];
+        const localNumber = row[1];
+        const dynamicVariables = row.slice(2, templateVariableCount + 2);
+
+        // Validate Country Code (1-4 digits)
+        if (!countryCode || !/^\d{1,4}$/.test(countryCode)) {
             errors.push({
                 field: `Row ${rowNumber}`,
-                message: `Insufficient columns. Expected ${templateVariableCount + 1
-                    }, got ${row.length}`,
+                message: `Invalid country code: ${countryCode}. Must be 1-4 digits (e.g. 91)`,
             });
             invalidRows.push(rowNumber);
             return;
         }
 
-        const phoneNumber = row[0];
-        const dynamicVariables = row.slice(1, templateVariableCount + 1);
-
-        // Validate phone number
-        if (!validatePhoneNumber(phoneNumber)) {
+        // Validate Local Phone Number (7-12 digits)
+        if (!localNumber || !/^\d{7,12}$/.test(localNumber)) {
             errors.push({
                 field: `Row ${rowNumber}`,
-                message: `Invalid phone number format: ${phoneNumber}. Must be 91XXXXXXXXXX`,
+                message: `Invalid local number: ${localNumber}. Must be 7-12 digits`,
+            });
+            invalidRows.push(rowNumber);
+            return;
+        }
+
+        const fullPhoneNumber = countryCode + localNumber;
+        // Validate full number length (10-15 digits)
+        if (fullPhoneNumber.length < 10 || fullPhoneNumber.length > 15) {
+            errors.push({
+                field: `Row ${rowNumber}`,
+                message: `Combined number ${fullPhoneNumber} is invalid. must be 10-15 digits total`,
             });
             invalidRows.push(rowNumber);
             return;
@@ -99,7 +110,7 @@ export const validateCSVData = (
 
         // Valid row
         validRows.push({
-            mobile_number: phoneNumber,
+            mobile_number: fullPhoneNumber,
             dynamic_variables: dynamicVariables,
         });
     });
@@ -260,16 +271,16 @@ export const canExecuteCampaign = (status: CampaignStatus): boolean => {
  * @param variableCount Number of dynamic variables
  * @returns CSV string
  */
-export const generateCSVTemplate = (variableCount: number): string => {
-    const headers = ["mobile_number"];
-    for (let i = 1; i <= variableCount; i++) {
-        headers.push(`variable_${i}`);
-    }
+export const generateCSVTemplate = (variableArray: any[]): string => {
+    const headers = ["country_code", "mobile_number"];
+    const variableNames = variableArray.map(v => v.variable_key || v.name || 'variable');
+    
+    headers.push(...variableNames);
 
-    const exampleRow = ["916369441531"];
-    for (let i = 1; i <= variableCount; i++) {
-        exampleRow.push(`Example ${i}`);
-    }
+    const exampleRow = ["91", "6369441531"];
+    variableArray.forEach((v, i) => {
+        exampleRow.push(v.sample_value || `Value ${i + 1}`);
+    });
 
     return `${headers.join(",")}\n${exampleRow.join(",")}`;
 };
@@ -280,10 +291,10 @@ export const generateCSVTemplate = (variableCount: number): string => {
  * @param templateName Template name for filename
  */
 export const downloadCSVTemplate = (
-    variableCount: number,
+    variableArray: any[],
     templateName: string
 ): void => {
-    const csv = generateCSVTemplate(variableCount);
+    const csv = generateCSVTemplate(variableArray);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
