@@ -24,7 +24,8 @@ const requestDemoSchema = z.object({
                 message: "Please enter a valid email",
             }
         ),
-    mobile: z.string().min(1, "mobile is required"),
+    country_code: z.string().default("+91"),
+    mobile: z.string().min(1, "Mobile is required").regex(/^\d{10}$/, "Mobile number must be 10 digits"),
     industry: z.string().min(1, "Industry is required"),
 });
 
@@ -45,6 +46,7 @@ export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
             name: "",
             organization: "",
             email: "",
+            country_code: "+91",
             mobile: "",
             industry: "",
         },
@@ -67,7 +69,7 @@ export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                 name: data?.name,
                 organization: data?.organization,
                 email: data?.email,
-                mobile: data?.mobile,
+                mobile: data?.country_code.replace('+', '') + data?.mobile,
                 industry: data?.industry,
                 ip_address: ipData?.ip,
                 utm_source: localStorage.getItem("utm_source") || ""
@@ -162,12 +164,37 @@ export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                         </div>
                                         <div className="space-y-2 col-span-2 md:col-span-1">
                                             <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Phone / WhatsApp</label>
-                                            <input
-                                                {...register("mobile")}
-                                                type="tel"
-                                                placeholder="+1 (555) 000-0000"
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
-                                            />
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <Controller
+                                                    name="country_code"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <select
+                                                            {...field}
+                                                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-3 text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-colors [&>option]:bg-slate-800 [&>option]:text-white"
+                                                        >
+                                                            <option value="+91">+91</option>
+                                                            <option value="+1">+1</option>
+                                                            <option value="+44">+44</option>
+                                                            <option value="+971">+971</option>
+                                                        </select>
+                                                    )}
+                                                />
+                                                <div className="col-span-2">
+                                                    <input
+                                                        {...register("mobile")}
+                                                        type="tel"
+                                                        placeholder="9876543210"
+                                                        maxLength={10}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value.replace(/\D/g, '');
+                                                            e.target.value = val;
+                                                            register("mobile").onChange(e);
+                                                        }}
+                                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
+                                                    />
+                                                </div>
+                                            </div>
                                             {errors.mobile && <p className="text-red-400 text-xs mt-1 ml-1 font-medium">{errors.mobile.message}</p>}
                                         </div>
                                         <div className="space-y-2 col-span-2">

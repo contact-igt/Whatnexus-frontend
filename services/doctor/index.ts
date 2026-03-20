@@ -9,17 +9,15 @@ export interface Doctor {
     mobile: string;
     country_code?: string;
     email: string;
-    currentStatus?: 'available' | 'busy' | 'off-duty';
-    status?: 'available' | 'busy' | 'off-duty';
+    status?: 'available' | 'busy' | 'off_duty';
     availability?: {
         [key: string]: {
             enabled: boolean;
             slots: { start: string; end: string }[];
         };
     } | { day_of_week: string; start_time: string; end_time: string }[];
-    consultationDuration?: number;
-    appointmentCount?: number;
-    photo?: string;
+    consultation_duration?: number;
+    appointment_count?: number;
     bio?: string;
     profile_pic?: string;
     experience_years?: number;
@@ -32,17 +30,19 @@ export interface CreateDoctorDto {
     country_code?: string;
     mobile: string;
     email: string;
-    currentStatus?: string;
-    consultationDuration?: number;
+    status?: string;
+    consultation_duration?: number;
     bio?: string;
     profile_pic?: string;
     experience_years?: number;
     qualification?: string;
     specializations?: string[];
     availability?: Array<{
-        day_of_week: string;
-        start_time: string;
-        end_time: string;
+        day: string;
+        slots: Array<{
+            start_time: string;
+            end_time: string;
+        }>;
     }>;
 }
 
@@ -52,17 +52,19 @@ export interface UpdateDoctorDto {
     country_code?: string;
     mobile?: string;
     email?: string;
-    currentStatus?: string;
-    consultationDuration?: number;
+    status?: string;
+    consultation_duration?: number;
     bio?: string;
     profile_pic?: string;
     experience_years?: number;
     qualification?: string;
     specializations?: string[];
     availability?: Array<{
-        day_of_week: string;
-        start_time: string;
-        end_time: string;
+        day: string;
+        slots: Array<{
+            start_time: string;
+            end_time: string;
+        }>;
     }>;
 }
 

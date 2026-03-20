@@ -30,14 +30,16 @@ export interface UpdateAppointmentDto {
     notes?: string;
     age?: number;
     type?: string;
+    email?: string;
 }
 
 export class AppointmentApiData {
-    getAllAppointments = async (params?: { search?: string; status?: string; date?: string }) => {
+    getAllAppointments = async (params?: { search?: string; status?: string; date?: string; doctor_id?: string }) => {
         const query = new URLSearchParams();
         if (params?.search) query.set("search", params.search);
         if (params?.status) query.set("status", params.status);
         if (params?.date) query.set("date", params.date);
+        if (params?.doctor_id) query.set("doctor_id", params.doctor_id);
         const qs = query.toString();
         return await _axios("get", `/whatsapp/appointment${qs ? `?${qs}` : ""}`);
     };

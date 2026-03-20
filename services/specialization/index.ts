@@ -24,4 +24,16 @@ export class specializationApiData {
     toggleSpecializationStatus = async (id: string) => {
         return await _axios("patch", `/whatsapp/specialization/${id}/status`)
     }
+
+    getDeletedSpecializations = async () => {
+        return await _axios("get", "/whatsapp/specializations/deleted")
+    }
+
+    restoreSpecialization = async (id: string) => {
+        return await _axios("patch", `/whatsapp/specialization/${id}/restore`)
+    }
+
+    permanentDeleteSpecialization = async (id: string) => {
+        return await _axios("delete", `/whatsapp/specialization/${id}/permanent`)
+    }
 }

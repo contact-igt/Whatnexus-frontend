@@ -19,10 +19,11 @@ import { DataTable, ColumnDef } from '@/components/ui/dataTable';
 import { Pagination } from '@/components/ui/pagination';
 import { getHeatStateStyles } from '@/utils/leadUtils';
 import { SearchInput } from '@/components/ui/searchInput';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGetAgentsQuery } from '@/hooks/useMessagesQuery';
 import { useBulkUpdateLeadsMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { toast } from 'sonner';
+import { socket } from '@/utils/socket';
 
 
 export const LeadsView = () => {
@@ -41,8 +42,26 @@ export const LeadsView = () => {
         assignedTo: 'all'
     });
 
+    const [leadAssignmentFilter, setLeadAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+
     // Data Queries
     const { data: leadIntelligenceData, isLoading: isLoadingLeads, refetch: refetchLeads } = useLeadIntelligenceQuery();
+
+    // Socket: real-time lead updates
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+        if (!socket.connected) socket.connect();
+        socket.on('connect', () => {
+            socket.emit('join-tenant', user.tenant_id);
+        });
+        socket.on('lead-updated', () => {
+            refetchLeads();
+        });
+        return () => {
+            socket.off('lead-updated');
+            socket.off('connect');
+        };
+    }, [user?.tenant_id]);
     const { data: deletedLeadsData, isLoading: isLoadingDeletedLeads, refetch: refetchDeletedLeads } = useGetDeletedLeadsQuery();
 
     const formatMessageDate = (dateString: string) => {
@@ -109,7 +128,7 @@ export const LeadsView = () => {
     const { mutate: summarizeLeadMutation, isPending: isSummarizePending } = useSummarizeLeadMutation();
     const { mutate: bulkUpdateLeads, isPending: isBulkUpdating } = useBulkUpdateLeadsMutation();
     const { data: agentsList } = useGetAgentsQuery();
-    
+
     const [activeSummaryId, setActiveSummaryId] = useState<string | null>(null);
 
 
@@ -117,15 +136,15 @@ export const LeadsView = () => {
     const [isAssigningBulk, setIsAssigningBulk] = useState(false);
 
     const isAdmin = user?.role === 'tenant_admin' || user?.role === 'admin';
-    
+
     const filteredAgents = useMemo(() => {
         return agentsList?.data || [];
     }, [agentsList?.data]);
 
     const toggleLeadSelection = (leadId: string) => {
-        setSelectedLeadIds(prev => 
-            prev.includes(leadId) 
-                ? prev.filter(id => id !== leadId) 
+        setSelectedLeadIds(prev =>
+            prev.includes(leadId)
+                ? prev.filter(id => id !== leadId)
                 : [...prev, leadId]
         );
     };
@@ -852,8 +871,8 @@ export const LeadsView = () => {
                 {selectedLeadIds.length > 0 && (
                     <div className={cn(
                         "mt-6 p-4 rounded-2xl border flex items-center justify-between animate-in slide-in-from-top-4 duration-300",
-                        isDarkMode 
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-white" 
+                        isDarkMode
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-white"
                             : "bg-emerald-50 border-emerald-200 text-emerald-900"
                     )}>
                         <div className="flex items-center gap-4">
@@ -917,8 +936,8 @@ export const LeadsView = () => {
                                     onClick={handleBulkClaim}
                                     className={cn(
                                         "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md",
-                                        isDarkMode 
-                                            ? "bg-emerald-500 text-white hover:bg-emerald-400" 
+                                        isDarkMode
+                                            ? "bg-emerald-500 text-white hover:bg-emerald-400"
                                             : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200"
                                     )}
                                 >
@@ -944,7 +963,7 @@ export const LeadsView = () => {
 
                             <div className={cn("w-px h-8 mx-1", isDarkMode ? "bg-white/10" : "bg-emerald-200")} />
 
-                            <button 
+                            <button
                                 onClick={() => setSelectedLeadIds([])}
                                 className={cn(
                                     "px-4 py-2 rounded-xl text-sm font-bold transition-all",
@@ -1001,7 +1020,7 @@ export const LeadsView = () => {
                                 : 'border-transparent text-slate-500 hover:text-slate-700'
                         )}
                     >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                         <span>Trash</span>
                     </button>
                 </div >

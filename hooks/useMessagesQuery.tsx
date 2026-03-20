@@ -97,6 +97,12 @@ export const useUpdateSeenMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["chats"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["historychats"],
+            });
         },
     })
 }
@@ -153,6 +159,12 @@ export const useClaimChatMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["livechats"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["historychats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
+            });
             toast.success('Chat claimed successfully!');
         },
         onError: (error: any) => {
@@ -171,6 +183,12 @@ export const useAssignAgentMutation = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["livechats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["historychats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
             });
             toast.success('Agent assigned successfully!');
         },

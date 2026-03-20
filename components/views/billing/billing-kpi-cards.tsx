@@ -1,3 +1,4 @@
+"use client";
 import { GlassCard } from "@/components/ui/glassCard";
 import { PulseMetric } from "@/components/ui/pulseMetric";
 import { cn } from "@/lib/utils";

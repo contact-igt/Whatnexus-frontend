@@ -38,12 +38,18 @@ export interface PlaygroundChatResponse {
             } | null;
         };
         knowledgeSources: KnowledgeSource[];
+        knowledgeChunksUsed: string[];
+        resolvedLogsUsed: string;
         responseOrigin: "knowledge_base" | "ai_generated";
         tokenUsage: {
             prompt_tokens: number;
             completion_tokens: number;
             total_tokens: number;
         };
+        classification: {
+            category: string;
+            reason: string;
+        } | null;
     };
 }
 

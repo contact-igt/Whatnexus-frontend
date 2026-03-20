@@ -14,6 +14,7 @@ import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign
 import { TemplateVariableModal } from './templateVariableModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useQueryClient } from '@tanstack/react-query';
+// Extracted Components
 
 // Extracted Components
 import { getDateLabel } from '../chats/ChatUtils';
@@ -24,6 +25,7 @@ import { HistoryDetails } from './HistoryDetails';
 import { ChatSummaryOverlay } from '../chats/ChatSummaryOverlay';
 
 export const HistoryView = () => {
+    const queryClient = useQueryClient();
     const { user, whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -56,7 +58,6 @@ export const HistoryView = () => {
     const selectedChatRef = useRef<any>(null);
     const searchParams = useSearchParams();
     const phoneParam = searchParams.get('phone');
-    const queryClient = useQueryClient();
     const [chatFilter, setChatFilter] = useState<'all' | 'read' | 'unread'>('all');
     const handleChatSearch = (e: any) => {
         setChatSearchText(e.target.value);
@@ -81,11 +82,15 @@ export const HistoryView = () => {
         if (!selectedChat?.phone) return;
         if (!chatHistoryList?.data?.chats?.length) return;
 
-        const hasUnreadUserMessages = chatHistoryList.data.chats.some(
-            (msg: any) => msg.seen === "false"
-        );
-        if (hasUnreadUserMessages) {
+        const chat = chatHistoryList.data.chats.find((c: any) => c.phone === selectedChat?.phone);
+        if (chat && Number(chat.unread_count) > 0) {
             updateSeenMutate(selectedChat?.phone);
+            setFilteredChats((prev: any) => {
+                if (!prev) return prev;
+                return prev.map((c: any) =>
+                    c.phone === selectedChat?.phone ? { ...c, unread_count: 0 } : c
+                );
+            });
         }
     }, [selectedChat?.phone, chatHistoryList?.data?.chats]);
 
@@ -141,9 +146,9 @@ export const HistoryView = () => {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
             if (chatFilter === 'read') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "true");
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) === 0);
             } else if (chatFilter === 'unread') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "false" || chat?.seen == null);
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) > 0);
             }
             setFilteredChats(filtered);
         }, 200);
@@ -228,7 +233,7 @@ export const HistoryView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    seen: "false",
+                    unread_count: (updated[index].unread_count || 0) + (data.sender === 'user' ? 1 : 0),
                 };
                 return [updated[index], ...updated.filter((_, i) => i !== index)];
             }
@@ -238,7 +243,7 @@ export const HistoryView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    seen: "false",
+                    unread_count: data.sender === 'user' ? 1 : 0,
                 },
                 ...prev,
             ];
@@ -253,12 +258,14 @@ export const HistoryView = () => {
         });
         socket.off("new-message");
         socket.on("new-message", handleIncomingMessage);
-        socket.on("message-status-update", (data: any) => {
-            queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
+        socket.on("session-activated", (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ["history-chats"] });
         });
+
         return () => {
             socket.off("new-message", handleIncomingMessage);
             socket.off("message-status-update");
+            socket.off("session-activated");
             socket.off("connect");
         };
     }, []);
@@ -299,7 +306,6 @@ export const HistoryView = () => {
                 selectedChat={selectedChat}
                 handleSelectChat={handleSelectChat}
             />
-
             <div className="flex-1 flex flex-col min-w-0 relative">
                 <ChatSummaryOverlay 
                     isDarkMode={isDarkMode}
@@ -347,31 +353,31 @@ export const HistoryView = () => {
                             )}
                         </div>
                     )}
-                        {/* Bottom Template Area */}
-                        {selectedChat && (
-                            <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
-                                <div className={cn(
-                                    "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
-                                    isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
-                                )}>
-                                    <div>
-                                        <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                            History Thread Closed
-                                        </h3>
-                                        <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                            Send a template to re-initiate this conversation.
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => setIsTemplateModalOpen(true)}
-                                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
-                                    >
-                                        <Send size={16} />
-                                        <span>Send Template</span>
-                                    </button>
+                    {/* Bottom Template Area */}
+                    {selectedChat && (
+                        <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
+                            <div className={cn(
+                                "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
+                                isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
+                            )}>
+                                <div>
+                                    <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                        History Thread Closed
+                                    </h3>
+                                    <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                        Send a template to re-initiate this conversation.
+                                    </p>
                                 </div>
+                                <button
+                                    onClick={() => setIsTemplateModalOpen(true)}
+                                    className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                >
+                                    <Send size={16} />
+                                    <span>Send Template</span>
+                                </button>
                             </div>
-                        )}
+                        </div>
+                    )}
                 </GlassCard>
             </div>
 
