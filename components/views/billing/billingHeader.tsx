@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { CreditCard, Download } from "lucide-react";
-import { DateRangePicker } from "./billing-date-range-picker";
+import { DateRangePicker } from "./billingDateRangePicker";
 
 interface BillingHeaderProps {
   isDarkMode: boolean;

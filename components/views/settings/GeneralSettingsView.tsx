@@ -74,7 +74,10 @@ const FeatureToggle: React.FC<FeatureToggleProps> = ({
                 {!canToggle && <Lock size={14} className={isDarkMode ? "text-slate-600" : "text-slate-300"} />}
                 <button
                     type="button"
-                    onClick={canToggle ? onToggle : undefined}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (canToggle && !isLoading) onToggle();
+                    }}
                     disabled={!canToggle || isLoading}
                     className={cn(
                         "relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none",
@@ -89,9 +92,6 @@ const FeatureToggle: React.FC<FeatureToggleProps> = ({
                         "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-300",
                         enabled ? "translate-x-6" : "translate-x-0"
                     )}>
-                        {isLoading && (
-                            <Loader2 size={12} className="absolute inset-0 m-auto text-slate-400 animate-spin" />
-                        )}
                     </span>
                 </button>
             </div>
@@ -128,12 +128,14 @@ export const GeneralSettingsView = () => {
             {
                 onSuccess: () => {
                     toast.success(`"${key.replace(/_/g, ' ')}" updated successfully`);
-                    setLocalSettings(null);
                 },
                 onError: (err: any) => {
-                    setLocalSettings(aiSettings); // Revert on failure
                     toast.error(err?.message || "Failed to update settings");
                 },
+                onSettled: () => {
+                   // Only clear correctly once the cache is updated in the hook or reverted by the server
+                   setLocalSettings(null);
+                }
             }
         );
     };
@@ -152,41 +154,41 @@ export const GeneralSettingsView = () => {
         description: string;
         isAdminOnly?: boolean;
     }[] = [
-        {
-            key: 'auto_responder',
-            icon: Bot,
-            iconColor: 'text-emerald-500',
-            iconBg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50',
-            title: 'AI Auto-Responder',
-            description: 'Automatically reply to incoming WhatsApp messages using your AI knowledge base. When disabled, all incoming messages will require manual human responses.',
-            isAdminOnly: true,
-        },
-        {
-            key: 'smart_reply',
-            icon: Wand2,
-            iconColor: 'text-violet-500',
-            iconBg: isDarkMode ? 'bg-violet-500/10' : 'bg-violet-50',
-            title: 'Smart Reply Suggestions',
-            description: 'Show AI-generated smart reply options for human agents inside the live chat interface. Agents can click to auto-fill and send with one click.',
-        },
-        {
-            key: 'neural_summary',
-            icon: Brain,
-            iconColor: 'text-blue-500',
-            iconBg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50',
-            title: 'Neural Chat Summary',
-            description: 'Enable AI to generate a real-time conversation summary from the live chat details panel. Provides quick context without reading entire message history.',
-        },
-        {
-            key: 'content_generation',
-            icon: Zap,
-            iconColor: 'text-amber-500',
-            iconBg: isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50',
-            title: 'AI Content Generation',
-            description: 'Allow AI to generate WhatsApp message template bodies, campaign content, and marketing copy for your organization.',
-            isAdminOnly: true,
-        },
-    ];
+            {
+                key: 'auto_responder',
+                icon: Bot,
+                iconColor: 'text-emerald-500',
+                iconBg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50',
+                title: 'AI Auto-Responder',
+                description: 'Automatically reply to incoming WhatsApp messages using your AI knowledge base. When disabled, all incoming messages will require manual human responses.',
+                isAdminOnly: true,
+            },
+            {
+                key: 'smart_reply',
+                icon: Wand2,
+                iconColor: 'text-violet-500',
+                iconBg: isDarkMode ? 'bg-violet-500/10' : 'bg-violet-50',
+                title: 'Smart Reply Suggestions',
+                description: 'Show AI-generated smart reply options for human agents inside the live chat interface. Agents can click to auto-fill and send with one click.',
+            },
+            {
+                key: 'neural_summary',
+                icon: Brain,
+                iconColor: 'text-blue-500',
+                iconBg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50',
+                title: 'Neural Chat Summary',
+                description: 'Enable AI to generate a real-time conversation summary from the live chat details panel. Provides quick context without reading entire message history.',
+            },
+            {
+                key: 'content_generation',
+                icon: Zap,
+                iconColor: 'text-amber-500',
+                iconBg: isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50',
+                title: 'AI Content Generation',
+                description: 'Allow AI to generate WhatsApp message template bodies, campaign content, and marketing copy for your organization.',
+                isAdminOnly: true,
+            },
+        ];
 
     return (
         <div className="h-full overflow-y-auto no-scrollbar">

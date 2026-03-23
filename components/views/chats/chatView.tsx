@@ -518,7 +518,7 @@ export const ChatView = () => {
                                                 disabled={isSuggesting || !aiSettings.smart_reply}
                                                 title={!aiSettings.smart_reply ? "Smart Reply is disabled in global AI settings" : undefined}
                                                 className={cn(
-                                                    "flex items-center px-5 py-2.5 rounded-full text-[13px] font-bold transition-all shadow-lg backdrop-blur-md disabled:opacity-70 disabled:cursor-not-allowed",
+                                                    "flex items-center px-4 py-2.5 rounded-full text-[13px] font-bold transition-all shadow-lg backdrop-blur-md disabled:opacity-70 disabled:cursor-not-allowed",
                                                     !aiSettings.smart_reply
                                                         ? (isDarkMode ? "bg-slate-800/80 text-slate-500 border border-white/5" : "bg-slate-100 text-slate-400 border border-slate-200")
                                                         : cn(
@@ -529,7 +529,9 @@ export const ChatView = () => {
                                                         )
                                                 )}
                                             >
-                                                <div className="flex items-center justify-center flex-1 gap-2 mr-[-16px]">
+                                                {/* Symmetric Spacers for perfect centering */}
+                                                {!aiSettings.smart_reply && <div className="w-4 shrink-0" />}
+                                                <div className="flex-1 flex items-center justify-center gap-2">
                                                     {isSuggesting ? (
                                                         <span className="animate-pulse flex items-center gap-2">
                                                             <Sparkles size={14} className="text-amber-500" /> Connecting to Neural Engine...
@@ -541,7 +543,7 @@ export const ChatView = () => {
                                                         </div>
                                                     )}
                                                 </div>
-                                                {!aiSettings.smart_reply && <Lock size={12} className="ml-auto shrink-0 opacity-60" />}
+                                                {!aiSettings.smart_reply && <Lock size={14} className="ml-2 shrink-0 opacity-80" />}
                                             </button>
                                         </div>
                                     </div>

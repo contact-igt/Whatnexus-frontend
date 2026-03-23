@@ -116,7 +116,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                         <span className={cn("text-sm font-bold truncate", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             {chat?.name || chat.phone}
                                         </span>
-                                        {chat?.assigned_admin_id && (
+                                        {chat?.assigned_admin_id ? (
                                             <div className={cn(
                                                 "px-1.5 py-[2px] rounded text-[9px] font-bold flex items-center gap-1 shrink-0",
                                                 chat.assigned_admin_id === user?.tenant_user_id
@@ -124,6 +124,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                                     : (isDarkMode ? "bg-white/5 text-slate-400" : "bg-slate-100 text-slate-500")
                                             )}>
                                                 {chat.assigned_admin_id === user?.tenant_user_id ? "Yours" : chat.assigned_agent_name}
+                                            </div>
+                                        ) : (
+                                            <div className={cn(
+                                                "px-1.5 py-[2px] rounded text-[9px] font-bold flex items-center gap-1 shrink-0",
+                                                isDarkMode ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" : "bg-rose-50 text-rose-600 border border-rose-100"
+                                            )}>
+                                                Unassigned
                                             </div>
                                         )}
                                     </div>

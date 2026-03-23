@@ -79,9 +79,9 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                                             disabled={isAssigning}
                                             className={cn(
                                                 "w-full rounded-xl py-3 px-3 text-xs font-semibold flex items-center justify-between transition-all cursor-pointer shadow-sm border",
-                                                isDarkMode
-                                                    ? "bg-[#202c33] text-slate-200 border-white/5 hover:border-emerald-500/50"
-                                                    : "bg-white text-slate-700 border-slate-200 hover:border-emerald-500/50"
+                                                !selectedChat?.assigned_admin_id
+                                                    ? (isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-600")
+                                                    : (isDarkMode ? "bg-[#202c33] text-slate-200 border-white/5" : "bg-white text-slate-700 border-slate-200")
                                             )}
                                         >
                                             <div className="flex items-center gap-2 truncate">
@@ -112,13 +112,14 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                                         <div className="max-h-[420px] overflow-y-auto p-2 custom-scrollbar">
                                             <button
                                                 onClick={() => {
+                                                    if (!selectedChat?.assigned_admin_id) return;
                                                     assignAgentMutate({ contact_id: selectedChat.contact_id, agent_id: "" });
                                                     setSelectedChat((prev: any) => ({ ...prev, assigned_admin_id: "", assigned_agent_name: "Unassigned" }));
                                                 }}
                                                 className={cn(
                                                     "w-full flex items-center justify-between px-3 py-4 rounded-xl text-xs font-medium transition-colors",
                                                     !selectedChat?.assigned_admin_id
-                                                        ? (isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600")
+                                                        ? (isDarkMode ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : "bg-rose-50 text-rose-600 border border-rose-100")
                                                         : (isDarkMode ? "hover:bg-white/5 text-slate-400" : "hover:bg-slate-50 text-slate-600")
                                                 )}
                                             >
@@ -129,6 +130,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                                                 <button
                                                     key={agent.tenant_user_id}
                                                     onClick={() => {
+                                                        if (selectedChat?.assigned_admin_id === agent.tenant_user_id) return;
                                                         assignAgentMutate({ contact_id: selectedChat.contact_id, agent_id: agent.tenant_user_id });
                                                         setSelectedChat((prev: any) => ({
                                                             ...prev,
@@ -209,7 +211,10 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                                     }));
                                 }}
                                 disabled={isClaiming}
-                                className="w-full h-10 cursor-pointer flex items-center justify-center space-x-2 bg-emerald-600 text-white px-4 rounded-xl text-xs font-bold uppercase hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/10 disabled:opacity-50"
+                                className={cn(
+                                    "w-full h-10 cursor-pointer flex items-center justify-center space-x-2 px-4 rounded-xl text-xs font-bold uppercase transition-all shadow-lg disabled:opacity-50",
+                                    isDarkMode ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30" : "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100"
+                                )}
                             >
                                 {isClaiming ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
                                 <span className='text-[11px]'>Claim Lead</span>
@@ -249,7 +254,9 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                                     : "bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20"
                             )}
                         >
-                            <div className="flex items-center justify-center flex-1 space-x-2 mr-[-16px]">
+                            {/* Symmetric Spacers */}
+                            {!isNeuralSummaryEnabled && <div className="w-4 shrink-0" />}
+                            <div className="flex-1 flex items-center justify-center gap-2">
                                 {isSummarizing ? (
                                     <Loader2 size={15} className="animate-spin" />
                                 ) : (
@@ -257,7 +264,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                                 )}
                                 <span>Neural Summary</span>
                             </div>
-                            {!isNeuralSummaryEnabled && <Lock size={12} className="ml-auto shrink-0 opacity-70" />}
+                            {!isNeuralSummaryEnabled && <Lock size={14} className="ml-2 shrink-0 opacity-80" />}
                         </button>
                         <button
                             onClick={() => setIsWeeklySummaryOpen(true)}
