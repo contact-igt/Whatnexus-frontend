@@ -22,23 +22,23 @@ export const UiPreviewSection = () => {
             <div className="container mx-auto">
                 <SectionHeader title="One hub. Total visibility." subtitle="Platform Experience" centered />
                 <div className="grid lg:grid-cols-12 gap-12 items-center">
-                    <div className="lg:col-span-4 flex flex-col gap-3">
+                    <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                         {uiSlides.map((slide, i) => (
                             <button
                                 key={i}
                                 onClick={() => setActiveUI(i)}
-                                className={`p-6 text-left rounded-2xl border transition-all duration-300 group ${activeUI === i
+                                className={`p-4 md:p-6 text-left rounded-2xl border transition-all duration-300 group ${activeUI === i
                                         ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.3)] scale-[1.02]'
                                         : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:border-white/10'
                                     }`}
                             >
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-3 md:gap-4 font-['Plus_Jakarta_Sans']">
                                     <div className={`transition-transform duration-300 ${activeUI === i ? 'text-white scale-110' : 'text-emerald-500 group-hover:scale-110'}`}>
-                                        {slide.icon}
+                                        {React.cloneElement(slide.icon as React.ReactElement, { size: 18 })}
                                     </div>
                                     <div>
-                                        <div className="font-black text-sm uppercase tracking-widest mb-1">{slide.label}</div>
-                                        <div className={`text-[10px] uppercase tracking-widest transition-colors ${activeUI === i ? 'text-white/70' : 'text-white/30'}`}>
+                                        <div className="font-black text-[10px] md:text-sm uppercase tracking-widest mb-0.5 md:mb-1">{slide.label}</div>
+                                        <div className={`text-[8px] md:text-[10px] uppercase tracking-widest transition-colors ${activeUI === i ? 'text-white/70' : 'text-white/30'}`}>
                                             {slide.sub}
                                         </div>
                                     </div>

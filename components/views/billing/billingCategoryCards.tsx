@@ -3,7 +3,7 @@
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { Megaphone, Zap, ShieldCheck, MessageCircle, TrendingUp, TrendingDown } from "lucide-react";
-import { CATEGORY_DATA } from "./billing-mock-data";
+import { CATEGORY_DATA } from "./billingMockData";
 
 interface CategoryIntelligenceProps {
   isDarkMode: boolean;

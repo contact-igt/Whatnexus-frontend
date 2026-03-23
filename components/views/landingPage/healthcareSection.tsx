@@ -13,7 +13,7 @@ export const HealthcareSection = () => {
     ];
 
     return (
-        <section id="healthcare" className="py-32 px-6 bg-emerald-500/[0.02]">
+        <section id="healthcare" className="py-20 md:py-32 px-6 bg-emerald-500/[0.02]">
             <div className="container mx-auto max-w-6xl">
                 <div className="grid lg:grid-cols-2 gap-16 items-center">
                     <div>
@@ -29,15 +29,15 @@ export const HealthcareSection = () => {
                                 </li>
                             ))}
                         </ul>
-                        <div className="mt-10 flex gap-4">
-                            <div className="px-4 py-2 bg-white/5 rounded-full border border-white/10 text-[10px] font-bold text-white/40">GDPR Compliance: In Progress</div>
-                            <div className="px-4 py-2 bg-white/5 rounded-full border border-white/10 text-[10px] font-bold text-white/40">HIPAA: In Progress</div>
+                        <div className="mt-10 flex flex-wrap gap-3 md:gap-4">
+                            <div className="px-4 py-2 bg-white/5 rounded-full border border-white/10 text-[9px] md:text-[10px] font-bold text-white/40">GDPR Compliance: In Progress</div>
+                            <div className="px-4 py-2 bg-white/5 rounded-full border border-white/10 text-[9px] md:text-[10px] font-bold text-white/40">HIPAA: In Progress</div>
                         </div>
                     </div>
-                    <GlassCard className="p-12 border-emerald-500/30 bg-emerald-500/5 aspect-square flex items-center justify-center">
+                    <GlassCard className="p-8 md:p-12 lg:p-16 border-emerald-500/30 bg-emerald-500/5 aspect-square flex items-center justify-center">
                         <div className="relative">
-                            <div className="absolute inset-0 bg-emerald-500 blur-[80px] opacity-20 animate-pulse" />
-                            <Shield size={120} className="text-emerald-500 relative z-10" />
+                            <div className="absolute inset-0 bg-emerald-500 blur-[60px] md:blur-[80px] opacity-20 animate-pulse" />
+                            <Shield className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 text-emerald-500 relative z-10" />
                         </div>
                     </GlassCard>
                 </div>

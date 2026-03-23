@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { BarChart3, Sparkles, TrendingUp, ArrowUpRight } from "lucide-react";
-import { COUNTRY_SPEND } from "./billing-mock-data";
+import { COUNTRY_SPEND } from "./billingMockData";
 import { useGetBillingSpendChartQuery } from "@/hooks/useBillingQuery";
 import { Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glassCard";

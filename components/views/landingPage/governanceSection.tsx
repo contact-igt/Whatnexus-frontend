@@ -27,10 +27,10 @@ export const GovernanceSection = () => {
     ];
 
     return (
-        <section className="py-32 px-6 bg-[#0D0D0F]">
+        <section className="py-20 md:py-32 px-6 bg-[#0D0D0F]">
             <div className="container mx-auto">
                 <SectionHeader title="Governance & Control" subtitle="Enterprise Trust" centered />
-                <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
                     {governance.map((item, i) => (
                         <div key={i} className="text-center p-6 space-y-4">
                             <div className="w-14 h-14 bg-white/5 rounded-2xl mx-auto flex items-center justify-center text-emerald-500 border border-white/10">
