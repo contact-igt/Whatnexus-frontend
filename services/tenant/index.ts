@@ -64,4 +64,12 @@ export class TenantApiData {
     restoreTenant = async (tenantId: string) => {
         return await _axios("post", `/tenant/${tenantId}/restore`);
     };
+
+    getTenantSettings = async () => {
+        return await _axios("get", "/tenant/settings/general");
+    };
+
+    updateTenantAiSettings = async (data: { ai_settings: any }) => {
+        return await _axios("patch", "/tenant/settings/ai", data);
+    }
 }

@@ -15,14 +15,14 @@ export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'faile
 
 export interface CSVRecipient {
     mobile_number: string;
-    dynamic_variables?: string[];
+    dynamic_variables?: any;
     contact_id?: string; // Optional for manual selection
 }
 
 export interface ManualRecipient {
     contact_id: string;
     mobile_number: string;
-    dynamic_variables?: string[];
+    dynamic_variables?: any;
 }
 
 export interface CreateCampaignRequest {

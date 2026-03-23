@@ -31,6 +31,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
     const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
     const [headerValues, setHeaderValues] = useState<string[]>([]);
     const [bodyValues, setBodyValues] = useState<string[]>([]);
+    const [buttonValues, setButtonValues] = useState<string[]>([]);
     const [errors, setErrors] = useState<{
         phone?: string;
         message?: string;
@@ -44,8 +45,14 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
     const handleTemplateSelect = (template: ProcessedTemplate) => {
         setSelectedTemplate(template);
         // Reset values based on template params count
-        setHeaderValues([]); // Initialize if header params exist
-        setBodyValues(new Array(template.variables).fill(''));
+        setHeaderValues([]); 
+        
+        // Body Variables
+        setBodyValues(new Array(template.variableArray?.length || 0).fill(''));
+        
+        // Button Variables
+        setButtonValues(new Array(template.buttonVariables?.length || 0).fill(''));
+        
         // Clear template error when a template is selected
         setErrors(prev => ({ ...prev, template: undefined, variables: undefined }));
     };
@@ -133,6 +140,25 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                         type: "text",
                         text: val || "-"
                     }))
+                });
+            }
+
+            // Button params (specifically for dynamic URL buttons)
+            if (buttonValues.length > 0 && selectedTemplate?.buttonVariables) {
+                selectedTemplate.buttonVariables.forEach((btnVar, idx) => {
+                    if (buttonValues[idx]) {
+                        components.push({
+                            type: "button",
+                            sub_type: "url",
+                            index: String(btnVar.index),
+                            parameters: [
+                                {
+                                    type: "text",
+                                    text: buttonValues[idx] || "-"
+                                }
+                            ]
+                        });
+                    }
                 });
             }
 
@@ -367,21 +393,22 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                 </div>
                             </div>
                         )}
-                        {selectedTemplate && bodyValues.length > 0 && (
+                        {selectedTemplate && (bodyValues.length > 0 || buttonValues.length > 0) && (
                             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
                                 <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
                                     Customize Template
                                 </label>
-                                <div className="grid gap-2 mt-2">
+                                <div className="grid gap-4 mt-2">
+                                    {/* Body Variables */}
                                     {bodyValues.map((val, idx) => (
-                                        <div key={idx} className="space-y-1">
+                                        <div key={`body-${idx}`} className="space-y-1">
                                             <div className="relative mt-1">
                                                 <span className={cn("absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono opacity-50 select-none", isDarkMode ? "text-white" : "text-slate-900")}>
                                                     {'{{'}{idx + 1}{'}}'}
                                                 </span>
                                                 <Input
                                                     isDarkMode={isDarkMode}
-                                                    placeholder={`Value for variable ${idx + 1}`}
+                                                    placeholder={`Body text variable ${idx + 1}`}
                                                     className={cn("pl-12", isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200",
                                                         errors.variables?.[idx] && "border-red-500 focus-visible:ring-red-500"
                                                     )}
@@ -401,6 +428,31 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                             {errors.variables?.[idx] && (
                                                 <p className="text-red-500 text-[10px] ml-1 animate-in slide-in-from-top-1">{errors.variables[idx]}</p>
                                             )}
+                                        </div>
+                                    ))}
+
+                                    {/* Button Variables */}
+                                    {buttonValues.map((val, idx) => (
+                                        <div key={`btn-${idx}`} className="space-y-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">URL Button Parameter</span>
+                                            </div>
+                                            <div className="relative">
+                                                <span className={cn("absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono opacity-50 select-none", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                    URL
+                                                </span>
+                                                <Input
+                                                    isDarkMode={isDarkMode}
+                                                    placeholder="Dynamic URL suffix (e.g. tracking-id)"
+                                                    className={cn("pl-12", isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200")}
+                                                    value={val || ""}
+                                                    onChange={(e) => {
+                                                        const newValues = [...buttonValues];
+                                                        newValues[idx] = e.target.value;
+                                                        setButtonValues(newValues);
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

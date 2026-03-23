@@ -180,6 +180,13 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         groupLabel: "Settings",
         items: [
             {
+                label: "General Settings",
+                route: "/settings/general",
+                icon: Settings,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
                 label: "WhatsApp Settings",
                 route: "/settings/whatsapp-settings",
                 icon: MessageSquare,

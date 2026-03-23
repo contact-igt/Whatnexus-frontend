@@ -334,6 +334,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         template.variableArray?.forEach((v: any) => {
             initialValues[v.variable_key] = '';
         });
+        
+        // Initialize button variables
+        template.buttonVariables?.forEach((v: any) => {
+            initialValues[v.variable_key] = '';
+        });
+        
         setVariableValues(initialValues);
 
         setError(null);
@@ -377,22 +383,35 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             setLoading(true);
             setError(null);
 
-            // Prepare global variables from Step 2 (ordered by template definition)
-            const orderedVariables = selectedTemplate?.variableArray?.map((v: any) => variableValues[v.variable_key] || '') || [];
+            // Prepare variables structure (Body + Buttons)
+            const getRecipientVariables = (vals: Record<string, string>) => {
+                const bodyVars = selectedTemplate?.variableArray?.map((v: any) => vals[v.variable_key] || '') || [];
+                const buttonVars = selectedTemplate?.buttonVariables?.map((v: any) => ({
+                    index: v.index,
+                    parameters: [vals[v.variable_key] || '']
+                })) || [];
+                
+                return { body: bodyVars, buttons: buttonVars };
+            };
+
+            // Prepare global variables from Step 2
+            const globalDynamicVariables = getRecipientVariables(variableValues);
 
             // Build audience_data based on recipient_source
             let audienceData: CSVRecipient[] | string;
 
             if (formData.recipient_source === 'group') {
-                const hasVars = selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication';
+                const hasVars = ( (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) || (selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0) ) && selectedTemplate.category !== 'authentication';
                 if (hasVars && selectedGroupMembers.length > 0) {
                     // Send as per-member CSVRecipient array for personalized group campaigns
                     audienceData = selectedGroupMembers.map(member => {
                         const contactId = member.contact?.contact_id || member.contact_id;
                         const phone = member.contact?.phone || member.mobile_number || '';
                         const memberVars = groupMemberVariables[contactId] || {};
-                        const dynVars = (selectedTemplate?.variableArray || []).map((v: any) => memberVars[v.variable_key] || '');
-                        return { mobile_number: phone, dynamic_variables: dynVars };
+                        return { 
+                            mobile_number: phone, 
+                            dynamic_variables: getRecipientVariables(memberVars) 
+                        };
                     });
                 } else {
                     // No variables — use plain group_id so backend sends same message to all
@@ -400,15 +419,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 }
             } else if (formData.recipient_source === 'csv') {
                 // For CSV, we respect the variables defining in the CSV file itself
+                // Backend will handle array format for now
                 audienceData = formData.csv_data || [];
             } else {
                 // For manual, we inject the Global Variables defined in Step 2
-                // as manual recipients usually just provide mobile numbers here
                 audienceData = (formData.manual_recipients || []).map(r => ({
                     ...r,
-                    dynamic_variables: (r.dynamic_variables && r.dynamic_variables.length > 0)
-                        ? r.dynamic_variables
-                        : orderedVariables
+                    dynamic_variables: globalDynamicVariables
                 }));
             }
 
@@ -719,6 +736,23 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 </div>
                                             )}
                                             
+                                            {/* Preview Buttons */}
+                                            {selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0 && (
+                                                <div className="mt-2 space-y-1">
+                                                    {selectedTemplate.buttonVariables.map((btn: any) => {
+                                                        const val = variableValues[btn.variable_key];
+                                                        return (
+                                                            <div key={btn.variable_key} className={cn(
+                                                                "py-2 px-3 rounded-lg text-sm text-center font-medium",
+                                                                isDarkMode ? "bg-white/5 text-blue-400" : "bg-white text-blue-600"
+                                                            )}>
+                                                                {btn.text} {val ? `(${val})` : ''}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            
                                             {/* Preview Timestamp */}
                                             <div className={cn("text-[10px] text-right mt-1 opacity-60", isDarkMode ? "text-white" : "text-gray-500")}>
                                                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -727,19 +761,20 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 )}
 
-                                {/* Variable Inputs — only for 'manual' source with non-auth templates */}
-                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && 
-                                 selectedTemplate.category !== 'authentication' && 
-                                 formData.recipient_source === 'manual' && (
+                                 {/* Variable Inputs — only for 'manual' source with non-auth templates */}
+                                 {( (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) || (selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0) ) && 
+                                  selectedTemplate.category !== 'authentication' && 
+                                  formData.recipient_source === 'manual' && (
                                     <div className="mt-4 space-y-3">
                                         <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             Template Variables
                                         </label>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            {selectedTemplate.variableArray.map((v: any) => (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Body Variables */}
+                                            {selectedTemplate.variableArray?.map((v: any) => (
                                                 <div key={v.id || v.variable_key}>
                                                     <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
-                                                        Variable {'{{' + v.variable_key + '}}'}
+                                                        Body Variable {'{{' + v.variable_key + '}}'}
                                                     </label>
                                                     <input
                                                         type="text"
@@ -760,9 +795,35 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     />
                                                 </div>
                                             ))}
+                                            
+                                            {/* Button Variables */}
+                                            {selectedTemplate.buttonVariables?.map((v: any) => (
+                                                <div key={v.variable_key}>
+                                                    <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-blue-400 font-semibold')}>
+                                                        Button Variable: {v.text} (URL)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={variableValues[v.variable_key] || ''}
+                                                        onChange={(e) => {
+                                                            setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
+                                                            if (error) setError(null);
+                                                        }}
+                                                        placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Dynamic URL part'}
+                                                        className={cn(
+                                                            "w-full px-3 py-2 rounded-lg border border-blue-500/30 text-sm outline-none transition-all",
+                                                            !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
+                                                                ? 'border-red-500 bg-red-500/5'
+                                                                : isDarkMode
+                                                                    ? 'bg-blue-500/5 border-blue-500/20 text-white placeholder:text-blue-500/30'
+                                                                    : 'bg-blue-50 border-blue-200 text-slate-900 placeholder:text-blue-300'
+                                                        )}
+                                                    />
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                )}
+                                 )}
 
                                 {/* Info banner for CSV/Group — variables filled per-recipient in Step 3 */}
                                 {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 &&

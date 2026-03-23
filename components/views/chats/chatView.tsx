@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { MessageCircle, MessageSquareOff, MessageSquareText, Sparkles, Wand2 } from 'lucide-react';
+import { MessageCircle, MessageSquareOff, MessageSquareText, Sparkles, Wand2, Lock } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
-import { useAddMessageMutation, useChatSuggestMutation, useGetAllLiveChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation, useClaimChatMutation, useAssignAgentMutation, useGetAgentsQuery } from '@/hooks/useMessagesQuery';
+import { useAddMessageMutation, useChatSuggestMutation, useGetAllLiveChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation, useClaimChatMutation, useAssignAgentMutation, useGetAgentsQuery, useToggleSilenceAIMutation } from '@/hooks/useMessagesQuery';
+import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -22,6 +23,7 @@ import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ChatDetails } from './ChatDetails';
 import { ChatSummaryOverlay } from './ChatSummaryOverlay';
+import { ThemedLoader } from '@/components/ui/themedLoader';
 
 export const ChatView = () => {
     const queryClient = useQueryClient();
@@ -57,16 +59,24 @@ export const ChatView = () => {
     const navigatingPhoneRef = useRef<string | null>(null);
 
     const isAdmin = user?.role === 'tenant_admin';
+    const { data: tenantSettingsData } = useGetTenantSettingsQuery();
+    const rawAiSettings = tenantSettingsData?.data?.ai_settings || {};
+    const aiSettings = {
+        auto_responder: rawAiSettings.auto_responder ?? true,
+        smart_reply: rawAiSettings.smart_reply ?? true,
+        neural_summary: rawAiSettings.neural_summary ?? true,
+        content_generation: rawAiSettings.content_generation ?? true,
+    };
     const { mutate: claimChatMutate, isPending: isClaiming } = useClaimChatMutation();
     const { mutate: assignAgentMutate, isPending: isAssigning } = useAssignAgentMutation();
+    const { mutate: toggleSilenceAiMutate, isPending: isTogglingSilence } = useToggleSilenceAIMutation();
     const { data: agentsList } = useGetAgentsQuery();
 
     const [agentSearch, setAgentSearch] = useState("");
     const filteredAgents = useMemo(() => {
         const agents = agentsList?.data || [];
-        const nonAdminAgents = agents.filter((agent: any) => agent.role !== 'tenant_admin');
-        if (!agentSearch) return nonAdminAgents;
-        return nonAdminAgents.filter((agent: any) =>
+        if (!agentSearch) return agents;
+        return agents.filter((agent: any) =>
             agent.username.toLowerCase().includes(agentSearch.toLowerCase()) ||
             agent.role.toLowerCase().includes(agentSearch.toLowerCase())
         );
@@ -91,6 +101,7 @@ export const ChatView = () => {
             name: chat?.name ?? chat.phone,
             assigned_admin_id: chat?.assigned_admin_id,
             assigned_agent_name: chat?.assigned_agent_name,
+            is_ai_silenced: chat?.is_ai_silenced,
         });
         setMessage("");
         setChatSummary(null);
@@ -218,6 +229,7 @@ export const ChatView = () => {
                         name: chatFromUrl.name ?? chatFromUrl.phone,
                         assigned_admin_id: chatFromUrl.assigned_admin_id,
                         assigned_agent_name: chatFromUrl.assigned_agent_name,
+                        is_ai_silenced: chatFromUrl.is_ai_silenced,
                     });
                 }
                 return;
@@ -243,6 +255,7 @@ export const ChatView = () => {
                         name: chatFromFiltered.name ?? chatFromFiltered.phone,
                         assigned_admin_id: chatFromFiltered.assigned_admin_id,
                         assigned_agent_name: chatFromFiltered.assigned_agent_name,
+                        is_ai_silenced: chatFromFiltered.is_ai_silenced,
                     });
                 }
                 return;
@@ -501,26 +514,34 @@ export const ChatView = () => {
                                     <div className="absolute bottom-4 left-0 right-0 flex justify-center z-20 pointer-events-none">
                                         <div className="pointer-events-auto">
                                             <button
-                                                onClick={suggestReply}
-                                                disabled={isSuggesting}
+                                                onClick={aiSettings.smart_reply ? suggestReply : undefined}
+                                                disabled={isSuggesting || !aiSettings.smart_reply}
+                                                title={!aiSettings.smart_reply ? "Smart Reply is disabled in global AI settings" : undefined}
                                                 className={cn(
-                                                    "flex items-center space-x-2 px-4 py-2 rounded-full text-[13px] font-bold transition-all shadow-lg backdrop-blur-md",
-                                                    isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95',
-                                                    isDarkMode
-                                                        ? 'bg-[#182229]/90 text-emerald-400 border border-[#222d34]'
-                                                        : 'bg-white/90 text-emerald-700 border border-emerald-100'
+                                                    "flex items-center px-5 py-2.5 rounded-full text-[13px] font-bold transition-all shadow-lg backdrop-blur-md disabled:opacity-70 disabled:cursor-not-allowed",
+                                                    !aiSettings.smart_reply
+                                                        ? (isDarkMode ? "bg-slate-800/80 text-slate-500 border border-white/5" : "bg-slate-100 text-slate-400 border border-slate-200")
+                                                        : cn(
+                                                            isSuggesting ? 'opacity-50' : 'hover:scale-105 active:scale-95 hover:shadow-emerald-500/20',
+                                                            isDarkMode
+                                                                ? 'bg-[#182229]/90 text-emerald-400 border border-[#222d34]'
+                                                                : 'bg-white/90 text-emerald-700 border border-emerald-100'
+                                                        )
                                                 )}
                                             >
-                                                {isSuggesting ? (
-                                                    <span className="animate-pulse flex items-center gap-2">
-                                                        <Sparkles size={14} className="text-amber-500" /> Connecting to Neural Engine...
-                                                    </span>
-                                                ) : (
-                                                    <>
-                                                        <Wand2 size={16} className="text-emerald-500" />
-                                                        <span>Suggest Smart Reply</span>
-                                                    </>
-                                                )}
+                                                <div className="flex items-center justify-center flex-1 gap-2 mr-[-16px]">
+                                                    {isSuggesting ? (
+                                                        <span className="animate-pulse flex items-center gap-2">
+                                                            <Sparkles size={14} className="text-amber-500" /> Connecting to Neural Engine...
+                                                        </span>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <Wand2 size={16} className={!aiSettings.smart_reply ? "text-slate-500" : "text-emerald-500"} />
+                                                            <span>Suggest Smart Reply</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {!aiSettings.smart_reply && <Lock size={12} className="ml-auto shrink-0 opacity-60" />}
                                             </button>
                                         </div>
                                     </div>
@@ -542,9 +563,13 @@ export const ChatView = () => {
                             </div>
                             <h3 className="text-xl font-bold">WhatsApp Desktop Style Chat</h3>
                             {isChatsLoading ? (
-                                <div className="mt-6 flex flex-col items-center space-y-3">
-                                    <div className="w-6 h-6 border-[3px] border-emerald-500 border-t-transparent flex rounded-full animate-spin" />
-                                    <p className="text-sm font-medium text-emerald-600/80">Loading live chats...</p>
+                                <div className="mt-8">
+                                    <ThemedLoader 
+                                        isDarkMode={isDarkMode} 
+                                        text="Syncing Conversations" 
+                                        subtext="Loading secure message history" 
+                                        showLogo={false}
+                                    />
                                 </div>
                             ) : (
                                 <p className="text-sm mt-2">Select a conversation to start messaging</p>
@@ -571,6 +596,9 @@ export const ChatView = () => {
                     summarizeChat={summarizeChat}
                     isSummarizing={isSummarizing}
                     setIsWeeklySummaryOpen={setIsWeeklySummaryOpen}
+                    toggleSilenceAiMutate={toggleSilenceAiMutate}
+                    isTogglingSilence={isTogglingSilence}
+                    isNeuralSummaryEnabled={aiSettings.neural_summary}
                 />
             )}
 
