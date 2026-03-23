@@ -18,7 +18,8 @@ export interface ProcessedTemplate {
     variables: number;
     // Add raw components if needed for advanced preview, but description (body) is usually enough
     originalDetails?: any;
-    variableArray?: any[]; // Add parsed variables to processed template
+    variableArray?: any[];
+    buttonVariables?: any[];
     headerText?: string;
     footerText?: string;
     bodyText?: string;
@@ -91,6 +92,41 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                 if (f) footerText = f.text_content || f.text || '';
             }
 
+            // Parse Buttons for dynamic variables
+            let buttonVariables: any[] = [];
+            if (Array.isArray(t.components)) {
+                const buttonsComp = t.components.find((c: any) => c.component_type?.toLowerCase() === 'buttons' || c.type?.toLowerCase() === 'buttons');
+                if (buttonsComp) {
+                    try {
+                        let btns = [];
+                        if (buttonsComp.text_content) {
+                            btns = typeof buttonsComp.text_content === 'string' ? JSON.parse(buttonsComp.text_content) : buttonsComp.text_content;
+                        } else if (buttonsComp.buttons) {
+                            btns = buttonsComp.buttons;
+                        }
+
+                        if (Array.isArray(btns)) {
+                            btns.forEach((btn: any, idx: number) => {
+                                // WhatsApp only supports {{1}} in URL buttons
+                                if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
+                                    buttonVariables.push({
+                                        index: idx,
+                                        text: btn.text,
+                                        variable_key: `button_${idx}_1`, // Unique key for internal mapping
+                                        sample_value: btn.example || ''
+                                    });
+                                }
+                            });
+                        }
+                    } catch (e) {
+                         console.error("Error parsing template buttons:", e);
+                    }
+                }
+            }
+
+            const bodyVariables = t.variables || [];
+            const totalVarCount = bodyVariables.length + buttonVariables.length;
+
             return {
                 id: t.template_id || t.id || '',
                 name: t.name || t.template_name || (t as any).element_name || t.id || 'Untitled',
@@ -109,8 +145,9 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                     if (ht === 'document') return 'file';
                     return 'text';
                 })() as any,
-                variables: t.variables_count || t.variables?.length || 0,
-                variableArray: t.variables || [],
+                variables: totalVarCount,
+                variableArray: bodyVariables,
+                buttonVariables,
                 headerText,
                 footerText,
                 bodyText: bodyTextData || '',

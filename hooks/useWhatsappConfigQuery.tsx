@@ -64,6 +64,7 @@ export const useSendTestWhatsAppConfigQuery = () => {
 
     return useMutation({
         mutationFn: (data: any) => {
+            console.log("data", data)
             return whatsappConfigApis.sendTestWhatsAppConfig(data);
         },
         onSuccess: (response) => {

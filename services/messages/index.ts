@@ -54,4 +54,8 @@ export class MessagesApiData {
   getAgents = async () => {
     return await _axios("get", "/whatsapp/live-chats/agents");
   };
+
+  toggleSilenceAi = async (contact_id: string, is_ai_silenced: boolean) => {
+    return await _axios("patch", `/whatsapp/contact/${contact_id}/silence`, { is_ai_silenced });
+  };
 }

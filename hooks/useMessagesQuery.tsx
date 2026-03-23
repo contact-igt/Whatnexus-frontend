@@ -209,3 +209,21 @@ export const useGetAgentsQuery = () => {
 
     return { data, isLoading, isError };
 };
+
+export const useToggleSilenceAIMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { contact_id: string, is_ai_silenced: boolean }) => {
+            return MessagesApis.toggleSilenceAi(data.contact_id, data.is_ai_silenced);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
+            queryClient.invalidateQueries({ queryKey: ["chats"] });
+            toast.success('AI Silence status updated successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to toggle AI Silence');
+        },
+    });
+};

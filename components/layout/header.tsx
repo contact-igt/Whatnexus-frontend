@@ -18,25 +18,29 @@ export const META_TIER_CONFIG: Record<string, { name: string, limit: string | nu
     limit: 250,
   },
   TIER_50: {
-    name: "Tier 1",
-    limit: 1000,
+    name: "Starter",
+    limit: 50,
   },
   TIER_250: {
-    name: "Tier 2",
-    limit: 10000,
+    name: "Basic",
+    limit: 250,
   },
   TIER_1K: {
-    name: "Tier 3",
-    limit: 100000,
+    name: "Tier 1K",
+    limit: 1000,
   },
   TIER_10K: {
-    name: "Tier 4",
-    limit: "Unlimited",
+    name: "Tier 10K",
+    limit: 10000,
   },
   TIER_100K: {
-    name: "Tier 4",
-    limit: "Unlimited",
+    name: "Tier 100K",
+    limit: 100000,
   },
+  TIER_UNLIMITED: {
+    name: "Unlimited",
+    limit: "Unlimited"
+  }
 };
 
 function getTierInfo(tier: string | undefined | null) {
@@ -225,18 +229,18 @@ export const Header = () => {
 
                     <Sep isDarkMode={isDarkMode} />
 
-                    {/* Messaging Limit */}
+                    {/* Messaging Limit - Header Summary */}
                     <div className="flex items-center gap-1.5 transition-all hover:scale-105">
                         <IconBadge color="bg-emerald-500">
                             <MessageSquare size={10} color="white" strokeWidth={2.5} />
                         </IconBadge>
-                        <span className={labelCls}>Messaging Limit:</span>
+                        <span className={labelCls}>Limit:</span>
                         <span className={cn('text-[10px] font-bold',
                             wabaNumber
                                 ? isDarkMode ? 'text-white/70' : 'text-slate-700'
                                 : isDarkMode ? 'text-white/40' : 'text-slate-400'
                         )}>
-                            {wabaNumber ? (tierInfo.limit === "Unlimited" ? "Unlimited" : `${tierInfo.limit.toLocaleString()} conversations / 24 hours`) : '—'}
+                            {wabaNumber ? (tierInfo.limit === "Unlimited" ? "Unlimited" : `${tierInfo.limit.toLocaleString()} / 24h`) : '—'}
                         </span>
                     </div>
 

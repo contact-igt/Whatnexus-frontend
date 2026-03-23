@@ -749,39 +749,47 @@ export const DoctorDrawer = ({
                                 name="specializations"
                                 control={control}
                                 render={({ field }) => (
-                                    <div className="flex items-end gap-2">
-                                        <div className="flex-1">
-                                            <MultiSelect
-                                                isDarkMode={isDarkMode}
-                                                label="Specializations"
-                                                required
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                options={specializationsList.map((spec: any) => {
-                                                    const name = typeof spec === 'string' ? spec : spec?.name || '';
-                                                    return { value: name, label: name };
-                                                }).filter((opt: any) => opt.value)}
-                                                placeholder={specializationsList.length === 0 ? "No specializations found in system" : "Select specializations"}
-                                                disabled={isView}
-                                                error={errors.specializations?.message}
-                                                variant="secondary"
-                                                onEditOption={handleEditSpec}
-                                                onDeleteOption={handleDeleteSpec}
-                                            />
+                                    <div>
+                                        <label className={cn(
+                                            "text-xs font-semibold font-sans mb-2 block ml-1",
+                                            isDarkMode ? 'text-white/70' : 'text-slate-700'
+                                        )}>
+                                            Specializations
+                                            <span className="text-red-500 ml-1">*</span>
+                                        </label>
+                                        <div className="flex items-start gap-2">
+                                            <div className="flex-1">
+                                                <MultiSelect
+                                                    isDarkMode={isDarkMode}
+                                                    required
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    options={specializationsList.map((spec: any) => {
+                                                        const name = typeof spec === 'string' ? spec : spec?.name || '';
+                                                        return { value: name, label: name };
+                                                    }).filter((opt: any) => opt.value)}
+                                                    placeholder={specializationsList.length === 0 ? "No specializations found in system" : "Select specializations"}
+                                                    disabled={isView}
+                                                    error={errors.specializations?.message}
+                                                    variant="secondary"
+                                                    onEditOption={handleEditSpec}
+                                                    onDeleteOption={handleDeleteSpec}
+                                                />
+                                            </div>
+                                            {!isView && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddSpec}
+                                                    className={cn(
+                                                        "h-[42px] px-3 rounded-xl flex items-center justify-center transition-all shadow-emerald-500/20",
+                                                        isDarkMode ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                    )}
+                                                    title="Add Specialization"
+                                                >
+                                                    <Plus size={18} />
+                                                </button>
+                                            )}
                                         </div>
-                                        {!isView && (
-                                            <button
-                                                type="button"
-                                                onClick={handleAddSpec}
-                                                className={cn(
-                                                    "h-[42px] px-3 rounded-xl flex items-center justify-center transition-all shadow-emerald-500/20",
-                                                    isDarkMode ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                )}
-                                                title="Add Specialization"
-                                            >
-                                                <Plus size={18} />
-                                            </button>
-                                        )}
                                     </div>
                                 )}
                             />

@@ -27,6 +27,7 @@ import { AIGeneratorSection } from './aiGeneratorSection';
 import { toast } from 'sonner';
 import { callOpenAI } from '@/lib/openai';
 import { useGenerateAiTemplateMutation, useUploadTemplateMediaMutation } from '@/hooks/useTemplateQuery';
+import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 import { FileUpload } from '@/components/ui/fileUpload';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
@@ -168,9 +169,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     onBack,
     onSave,
     isViewMode = false
-}): JSX.Element => {
+}) => {
     const { isDarkMode } = useTheme();
     const dispatch = useDispatch();
+    const { data: tenantSettingsData } = useGetTenantSettingsQuery();
+    const rawAiSettings = tenantSettingsData?.data?.ai_settings || {};
+    const aiSettings = {
+        auto_responder: rawAiSettings.auto_responder ?? true,
+        smart_reply: rawAiSettings.smart_reply ?? true,
+        neural_summary: rawAiSettings.neural_summary ?? true,
+        content_generation: rawAiSettings.content_generation ?? true,
+    };
     const lastInitialDataNameRef = useRef<string | null | undefined>(null);
 
     // Disable category for all existing templates — once created, category should not change.
@@ -548,14 +557,14 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             const typeToUse = (data.headerType as string) === 'NONE' ? data.templateType : (data.headerType as string);
             const normalizedHeaderType = typeToUse.toUpperCase();
 
-            // Set text if TEXT or LOCATION, else media_url for media links
-            const valueKey = (normalizedHeaderType === 'TEXT' || normalizedHeaderType === 'LOCATION') ? 'text' : 'media_url';
+            // Set text if TEXT, else media_url for media links
+            const valueKey = normalizedHeaderType === 'TEXT' ? 'text' : 'media_url';
 
             payload.components.header = {
                 type: 'HEADER',
                 format: normalizedHeaderType,
-                // Meta requires text for LOCATION title, using default 'Location' to satisfy API
-                ...(normalizedHeaderType === 'LOCATION' ? { text: 'Location' } : { [valueKey]: finalHeaderValue })
+                // Meta API STRICTLY prohibits arbitrary fields for non-TEXT headers. Space strictly empty for Location.
+                ...(normalizedHeaderType === 'LOCATION' ? {} : { [valueKey]: finalHeaderValue })
             };
 
             // Meta usually expects header variables if it's dynamic.
@@ -750,6 +759,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                 onGenerateTitle={handleAIGenerateTitle}
                                 generationsLeft={3}
                                 currentCategory={category}
+                                isLocked={aiSettings?.content_generation === false}
                             />
                         )}
 

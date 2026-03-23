@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Search, Check, UserPlus, ChevronDown, ShieldCheck, Lock, Loader2, Brain, History as HistoryIcon } from 'lucide-react';
+import { User, Search, Check, UserPlus, ChevronDown, ShieldCheck, Lock, Loader2, Brain, History as HistoryIcon, Bot, BotOff } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ interface ChatDetailsProps {
     summarizeChat: () => void;
     isSummarizing: boolean;
     setIsWeeklySummaryOpen: (isOpen: boolean) => void;
+    toggleSilenceAiMutate: (params: any) => void;
+    isTogglingSilence: boolean;
+    isNeuralSummaryEnabled?: boolean;
 }
 
 export const ChatDetails: React.FC<ChatDetailsProps> = ({
@@ -39,7 +42,10 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
     isClaiming,
     summarizeChat,
     isSummarizing,
-    setIsWeeklySummaryOpen
+    setIsWeeklySummaryOpen,
+    toggleSilenceAiMutate,
+    isTogglingSilence,
+    isNeuralSummaryEnabled = true,
 }) => {
     return (
         <div className={cn("w-1/4 min-w-[280px] border-l flex flex-col shrink-0", isDarkMode ? "bg-[#111b21] border-white/5" : "bg-white border-slate-200")}>
@@ -233,23 +239,58 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                 <div className="pt-4 border-t border-gray-100 dark:border-white/5">
                     <div className="space-y-3">
                         <button
-                            onClick={summarizeChat}
-                            disabled={isSummarizing}
-                            className="w-full h-10 flex items-center justify-center space-x-2 bg-blue-600/10 text-blue-500 px-4 rounded-xl text-xs font-bold uppercase hover:bg-blue-600/20 transition-colors disabled:opacity-50"
-                        >
-                            {isSummarizing ? (
-                                <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                                <Brain size={14} />
+                            onClick={isNeuralSummaryEnabled ? summarizeChat : undefined}
+                            disabled={isSummarizing || !isNeuralSummaryEnabled}
+                            title={!isNeuralSummaryEnabled ? "Neural Summary is disabled in settings" : undefined}
+                            className={cn(
+                                "w-full h-10 flex items-center px-4 rounded-xl text-xs font-bold uppercase transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed",
+                                !isNeuralSummaryEnabled
+                                    ? (isDarkMode ? "bg-slate-800/50 text-slate-500 border border-white/5" : "bg-slate-100 text-slate-400 border border-slate-200")
+                                    : "bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20"
                             )}
-                            <span>Neural Summary</span>
+                        >
+                            <div className="flex items-center justify-center flex-1 space-x-2 mr-[-16px]">
+                                {isSummarizing ? (
+                                    <Loader2 size={15} className="animate-spin" />
+                                ) : (
+                                    <Brain size={15} />
+                                )}
+                                <span>Neural Summary</span>
+                            </div>
+                            {!isNeuralSummaryEnabled && <Lock size={12} className="ml-auto shrink-0 opacity-70" />}
                         </button>
                         <button
                             onClick={() => setIsWeeklySummaryOpen(true)}
-                            className="w-full h-10 flex items-center justify-center space-x-2 bg-emerald-600/10 text-emerald-500 px-4 rounded-xl text-xs font-bold uppercase hover:bg-emerald-600/20 transition-colors"
+                            className="w-full h-10 cursor-pointer flex items-center justify-center space-x-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 px-4 rounded-xl text-xs font-bold uppercase transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
                         >
-                            <HistoryIcon size={14} />
+                            <HistoryIcon size={15} />
                             <span>Weekly Summary</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                const newState = !selectedChat.is_ai_silenced;
+                                toggleSilenceAiMutate({ contact_id: selectedChat.contact_id, is_ai_silenced: newState });
+                                setSelectedChat((prev: any) => ({ ...prev, is_ai_silenced: newState }));
+                            }}
+                            disabled={isTogglingSilence}
+                            className={cn(
+                                "w-full h-10 cursor-pointer flex items-center justify-center space-x-2 px-4 rounded-xl text-xs font-bold uppercase transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50",
+                                selectedChat?.is_ai_silenced 
+                                   ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-400"
+                                   : "bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400"
+                            )}
+                        >
+                            {selectedChat?.is_ai_silenced ? (
+                                <>
+                                    <Bot size={15} />
+                                    <span>Unsilence AI</span>
+                                </>
+                            ) : (
+                                <>
+                                    <BotOff size={15} />
+                                    <span>Silence AI</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

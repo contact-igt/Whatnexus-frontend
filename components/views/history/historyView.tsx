@@ -14,6 +14,7 @@ import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign
 import { TemplateVariableModal } from './templateVariableModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useQueryClient } from '@tanstack/react-query';
+import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 // Extracted Components
 
 // Extracted Components
@@ -23,9 +24,15 @@ import { HistoryHeader } from './HistoryHeader';
 import { HistoryMessageList } from './HistoryMessageList';
 import { HistoryDetails } from './HistoryDetails';
 import { ChatSummaryOverlay } from '../chats/ChatSummaryOverlay';
+import { ThemedLoader } from '@/components/ui/themedLoader';
 
 export const HistoryView = () => {
     const queryClient = useQueryClient();
+    const { data: tenantSettingsData } = useGetTenantSettingsQuery();
+    const rawAiSettings = tenantSettingsData?.data?.ai_settings || {};
+    const aiSettings = {
+        neural_summary: rawAiSettings.neural_summary ?? true,
+    };
     const { user, whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -342,9 +349,13 @@ export const HistoryView = () => {
                             </div>
                             <h3 className="text-xl font-bold">WhatsApp History Hub</h3>
                             {isChatsLoading ? (
-                                <div className="mt-6 flex flex-col items-center space-y-3">
-                                    <div className="w-6 h-6 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                                    <p className="text-sm font-medium text-emerald-600/80">Loading history...</p>
+                                <div className="mt-8">
+                                    <ThemedLoader 
+                                        isDarkMode={isDarkMode} 
+                                        text="Accessing Archives" 
+                                        subtext="Retrieving history threads" 
+                                        showLogo={false}
+                                    />
                                 </div>
                             ) : (
                                 <p className="text-sm mt-2">Select a thread to view archives</p>
@@ -386,6 +397,7 @@ export const HistoryView = () => {
                     summarizeChat={summarizeChat}
                     isSummarizing={isSummarizing}
                     setIsWeeklySummaryOpen={setIsWeeklySummaryOpen}
+                    isNeuralSummaryEnabled={aiSettings?.neural_summary !== false}
                 />
             )}
 
