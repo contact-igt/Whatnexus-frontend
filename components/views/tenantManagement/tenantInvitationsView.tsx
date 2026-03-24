@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Mail, Clock, CheckCircle, XCircle, RefreshCw, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/searchInput";
@@ -45,14 +45,14 @@ export const TenantInvitationsView = () => {
     const displayData = activeTab === 'pending' ? pendingInvites : deletedInvites;
 
     const filteredData = useMemo(() => {
-        return displayData.filter((invite: any) => 
+        return displayData.filter((invite: any) =>
             invite.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             invite.owner_email.toLowerCase().includes(searchQuery.toLowerCase())
         );
     }, [displayData, searchQuery]);
 
     // Reset page on tab/search change
-    useMemo(() => {
+    useEffect(() => {
         setCurrentPage(1);
     }, [activeTab, searchQuery]);
 
@@ -135,8 +135,8 @@ export const TenantInvitationsView = () => {
                             {activeTab === 'pending' ? 'Tenant Invitations' : 'Deleted Invitations'}
                         </h1>
                         <p className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                            {activeTab === 'pending' 
-                                ? 'Track and manage pending invitations for new organizations.' 
+                            {activeTab === 'pending'
+                                ? 'Track and manage pending invitations for new organizations.'
                                 : 'List of soft-deleted invitations. You can restore or delete them forever.'}
                         </p>
                     </div>
@@ -211,8 +211,8 @@ export const TenantInvitationsView = () => {
                             </tr>
                         ) : (
                             currentInvites.map((invite: any, index: number) => (
-                                <TableRow 
-                                    key={invite.tenant_id + invite.owner_email} 
+                                <TableRow
+                                    key={invite.tenant_id + invite.owner_email}
                                     isDarkMode={isDarkMode}
                                     isLast={index === currentInvites.length - 1}
                                 >
@@ -228,14 +228,14 @@ export const TenantInvitationsView = () => {
                                         </div>
                                     </TableCell>
                                     <TableCell align="center">{invite.owner_email}</TableCell>
-                                     <TableCell align="center">
+                                    <TableCell align="center">
                                         {activeTab === 'pending' ? (
                                             <div className="flex items-center justify-center space-x-2">
                                                 {getStatusIcon(invite.invitation_status)}
                                                 <span className={cn(
                                                     "text-xs font-semibold capitalize",
                                                     invite.invitation_status === 'completed' ? 'text-emerald-500' :
-                                                    invite.invitation_status === 'pending' ? 'text-amber-500' : 'text-slate-500'
+                                                        invite.invitation_status === 'pending' ? 'text-amber-500' : 'text-slate-500'
                                                 )}>
                                                     {invite.invitation_status}
                                                 </span>
@@ -331,8 +331,8 @@ export const TenantInvitationsView = () => {
                 footer={
                     <div className="flex justify-end space-x-3 pt-4 font-sans">
                         <button onClick={() => setIsRestoreModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                        <button 
-                            onClick={handleConfirmRestore} 
+                        <button
+                            onClick={handleConfirmRestore}
                             disabled={isRestoring}
                             className="bg-emerald-600 text-white px-6 py-2 rounded-lg"
                         >
@@ -354,8 +354,8 @@ export const TenantInvitationsView = () => {
                 footer={
                     <div className="flex justify-end space-x-3 pt-4 font-sans">
                         <button onClick={() => setIsPermanentDeleteModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                        <button 
-                            onClick={handleConfirmPermanentDelete} 
+                        <button
+                            onClick={handleConfirmPermanentDelete}
                             disabled={isPermanentDeleting}
                             className="bg-red-600 text-white px-6 py-2 rounded-lg"
                         >

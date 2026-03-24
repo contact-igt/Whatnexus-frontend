@@ -1,15 +1,43 @@
 "use client";
-import { GlassCard } from "@/components/ui/glassCard";
+
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Wallet, CreditCard, Download, Plus, RefreshCw, Calendar, Zap } from "lucide-react";
-import { WALLET_DATA, INVOICES } from "./billingMockData";
+import { Wallet, CreditCard, Download, Plus, RefreshCw, Calendar, Loader2, Settings, Zap } from "lucide-react";
+import { useGetWalletBalanceQuery, useGetWalletTransactionsQuery, useGetAutoRechargeSettingsQuery, useUpdateAutoRechargeSettingsMutation } from "@/hooks/useBillingQuery";
 
 interface BillingWalletProps {
   isDarkMode: boolean;
+  onRecharge?: () => void;
+  startDate?: Date | null;
+  endDate?: Date | null;
 }
 
-export const BillingWallet = ({ isDarkMode }: BillingWalletProps) => {
-  const balancePercent = Math.min((WALLET_DATA.balance / (WALLET_DATA.balance + WALLET_DATA.autoRecharge.amount)) * 100, 100);
+export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate }: BillingWalletProps) => {
+  const sStr = startDate?.toISOString();
+  const eStr = endDate?.toISOString();
+
+  const [showAutoRechargeConfig, setShowAutoRechargeConfig] = useState(false);
+  const [localThreshold, setLocalThreshold] = useState<string>("");
+  const [localAmount, setLocalAmount] = useState<string>("");
+
+  const { data: balanceResponse, isLoading: isLoadingBalance } = useGetWalletBalanceQuery();
+  const { data: transactionsResponse, isLoading: isLoadingTransactions } = useGetWalletTransactionsQuery({
+    limit: 10,
+    startDate: sStr,
+    endDate: eStr
+  });
+  const { data: autoRechargeResponse } = useGetAutoRechargeSettingsQuery();
+  const updateAutoRecharge = useUpdateAutoRechargeSettingsMutation();
+
+  const balance = balanceResponse?.data?.balance || 0;
+  const currency = balanceResponse?.data?.currency || 'INR';
+  const balanceStatus = balanceResponse?.data?.balanceStatus || 'healthy';
+  const currencySymbol = currency === 'INR' ? '₹' : currency;
+  const transactions = transactionsResponse?.data?.transactions || [];
+
+  const autoRecharge = autoRechargeResponse?.data || { enabled: false, threshold: 100, amount: 500 };
+
+  const balancePercent = Math.min((balance / 10000) * 100, 100);
 
   return (
     <div>
@@ -19,145 +47,305 @@ export const BillingWallet = ({ isDarkMode }: BillingWalletProps) => {
       </h2>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Platform Wallet */}
-        <GlassCard isDarkMode={isDarkMode} delay={1500} className="p-0 overflow-hidden">
-          {/* Top accent */}
-          <div className="h-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-50" />
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <div className={cn("p-1.5 rounded-lg", isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50')}>
-                  <Wallet size={14} className="text-emerald-500" />
+        <div className={cn(
+          "relative group p-6 rounded-[24px] border transition-all duration-500 overflow-hidden",
+          isDarkMode
+            ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+            : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
+        )}>
+          {/* Subtle Background Glow */}
+          <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+
+          <div className="relative z-10 transition-transform duration-500 group-hover:translate-x-1 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "p-2 rounded-xl transition-all duration-500 border",
+                    isDarkMode
+                      ? 'bg-white/5 border-white/10 group-hover:bg-white/10'
+                      : 'bg-white border-slate-100 group-hover:bg-emerald-50'
+                  )}>
+                    <Wallet size={16} className="text-emerald-500" />
+                  </div>
+                  <h3 className={cn("font-bold text-sm uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Platform Wallet</h3>
                 </div>
-                <h3 className={cn("font-bold text-sm uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-800')}>Platform Wallet</h3>
+              </div>
+
+              <div className={cn("text-4xl font-black tracking-tight mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                {isLoadingBalance ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                ) : (
+                  `${currencySymbol}${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                )}
+              </div>
+              <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 opacity-40")}>Available credits</p>
+
+              {/* Balance bar */}
+              <div className={cn("h-1 w-full rounded-full overflow-hidden mb-6", isDarkMode ? 'bg-white/5' : 'bg-slate-100')}>
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-[2000ms] ease-out shadow-[0_0_8px_rgba(16,185,129,0.3)] relative"
+                  style={{ width: `${balancePercent}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-8">
+                {[
+                  { label: 'Currency', value: currency, color: '' },
+                  { label: 'Status', value: balanceStatus === 'critical' ? 'Critical' : balanceStatus === 'low' ? 'Low Balance' : 'Active', color: balanceStatus === 'critical' ? 'text-red-500' : balanceStatus === 'low' ? 'text-amber-500' : 'text-emerald-500' },
+                ].map((item, i) => (
+                  <div key={i} className="flex justify-between items-center px-1">
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30")}>{item.label}</span>
+                    <span className={cn("text-[11px] font-black tracking-tight", item.color || (isDarkMode ? 'text-white/80' : 'text-slate-700'))}>{item.value}</span>
+                  </div>
+                ))}
+
+                {/* Auto-Recharge Toggle */}
+                <div className="flex justify-between items-center px-1">
+                  <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30")}>Auto-Recharge</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setShowAutoRechargeConfig(!showAutoRechargeConfig);
+                        setLocalThreshold(String(autoRecharge.threshold));
+                        setLocalAmount(String(autoRecharge.amount));
+                      }}
+                      className={cn("p-1 rounded-lg transition-all", isDarkMode ? "hover:bg-white/10" : "hover:bg-slate-100")}
+                    >
+                      <Settings size={12} className={cn("transition-colors", autoRecharge.enabled ? "text-emerald-500" : "opacity-30")} />
+                    </button>
+                    <button
+                      onClick={() => updateAutoRecharge.mutate({ enabled: !autoRecharge.enabled })}
+                      disabled={updateAutoRecharge.isPending}
+                      className={cn(
+                        "relative w-9 h-5 rounded-full transition-all duration-300 border",
+                        autoRecharge.enabled
+                          ? "bg-emerald-500 border-emerald-600"
+                          : isDarkMode ? "bg-white/10 border-white/20" : "bg-slate-200 border-slate-300"
+                      )}
+                    >
+                      <div className={cn(
+                        "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300",
+                        autoRecharge.enabled ? "translate-x-4" : "translate-x-0.5"
+                      )} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Auto-Recharge Config Panel */}
+                {showAutoRechargeConfig && (
+                  <div className={cn(
+                    "mt-2 p-4 rounded-2xl border space-y-3 transition-all",
+                    isDarkMode ? "bg-white/[0.03] border-white/10" : "bg-white border-slate-200"
+                  )}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap size={12} className="text-amber-500" />
+                      <span className={cn("text-[9px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-slate-500")}>Auto-Recharge Settings</span>
+                    </div>
+                    <div>
+                      <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                        Threshold ({currencySymbol})
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={localThreshold}
+                        onChange={(e) => setLocalThreshold(e.target.value)}
+                        className={cn(
+                          "w-full px-3 py-2 rounded-xl text-sm font-bold border outline-none transition-all",
+                          isDarkMode ? "bg-white/5 border-white/10 text-white focus:border-emerald-500/50" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500"
+                        )}
+                      />
+                      <p className={cn("text-[8px] mt-1 opacity-40")}>Recharge when balance drops below this</p>
+                    </div>
+                    <div>
+                      <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                        Recharge Amount ({currencySymbol})
+                      </label>
+                      <input
+                        type="number"
+                        min="100"
+                        value={localAmount}
+                        onChange={(e) => setLocalAmount(e.target.value)}
+                        className={cn(
+                          "w-full px-3 py-2 rounded-xl text-sm font-bold border outline-none transition-all",
+                          isDarkMode ? "bg-white/5 border-white/10 text-white focus:border-emerald-500/50" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500"
+                        )}
+                      />
+                      <p className={cn("text-[8px] mt-1 opacity-40")}>Min ₹100</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        updateAutoRecharge.mutate({
+                          threshold: parseFloat(localThreshold),
+                          amount: parseFloat(localAmount),
+                        });
+                        setShowAutoRechargeConfig(false);
+                      }}
+                      disabled={updateAutoRecharge.isPending}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/20 disabled:opacity-50"
+                    >
+                      {updateAutoRecharge.isPending ? <Loader2 size={12} className="animate-spin" /> : "Save Settings"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className={cn("text-4xl font-black tracking-tighter mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
-              ${WALLET_DATA.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </div>
-            <div className={cn("text-[10px] font-medium mb-2", isDarkMode ? 'text-white/25' : 'text-slate-400')}>Available credits</div>
-
-            {/* Balance bar */}
-            <div className={cn("h-1.5 w-full rounded-full overflow-hidden mb-5", isDarkMode ? 'bg-white/5' : 'bg-slate-100')}>
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-[2000ms] ease-out shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-                style={{ width: `${balancePercent}%` }}
-              />
-            </div>
-
-            <div className="space-y-2.5 mb-6">
-              {[
-                { label: 'Avg Daily Spend', value: `$${WALLET_DATA.avgDailySpend}`, color: '' },
-                { label: 'Est. Days Left', value: `${WALLET_DATA.estimatedDaysRemaining} days`, color: isDarkMode ? 'text-emerald-400' : 'text-emerald-600' },
-                { label: 'Last Top-up', value: `$${WALLET_DATA.lastTopUp.amount} on ${WALLET_DATA.lastTopUp.date}`, color: '' },
-                { label: 'Auto-Recharge', value: WALLET_DATA.autoRecharge.enabled ? `ON (< $${WALLET_DATA.autoRecharge.threshold})` : 'OFF', color: isDarkMode ? 'text-emerald-400' : 'text-emerald-600' },
-              ].map((item, i) => (
-                <div key={i} className="flex justify-between items-center">
-                  <span className={cn("text-[10px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/30' : 'text-slate-400')}>{item.label}</span>
-                  <span className={cn("text-xs font-bold tabular-nums", item.color || (isDarkMode ? 'text-white/70' : 'text-slate-700'))}>{item.value}</span>
-                </div>
-              ))}
-            </div>
-
-            <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold tracking-wide bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98]">
-              <Plus size={14} />
+            <button
+              onClick={onRecharge}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Plus size={14} strokeWidth={3} />
               Add Credits
             </button>
           </div>
-        </GlassCard>
+        </div>
 
         {/* Payment Method */}
-        <GlassCard isDarkMode={isDarkMode} delay={1600} className="p-0 overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-30" />
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <div className={cn("p-1.5 rounded-lg", isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50')}>
-                <CreditCard size={14} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
-              </div>
-              <h3 className={cn("font-bold text-sm uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-800')}>Payment Method</h3>
-            </div>
-            <div className={cn("rounded-xl p-4 mb-5 border", isDarkMode ? 'bg-white/[0.03] border-white/8' : 'bg-slate-50 border-slate-200')}>
-              <div className="flex items-center gap-3 mb-3">
+        <div className={cn(
+          "relative group p-6 rounded-[24px] border transition-all duration-500 overflow-hidden",
+          isDarkMode
+            ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+            : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
+        )}>
+          <div className="absolute -top-20 -left-20 w-80 h-80 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
+
+          <div className="relative z-10 transition-transform duration-500 group-hover:translate-x-1 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-6">
                 <div className={cn(
-                  "w-12 h-8 rounded-lg flex items-center justify-center font-black text-[10px] shadow-sm",
-                  isDarkMode ? 'bg-gradient-to-br from-white/10 to-white/5 text-white border border-white/10' : 'bg-gradient-to-br from-slate-800 to-slate-700 text-white'
-                )}>VISA</div>
-                <div>
-                  <p className={cn("text-sm font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>•••• •••• •••• 4242</p>
-                  <p className={cn("text-[10px] font-medium", isDarkMode ? 'text-white/35' : 'text-slate-400')}>Expires 12/2028</p>
+                  "p-2 rounded-xl transition-all duration-500 border",
+                  isDarkMode
+                    ? 'bg-white/5 border-white/10 group-hover:bg-white/10'
+                    : 'bg-white border-slate-100 group-hover:bg-blue-50'
+                )}>
+                  <CreditCard size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+                </div>
+                <h3 className={cn("font-bold text-sm uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Payments</h3>
+              </div>
+
+              <div className={cn("rounded-[20px] p-5 mb-6 border transition-all duration-500", isDarkMode ? 'bg-white/[0.03] border-white/8 group-hover:bg-white/[0.05]' : 'bg-slate-50 border-slate-200')}>
+                <div className="flex items-center gap-4 mb-3">
+                  <div className={cn(
+                    "w-12 h-8 rounded-xl flex items-center justify-center font-black text-[10px] tracking-widest shadow-xl",
+                    isDarkMode ? 'bg-gradient-to-br from-white/15 to-white/5 text-white border border-white/10' : 'bg-gradient-to-br from-slate-900 to-slate-800 text-white'
+                  )}>UPI</div>
+                  <div>
+                    <p className={cn("text-sm font-black tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Razorpay Secure</p>
+                    <p className={cn("text-[9px] font-black uppercase tracking-widest opacity-40")}>Enterprise Ready</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between items-center px-1">
+                  <span className={cn("text-[8px] font-black uppercase tracking-widest opacity-30")}>Gateways</span>
+                  <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20")}>SECURE</span>
+                </div>
+                <div className="flex justify-between items-center px-1">
+                  <span className={cn("text-[8px] font-black uppercase tracking-widest opacity-30")}>Compliance</span>
+                  <span className={cn("text-[9px] font-black tracking-widest opacity-60")}>GST READY</span>
                 </div>
               </div>
             </div>
 
-            {/* Payment Stats */}
-            <div className={cn("space-y-2.5 mb-5 p-3 rounded-xl border", isDarkMode ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100')}>
-              <div className="flex justify-between items-center">
-                <span className={cn("text-[10px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Card Status</span>
-                <span className={cn("text-[10px] font-bold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>Active</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className={cn("text-[10px] font-semibold uppercase tracking-wider", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Billing Cycle</span>
-                <span className={cn("text-xs font-bold tabular-nums", isDarkMode ? 'text-white/60' : 'text-slate-700')}>Monthly</span>
-              </div>
-            </div>
-
-            <button className={cn(
-              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all duration-300",
-              isDarkMode ? 'border-white/8 text-white/60 hover:bg-white/5 hover:text-white hover:border-white/15' : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-            )}>
-              <RefreshCw size={13} />
-              Update Payment Method
+            <button
+              onClick={onRecharge}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300",
+                isDarkMode ? 'border-white/10 text-white/50 hover:bg-white/10 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-900 hover:text-white'
+              )}>
+              <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
+              Manage Wallet
             </button>
           </div>
-        </GlassCard>
+        </div>
 
-        {/* Invoice History */}
-        <GlassCard isDarkMode={isDarkMode} delay={1700} className="p-0 overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-purple-500 to-pink-500 opacity-30" />
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
+        {/* Transaction History */}
+        <div className={cn(
+          "relative group p-6 rounded-[24px] border transition-all duration-500 overflow-hidden",
+          isDarkMode
+            ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+            : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
+        )}>
+          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-purple-500/5 blur-[100px] rounded-full pointer-events-none" />
+
+          <div className="relative z-10 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <div className={cn("p-1.5 rounded-lg", isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50')}>
-                  <Calendar size={14} className={isDarkMode ? "text-purple-400" : "text-purple-600"} />
+                <div className={cn(
+                  "p-2 rounded-xl transition-all duration-500 border",
+                  isDarkMode
+                    ? 'bg-white/5 border-white/10 group-hover:bg-white/10'
+                    : 'bg-white border-slate-100 group-hover:bg-purple-50'
+                )}>
+                  <Calendar size={16} className={isDarkMode ? "text-purple-400" : "text-purple-600"} />
                 </div>
-                <h3 className={cn("font-bold text-sm uppercase tracking-wide", isDarkMode ? 'text-white' : 'text-slate-800')}>Invoice History</h3>
+                <h3 className={cn("font-bold text-sm uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Timeline</h3>
               </div>
               <span className={cn(
-                "text-[9px] font-bold px-2 py-0.5 rounded-full",
-                isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                "text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
+                isDarkMode ? 'bg-white/[0.03] text-white/40 border border-white/5' : 'bg-slate-100 text-slate-500 border border-slate-200'
               )}>
-                {INVOICES.length} Invoices
+                {transactions.length} Records
               </span>
             </div>
-            <div className="space-y-3">
-              {INVOICES.map((inv, i) => (
+
+            <div className="space-y-3 flex-1 overflow-y-auto pr-2 no-scrollbar min-h-[250px]">
+              {isLoadingTransactions ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-20">
+                  <Calendar size={32} strokeWidth={1} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em]">Zero Records</p>
+                </div>
+              ) : transactions.map((tx: any, i: number) => (
                 <div key={i} className={cn(
-                  "p-3.5 rounded-xl transition-all duration-300 group cursor-default border",
-                  isDarkMode ? 'border-white/5 hover:bg-white/[0.03] hover:border-white/10' : 'border-slate-100 hover:bg-slate-50 hover:border-slate-200'
+                  "p-4 rounded-[20px] transition-all duration-500 group/item cursor-default border",
+                  isDarkMode ? 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10' : 'border-slate-100 bg-white hover:bg-slate-50 hover:border-emerald-200'
                 )}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className={cn("text-xs font-bold", isDarkMode ? 'text-white/80' : 'text-slate-800')}>{inv.id}</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={cn("text-[9px] font-black tracking-widest opacity-40 group-hover/item:opacity-70 transition-opacity")}>#{tx.reference_id?.slice(-8) || tx.id}</span>
                     <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[9px] font-bold border",
-                      isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                    )}>{inv.status}</span>
+                      "px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all duration-300",
+                      tx.type === 'credit'
+                        ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover/item:bg-emerald-500 group-hover/item:text-white' : 'bg-emerald-50 text-emerald-600 border-emerald-200 group-hover/item:bg-emerald-500 group-hover/item:text-white')
+                        : (isDarkMode ? 'bg-white/5 text-white/40 border-white/10 group-hover/item:bg-slate-200 group-hover/item:text-slate-900' : 'bg-slate-50 text-slate-500 border-slate-200 group-hover/item:bg-slate-800 group-hover/item:text-white')
+                    )}>{tx.type === 'credit' ? 'Reload' : 'Usage'}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className={cn("text-[10px] font-medium", isDarkMode ? 'text-white/25' : 'text-slate-400')}>{inv.period} · {inv.messages} msgs</span>
-                    <span className={cn("text-xs font-black tabular-nums", isDarkMode ? 'text-white' : 'text-slate-900')}>{inv.total}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className={cn("text-[11px] font-black tracking-tight transition-colors", isDarkMode ? "text-white/80 group-hover/item:text-white" : "text-slate-900")}>{tx.description}</span>
+                      <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-20")}>
+                        {new Date(tx.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <span className={cn(
+                      "text-sm font-black tabular-nums transition-transform duration-300 group-hover/item:scale-110",
+                      tx.type === 'credit' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-white' : 'text-slate-900')
+                    )}>
+                      {tx.type === 'credit' ? '+' : '-'}{currencySymbol}{parseFloat(tx.amount).toFixed(2)}
+                    </span>
                   </div>
-                  <button className={cn(
-                    "flex items-center gap-1 mt-2.5 text-[9px] font-bold uppercase tracking-wider transition-all duration-300 group-hover:translate-x-0.5",
-                    isDarkMode ? 'text-emerald-400/50 group-hover:text-emerald-400' : 'text-emerald-600/50 group-hover:text-emerald-600'
-                  )}>
-                    <Download size={10} />
-                    Download PDF
-                  </button>
+                  {tx.type === 'credit' && (
+                    <button className={cn(
+                      "flex items-center gap-1.5 mt-4 text-[8px] font-black uppercase tracking-widest transition-all duration-500 opacity-20 hover:opacity-100 hover:translate-x-1",
+                      isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                    )}>
+                      <Download size={10} strokeWidth={3} />
+                      Export Invoice
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </div>
-        </GlassCard>
+        </div>
       </div>
     </div>
   );

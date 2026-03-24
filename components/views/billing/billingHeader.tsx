@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { CreditCard, Download } from "lucide-react";
+import { CreditCard, Download, Wallet } from "lucide-react";
 import { DateRangePicker } from "./billingDateRangePicker";
 
 interface BillingHeaderProps {
@@ -10,45 +10,58 @@ interface BillingHeaderProps {
   endDate: Date | null;
   onDateChange: (start: Date | null, end: Date | null) => void;
   onExport: () => void;
+  onRecharge: () => void;
+  isSuperAdmin?: boolean;
+  viewMode?: 'tenant' | 'admin';
 }
 
-export const BillingHeader = ({ isDarkMode, startDate, endDate, onDateChange, onExport }: BillingHeaderProps) => {
+export const BillingHeader = ({ 
+  isDarkMode, 
+  startDate, 
+  endDate, 
+  onDateChange, 
+  onExport, 
+  onRecharge,
+  isSuperAdmin,
+  viewMode
+}: BillingHeaderProps) => {
 
   const actions = [
-    { label: 'Export Report', icon: Download, variant: 'primary' as const, onClick: onExport },
-  ];
+    { label: 'Recharge Wallet', icon: Wallet, variant: 'primary' as const, onClick: onRecharge, hide: isSuperAdmin },
+    { label: 'Export Report', icon: Download, variant: 'secondary' as const, onClick: onExport },
+  ].filter(a => !a.hide);
 
   return (
     <div className="relative space-y-5">
       {/* Decorative gradient orb behind header */}
-      <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-gradient-to-br from-emerald-500/5 via-teal-500/3 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute -top-10 right-40 w-60 h-60 rounded-full bg-gradient-to-bl from-purple-500/3 via-blue-500/2 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -top-10 right-40 w-60 h-60 rounded-full bg-gradient-to-bl from-purple-500/5 via-blue-500/3 to-transparent blur-3xl pointer-events-none" />
 
       {/* Title Row */}
       <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className={cn(
-              "p-3 rounded-2xl border relative overflow-hidden group",
+              "p-3 rounded-[24px] border relative overflow-hidden group transition-all duration-700",
               isDarkMode
-                ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20'
-                : 'bg-emerald-50 border-emerald-100'
+                ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border-emerald-500/30 shadow-2xl shadow-emerald-500/10'
+                : 'bg-emerald-50 border-emerald-100 shadow-xl shadow-emerald-500/5'
             )}>
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-transparent to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-              <CreditCard className={cn("w-6 h-6 relative z-10 transition-transform duration-500 group-hover:scale-110", isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/30 via-transparent to-teal-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+              <CreditCard className={cn("w-6 h-6 relative z-10 transition-transform duration-700 group-hover:scale-110", isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
             </div>
             <div>
               <h1 className={cn("text-3xl font-black tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>
                 Billing & Payments
               </h1>
-              <p className={cn("font-medium text-sm mt-0.5", isDarkMode ? 'text-white/35' : 'text-slate-500')}>
-                Meta conversation spend, template costs &amp; usage analytics — estimated costs only.
+              <p className={cn("font-medium text-[11px] uppercase tracking-widest mt-1 opacity-40", isDarkMode ? 'text-white' : 'text-slate-500')}>
+                CONVERSATION SPEND · TEMPLATE COSTS · USAGE ANALYTICS
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Date Range Picker */}
           <DateRangePicker
             isDarkMode={isDarkMode}
@@ -64,17 +77,17 @@ export const BillingHeader = ({ isDarkMode, startDate, endDate, onDateChange, on
               key={action.label}
               onClick={action.onClick}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 border group",
+                "flex items-center gap-2.5 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 border group",
                 action.variant === 'primary'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98]'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-500/20 shadow-xl shadow-emerald-500/10 hover:shadow-emerald-500/30 hover:scale-[1.05] active:scale-[0.98]'
                   : isDarkMode
-                    ? 'bg-white/[0.04] text-white/60 border-white/8 hover:bg-white/[0.08] hover:border-white/15 hover:text-white'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900'
+                    ? 'bg-white/[0.03] text-white/50 border-white/8 hover:bg-white/10 hover:border-white/20 hover:text-white'
+                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 shadow-sm'
               )}
             >
-              <action.icon size={13} className={cn(
-                "transition-transform duration-300 group-hover:scale-110",
-                action.variant === 'primary' ? '' : isDarkMode ? 'text-white/40 group-hover:text-white/70' : 'text-slate-400 group-hover:text-slate-600'
+              <action.icon size={14} strokeWidth={3} className={cn(
+                "transition-transform duration-500 group-hover:scale-110",
+                action.variant === 'primary' ? 'animate-pulse' : ''
               )} />
               {action.label}
             </button>

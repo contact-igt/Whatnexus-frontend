@@ -31,6 +31,7 @@ export const ChatView = () => {
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
+    const [isAiTyping, setIsAiTyping] = useState<boolean>(false);
     const {
         data: chatList,
         isLoading: isChatsLoading,
@@ -346,7 +347,8 @@ export const ChatView = () => {
 
         if (cleanSelectedPhone === cleanIncomingPhone || selectedChatRef.current?.phone === data.phone) {
             setNewMessage(prev => [...prev, data]);
-            queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
+            // Use the actual query key phone (selectedChatRef) to guarantee cache key matches
+            queryClient.invalidateQueries({ queryKey: ["messages", selectedChatRef.current?.phone] });
         }
 
         const isUser = data.sender === 'user';
@@ -358,7 +360,7 @@ export const ChatView = () => {
                 const updated = [...prev];
                 updated[index] = {
                     ...updated[index],
-                    name: data.name,
+                    name: data.name || updated[index].name,
                     contact_id: data.contact_id || updated[index].contact_id,
                     message: data.message,
                     last_message_time: data.created_at,
@@ -385,11 +387,26 @@ export const ChatView = () => {
 
     useEffect(() => {
         if (!user?.tenant_id) return;
-        if (!socket.connected) socket.connect();
+
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit("join-tenant", user.tenant_id);
+        }
+
         socket.on("connect", () => {
             socket.emit("join-tenant", user.tenant_id);
         });
+
         socket.on("new-message", handleIncomingMessage);
+        socket.on("ai-typing", (data: any) => {
+            const cleanIncomingPhone = data.phone?.replace(/\D/g, "");
+            const cleanSelectedPhone = selectedChatRef.current?.phone?.replace(/\D/g, "");
+            if (cleanSelectedPhone === cleanIncomingPhone || selectedChatRef.current?.phone === data.phone) {
+                setIsAiTyping(data.status);
+            }
+        });
         socket.off("message-status-update");
         socket.on("message-status-update", (data: any) => {
             // Update message status (ticks) in real-time
@@ -402,9 +419,10 @@ export const ChatView = () => {
             socket.off("new-message", handleIncomingMessage);
             socket.off("message-status-update");
             socket.off("chat-assignment-updated");
+            socket.off("ai-typing");
             socket.off("connect");
         };
-    }, []);
+    }, [user?.tenant_id]);
 
     useEffect(() => {
         if (groupedEntries?.length > 0) {
@@ -434,6 +452,7 @@ export const ChatView = () => {
 
     useEffect(() => {
         setNewMessage([]);
+        setIsAiTyping(false);
     }, [selectedChat?.phone]);
 
     if (whatsappApiDetails?.status !== 'active') {
@@ -507,6 +526,7 @@ export const ChatView = () => {
                                     bottomRef={bottomRef}
                                     selectedChat={selectedChat}
                                     searchText={messageSearchText}
+                                    isAiTyping={isAiTyping}
                                 />
 
                                 {/* Smart Suggestion Sticky Button */}
@@ -566,10 +586,10 @@ export const ChatView = () => {
                             <h3 className="text-xl font-bold">WhatsApp Desktop Style Chat</h3>
                             {isChatsLoading ? (
                                 <div className="mt-8">
-                                    <ThemedLoader 
-                                        isDarkMode={isDarkMode} 
-                                        text="Syncing Conversations" 
-                                        subtext="Loading secure message history" 
+                                    <ThemedLoader
+                                        isDarkMode={isDarkMode}
+                                        text="Syncing Conversations"
+                                        subtext="Loading secure message history"
                                         showLogo={false}
                                     />
                                 </div>

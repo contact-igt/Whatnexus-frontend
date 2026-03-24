@@ -1,7 +1,110 @@
 import React from 'react';
-import { SearchX, MessageSquareText, Sparkles, Wand2 } from 'lucide-react';
+import { SearchX, MessageSquareText, FileText, Download } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
+
+// Extracts media URL from "[VIDEO: url]" / "[IMAGE: url]" / "[DOCUMENT: url]" text patterns
+const extractMediaFromText = (message: string) => {
+    const match = message?.match(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*(https?:\/\/[^\]]+)?\]/i);
+    if (!match) return null;
+    return { type: match[1].toLowerCase(), url: match[2]?.trim() || null };
+};
+
+const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boolean }> = ({ msg, searchText, isDarkMode }) => {
+    const type = msg.message_type;
+    const mediaUrl = msg.media_url;
+
+    // For template messages: extract media from "[VIDEO: url]" text prefix
+    const embeddedMedia = type === "template" ? extractMediaFromText(msg.message) : null;
+    const effectiveType = embeddedMedia?.type || type;
+    const effectiveUrl = embeddedMedia?.url || (mediaUrl && !mediaUrl.startsWith("meta_media_id:") ? mediaUrl : null);
+
+    // Get body text: strip the "[VIDEO: url]" prefix for template messages
+    const bodyText = embeddedMedia
+        ? msg.message.replace(/^\[.*?\]\n?/, "").trim()
+        : msg.message;
+
+    const renderText = (text: string) => {
+        if (searchText && text?.toLowerCase().includes(searchText.toLowerCase())) {
+            return text.split(new RegExp(`(${searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, i: number) =>
+                part.toLowerCase() === searchText.toLowerCase() ? (
+                    <mark key={i} className={cn("p-0 px-0.5 rounded-sm inline-block", isDarkMode ? "bg-emerald-500/30 text-emerald-400" : "bg-yellow-200 text-slate-900")}>
+                        {part}
+                    </mark>
+                ) : part
+            );
+        }
+        return text;
+    };
+
+    return (
+        <>
+            {/* Video */}
+            {effectiveType === "video" && effectiveUrl && (
+                <video
+                    src={effectiveUrl}
+                    controls
+                    className="rounded-lg max-w-full max-h-64 mb-1 w-full"
+                    preload="metadata"
+                />
+            )}
+            {effectiveType === "video" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <span>🎬</span>
+                    <span className="opacity-70">Video</span>
+                </div>
+            )}
+
+            {/* Image */}
+            {effectiveType === "image" && effectiveUrl && (
+                <img src={effectiveUrl} alt="media" className="rounded-lg max-w-full max-h-64 mb-1 object-cover" />
+            )}
+            {effectiveType === "image" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <span>🖼️</span>
+                    <span className="opacity-70">Image</span>
+                </div>
+            )}
+
+            {/* Document */}
+            {effectiveType === "document" && (
+                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <FileText className="w-4 h-4 shrink-0 opacity-70" />
+                    <span className="flex-1 truncate opacity-80">{bodyText || "Document"}</span>
+                    {effectiveUrl && (
+                        <a href={effectiveUrl} download target="_blank" rel="noreferrer" className="shrink-0 text-emerald-400 hover:text-emerald-300">
+                            <Download className="w-4 h-4" />
+                        </a>
+                    )}
+                </div>
+            )}
+
+            {/* Audio */}
+            {effectiveType === "audio" && effectiveUrl && (
+                <audio src={effectiveUrl} controls className="w-full max-w-xs mb-1" />
+            )}
+            {effectiveType === "audio" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <span>🎵</span>
+                    <span className="opacity-70">Audio message</span>
+                </div>
+            )}
+
+            {/* Body text (shown for all types except document which shows it inline) */}
+            {effectiveType !== "document" && bodyText ? (
+                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
+                    {renderText(bodyText)}
+                </p>
+            ) : effectiveType === "text" || (effectiveType === "template" && !embeddedMedia) ? (
+                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
+                    {renderText(msg.message)}
+                </p>
+            ) : null}
+        </>
+    );
+};
+
+
 
 interface MessageListProps {
     isDarkMode: boolean;
@@ -12,6 +115,7 @@ interface MessageListProps {
     bottomRef: React.RefObject<HTMLDivElement | null>;
     selectedChat: any;
     searchText?: string;
+    isAiTyping?: boolean;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -22,7 +126,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     groupedEntries,
     bottomRef,
     selectedChat,
-    searchText = ""
+    searchText = "",
+    isAiTyping = false
 }) => {
     return (
         <div className={cn(
@@ -90,17 +195,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                                             ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
                                             : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
                                     )}>
-                                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                                            {searchText && msg?.message?.toLowerCase().includes(searchText.toLowerCase()) ? (
-                                                msg.message.split(new RegExp(`(${searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, i: number) => (
-                                                    part.toLowerCase() === searchText.toLowerCase() ? (
-                                                        <mark key={i} className={cn("p-0 px-0.5 rounded-sm inline-block", isDarkMode ? "bg-emerald-500/30 text-emerald-400" : "bg-yellow-200 text-slate-900")}>
-                                                            {part}
-                                                        </mark>
-                                                    ) : part
-                                                ))
-                                            ) : msg.message}
-                                        </p>
+                                        <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
                                         <div className="flex items-center justify-end space-x-1 opacity-60">
                                             <span className="text-[10px]">
                                                 {formattedTime(msg.created_at)}
@@ -126,6 +221,24 @@ export const MessageList: React.FC<MessageListProps> = ({
                     <p className={cn("text-sm max-w-md", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
                         Start the conversation by sending a message safely through WhatsNexus.
                     </p>
+                </div>
+            )}
+
+            {isAiTyping && (
+                <div className="flex justify-start px-4 py-1 animate-in fade-in slide-in-from-left-4 duration-300">
+                    <div className={cn(
+                        "p-3 rounded-2xl shadow-sm bg-white/10 backdrop-blur-md border border-white/5 flex items-center space-x-2",
+                        isDarkMode ? "bg-[#202c33]" : "bg-white"
+                    )}>
+                        <div className="flex space-x-1">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
+                        </div>
+                        <span className={cn("text-[11px] font-bold uppercase tracking-wider", isDarkMode ? "text-emerald-400/80" : "text-emerald-600/80")}>
+                            AI is thinking
+                        </span>
+                    </div>
                 </div>
             )}
 

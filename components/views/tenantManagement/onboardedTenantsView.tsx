@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from 'react';
-import { Plus, Calendar, Building2, Hospital, RotateCcw, Trash2, AlertTriangle, Search } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Plus, Calendar, Building2, Hospital, RotateCcw, Trash2, AlertTriangle, Search, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/searchInput";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -53,7 +53,7 @@ export const OnboardedTenantsView = () => {
     const displayData = activeTab === 'active' ? activeTenants : deletedTenants;
 
     const filteredData = useMemo(() => {
-        return displayData.filter((tenant: any) => 
+        return displayData.filter((tenant: any) =>
             tenant.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             tenant.owner_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             tenant.tenant_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,7 +62,7 @@ export const OnboardedTenantsView = () => {
     }, [displayData, searchQuery]);
 
     // Reset to page 1 when search query changes or tab changes
-    useMemo(() => {
+    useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery, activeTab]);
 
@@ -130,9 +130,9 @@ export const OnboardedTenantsView = () => {
     }
 
     const handleToggleActive = (tenantId: string, status: string) => {
-        updateTenantStatusMutate({ 
-            tenantId, 
-            data: { status: status === "active" ? "inactive" : "active" } 
+        updateTenantStatusMutate({
+            tenantId,
+            data: { status: status === "active" ? "inactive" : "active" }
         });
     }
 
@@ -160,8 +160,8 @@ export const OnboardedTenantsView = () => {
                             {activeTab === 'active' ? 'Onboarded Tenants' : 'Trash / Deleted'}
                         </h1>
                         <p className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                            {activeTab === 'active' 
-                                ? 'List of active organizations and their subscription status.' 
+                            {activeTab === 'active'
+                                ? 'List of active organizations and their subscription status.'
                                 : 'List of soft-deleted organizations. You can restore or permanently delete them.'}
                         </p>
                     </div>
@@ -228,8 +228,8 @@ export const OnboardedTenantsView = () => {
                             </tr>
                         ) : (
                             currentTenants.map((tenant: any, index: number) => (
-                                <TableRow 
-                                    key={tenant.tenant_id} 
+                                <TableRow
+                                    key={tenant.tenant_id}
                                     isDarkMode={isDarkMode}
                                     isLast={index === currentTenants.length - 1}
                                 >
@@ -251,7 +251,7 @@ export const OnboardedTenantsView = () => {
                                             </div>
                                         </div>
                                     </TableCell>
-                                     {/* Type */}
+                                    {/* Type */}
                                     <TableCell align="center">
                                         <span className={cn(
                                             "px-2 py-1 rounded-md text-xs font-medium capitalize",
@@ -276,8 +276,8 @@ export const OnboardedTenantsView = () => {
                                         <span className={cn(
                                             "px-2.5 py-1 rounded-md text-xs font-semibold capitalize",
                                             tenant.subscription_plan === 'enterprise' ? 'bg-amber-500/10 text-amber-600' :
-                                            tenant.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-600' :
-                                            isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
+                                                tenant.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-600' :
+                                                    isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
                                         )}>
                                             {tenant.subscription_plan || 'basic'}
                                         </span>
@@ -285,17 +285,33 @@ export const OnboardedTenantsView = () => {
                                     {/* Status */}
                                     <TableCell align="center">
                                         {activeTab === 'active' ? (
-                                            <span className={cn(
-                                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                                                tenant.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                tenant.status === 'trial' ? 'bg-blue-500/10 text-blue-500' :
-                                                tenant.status === 'invited' ? 'bg-purple-500/10 text-purple-500' :
-                                                tenant.status === 'expired' ? 'bg-red-500/10 text-red-500' :
-                                                tenant.status === 'suspended' ? 'bg-orange-500/10 text-orange-500' :
-                                                isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
-                                            )}>
-                                                {tenant.status || '-'}
-                                            </span>
+                                            <div className="flex flex-col items-center gap-2">
+                                                <button
+                                                    onClick={() => handleToggleActive(tenant.tenant_id, tenant.status)}
+                                                    className={cn(
+                                                        "flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95",
+                                                        tenant.status === 'active' ? "text-emerald-500" : "text-slate-400"
+                                                    )}
+                                                    title={tenant.status === 'active' ? "Deactivate" : "Activate"}
+                                                >
+                                                    {tenant.status === 'active' ? (
+                                                        <ToggleRight size={24} className="fill-emerald-500/20" />
+                                                    ) : (
+                                                        <ToggleLeft size={24} />
+                                                    )}
+                                                </button>
+                                                <span className={cn(
+                                                    "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                                                    tenant.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                        tenant.status === 'trial' ? 'bg-blue-500/10 text-blue-500' :
+                                                            tenant.status === 'invited' ? 'bg-purple-500/10 text-purple-500' :
+                                                                tenant.status === 'expired' ? 'bg-red-500/10 text-red-500' :
+                                                                    tenant.status === 'suspended' ? 'bg-orange-500/10 text-orange-500' :
+                                                                        isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
+                                                )}>
+                                                    {tenant.status || '-'}
+                                                </span>
+                                            </div>
                                         ) : (
                                             <div className="flex flex-col items-center gap-1">
                                                 <span className="text-[10px] font-bold uppercase text-red-500/60">Deleted</span>
@@ -309,7 +325,7 @@ export const OnboardedTenantsView = () => {
                                     {/* Subscription End */}
                                     <TableCell align="center">
                                         <div className="flex items-center justify-center space-x-1.5">
-                                            {tenant.subscription_end_date 
+                                            {tenant.subscription_end_date
                                                 ? <><Calendar size={12} className="opacity-40" /><span className={cn("text-xs", isDarkMode ? "text-white/60" : "text-slate-600")}>{formatDate(tenant.subscription_end_date)}</span></>
                                                 : <span className="text-xs opacity-40">-</span>}
                                         </div>
@@ -392,8 +408,8 @@ export const OnboardedTenantsView = () => {
                 footer={
                     <div className="flex justify-end space-x-3 pt-4 font-sans">
                         <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                        <button 
-                            onClick={handleConfirmDelete} 
+                        <button
+                            onClick={handleConfirmDelete}
                             disabled={isDeletePending}
                             className="bg-red-600 text-white px-6 py-2 rounded-lg"
                         >
@@ -415,8 +431,8 @@ export const OnboardedTenantsView = () => {
                 footer={
                     <div className="flex justify-end space-x-3 pt-4 font-sans">
                         <button onClick={() => setIsRestoreModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                        <button 
-                            onClick={handleConfirmRestore} 
+                        <button
+                            onClick={handleConfirmRestore}
                             disabled={isRestoring}
                             className="bg-emerald-600 text-white px-6 py-2 rounded-lg"
                         >
@@ -438,8 +454,8 @@ export const OnboardedTenantsView = () => {
                 footer={
                     <div className="flex justify-end space-x-3 pt-4 font-sans">
                         <button onClick={() => setIsPermanentDeleteModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                        <button 
-                            onClick={handleConfirmPermanentDelete} 
+                        <button
+                            onClick={handleConfirmPermanentDelete}
                             disabled={isPermanentDeleting}
                             className="bg-red-600 text-white px-6 py-2 rounded-lg"
                         >

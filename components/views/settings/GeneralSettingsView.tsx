@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from 'react';
-import { Bot, Brain, Wand2, Sparkles, Bell, BellOff, Settings2, CheckCircle2, Lock, Loader2, MessageSquare, Zap, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bot, Brain, Wand2, Sparkles, Bell, BellOff, Settings2, CheckCircle2, Lock, Loader2, MessageSquare, Zap, ChevronRight, Users, Save, Cpu } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
-import { useGetTenantSettingsQuery, useUpdateTenantAiSettingsMutation } from '@/hooks/useTenantSettingsQuery';
+import { useGetTenantSettingsQuery, useUpdateTenantAiSettingsMutation, useUpdateTenantGeneralSettingsMutation } from '@/hooks/useTenantSettingsQuery';
+import { useGetAvailableAiModelsQuery } from '@/hooks/useBillingQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { toast } from 'sonner';
 
-type SettingsTab = 'capabilities' | 'notifications';
+type SettingsTab = 'capabilities' | 'models' | 'notifications' | 'contacts';
 
 interface AiSettings {
     auto_responder: boolean;
@@ -109,6 +110,28 @@ export const GeneralSettingsView = () => {
 
     const { data: settingsData, isLoading: isSettingsLoading } = useGetTenantSettingsQuery();
     const { mutate: updateAiSettings, isPending: isUpdating } = useUpdateTenantAiSettingsMutation();
+    const { mutate: updateGeneralSettings, isPending: isUpdatingGeneral } = useUpdateTenantGeneralSettingsMutation();
+
+    const [defaultContactName, setDefaultContactName] = useState<string>('');
+    const [selectedInputModel, setSelectedInputModel] = useState<string | null>(null);
+    const [selectedOutputModel, setSelectedOutputModel] = useState<string | null>(null);
+    const hasSyncedContactName = useRef(false);
+    const hasSyncedModels = useRef(false);
+
+    const { data: modelsData, isLoading: isModelsLoading } = useGetAvailableAiModelsQuery();
+
+    // Sync state ONCE on initial data load — never overwrite after that (to avoid race condition after save)
+    useEffect(() => {
+        if (!hasSyncedContactName.current && settingsData?.data !== undefined) {
+            hasSyncedContactName.current = true;
+            setDefaultContactName(settingsData.data.default_contact_name || '');
+        }
+        if (!hasSyncedModels.current && settingsData?.data?.ai_settings !== undefined) {
+            hasSyncedModels.current = true;
+            setSelectedInputModel(settingsData.data.ai_settings?.input_model || 'gpt-4o-mini');
+            setSelectedOutputModel(settingsData.data.ai_settings?.output_model || 'gpt-4o');
+        }
+    }, [settingsData?.data]);
 
     const aiSettings: AiSettings = localSettings ?? {
         auto_responder: settingsData?.data?.ai_settings?.auto_responder ?? true,
@@ -133,8 +156,36 @@ export const GeneralSettingsView = () => {
                     toast.error(err?.message || "Failed to update settings");
                 },
                 onSettled: () => {
-                   // Only clear correctly once the cache is updated in the hook or reverted by the server
-                   setLocalSettings(null);
+                    // Only clear correctly once the cache is updated in the hook or reverted by the server
+                    setLocalSettings(null);
+                }
+            }
+        );
+    };
+
+    const handleSaveContactSettings = () => {
+        if (!isAdmin) return;
+
+        const trimmedName = defaultContactName.trim();
+        if (!trimmedName) {
+            toast.error("Default contact name is required.");
+            return;
+        }
+        if (trimmedName.length > 50) {
+            toast.error("Contact name cannot exceed 50 characters.");
+            return;
+        }
+
+        updateGeneralSettings(
+            { default_contact_name: trimmedName },
+            {
+                onSuccess: () => {
+                    toast.success("Contact settings updated successfully");
+                    setDefaultContactName(trimmedName); // Update UI to reflect trimmed name
+                },
+                onError: (err: any) => {
+                    console.error("API Error in handleSaveContactSettings:", err);
+                    toast.error(err?.response?.data?.message || err?.message || "Failed to update contact settings");
                 }
             }
         );
@@ -142,8 +193,38 @@ export const GeneralSettingsView = () => {
 
     const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
         { id: 'capabilities', label: 'AI Capabilities', icon: Sparkles },
+        { id: 'models', label: 'AI Models', icon: Cpu },
+        { id: 'contacts', label: 'Contact Settings', icon: Users },
         { id: 'notifications', label: 'Notifications', icon: Bell },
     ];
+
+    const handleModelChange = (type: 'input' | 'output', model: string) => {
+        if (!isAdmin) return;
+
+        if (type === 'input') {
+            setSelectedInputModel(model);
+        } else {
+            setSelectedOutputModel(model);
+        }
+
+        updateAiSettings(
+            { ai_settings: { [`${type}_model`]: model } },
+            {
+                onSuccess: () => {
+                    toast.success(`${type === 'input' ? 'Input' : 'Output'} model updated to ${model}`);
+                },
+                onError: (err: any) => {
+                    toast.error(err?.response?.data?.message || err?.message || "Failed to update model");
+                    // Revert on error
+                    if (type === 'input') {
+                        setSelectedInputModel(settingsData?.data?.ai_settings?.input_model || 'gpt-4o-mini');
+                    } else {
+                        setSelectedOutputModel(settingsData?.data?.ai_settings?.output_model || 'gpt-4o');
+                    }
+                }
+            }
+        );
+    };
 
     const aiFeatures: {
         key: keyof AiSettings;
@@ -304,6 +385,265 @@ export const GeneralSettingsView = () => {
                                     <p className={cn("text-xs leading-relaxed", isDarkMode ? "text-blue-300" : "text-blue-700")}>
                                         Changes to AI settings take effect immediately across the workspace. Toggling off a feature will disable it everywhere it appears and show a lock icon for non-admin users.
                                     </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AI Models Tab */}
+                        {activeTab === 'models' && (
+                            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="mb-6">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Cpu size={18} className="text-violet-500" />
+                                        <h2 className={cn("text-lg font-bold", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            AI Model Configuration
+                                        </h2>
+                                    </div>
+                                    <p className={cn("text-xs ml-[26px]", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                        Choose which AI models power your input processing and output generation. Different models offer trade-offs between speed, quality, and cost.
+                                    </p>
+                                </div>
+
+                                {!isAdmin && (
+                                    <div className={cn(
+                                        "mb-5 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm",
+                                        isDarkMode ? "bg-amber-500/5 border-amber-500/20 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-700"
+                                    )}>
+                                        <Lock size={16} className="shrink-0" />
+                                        <span>Only <strong>tenant admins</strong> can modify model settings.</span>
+                                    </div>
+                                )}
+
+                                {isModelsLoading ? (
+                                    <div className="space-y-6">
+                                        {[...Array(2)].map((_, i) => (
+                                            <div key={i} className={cn("h-48 rounded-2xl animate-pulse", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {/* Input Model Selection */}
+                                        <div className={cn(
+                                            "p-6 rounded-2xl border",
+                                            isDarkMode ? "bg-white/[0.02] border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                                        )}>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDarkMode ? "bg-blue-500/10" : "bg-blue-50")}>
+                                                    <Brain size={18} className="text-blue-500" />
+                                                </div>
+                                                <div>
+                                                    <h3 className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                        Input Processing Model
+                                                    </h3>
+                                                    <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                                        For classification, language detection, and keyword extraction
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                {modelsData?.data?.map((model: any) => (
+                                                    <button
+                                                        key={model.model}
+                                                        onClick={() => isAdmin && handleModelChange('input', model.model)}
+                                                        disabled={!isAdmin || isUpdating}
+                                                        className={cn(
+                                                            "p-4 rounded-xl border text-left transition-all",
+                                                            selectedInputModel === model.model
+                                                                ? isDarkMode
+                                                                    ? "bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500/20"
+                                                                    : "bg-blue-50 border-blue-300 ring-1 ring-blue-200"
+                                                                : isDarkMode
+                                                                    ? "bg-white/[0.02] border-white/[0.08] hover:border-white/20"
+                                                                    : "bg-slate-50 border-slate-200 hover:border-slate-300",
+                                                            !isAdmin && "opacity-60 cursor-not-allowed"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={cn("font-mono text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                                    {model.model}
+                                                                </span>
+                                                                {(model.recommended_for === 'input' || model.recommended_for === 'both') && (
+                                                                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                                                                        Recommended
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className={cn(
+                                                                "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full",
+                                                                model.category === 'budget' ? "bg-emerald-500/10 text-emerald-500" :
+                                                                    model.category === 'mid-tier' ? "bg-blue-500/10 text-blue-500" :
+                                                                        model.category === 'premium' ? "bg-violet-500/10 text-violet-500" :
+                                                                            "bg-amber-500/10 text-amber-500"
+                                                            )}>
+                                                                {model.category}
+                                                            </span>
+                                                        </div>
+                                                        <p className={cn("text-xs mb-2", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                                            {model.description}
+                                                        </p>
+                                                        <div className={cn("text-xs font-medium", isDarkMode ? "text-slate-500" : "text-slate-400")}>
+                                                            ₹{model.input_rate_inr?.toFixed(2)}/1M input • ₹{model.output_rate_inr?.toFixed(2)}/1M output
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Output Model Selection */}
+                                        <div className={cn(
+                                            "p-6 rounded-2xl border",
+                                            isDarkMode ? "bg-white/[0.02] border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                                        )}>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDarkMode ? "bg-emerald-500/10" : "bg-emerald-50")}>
+                                                    <Wand2 size={18} className="text-emerald-500" />
+                                                </div>
+                                                <div>
+                                                    <h3 className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                        Output Generation Model
+                                                    </h3>
+                                                    <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                                        For WhatsApp auto-replies, playground responses, and content generation
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                {modelsData?.data?.map((model: any) => (
+                                                    <button
+                                                        key={model.model}
+                                                        onClick={() => isAdmin && handleModelChange('output', model.model)}
+                                                        disabled={!isAdmin || isUpdating}
+                                                        className={cn(
+                                                            "p-4 rounded-xl border text-left transition-all",
+                                                            selectedOutputModel === model.model
+                                                                ? isDarkMode
+                                                                    ? "bg-emerald-500/10 border-emerald-500/30 ring-1 ring-emerald-500/20"
+                                                                    : "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-200"
+                                                                : isDarkMode
+                                                                    ? "bg-white/[0.02] border-white/[0.08] hover:border-white/20"
+                                                                    : "bg-slate-50 border-slate-200 hover:border-slate-300",
+                                                            !isAdmin && "opacity-60 cursor-not-allowed"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={cn("font-mono text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                                    {model.model}
+                                                                </span>
+                                                                {(model.recommended_for === 'output' || model.recommended_for === 'both') && (
+                                                                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                                                                        Recommended
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className={cn(
+                                                                "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full",
+                                                                model.category === 'budget' ? "bg-emerald-500/10 text-emerald-500" :
+                                                                    model.category === 'mid-tier' ? "bg-blue-500/10 text-blue-500" :
+                                                                        model.category === 'premium' ? "bg-violet-500/10 text-violet-500" :
+                                                                            "bg-amber-500/10 text-amber-500"
+                                                            )}>
+                                                                {model.category}
+                                                            </span>
+                                                        </div>
+                                                        <p className={cn("text-xs mb-2", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                                            {model.description}
+                                                        </p>
+                                                        <div className={cn("text-xs font-medium", isDarkMode ? "text-slate-500" : "text-slate-400")}>
+                                                            ₹{model.input_rate_inr?.toFixed(2)}/1M input • ₹{model.output_rate_inr?.toFixed(2)}/1M output
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Info Footer */}
+                                <div className={cn(
+                                    "mt-6 p-4 rounded-xl border flex items-start gap-3",
+                                    isDarkMode ? "bg-violet-500/5 border-violet-500/15" : "bg-violet-50 border-violet-100"
+                                )}>
+                                    <CheckCircle2 size={16} className="text-violet-500 shrink-0 mt-0.5" />
+                                    <p className={cn("text-xs leading-relaxed", isDarkMode ? "text-violet-300" : "text-violet-700")}>
+                                        Model changes take effect immediately. Premium models provide higher quality responses but cost more per token. Budget models are ideal for simple classification tasks.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Contact Settings Tab */}
+                        {activeTab === 'contacts' && (
+                            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="mb-6">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Users size={18} className="text-blue-500" />
+                                        <h2 className={cn("text-lg font-bold", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Contact Management
+                                        </h2>
+                                    </div>
+                                    <p className={cn("text-xs ml-[26px]", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                        Configure defaults and rules for how contacts are created and managed automatically.
+                                    </p>
+                                </div>
+
+                                {!isAdmin && (
+                                    <div className={cn(
+                                        "mb-5 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm",
+                                        isDarkMode ? "bg-amber-500/5 border-amber-500/20 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-700"
+                                    )}>
+                                        <Lock size={16} className="shrink-0" />
+                                        <span>Only <strong>tenant admins</strong> can modify contact settings.</span>
+                                    </div>
+                                )}
+
+                                <div className={cn(
+                                    "p-6 rounded-2xl border transition-all duration-200",
+                                    isDarkMode ? "bg-white/[0.02] border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                                )}>
+                                    <h3 className={cn("font-semibold text-sm mb-2", isDarkMode ? "text-white" : "text-slate-900")}>
+                                        Default Contact Name
+                                    </h3>
+                                    <p className={cn("text-xs mb-4 leading-relaxed", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                        When a new user directly messages the system via WhatsApp, their contact is automatically saved. If you provide a default name here (like "Unknown Contact"), we will save them with this name instead of their WhatsApp profile name. <strong>This field is required.</strong>
+                                    </p>
+
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="text"
+                                            value={defaultContactName}
+                                            onChange={(e) => setDefaultContactName(e.target.value)}
+                                            placeholder="e.g. Unknown Contact"
+                                            disabled={!isAdmin || isSettingsLoading}
+                                            className={cn(
+                                                "w-full max-w-sm px-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 disabled:opacity-50",
+                                                isDarkMode
+                                                    ? "bg-black/20 border-white/10 text-white placeholder:text-white/20 focus:border-blue-500/50 focus:ring-blue-500/20 focus:bg-black/40"
+                                                    : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/10"
+                                            )}
+                                        />
+                                        {isAdmin && (
+                                            <button
+                                                onClick={handleSaveContactSettings}
+                                                disabled={isUpdatingGeneral}
+                                                className={cn(
+                                                    "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                                                    isDarkMode
+                                                        ? "bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+                                                        : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20",
+                                                    isUpdatingGeneral && "opacity-70 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {isUpdatingGeneral ? (
+                                                    <Loader2 size={16} className="animate-spin shrink-0" />
+                                                ) : (
+                                                    <Save size={16} className="shrink-0" />
+                                                )}
+                                                <span>{isUpdatingGeneral ? 'Saving...' : 'Save Settings'}</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}

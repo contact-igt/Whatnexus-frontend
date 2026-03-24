@@ -10,7 +10,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 
 import { OrganizationModal } from "./organizationModal";
 import { Modal } from "@/components/ui/modal";
-import { useActivatePromptMutation, useCreatePromptMutation, useGetPromptConfigurationQuery } from '@/hooks/usePromptQuery';
 import { useDeleteTenantMutation, useGetTenantsQuery, useTenantStatusMutation } from '@/hooks/useTenantQuery';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -68,7 +67,6 @@ export interface Organization {
 export const OrganizationView = () => {
     const { isDarkMode } = useTheme();
     const router = useRouter();
-    const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('active');
     const { data: tenantsData, isLoading: isTenantLoading, isError } = useGetTenantsQuery();
@@ -108,7 +106,7 @@ export const OrganizationView = () => {
     const displayData = activeTab === 'active' ? activeOrgs : deletedOrgs;
 
     const filteredData = useMemo(() => {
-        return displayData.filter((org: any) => 
+        return displayData.filter((org: any) =>
             org.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             org.owner_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             org.tenant_id?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -122,6 +120,10 @@ export const OrganizationView = () => {
 
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
+    // Reset pagination when switching tabs or searching
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, searchQuery]);
 
     const getPlanBadgeColor = (plan: string) => {
         switch (plan) {
@@ -239,12 +241,6 @@ export const OrganizationView = () => {
         );
     };
 
-    const handleToggleActive = (tenantId: string, status: string) => {
-        const data = {
-            status: status == "active" ? "inactive" : "active"
-        }
-        updateTenantStatusMutate({ tenantId, data });
-    }
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">
@@ -325,8 +321,8 @@ export const OrganizationView = () => {
                                             {activeTab === 'active' ? 'No Organizations Found' : 'No Deleted Organizations Found'}
                                         </h3>
                                         <p className={cn("text-sm mb-8 text-center max-w-sm", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                            {activeTab === 'active' 
-                                                ? 'Get started by adding your first organization.' 
+                                            {activeTab === 'active'
+                                                ? 'Get started by adding your first organization.'
                                                 : 'Soft-deleted organizations will appear here. You can restore them or delete them forever.'}
                                         </p>
                                         {activeTab === 'active' && (
@@ -349,7 +345,7 @@ export const OrganizationView = () => {
                         <>
                             <TableHeader isDarkMode={isDarkMode}>
                                 <tr>
-                        <TableHead align="left" isDarkMode={isDarkMode} width='280px'>Organization</TableHead>
+                                    <TableHead align="left" isDarkMode={isDarkMode} width='280px'>Organization</TableHead>
                                     <TableHead align="center" isDarkMode={isDarkMode}>Owner</TableHead>
                                     <TableHead align="center" isDarkMode={isDarkMode}>Type</TableHead>
                                     <TableHead align="center" isDarkMode={isDarkMode}>Plan</TableHead>
@@ -380,7 +376,7 @@ export const OrganizationView = () => {
                                                             {org.company_name}
                                                         </p>
                                                         <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                            {org.owner_email}
+                                                            {org.type || 'clinic'}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -388,7 +384,7 @@ export const OrganizationView = () => {
                                         </TableCell>
 
                                         <TableCell align="center">
-                                             <div>
+                                            <div>
                                                 <p className={cn("text-sm font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
                                                     {org.owner_name}
                                                 </p>
@@ -409,8 +405,8 @@ export const OrganizationView = () => {
                                             <span className={cn(
                                                 "px-2 py-1 rounded-md text-xs font-semibold capitalize",
                                                 org.subscription_plan === 'enterprise' ? 'bg-amber-500/10 text-amber-600' :
-                                                org.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-600' :
-                                                isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
+                                                    org.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-600' :
+                                                        isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
                                             )}>
                                                 {org.subscription_plan || 'basic'}
                                             </span>
@@ -419,11 +415,11 @@ export const OrganizationView = () => {
                                             <span className={cn(
                                                 "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
                                                 org.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                org.status === 'trial' ? 'bg-blue-500/10 text-blue-500' :
-                                                org.status === 'invited' ? 'bg-purple-500/10 text-purple-500' :
-                                                org.status === 'expired' ? 'bg-red-500/10 text-red-500' :
-                                                org.status === 'suspended' ? 'bg-orange-500/10 text-orange-500' :
-                                                isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
+                                                    org.status === 'trial' ? 'bg-blue-500/10 text-blue-500' :
+                                                        org.status === 'invited' ? 'bg-purple-500/10 text-purple-500' :
+                                                            org.status === 'expired' ? 'bg-red-500/10 text-red-500' :
+                                                                org.status === 'suspended' ? 'bg-orange-500/10 text-orange-500' :
+                                                                    isDarkMode ? 'bg-white/5 text-white/40' : 'bg-slate-100 text-slate-500'
                                             )}>
                                                 {org.status || '-'}
                                             </span>

@@ -13,10 +13,14 @@ import {
   Activity,
   TrendingUp,
   Zap,
+  Loader2,
 } from "lucide-react";
+import { useGetAiTokenUsageQuery } from "@/hooks/useBillingQuery";
 
 interface AiApiTokensUsageProps {
   isDarkMode: boolean;
+  startDate?: Date | null;
+  endDate?: Date | null;
 }
 
 // Animated counter hook
@@ -40,20 +44,36 @@ const useAnimatedValue = (target: number, duration: number = 2000) => {
   return value;
 };
 
-export const AiApiTokensUsage = ({ isDarkMode }: AiApiTokensUsageProps) => {
-  // Mock data — replace with real API data later
-  const inputTokens = 12480;
-  const outputTokens = 8320;
-  const totalTokens = inputTokens + outputTokens;
-  const amountSpent = 14.56; // in rupees
+export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokensUsageProps) => {
+  const { data: response, isLoading } = useGetAiTokenUsageQuery(
+    startDate?.toISOString(),
+    endDate?.toISOString()
+  );
+
+  const tokenData = response?.data;
+  const summary = tokenData?.summary || { totalPromptTokens: 0, totalCompletionTokens: 0, totalTokens: 0, totalCostInr: 0, totalCalls: 0 };
+  const recentCalls = tokenData?.recentCalls || [];
+
+  const inputTokens = summary.totalPromptTokens;
+  const outputTokens = summary.totalCompletionTokens;
+  const totalTokens = summary.totalTokens || 1;
+  const amountSpent = summary.totalCostInr;
 
   const animatedInput = useAnimatedValue(inputTokens);
   const animatedOutput = useAnimatedValue(outputTokens);
   const animatedTotal = useAnimatedValue(totalTokens);
-  const animatedAmount = useAnimatedValue(amountSpent * 100) / 100;
+  const animatedAmount = useAnimatedValue(Math.round(amountSpent * 100)) / 100;
 
-  const inputPercent = Math.round((inputTokens / totalTokens) * 100);
+  const inputPercent = totalTokens > 0 ? Math.round((inputTokens / totalTokens) * 100) : 50;
   const outputPercent = 100 - inputPercent;
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -531,107 +551,93 @@ export const AiApiTokensUsage = ({ isDarkMode }: AiApiTokensUsageProps) => {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  {
-                    date: "Mar 20, 2026, 14:32:01",
-                    input: 412,
-                    output: 298,
-                    total: 710,
-                    cost: 0.42,
-                    color: "violet",
-                  },
-                  {
-                    date: "Mar 20, 2026, 14:30:15",
-                    input: 1024,
-                    output: 800,
-                    total: 1824,
-                    cost: 1.09,
-                    color: "cyan",
-                  },
-                  {
-                    date: "Mar 20, 2026, 14:28:44",
-                    input: 56,
-                    output: 12,
-                    total: 68,
-                    cost: 0.04,
-                    color: "blue",
-                  },
-                  {
-                    date: "Mar 20, 2026, 14:15:22",
-                    input: 890,
-                    output: 450,
-                    total: 1340,
-                    cost: 0.80,
-                    color: "emerald",
-                  },
-                ].map((row, i) => (
-                  <tr
-                    key={i}
-                    className={cn(
-                      "border-b transition-colors duration-300 group/row",
-                      isDarkMode
-                        ? "border-white/[0.03] hover:bg-white/[0.02]"
-                        : "border-slate-50 hover:bg-slate-50/50"
-                    )}
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={cn(
-                            "w-2 h-2 rounded-full",
-                            row.color === "violet"
-                              ? "bg-violet-500"
-                              : row.color === "cyan"
-                                ? "bg-cyan-500"
-                                : row.color === "blue"
-                                  ? "bg-blue-500"
-                                  : "bg-emerald-500"
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            "text-xs font-bold",
-                            isDarkMode ? "text-white/80" : "text-slate-700"
-                          )}
-                        >
-                          {row.date}
-                        </span>
+                {recentCalls.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center">
+                      <div className={cn("flex flex-col items-center gap-2", isDarkMode ? "text-white/20" : "text-slate-300")}>
+                        <Activity size={24} />
+                        <p className="text-xs font-bold uppercase tracking-wider">No AI calls recorded yet</p>
                       </div>
                     </td>
-                    <td
-                      className={cn(
-                        "py-3.5 px-4 text-xs font-semibold tabular-nums",
-                        isDarkMode ? "text-cyan-400/70" : "text-cyan-700"
-                      )}
-                    >
-                      {row.input.toLocaleString()}
-                    </td>
-                    <td
-                      className={cn(
-                        "py-3.5 px-4 text-xs font-semibold tabular-nums",
-                        isDarkMode ? "text-violet-400/70" : "text-violet-700"
-                      )}
-                    >
-                      {row.output.toLocaleString()}
-                    </td>
-                    <td
-                      className={cn(
-                        "py-3.5 px-4 text-xs font-bold tabular-nums",
-                        isDarkMode ? "text-white/60" : "text-slate-600"
-                      )}
-                    >
-                      {row.total.toLocaleString()}
-                    </td>
-                    <td
-                      className={cn(
-                        "py-3.5 px-4 text-xs font-bold tabular-nums",
-                        isDarkMode ? "text-emerald-400/70" : "text-emerald-700"
-                      )}
-                    >
-                      ₹{row.cost.toFixed(2)}
-                    </td>
                   </tr>
-                ))}
+                ) : recentCalls.map((row: any, i: number) => {
+                  const colors = ["violet", "cyan", "blue", "emerald"];
+                  const color = colors[i % colors.length];
+                  const costInr = (parseFloat(row.estimated_cost) || 0) * 85;
+                  return (
+                    <tr
+                      key={row.id || i}
+                      className={cn(
+                        "border-b transition-colors duration-300 group/row",
+                        isDarkMode
+                          ? "border-white/[0.03] hover:bg-white/[0.02]"
+                          : "border-slate-50 hover:bg-slate-50/50"
+                      )}
+                    >
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={cn(
+                              "w-2 h-2 rounded-full",
+                              color === "violet"
+                                ? "bg-violet-500"
+                                : color === "cyan"
+                                  ? "bg-cyan-500"
+                                  : color === "blue"
+                                    ? "bg-blue-500"
+                                    : "bg-emerald-500"
+                            )}
+                          />
+                          <div>
+                            <span
+                              className={cn(
+                                "text-xs font-bold block",
+                                isDarkMode ? "text-white/80" : "text-slate-700"
+                              )}
+                            >
+                              {new Date(row.created_at).toLocaleString()}
+                            </span>
+                            <span className={cn("text-[9px] font-medium", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                              {row.source} · {row.model}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td
+                        className={cn(
+                          "py-3.5 px-4 text-xs font-semibold tabular-nums",
+                          isDarkMode ? "text-cyan-400/70" : "text-cyan-700"
+                        )}
+                      >
+                        {(row.prompt_tokens || 0).toLocaleString()}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-3.5 px-4 text-xs font-semibold tabular-nums",
+                          isDarkMode ? "text-violet-400/70" : "text-violet-700"
+                        )}
+                      >
+                        {(row.completion_tokens || 0).toLocaleString()}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-3.5 px-4 text-xs font-bold tabular-nums",
+                          isDarkMode ? "text-white/60" : "text-slate-600"
+                        )}
+                      >
+                        {(row.total_tokens || 0).toLocaleString()}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-3.5 px-4 text-xs font-bold tabular-nums",
+                          isDarkMode ? "text-emerald-400/70" : "text-emerald-700"
+                        )}
+                      >
+                        ₹{((parseFloat(row.estimated_cost) || 0) * 85).toFixed(4)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

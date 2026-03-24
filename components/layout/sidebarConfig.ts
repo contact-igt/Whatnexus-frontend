@@ -249,8 +249,8 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 roles: ['super_admin', 'platform_admin']
             },
             {
-                label: "Pricing & Rates",
-                route: "/pricing",
+                label: "Admin Billing",
+                route: "/billing",
                 icon: CreditCard,
                 requiresWhatsApp: false,
                 roles: ['super_admin']

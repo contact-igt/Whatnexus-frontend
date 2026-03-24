@@ -257,10 +257,18 @@ export const HistoryView = () => {
 
     useEffect(() => {
         if (!user?.tenant_id) return;
-        if (!socket.connected) socket.connect();
+        
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit("join-tenant", user.tenant_id);
+        }
+
         socket.on("connect", () => {
             socket.emit("join-tenant", user.tenant_id);
         });
+
         socket.off("new-message");
         socket.on("new-message", handleIncomingMessage);
         socket.on("session-activated", (data: any) => {
@@ -273,7 +281,7 @@ export const HistoryView = () => {
             socket.off("session-activated");
             socket.off("connect");
         };
-    }, []);
+    }, [user?.tenant_id]);
 
     useEffect(() => {
         if (groupedEntries?.length > 0) {

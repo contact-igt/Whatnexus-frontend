@@ -93,15 +93,15 @@ export const OrganizationModal = ({
 
             // Try to find matching ISO code from stored value (could be ISO already or full name)
             const matchedCountry = Country.getAllCountries().find(
-                c => c.isoCode.toUpperCase() === storedCountry.toUpperCase() || 
-                     c.name.toLowerCase() === storedCountry.toLowerCase()
+                c => c.isoCode.toUpperCase() === storedCountry.toUpperCase() ||
+                    c.name.toLowerCase() === storedCountry.toLowerCase()
             );
             const resolvedCountryIso = matchedCountry?.isoCode || storedCountry;
 
             const matchedState = resolvedCountryIso
                 ? State.getStatesOfCountry(resolvedCountryIso).find(
-                    s => s.isoCode.toUpperCase() === (storedState || "").toUpperCase() || 
-                         s.name.toLowerCase() === (storedState || "").toLowerCase()
+                    s => s.isoCode.toUpperCase() === (storedState || "").toUpperCase() ||
+                        s.name.toLowerCase() === (storedState || "").toLowerCase()
                 ) : undefined;
             const resolvedStateIso = matchedState?.isoCode || storedState;
 
@@ -182,9 +182,9 @@ export const OrganizationModal = ({
         if (!formData.owner_country_code) newErrors.owner_country_code = "Country code is required";
 
         if (!formData.owner_mobile?.trim()) {
-            newErrors.owner_mobile = "mobile number is required";
-        } else if (!/^\d{10}$/.test(formData.owner_mobile)) {
-            newErrors.owner_mobile = "Mobile number must be 10 digits";
+            newErrors.owner_mobile = "Mobile number is required";
+        } else if (!/^\d{7,15}$/.test(formData.owner_mobile)) {
+            newErrors.owner_mobile = "Mobile number must be 7-15 digits";
         }
 
         setErrors(newErrors);
@@ -326,7 +326,18 @@ export const OrganizationModal = ({
                                 { value: '+91', label: 'India (+91)' },
                                 { value: '+1', label: 'USA (+1)' },
                                 { value: '+44', label: 'UK (+44)' },
-                                { value: '+971', label: 'UAE (+971)' }
+                                { value: '+971', label: 'UAE (+971)' },
+                                { value: '+61', label: 'Australia (+61)' },
+                                { value: '+65', label: 'Singapore (+65)' },
+                                { value: '+60', label: 'Malaysia (+60)' },
+                                { value: '+966', label: 'Saudi Arabia (+966)' },
+                                { value: '+974', label: 'Qatar (+974)' },
+                                { value: '+49', label: 'Germany (+49)' },
+                                { value: '+33', label: 'France (+33)' },
+                                { value: '+81', label: 'Japan (+81)' },
+                                { value: '+82', label: 'S. Korea (+82)' },
+                                { value: '+55', label: 'Brazil (+55)' },
+                                { value: '+27', label: 'South Africa (+27)' },
                             ]}
                             disabled={isView}
                             className="col-span-1"
@@ -344,7 +355,7 @@ export const OrganizationModal = ({
                             disabled={isView}
                             error={errors.owner_mobile}
                             required
-                            maxLength={10}
+                            maxLength={15}
                         />
                     </div>
                     <Select

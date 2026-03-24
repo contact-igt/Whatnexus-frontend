@@ -50,13 +50,22 @@ export const LeadsView = () => {
     // Socket: real-time lead updates
     useEffect(() => {
         if (!user?.tenant_id) return;
-        if (!socket.connected) socket.connect();
+        
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit('join-tenant', user.tenant_id);
+        }
+
         socket.on('connect', () => {
             socket.emit('join-tenant', user.tenant_id);
         });
+
         socket.on('lead-updated', () => {
             refetchLeads();
         });
+
         return () => {
             socket.off('lead-updated');
             socket.off('connect');
