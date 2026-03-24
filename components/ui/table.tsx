@@ -25,6 +25,7 @@ interface TableRowProps {
     children: ReactNode;
     isLast?: boolean;
     onClick?: () => void;
+    className?: string;
 }
 
 interface TableHeadProps {
@@ -38,6 +39,7 @@ interface TableCellProps {
     children: ReactNode;
     align?: 'left' | 'center' | 'right';
     width?: string;
+    colSpan?: number;
 }
 
 interface TablePaginationProps {
@@ -81,7 +83,7 @@ export const TableBody = ({ children }: TableBodyProps) => {
     return <tbody>{children}</tbody>;
 };
 
-export const TableRow = ({ isDarkMode, children, isLast, onClick }: TableRowProps) => {
+export const TableRow = ({ isDarkMode, children, isLast, onClick, className }: TableRowProps) => {
     return (
         <tr
             onClick={onClick}
@@ -91,7 +93,8 @@ export const TableRow = ({ isDarkMode, children, isLast, onClick }: TableRowProp
                     ? "border-white/10 hover:bg-white/5"
                     : "border-slate-200 hover:bg-slate-50",
                 isLast && "border-b-0",
-                onClick && "cursor-pointer"
+                onClick && "cursor-pointer",
+                className
             )}
         >
             {children}
@@ -116,9 +119,10 @@ export const TableHead = ({ isDarkMode, children, align = 'left', width }: Table
     );
 };
 
-export const TableCell = ({ children, align = 'left', width }: TableCellProps) => {
+export const TableCell = ({ children, align = 'left', width, colSpan }: TableCellProps) => {
     return (
         <td
+            colSpan={colSpan}
             className={cn(
                 "px-6 py-4",
                 align === 'left' && "text-left",

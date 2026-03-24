@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { RefreshCcw, Trash2, Building2, Calendar, Search, AlertTriangle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/searchInput";
@@ -27,7 +27,7 @@ export const DeletedTenantsView = () => {
 
     const filteredData = useMemo(() => {
         if (!deletedData?.data) return [];
-        return deletedData.data.filter((tenant: any) => 
+        return deletedData.data.filter((tenant: any) =>
             tenant.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             tenant.owner_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             tenant.tenant_id?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -35,7 +35,7 @@ export const DeletedTenantsView = () => {
     }, [deletedData, searchQuery]);
 
     // Reset to page 1 on search
-    useMemo(() => {
+    useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery]);
 
@@ -218,8 +218,8 @@ export const DeletedTenantsView = () => {
                 footer={
                     <div className="flex justify-end space-x-3 pt-4">
                         <button onClick={() => setIsRestoreModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                        <button 
-                            onClick={handleConfirmRestore} 
+                        <button
+                            onClick={handleConfirmRestore}
                             disabled={isRestoring}
                             className="bg-emerald-600 text-white px-6 py-2 rounded-lg"
                         >
@@ -241,8 +241,8 @@ export const DeletedTenantsView = () => {
                 footer={
                     <div className="flex justify-end space-x-3 pt-4">
                         <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                        <button 
-                            onClick={handleConfirmPermanentDelete} 
+                        <button
+                            onClick={handleConfirmPermanentDelete}
                             disabled={isDeleting}
                             className="bg-red-600 text-white px-6 py-2 rounded-lg"
                         >

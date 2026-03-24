@@ -89,4 +89,39 @@ export class managementApiData {
     deletePricingRule = async (id: number) => {
         return await _axios("delete", `/management/pricing/${id}`)
     }
+
+    // --- AI Model Pricing CRUD ---
+    getAiPricingRules = async (): Promise<any> => {
+        return await _axios("get", "/management/ai-pricing")
+    }
+
+    createAiPricingRule = async (data: {
+        model: string,
+        input_rate: number,
+        output_rate: number,
+        markup_percent?: number,
+        usd_to_inr_rate?: number,
+        description?: string,
+        recommended_for?: "input" | "output" | "both",
+        category?: "premium" | "mid-tier" | "budget" | "reasoning",
+    }) => {
+        return await _axios("post", "/management/ai-pricing", data)
+    }
+
+    updateAiPricingRule = async (id: number, data: {
+        input_rate?: number,
+        output_rate?: number,
+        markup_percent?: number,
+        usd_to_inr_rate?: number,
+        is_active?: boolean,
+        description?: string,
+        recommended_for?: "input" | "output" | "both",
+        category?: "premium" | "mid-tier" | "budget" | "reasoning",
+    }) => {
+        return await _axios("put", `/management/ai-pricing/${id}`, data)
+    }
+
+    deleteAiPricingRule = async (id: number) => {
+        return await _axios("delete", `/management/ai-pricing/${id}`)
+    }
 }

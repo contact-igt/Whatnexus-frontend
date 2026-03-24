@@ -134,19 +134,28 @@ export const GlobalCommandBar = ({
 
     useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
 
-    // Socket: listen for new messages and show unread badge
     useEffect(() => {
         if (!user?.tenant_id) return;
-        if (!socket.connected) socket.connect();
+        
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit('join-tenant', user.tenant_id);
+        }
+
         socket.on('connect', () => {
             socket.emit('join-tenant', user.tenant_id);
         });
+
         const handleNewMessage = () => {
             if (!pathnameRef.current?.includes('/shared-inbox')) {
                 setUnreadCount((prev: number) => prev + 1);
             }
         };
+
         socket.on('new-message', handleNewMessage);
+
         return () => {
             socket.off('new-message', handleNewMessage);
             socket.off('connect');
