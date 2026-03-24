@@ -6,7 +6,7 @@ import {
     Brain, PhoneForwarded, CalendarCheck,
     TrendingUp, TrendingDown, FileText, Megaphone
 } from 'lucide-react';
-import { glassCard, glassInner, tx, trackBg, fs } from './glassStyles';
+import { glassCard, tx } from './glassStyles';
 import { useTemplates } from '@/hooks/useTemplates';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { NoDataFound } from './noDataFound';
@@ -14,6 +14,7 @@ import { NoDataFound } from './noDataFound';
 interface ExecutiveKPILayerProps { 
     isDarkMode?: boolean; 
     kpisData?: any;
+    periodLabel?: string;
 }
 
 const statusBadge: Record<string, { label: string; bg: string; color: string; border: string; dot: string }> = {
@@ -48,10 +49,10 @@ const KPICard = ({ kpi, index, isDarkMode, show }: { kpi: any; index: number; is
             </div>
 
             <div className="mt-1">
-                <p style={{ fontSize: '13px', fontWeight: 500, color: t.secondary, marginBottom: 4 }}>
+                <p style={{ fontSize: '13px', fontWeight: 500, color: t.secondary, marginBottom: 6 }}>
                     {kpi.label}
                 </p>
-                <h4 style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: t.value }}>
+                <h4 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: t.value }}>
                     {kpi.value}
                 </h4>
             </div>
@@ -99,7 +100,7 @@ const trendText = (trend: number | null, suffix = '% vs prev') => {
 
 
 
-export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPILayerProps) => {
+export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData, periodLabel = '30 Days' }: ExecutiveKPILayerProps) => {
     const [show, setShow] = useState(false);
     const { templates = [] } = useTemplates();
     const { pagination } = useCampaigns(false);
@@ -122,31 +123,10 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
             trend: trendText(kpisData?.totalLeads?.trend), 
             up: (kpisData?.totalLeads?.trend ?? 0) >= 0, 
             color: '#10b981', color2: '#34d399', 
-            sub: 'All contacts captured', 
+            sub: `Last ${periodLabel}`, 
             barW: kpisData?.totalLeads?.value > 0 ? Math.max(2, Math.min(100, (kpisData.totalLeads.value / 2000) * 100)) : 0,
             status: kpisData?.totalLeads?.status ?? 'great',
-        },
-        { 
-            label: 'New Leads Today', 
-            value: kpisData?.newLeadsToday?.value?.toLocaleString() ?? '0', 
-            icon: UserPlus, 
-            trend: trendText(kpisData?.newLeadsToday?.trend), 
-            up: (kpisData?.newLeadsToday?.trend ?? 0) >= 0, 
-            color: '#3b82f6', color2: '#60a5fa', 
-            sub: 'Inbound today', 
-            barW: kpisData?.newLeadsToday?.value > 0 ? Math.max(2, Math.min(100, (kpisData.newLeadsToday.value / 50) * 100)) : 0, 
-            status: kpisData?.newLeadsToday?.status ?? 'good',
-        },
-        { 
-            label: 'Active Chats', 
-            value: kpisData?.activeChats?.value?.toLocaleString() ?? '0', 
-            icon: MessageCircle, 
-            trend: 'Live monitoring', 
-            up: true, 
-            color: '#a855f7', color2: '#c084fc', 
-            sub: 'Conversations in progress', 
-            barW: kpisData?.activeChats?.value > 0 ? Math.max(2, Math.min(100, (kpisData.activeChats.value / 20) * 100)) : 0, 
-            status: kpisData?.activeChats?.status ?? 'good',
+            group: 'period',
         },
         { 
             label: 'AI Auto-Resolved', 
@@ -155,31 +135,22 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
             trend: trendText(kpisData?.aiAutoResolved?.trend),
             up: (kpisData?.aiAutoResolved?.trend ?? 0) >= 0, 
             color: '#6366f1', color2: '#818cf8', 
-            sub: 'Handled without agent', 
+            sub: `Handled without agent · ${periodLabel}`, 
             barW: kpisData?.aiAutoResolved?.value ?? 0, 
             status: kpisData?.aiAutoResolved?.status ?? 'great',
+            group: 'period',
         },
-        { 
-            label: 'Escalated to Agent', 
-            value: kpisData?.escalatedToAgent?.value?.toLocaleString() ?? '0', 
-            icon: PhoneForwarded, 
-            trend: trendText(kpisData?.escalatedToAgent?.trend),
-            up: (kpisData?.escalatedToAgent?.trend ?? 0) <= 0,
-            color: '#f43f5e', color2: '#fb7185', 
-            sub: 'Required human takeover', 
-            barW: kpisData?.escalatedToAgent?.value > 0 ? Math.max(2, Math.min(100, (kpisData.escalatedToAgent.value / 10) * 100)) : 0,
-            status: kpisData?.escalatedToAgent?.status ?? 'good',
-        },
-        { 
-            label: 'Appointments Today', 
-            value: kpisData?.appointmentsToday?.value?.toLocaleString() ?? '0', 
-            icon: CalendarCheck, 
-            trend: trendText(kpisData?.appointmentsToday?.trend),
-            up: (kpisData?.appointmentsToday?.trend ?? 0) >= 0, 
-            color: '#f97316', color2: '#fb923c', 
-            sub: 'Confirmed bookings today', 
-            barW: kpisData?.appointmentsToday?.value > 0 ? Math.max(2, Math.min(100, (kpisData.appointmentsToday.value / 10) * 100)) : 0, 
-            status: kpisData?.appointmentsToday?.status ?? 'great',
+        {
+            label: 'Total Campaigns',
+            value: totalCampaigns.toLocaleString(),
+            icon: Megaphone,
+            trend: 'Created campaigns',
+            up: true,
+            color: '#f59e0b', color2: '#fbbf24',
+            sub: `Active & scheduled · ${periodLabel}`,
+            barW: Math.min(100, (totalCampaigns / 20) * 100),
+            status: totalCampaigns > 0 ? 'good' : 'watch',
+            group: 'period',
         },
         {
             label: 'Approved Templates',
@@ -191,21 +162,63 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
             sub: 'Ready to send',
             barW: Math.min(100, (approvedTemplates / 20) * 100),
             status: approvedTemplates > 0 ? 'great' : 'watch',
+            group: 'period',
         },
-        {
-            label: 'Total Campaigns',
-            value: totalCampaigns.toLocaleString(),
-            icon: Megaphone,
-            trend: 'Created campaigns',
-            up: true,
-            color: '#f59e0b', color2: '#fbbf24',
-            sub: 'Active & scheduled',
-            barW: Math.min(100, (totalCampaigns / 20) * 100),
-            status: totalCampaigns > 0 ? 'good' : 'watch',
+        { 
+            label: 'New Leads Today', 
+            value: kpisData?.newLeadsToday?.value?.toLocaleString() ?? '0', 
+            icon: UserPlus, 
+            trend: trendText(kpisData?.newLeadsToday?.trend), 
+            up: (kpisData?.newLeadsToday?.trend ?? 0) >= 0, 
+            color: '#3b82f6', color2: '#60a5fa', 
+            sub: 'Inbound today', 
+            barW: kpisData?.newLeadsToday?.value > 0 ? Math.max(2, Math.min(100, (kpisData.newLeadsToday.value / 50) * 100)) : 0, 
+            status: kpisData?.newLeadsToday?.status ?? 'good',
+            group: 'live',
+        },
+        { 
+            label: 'Active Chats', 
+            value: kpisData?.activeChats?.value?.toLocaleString() ?? '0', 
+            icon: MessageCircle, 
+            trend: 'Live monitoring', 
+            up: true, 
+            color: '#a855f7', color2: '#c084fc', 
+            sub: 'Conversations in progress', 
+            barW: kpisData?.activeChats?.value > 0 ? Math.max(2, Math.min(100, (kpisData.activeChats.value / 20) * 100)) : 0, 
+            status: kpisData?.activeChats?.status ?? 'good',
+            group: 'live',
+        },
+        { 
+            label: 'Escalated to Agent', 
+            value: kpisData?.escalatedToAgent?.value?.toLocaleString() ?? '0', 
+            icon: PhoneForwarded, 
+            trend: trendText(kpisData?.escalatedToAgent?.trend),
+            up: (kpisData?.escalatedToAgent?.trend ?? 0) <= 0,
+            color: '#f43f5e', color2: '#fb7185', 
+            sub: 'Required human takeover', 
+            barW: kpisData?.escalatedToAgent?.value > 0 ? Math.max(2, Math.min(100, (kpisData.escalatedToAgent.value / 10) * 100)) : 0,
+            status: kpisData?.escalatedToAgent?.status ?? 'good',
+            group: 'live',
+        },
+        { 
+            label: 'Appointments Today', 
+            value: kpisData?.appointmentsToday?.value?.toLocaleString() ?? '0', 
+            icon: CalendarCheck, 
+            trend: trendText(kpisData?.appointmentsToday?.trend),
+            up: (kpisData?.appointmentsToday?.trend ?? 0) >= 0, 
+            color: '#f97316', color2: '#fb923c', 
+            sub: 'Confirmed bookings today', 
+            barW: kpisData?.appointmentsToday?.value > 0 ? Math.max(2, Math.min(100, (kpisData.appointmentsToday.value / 10) * 100)) : 0, 
+            status: kpisData?.appointmentsToday?.status ?? 'great',
+            group: 'live',
         },
     ];
 
     const hasData = kpisData && Object.values(kpisData).some((kpi: any) => kpi?.value > 0);
+    const t = tx(isDarkMode);
+
+    const periodKpis = kpiList.filter(k => k.group === 'period');
+    const liveKpis = kpiList.filter(k => k.group === 'live');
 
     if (kpisData && !hasData) {
         return (
@@ -218,11 +231,40 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
     }
 
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {!kpisData
-                ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} isDarkMode={isDarkMode} />)
-                : kpiList.map((kpi, i) => <KPICard key={i} kpi={kpi as any} index={i} isDarkMode={isDarkMode} show={show} />)
-            }
+        <div className="space-y-6">
+            {/* Period-Filtered Analytics */}
+            <div>
+                <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3b82f6' }} />
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.secondary, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+                        Analytics — Last {periodLabel}
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {!kpisData
+                        ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} isDarkMode={isDarkMode} />)
+                        : periodKpis.map((kpi, i) => <KPICard key={i} kpi={kpi as any} index={i} isDarkMode={isDarkMode} show={show} />)
+                    }
+                </div>
+            </div>
+
+            {/* Live / Today */}
+            <div>
+                <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#10b981' }} />
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.secondary, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+                        Live &amp; Today
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {!kpisData
+                        ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={`live-${i}`} isDarkMode={isDarkMode} />)
+                        : liveKpis.map((kpi, i) => <KPICard key={i} kpi={kpi as any} index={i + periodKpis.length} isDarkMode={isDarkMode} show={show} />)
+                    }
+                </div>
+            </div>
         </div>
     );
 };

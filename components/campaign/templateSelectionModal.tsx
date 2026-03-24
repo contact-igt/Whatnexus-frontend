@@ -14,7 +14,7 @@ export interface ProcessedTemplate {
     name: string;
     category: string;
     description: string;
-    type: 'text' | 'image' | 'file' | 'video' | 'carousel';
+    type: 'text' | 'image' | 'document' | 'video' | 'carousel';
     variables: number;
     // Add raw components if needed for advanced preview, but description (body) is usually enough
     originalDetails?: any;
@@ -33,7 +33,7 @@ interface TemplateSelectionModalProps {
 }
 
 type CategoryType = 'marketing' | 'utility' | 'authentication';
-type TemplateType = 'all' | 'text' | 'image' | 'file' | 'video' | 'carousel';
+type TemplateType = 'all' | 'text' | 'image' | 'document' | 'video' | 'carousel';
 
 
 
@@ -56,7 +56,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
         { id: 'all', label: 'All', icon: Grid3x3 },
         { id: 'text', label: 'Text', icon: FileText },
         { id: 'image', label: 'Image', icon: ImageIcon },
-        { id: 'file', label: 'File', icon: File },
+        { id: 'document', label: 'Document', icon: File },
         { id: 'video', label: 'Video', icon: Video },
         { id: 'carousel', label: 'Carousel', icon: Grid3x3 },
     ];
@@ -142,7 +142,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                     const ht = headerType.toLowerCase();
                     if (ht === 'image') return 'image';
                     if (ht === 'video') return 'video';
-                    if (ht === 'document') return 'file';
+                    if (ht === 'document') return 'document';
                     return 'text';
                 })() as any,
                 variables: totalVarCount,

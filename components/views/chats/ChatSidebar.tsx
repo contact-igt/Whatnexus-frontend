@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, User, MessageSquareOff } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { getDateLabel } from './ChatUtils';
+import { getDateLabel, formattedTime } from './ChatUtils';
 
 interface ChatSidebarProps {
     isDarkMode: boolean;
@@ -139,7 +139,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                             ? (isDarkMode ? 'text-emerald-400 font-bold' : 'text-emerald-600 font-bold')
                                             : (isDarkMode ? 'text-slate-500' : 'text-slate-400')
                                     )}>
-                                        {chat?.last_message_time ? getDateLabel(chat.last_message_time) : ""}
+                                        {chat?.last_message_time ? (
+                                            getDateLabel(chat.last_message_time) === "Today"
+                                                ? formattedTime(chat.last_message_time)
+                                                : getDateLabel(chat.last_message_time)
+                                        ) : ""}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
