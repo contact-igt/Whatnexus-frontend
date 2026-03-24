@@ -198,7 +198,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                                         <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
                                         <div className="flex items-center justify-end space-x-1 opacity-60">
                                             <span className="text-[10px]">
-                                                {formattedTime(msg.created_at)}
+                                                {formattedTime(msg.created_at || msg.timestamp)}
                                             </span>
                                             {isOutgoing && (
                                                 <MessageStatusTicks status={msg.status} />
@@ -225,10 +225,10 @@ export const MessageList: React.FC<MessageListProps> = ({
             )}
 
             {isAiTyping && (
-                <div className="flex justify-start px-4 py-1 animate-in fade-in slide-in-from-left-4 duration-300">
+                <div className="flex justify-end px-4 py-1 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className={cn(
                         "p-3 rounded-2xl shadow-sm bg-white/10 backdrop-blur-md border border-white/5 flex items-center space-x-2",
-                        isDarkMode ? "bg-[#202c33]" : "bg-white"
+                        isDarkMode ? "bg-[#005c4b] text-[#e9edef]" : "bg-[#d9fdd3] text-[#111b21]"
                     )}>
                         <div className="flex space-x-1">
                             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]" />

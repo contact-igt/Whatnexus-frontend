@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, BookOpen, Ban, Frown, Activity } from 'lucide-react';
-import { glassCard, glassInner, tx, fs } from './glassStyles';
+import { tx } from './glassStyles';
 import { ActivityEvent } from '@/services/whatsappDashboard';
 import { NoDataFound } from './noDataFound';
 
@@ -73,7 +73,15 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
     return (
         <div className="rounded-xl p-5 border flex flex-col gap-4 h-full transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
             <div className="flex items-center justify-between">
-                <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Activity Feed</h3>
+                <div className="flex items-center gap-2.5">
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Activity Feed</h3>
+                    {recentActivity && recentActivity.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-md"
+                            style={{ fontSize: '11px', fontWeight: 600, background: isDarkMode ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', color: '#a855f7', border: `1px solid ${isDarkMode ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.15)'}` }}>
+                            {recentActivity.filter(a => a.status === 'pending' || a.status === 'act_on').length} pending
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
                     style={{ background: isDarkMode ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.05)', color: '#a855f7' }}>
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
@@ -104,8 +112,8 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
                                     style={{ background: isDarkMode ? '#18181b' : '#ffffff', border: `1px solid ${isDarkMode ? '#27272a' : '#e4e4e7'}`, color: config.hex }}>
                                     <Icon size={14} />
                                 </div>
-                                <div className="flex flex-col gap-0.5 pt-0.5 flex-1 min-w-0">
-                                    <p style={{ fontSize: '14px', fontWeight: 500, lineHeight: 1.4, color: t.primary }}>{item.event}</p>
+                                <div className="flex flex-col gap-1 pt-0.5 flex-1 min-w-0">
+                                    <p style={{ fontSize: '13px', fontWeight: 500, lineHeight: 1.4, color: t.primary }}>{item.event}</p>
                                     <p className="truncate" style={{ fontSize: '12px', color: t.secondary }}>{item.detail}</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <p style={{ fontSize: '11px', fontWeight: 500, color: t.micro }}>{item.time}</p>

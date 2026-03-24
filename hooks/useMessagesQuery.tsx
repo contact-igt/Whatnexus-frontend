@@ -58,7 +58,8 @@ export const useMessagesByPhoneQuery = (phone_number: string) => {
         queryKey: ['messages', phone_number],
         queryFn: () => MessagesApis.getMessagesByPhone(phone_number),
         enabled: !!phone_number,
-        staleTime: 0,
+        staleTime: 30 * 1000,
+        refetchOnWindowFocus: false,
     });
 
     return { data, isLoading, isError };
@@ -74,6 +75,12 @@ export const useAddMessageMutation = () => {
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ["messages", variables.phone],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
             });
             // toast.success('Message sent successfully!');
         },

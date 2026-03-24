@@ -96,10 +96,19 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [groupMemberVariables, setGroupMemberVariables] = useState<Record<string, Record<string, string>>>({});
     const [selectedGroupMembers, setSelectedGroupMembers] = useState<any[]>([]);
 
+    // Normalize template type: both 'file' and 'document' should be treated as document
+    const isMediaType = (type?: string) => ['image', 'video', 'document', 'file'].includes(type || '');
+    const isDocType = (type?: string) => type === 'document' || type === 'file';
+    const getUploadType = (type?: string): 'image' | 'video' | 'document' => {
+        if (type === 'image') return 'image';
+        if (type === 'video') return 'video';
+        return 'document'; // 'document', 'file', or any other → 'document'
+    };
+
     const handleHeaderFileUpload = async (file: File) => {
         if (!file || !selectedTemplate) return;
 
-        const headerFormat = selectedTemplate.type; // image, video, document
+        const headerFormat = getUploadType(selectedTemplate.type); // always sends 'image', 'video', or 'document'
         
         setIsUploading(true);
         setHeaderFileName(file.name);
@@ -217,8 +226,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 }
 
                 // Validate Media Header
-                if (['image', 'video', 'document'].includes(selectedTemplate?.type || '') && !(formData as any).header_media_url) {
-                    setError(`Please provide or upload a ${selectedTemplate?.type} for the header`);
+                if (isMediaType(selectedTemplate?.type) && !(formData as any).header_media_url) {
+                    setError(`Please provide or upload a ${isDocType(selectedTemplate?.type) ? 'document' : selectedTemplate?.type} for the header`);
                     return false;
                 }
 
@@ -701,7 +710,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                                 {/* Icon placeholder */}
                                                                 {selectedTemplate.type === 'image' ? <ImageIcon size={16} /> : <FileText size={16} />}
                                                             </div>
-                                                            {selectedTemplate.type.toUpperCase()} HEADER
+                                                            {getUploadType(selectedTemplate.type).toUpperCase()} HEADER
                                                         </>
                                                     )}
                                                 </div>
@@ -877,11 +886,11 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
 
                                 {/* Media Header Input */}
-                                {selectedTemplate && ['image', 'video', 'document'].includes(selectedTemplate.type) && (
+                                {selectedTemplate && isMediaType(selectedTemplate.type) && (
                                     <div className="mt-4 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                                {selectedTemplate.type.toUpperCase()} Header Media *
+                                                {getUploadType(selectedTemplate.type).toUpperCase()} Header Media *
                                             </label>
                                             {isUploading && (
                                                 <span className="text-xs text-emerald-500 animate-pulse flex items-center gap-1">
@@ -893,20 +902,20 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                         <div className="w-full md:w-2/5">
                                             <FileUpload
                                                 isDarkMode={isDarkMode}
-                                                accept={selectedTemplate.type === 'image' ? 'image/*' : selectedTemplate.type === 'video' ? 'video/*' : '*/*'}
+                                                accept={selectedTemplate.type === 'image' ? 'image/*' : selectedTemplate.type === 'video' ? 'video/*' : '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar'}
                                                 uploadedUrl={formData.header_media_url || ''}
                                                 onFileSelected={handleHeaderFileUpload}
                                                 onRemove={() => {
                                                     setFormData(prev => ({ ...prev, header_media_url: '' }));
                                                     setHeaderFileName(null);
                                                 }}
-                                                uploadType={selectedTemplate.type as any}
+                                                uploadType={getUploadType(selectedTemplate.type)}
                                                 isUploading={isUploading}
                                                 fileName={headerFileName}
                                                 compact
                                             />
                                             <p className={cn("text-[10px] mt-2 opacity-60", isDarkMode ? 'text-white' : 'text-slate-500')}>
-                                                Upload your {selectedTemplate.type} file (max 20MB) to be sent as the message header
+                                                Upload your {getUploadType(selectedTemplate.type)} file (max 20MB) to be sent as the message header
                                             </p>
                                         </div>
                                     </div>

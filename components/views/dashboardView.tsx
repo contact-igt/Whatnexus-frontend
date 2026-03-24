@@ -3,20 +3,23 @@ import { useTheme } from '@/hooks/useTheme';
 import { cn } from "@/lib/utils";
 import { GlobalCommandBar } from './dashboard/globalCommandBar';
 import { ExecutiveKPILayer } from './dashboard/executiveKpiSnapshot';
-import { ConversionFunnel } from './dashboard/conversionFunnel';
 import { LiveOperationsCenter } from './dashboard/liveOperationsCenter';
-import { AIIntelligencePanel } from './dashboard/aiIntelligencePanel';
 import { CampaignIntelligence } from './dashboard/campaignIntelligence';
 import { AgentPerformance } from './dashboard/agentPerformance';
-import { FollowUpHub } from './dashboard/followUpHub';
+import { AppointmentsToday } from './dashboard/appointmentsToday';
 import { MessagingAnalytics } from './dashboard/messagingAnalytics';
 import { ActivityFeed } from './dashboard/activityFeed';
 import { MessagingLimitTracker } from './dashboard/messagingLimitTracker';
+import { BillingSummary } from './dashboard/billingSummary';
+import { DoctorOverview } from './dashboard/doctorOverview';
+import { KnowledgeHealth } from './dashboard/knowledgeHealth';
+import { ContactOverview } from './dashboard/contactOverview';
 import { tx } from './dashboard/glassStyles';
 import {
-    BarChart3, Inbox, Users2, MessageCircle,
+    BarChart3, Inbox, MessageCircle,
     CalendarCheck, Activity, Layers3,
-    Loader2, RefreshCcw, AlertCircle
+    RefreshCcw, AlertCircle, CreditCard,
+    Stethoscope, BookOpen, Users
 } from 'lucide-react';
 import { useGetWhatsappDashboardQuery } from '@/hooks/useWhatsappDashboardQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -149,11 +152,11 @@ export const DashboardView = () => {
                     <SectionHeader
                         icon={<BarChart3 size={18} />}
                         title="Key Performance Indicators"
-                        subtitle="Business health at a glance — updated live"
+                        subtitle="Business health at a glance — period-filtered analytics & live metrics"
                         accentColor="#10b981"
                         isDarkMode={isDarkMode}
                     />
-                    <ExecutiveKPILayer isDarkMode={isDarkMode} kpisData={dashboardData?.kpis} />
+                    <ExecutiveKPILayer isDarkMode={isDarkMode} kpisData={dashboardData?.kpis} periodLabel={dashboardData?.period || '30 Days'} />
                 </section>
 
                 {/* Main 3/5 + 2/5 grid */}
@@ -162,27 +165,11 @@ export const DashboardView = () => {
                     {/* Left column (3/5) */}
                     <div className="xl:col-span-3 space-y-8">
 
-                        {/* 3. Conversion Funnel */}
-                        <section>
-                            <SectionHeader
-                                icon={<Layers3 size={18} />}
-                                title="Sales & Conversion Funnel"
-                                subtitle="How leads move from ad click to paying customer"
-                                accentColor="#3b82f6"
-                                isDarkMode={isDarkMode}
-                            />
-                            <ConversionFunnel
-                                isDarkMode={isDarkMode}
-                                funnelData={dashboardData?.funnel}
-                                funnelSummary={dashboardData?.funnelSummary}
-                            />
-                        </section>
-
-                        {/* 4. Campaigns + Agent Performance */}
+                        {/* 3. Campaigns + Agent Performance */}
                         <section>
                             <SectionHeader
                                 icon={<Inbox size={18} />}
-                                title="Campaigns & Team Performance"
+                                title={`Campaigns & Team Performance — ${dashboardData?.period || '30 Days'}`}
                                 subtitle="WhatsApp broadcast results and agent workload"
                                 accentColor="#8b5cf6"
                                 isDarkMode={isDarkMode}
@@ -197,21 +184,44 @@ export const DashboardView = () => {
                         <section>
                             <SectionHeader
                                 icon={<CalendarCheck size={18} />}
-                                title="Messaging Volume & Analytics"
-                                subtitle="Communication trends and delivery stats"
+                                title={`Messaging Volume & Analytics — ${dashboardData?.period || '30 Days'}`}
+                                subtitle="Communication trends and delivery stats (chart: last 7 days)"
                                 accentColor="#f59e0b"
                                 isDarkMode={isDarkMode}
                             />
                             <MessagingAnalytics isDarkMode={isDarkMode} messagingData={dashboardData?.messagingAnalytics} />
                         </section>
 
+                        {/* Knowledge Base Health */}
+                        <section>
+                            <SectionHeader
+                                icon={<BookOpen size={18} />}
+                                title="Knowledge Base Health"
+                                subtitle="AI knowledge sources and training data"
+                                accentColor="#10b981"
+                                isDarkMode={isDarkMode}
+                            />
+                            <KnowledgeHealth isDarkMode={isDarkMode} knowledgeData={dashboardData?.knowledgeHealth} />
+                        </section>
+
+                        {/* Contacts & Audience */}
+                        <section>
+                            <SectionHeader
+                                icon={<Users size={18} />}
+                                title="Contacts & Audience"
+                                subtitle="Contact base, groups and segments overview"
+                                accentColor="#f59e0b"
+                                isDarkMode={isDarkMode}
+                            />
+                            <ContactOverview isDarkMode={isDarkMode} contactData={dashboardData?.contactOverview} />
+                        </section>
 
                     </div>
 
                     {/* Right sidebar (2/5) */}
                     <div className="xl:col-span-2 space-y-6">
 
-                        {/* 6. Live Operations — bigger area on right */}
+                        {/* 6. Live Operations */}
                         <section>
                             <SectionHeader
                                 icon={<MessageCircle size={18} />}
@@ -223,16 +233,26 @@ export const DashboardView = () => {
                             <LiveOperationsCenter isDarkMode={isDarkMode} liveOpsData={dashboardData?.liveOperations} />
                         </section>
 
-                        {/* 7. AI Performance */}
+                        {/* 7. Appointments Today */}
+                        <section>
+                            <AppointmentsToday isDarkMode={isDarkMode} followUpsData={dashboardData?.followUps} />
+                        </section>
+
+                        {/* Billing & Spend */}
                         <section>
                             <SectionHeader
-                                icon={<Users2 size={18} />}
-                                title="AI Performance"
-                                subtitle="Automation rate and intent accuracy"
-                                accentColor="#10b981"
+                                icon={<CreditCard size={18} />}
+                                title={`Billing & Spend — ${dashboardData?.period || '30 Days'}`}
+                                subtitle="Cost breakdown and message usage"
+                                accentColor="#8b5cf6"
                                 isDarkMode={isDarkMode}
                             />
-                            <AIIntelligencePanel isDarkMode={isDarkMode} aiData={dashboardData?.aiPerformance} />
+                            <BillingSummary isDarkMode={isDarkMode} billingData={dashboardData?.billingSummary} periodLabel={dashboardData?.period || '30 Days'} />
+                        </section>
+
+                        {/* Doctor Overview */}
+                        <section>
+                            <DoctorOverview isDarkMode={isDarkMode} doctorData={dashboardData?.doctorOverview} />
                         </section>
 
                         {/* 8. Recent Activity */}

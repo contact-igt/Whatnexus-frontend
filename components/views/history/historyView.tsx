@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { History as HistoryIcon, MessageCircle, Send } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
@@ -200,10 +200,40 @@ export const HistoryView = () => {
     }, [chatHistoryList?.data?.chats, phoneParam]);
 
     const isSearching = messageSearchText.trim().length > 0;
-    const updatedMessageData =
-        newMessage.length > 0
-            ? [...(messagesData?.data ?? []), ...newMessage]
-            : messagesData?.data ?? [];
+    const updatedMessageData = useMemo(() => {
+        const dbMessages = messagesData?.data ?? [];
+        const socketMessages = newMessage;
+
+        if (socketMessages.length === 0) return dbMessages;
+
+        const dbIds = new Set(dbMessages.map((m: any) => m.id).filter(Boolean));
+        const dbContentIndex = dbMessages.map((m: any) => ({
+            key: `${(m.message || "").trim()}:${m.sender}`,
+            ts: new Date(m.created_at).getTime(),
+        }));
+
+        const filtered = socketMessages.filter((msg: any) => {
+            if (msg.id && dbIds.has(msg.id)) return false;
+            const key = `${(msg.message || "").trim()}:${msg.sender}`;
+            const ts = new Date(msg.created_at || msg.timestamp).getTime();
+            for (const db of dbContentIndex) {
+                if (db.key === key && Math.abs(db.ts - ts) < 120000) return false;
+            }
+            return true;
+        });
+
+        const unique: any[] = [];
+        const seen = new Set<string>();
+        for (const msg of filtered) {
+            const dedupKey = msg.id ? `id:${msg.id}` : `${(msg.message || "").trim()}:${msg.sender}`;
+            if (!seen.has(dedupKey)) {
+                unique.push(msg);
+                seen.add(dedupKey);
+            }
+        }
+
+        return [...dbMessages, ...unique];
+    }, [messagesData?.data, newMessage]);
     const displayMessages = isSearching
         ? filteredMessage ?? []
         : updatedMessageData ?? [];

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send, Eye, MessageSquare, ChevronRight, Plus, TrendingUp } from 'lucide-react';
-import { glassCard, glassInner, tx, trackBg, fs } from './glassStyles';
+import { tx } from './glassStyles';
 import { Campaign } from '@/services/whatsappDashboard';
 import { NoDataFound } from './noDataFound';
 
@@ -33,13 +33,19 @@ export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: Campa
         }
     }, [campaignsData]);
 
-    const activeCampaigns = (campaignsData || []).slice(0, 2);
+    const activeCampaigns = (campaignsData || []).slice(0, 3);
 
     return (
         <div className="rounded-xl p-5 border flex flex-col gap-5 h-full transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
             <div className="flex items-center justify-between">
-                <div>
+                <div className="flex items-center gap-2.5">
                     <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Campaign Intelligence</h3>
+                    {(campaignsData?.length ?? 0) > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-md"
+                            style={{ fontSize: '11px', fontWeight: 600, background: isDarkMode ? 'rgba(16,185,129,0.1)' : '#ecfdf5', color: '#10b981', border: `1px solid ${isDarkMode ? 'rgba(16,185,129,0.2)' : '#a7f3d0'}` }}>
+                            {campaignsData?.length}
+                        </span>
+                    )}
                 </div>
                 <button onClick={() => router.push('/campaign')}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -87,11 +93,12 @@ export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: Campa
                                     <ChevronRight size={16} style={{ color: t.micro }} className="group-hover:translate-x-0.5 transition-transform" />
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-4 gap-2">
                                     {[
                                         { icon: <Send size={12} />,        label: 'Audience',  value: c.audience.toLocaleString() },
                                         { icon: <Eye size={12} />,         label: 'Delivered', value: c.delivered.toLocaleString() },
                                         { icon: <MessageSquare size={12} />, label: 'Read R.', value: `${c.readPct}%` },
+                                        { icon: <TrendingUp size={12} />,  label: 'Reply R.', value: `${c.replyPct}%` },
                                     ].map((m, j) => (
                                         <div key={j} className="p-2 rounded-lg flex flex-col gap-1 border"
                                             style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
@@ -99,14 +106,14 @@ export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: Campa
                                                 {m.icon}
                                                 <span style={{ fontSize: '11px', fontWeight: 500 }}>{m.label}</span>
                                             </div>
-                                            <p style={{ fontSize: '14px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: t.value }}>{m.value}</p>
+                                            <p style={{ fontSize: '15px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: t.value }}>{m.value}</p>
                                         </div>
                                     ))}
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <div className="flex justify-between items-center px-1">
-                                        <span style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>Read Rate Efficiency</span>
+                                        <span style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>Read Rate</span>
                                         <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>{c.readPct}%</span>
                                     </div>
                                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>
@@ -115,6 +122,18 @@ export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: Campa
                                                 width: show ? `${c.readPct}%` : '0%',
                                                 background: '#10b981',
                                                 transition: `width 900ms cubic-bezier(0.22,1,0.36,1) ${i * 120 + 200}ms`
+                                            }} />
+                                    </div>
+                                    <div className="flex justify-between items-center px-1 mt-1">
+                                        <span style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>Reply Rate</span>
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#3b82f6' }}>{c.replyPct}%</span>
+                                    </div>
+                                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+                                        <div className="h-full rounded-full"
+                                            style={{
+                                                width: show ? `${c.replyPct}%` : '0%',
+                                                background: '#3b82f6',
+                                                transition: `width 900ms cubic-bezier(0.22,1,0.36,1) ${i * 120 + 300}ms`
                                             }} />
                                     </div>
                                 </div>

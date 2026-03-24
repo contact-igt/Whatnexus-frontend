@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, MoreHorizontal, Users2 } from 'lucide-react';
-import { glassCard, glassInner, tx, trackBg, fs } from './glassStyles';
+import { tx } from './glassStyles';
 import { AgentPerformanceData } from '@/services/whatsappDashboard';
 import { NoDataFound } from './noDataFound';
 
@@ -84,6 +84,7 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                     // Softer fallback colors instead of bright neon logic based on position:
                     const colorList = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
                     const hex = colorList[i % colorList.length];
+                    const roleLabel = a.role === 'doctor' ? 'Doctor' : a.role === 'staff' ? 'Staff' : 'Agent';
 
                     return (
                         <div key={i} onClick={() => router.push('/team')}
@@ -105,10 +106,14 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                                 <div className="flex items-center justify-between mb-1.5">
                                     <div className="flex items-center gap-2">
                                         <p style={{ fontSize: '14px', fontWeight: 500, color: t.primary }}>{a.name}</p>
+                                        <span className="px-1.5 py-0.5 rounded"
+                                            style={{ fontSize: '10px', fontWeight: 600, color: t.secondary, background: isDarkMode ? '#27272a' : '#f4f4f5' }}>
+                                            {roleLabel}
+                                        </span>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
                                         <div className="flex items-center gap-1 text-right">
-                                            <span style={{ fontSize: '13px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: t.primary }}>{a.chatCount}</span>
+                                            <span style={{ fontSize: '14px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: t.primary }}>{a.chatCount}</span>
                                             <span style={{ fontSize: '11px', color: t.secondary }}>chats</span>
                                         </div>
                                     </div>
@@ -118,7 +123,7 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                                         <div className="h-full rounded-full"
                                             style={{
                                                 background: hex,
-                                                width: bars ? `${a.barPct}%` : '0%',
+                                                width: bars ? `${Math.max(a.barPct, a.chatCount > 0 ? 5 : 2)}%` : '0%',
                                                 transition: `width 800ms cubic-bezier(0.22,1,0.36,1) ${i * 60 + 100}ms`
                                             }} />
                                     </div>
@@ -144,7 +149,7 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                 ].map((s, i) => (
                     <div key={i} className="p-3 rounded-xl flex flex-col justify-center border" style={{ background: isDarkMode ? '#18181b' : '#fafafa', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                         <p style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>{s.label}</p>
-                        <p style={{ fontSize: '15px', fontWeight: 600, color: t.value, marginTop: 2 }}>{s.value}</p>
+                        <p style={{ fontSize: '16px', fontWeight: 700, color: t.value, marginTop: 2 }}>{s.value}</p>
                     </div>
                 ))}
             </div>

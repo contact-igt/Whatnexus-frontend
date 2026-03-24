@@ -25,6 +25,14 @@ import { ChatDetails } from './ChatDetails';
 import { ChatSummaryOverlay } from './ChatSummaryOverlay';
 import { ThemedLoader } from '@/components/ui/themedLoader';
 
+const arePhonesEqual = (p1: any, p2: any) => {
+    const s1 = String(p1 || "").replace(/\D/g, "");
+    const s2 = String(p2 || "").replace(/\D/g, "");
+    if (!s1 || !s2) return false;
+    // Compare last 10 digits as standardized form
+    return s1 === s2 || (s1.length >= 10 && s2.length >= 10 && s1.slice(-10) === s2.slice(-10));
+};
+
 export const ChatView = () => {
     const queryClient = useQueryClient();
     const { user, whatsappApiDetails } = useAuth();
@@ -37,7 +45,13 @@ export const ChatView = () => {
         isLoading: isChatsLoading,
     } = useGetAllLiveChatsQuery();
 
-    const [filteredChats, setFilteredChats] = useState(chatList?.data);
+    const [filteredChats, setFilteredChats] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (chatList?.data) {
+            setFilteredChats(chatList.data);
+        }
+    }, [chatList?.data]);
     const { mutate: sendMessageMutate, isPending } = useAddMessageMutation();
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -55,6 +69,7 @@ export const ChatView = () => {
     const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
     const router = useRouter();
     const selectedChatRef = useRef<any>(null);
+    const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchParams = useSearchParams();
     const phoneParam = searchParams.get('phone');
     const navigatingPhoneRef = useRef<string | null>(null);
@@ -94,7 +109,7 @@ export const ChatView = () => {
     }
 
     const handleSelectChat = (chat: any) => {
-        if (selectedChat?.phone === chat.phone) return;
+        if (arePhonesEqual(selectedChat?.phone, chat.phone)) return;
         navigatingPhoneRef.current = String(chat.phone);
         setSelectedChat({
             phone: chat?.phone,
@@ -113,7 +128,7 @@ export const ChatView = () => {
         if (!selectedChat?.phone) return;
         if (!chatList?.data?.length) return;
 
-        const currentChat = chatList.data.find((c: any) => c.phone === selectedChat.phone);
+        const currentChat = chatList.data.find((c: any) => arePhonesEqual(c.phone, selectedChat.phone));
         const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
 
         if (hasUnreadUserMessages) {
@@ -122,7 +137,7 @@ export const ChatView = () => {
             setFilteredChats((prev: any) => {
                 if (!prev) return prev;
                 return prev.map((c: any) =>
-                    c.phone === selectedChat?.phone ? { ...c, unread_count: 0, seen: "true" } : c
+                    arePhonesEqual(c.phone, selectedChat?.phone) ? { ...c, unread_count: 0, seen: "true" } : c
                 );
             });
         }
@@ -177,7 +192,37 @@ export const ChatView = () => {
             } else if (chatFilter === 'unassigned') {
                 filtered = filtered?.filter((chat: any) => !chat?.assigned_admin_id);
             }
-            setFilteredChats(filtered);
+            setFilteredChats((prev: any[] | undefined) => {
+                if (!filtered) return filtered;
+                if (!prev) return filtered;
+
+                // Create a map of existing chats for easy lookup
+                const prevMap = new Map();
+                prev.forEach(c => {
+                    const clean = String(c.phone).replace(/\D/g, "").slice(-10);
+                    prevMap.set(clean, c);
+                });
+
+                // Merge: if local data is newer, keep it
+                return filtered.map((newChat: any) => {
+                    const clean = String(newChat.phone).replace(/\D/g, "").slice(-10);
+                    const localChat = prevMap.get(clean);
+                    if (localChat && localChat.last_message_time && newChat.last_message_time) {
+                        const localTime = new Date(localChat.last_message_time).getTime();
+                        const newTime = new Date(newChat.last_message_time).getTime();
+                        if (localTime > newTime) {
+                            return { 
+                                ...newChat, 
+                                message: localChat.message, 
+                                last_message_time: localChat.last_message_time,
+                                unread_count: localChat.unread_count,
+                                seen: localChat.seen
+                            };
+                        }
+                    }
+                    return newChat;
+                });
+            });
         }, 200);
 
         return () => clearTimeout(timer);
@@ -211,10 +256,7 @@ export const ChatView = () => {
             if (navigatingPhoneRef.current) return;
 
             const chatFromUrl = chatList.data.find(
-                (c: any) => {
-                    const cleanPhone = String(c.phone).replace(/\D/g, "");
-                    return cleanPhone === cleanParam || String(c.phone) === String(phoneParam);
-                }
+                (c: any) => arePhonesEqual(c.phone, phoneParam)
             );
 
             if (chatFromUrl) {
@@ -237,15 +279,12 @@ export const ChatView = () => {
             }
 
             const chatFromFiltered = filteredChats?.find(
-                (c: any) => {
-                    const cleanPhone = String(c.phone).replace(/\D/g, "");
-                    return cleanPhone === cleanParam || String(c.phone) === String(phoneParam);
-                }
+                (c: any) => arePhonesEqual(c.phone, phoneParam)
             );
 
             if (chatFromFiltered) {
                 if (
-                    selectedChat?.phone !== chatFromFiltered.phone ||
+                    !arePhonesEqual(selectedChat?.phone, chatFromFiltered.phone) ||
                     selectedChat?.assigned_admin_id !== chatFromFiltered.assigned_admin_id ||
                     selectedChat?.assigned_agent_name !== chatFromFiltered.assigned_agent_name ||
                     selectedChat?.name !== (chatFromFiltered.name ?? chatFromFiltered.phone)
@@ -270,41 +309,43 @@ export const ChatView = () => {
         const dbMessages = messagesData?.data ?? [];
         const socketMessages = newMessage;
 
+        if (socketMessages.length === 0) return dbMessages;
+
+        // Build lookup structures from DB messages
         const dbIds = new Set(dbMessages.map((m: any) => m.id).filter(Boolean));
+        const dbContentIndex = dbMessages.map((m: any) => ({
+            key: `${(m.message || "").trim()}:${m.sender}`,
+            ts: new Date(m.created_at || m.timestamp).getTime(),
+        }));
 
-        const getCompositeKey = (msg: any) => {
-            const date = new Date(msg.created_at || msg.timestamp);
-            if (isNaN(date.getTime())) return `${msg.message?.trim()}:${msg.sender}:nodate`;
-
-            const minuteTime = date.toISOString().slice(0, 16);
-            const content = msg.message?.trim() || "";
-            return `${content}:${msg.sender}:${minuteTime}`;
-        };
-
-        const dbCompositeKeys = new Set(dbMessages.map(getCompositeKey));
-
+        // Filter socket messages that already exist in DB
         const filteredSocketMessages = socketMessages.filter((msg: any) => {
+            // Match by ID (reliable for user/admin messages)
             if (msg.id && dbIds.has(msg.id)) return false;
-            const key = getCompositeKey(msg);
-            if (dbCompositeKeys.has(key)) return false;
+            // Match by content + sender within 120-second window
+            const key = `${(msg.message || "").trim().toLowerCase()}:${msg.sender}`;
+            const ts = new Date(msg.created_at || msg.timestamp).getTime();
+            for (const db of dbContentIndex) {
+                // If the message text and sender are exactly the same and within 2 minutes, it's a duplicate
+                if (db.key.toLowerCase() === key && Math.abs(db.ts - ts) < 120000) return false;
+            }
             return true;
         });
 
-        const uniqueSocketMessages = [];
-        const socketKeys = new Set();
-
+        const unique: any[] = [];
+        const seen = new Set<string>();
         for (const msg of filteredSocketMessages) {
-            const key = getCompositeKey(msg);
-            const idKey = msg.id ? `id:${msg.id}` : null;
-
-            if (!socketKeys.has(key) && (!idKey || !socketKeys.has(idKey))) {
-                uniqueSocketMessages.push(msg);
-                socketKeys.add(key);
-                if (idKey) socketKeys.add(idKey);
+            // Use a 5-second window for deduplication to handle slightly different timestamp formats
+            const ts = new Date(msg.created_at || msg.timestamp).getTime();
+            const roundedTs = Math.floor(ts / 5000) * 5000;
+            const dedupKey = msg.id ? `id:${msg.id}` : `${(msg.message || "").trim().toLowerCase()}:${msg.sender}:${roundedTs}`;
+            if (!seen.has(dedupKey)) {
+                unique.push(msg);
+                seen.add(dedupKey);
             }
         }
 
-        return [...dbMessages, ...uniqueSocketMessages];
+        return [...dbMessages, ...unique];
     }, [messagesData?.data, newMessage]);
 
     const displayMessages = updatedMessageData ?? [];
@@ -340,32 +381,48 @@ export const ChatView = () => {
     };
 
     const handleIncomingMessage = (data: any) => {
-        console.log("📩 New message received:", data);
-
-        const cleanIncomingPhone = data.phone?.replace(/\D/g, "");
-        const cleanSelectedPhone = selectedChatRef.current?.phone?.replace(/\D/g, "");
-
-        if (cleanSelectedPhone === cleanIncomingPhone || selectedChatRef.current?.phone === data.phone) {
-            setNewMessage(prev => [...prev, data]);
-            // Use the actual query key phone (selectedChatRef) to guarantee cache key matches
-            queryClient.invalidateQueries({ queryKey: ["messages", selectedChatRef.current?.phone] });
+        if (arePhonesEqual(selectedChatRef.current?.phone, data.phone)) {
+            setNewMessage(prev => {
+                // Prevent duplicate messages from entering local state (handles socket edge cases)
+                const isDuplicate = prev.some(m => 
+                    (m.id && data.id && m.id === data.id) || 
+                    (m.message === data.message && m.sender === data.sender && Math.abs(new Date(m.created_at || m.timestamp).getTime() - new Date(data.created_at || data.timestamp).getTime()) < 2000)
+                );
+                if (isDuplicate) return prev;
+                return [...prev, data];
+            });
+            // Invalidate both possible phone formats to ensure cache sync
+            if (selectedChatRef.current?.phone) {
+                queryClient.invalidateQueries({ queryKey: ["messages", selectedChatRef.current.phone] });
+            }
+            if (data.phone && data.phone !== selectedChatRef.current?.phone) {
+                queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
+            }
+            // Debounced DB sync — prevents race condition that causes duplicate display
+            if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+            syncTimerRef.current = setTimeout(() => {
+                if (data.phone) queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
+            }, 2000);
         }
 
         const isUser = data.sender === 'user';
 
         setFilteredChats((prev: any) => {
-            if (!prev) return prev;
-            const index = prev.findIndex((c: any) => c.phone === data.phone);
+            const safePrev = prev || [];
+            const index = safePrev.findIndex((c: any) => arePhonesEqual(c.phone, data.phone));
+            const isUser = data.sender === 'user';
+
             if (index !== -1) {
-                const updated = [...prev];
+                const updated = [...safePrev];
+                const existing = updated[index];
                 updated[index] = {
-                    ...updated[index],
-                    name: data.name || updated[index].name,
-                    contact_id: data.contact_id || updated[index].contact_id,
+                    ...existing,
+                    name: data.name || existing.name,
+                    contact_id: data.contact_id || existing.contact_id,
                     message: data.message,
-                    last_message_time: data.created_at,
-                    seen: isUser ? "false" : updated[index].seen,
-                    unread_count: isUser ? (Number(updated[index].unread_count) || 0) + 1 : updated[index].unread_count
+                    last_message_time: data.created_at || data.timestamp,
+                    seen: isUser ? "false" : existing.seen,
+                    unread_count: isUser ? (Number(existing.unread_count) || 0) + 1 : existing.unread_count
                 };
                 return [updated[index], ...updated.filter((_, i) => i !== index)];
             }
@@ -375,11 +432,11 @@ export const ChatView = () => {
                     contact_id: data.contact_id,
                     name: data.name,
                     message: data.message,
-                    last_message_time: data.created_at,
+                    last_message_time: data.created_at || data.timestamp,
                     seen: isUser ? "false" : "true",
                     unread_count: isUser ? 1 : 0
                 },
-                ...prev,
+                ...safePrev,
             ];
         });
         queryClient.invalidateQueries({ queryKey: ["livechats"] });
@@ -401,9 +458,7 @@ export const ChatView = () => {
 
         socket.on("new-message", handleIncomingMessage);
         socket.on("ai-typing", (data: any) => {
-            const cleanIncomingPhone = data.phone?.replace(/\D/g, "");
-            const cleanSelectedPhone = selectedChatRef.current?.phone?.replace(/\D/g, "");
-            if (cleanSelectedPhone === cleanIncomingPhone || selectedChatRef.current?.phone === data.phone) {
+            if (arePhonesEqual(selectedChatRef.current?.phone, data.phone)) {
                 setIsAiTyping(data.status);
             }
         });
@@ -425,7 +480,7 @@ export const ChatView = () => {
     }, [user?.tenant_id]);
 
     useEffect(() => {
-        if (groupedEntries?.length > 0) {
+        if (displayMessages.length > 0) {
             setTimeout(() => {
                 bottomRef?.current?.scrollIntoView({
                     behavior: "auto",
@@ -433,7 +488,7 @@ export const ChatView = () => {
                 });
             }, 50);
         }
-    }, [groupedEntries?.length, selectedChat?.phone]);
+    }, [displayMessages.length, selectedChat?.phone]);
 
     useEffect(() => {
         if (newMessage.length > 0) {
@@ -453,7 +508,33 @@ export const ChatView = () => {
     useEffect(() => {
         setNewMessage([]);
         setIsAiTyping(false);
+        if (syncTimerRef.current) {
+            clearTimeout(syncTimerRef.current);
+            syncTimerRef.current = null;
+        }
     }, [selectedChat?.phone]);
+
+    // Reconcile: prune socket messages once DB data includes them
+    useEffect(() => {
+        if (!messagesData?.data?.length || newMessage.length === 0) return;
+        const dbIds = new Set(messagesData.data.map((m: any) => m.id).filter(Boolean));
+        const dbContentIndex = messagesData.data.map((m: any) => ({
+            key: `${(m.message || "").trim()}:${m.sender}`,
+            ts: new Date(m.created_at).getTime(),
+        }));
+        setNewMessage(prev => {
+            const pruned = prev.filter((msg: any) => {
+                if (msg.id && dbIds.has(msg.id)) return false;
+                const key = `${(msg.message || "").trim()}:${msg.sender}`;
+                const ts = new Date(msg.created_at || msg.timestamp).getTime();
+                for (const db of dbContentIndex) {
+                    if (db.key === key && Math.abs(db.ts - ts) < 120000) return false;
+                }
+                return true;
+            });
+            return pruned.length !== prev.length ? pruned : prev;
+        });
+    }, [messagesData?.data]);
 
     if (whatsappApiDetails?.status !== 'active') {
         return <WhatsAppConnectionPlaceholder />;
