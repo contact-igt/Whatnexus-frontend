@@ -12,10 +12,11 @@ interface BillingSummaryProps {
         marketing: number;
         utility: number;
         authentication: number;
+        service: number;
         totalMessages: number;
         billable: number;
         free: number;
-    };
+    } | null;
     periodLabel?: string;
 }
 
@@ -32,18 +33,20 @@ export const BillingSummary = ({ isDarkMode = true, billingData, periodLabel = '
     }, [billingData]);
 
     const categories = billingData ? [
-        { label: 'Marketing', value: billingData.marketing, color: '#8b5cf6' },
-        { label: 'Utility', value: billingData.utility, color: '#3b82f6' },
-        { label: 'Auth', value: billingData.authentication, color: '#f59e0b' },
+        { label: 'Marketing', value: billingData.marketing || 0, color: '#8b5cf6' },
+        { label: 'Utility', value: billingData.utility || 0, color: '#3b82f6' },
+        { label: 'Auth', value: billingData.authentication || 0, color: '#f59e0b' },
+        { label: 'Service', value: billingData.service || 0, color: '#10b981' },
     ] : [];
 
-    const maxCat = Math.max(...categories.map(c => c.value), 0.01);
+    const totalCatValue = categories.reduce((sum, c) => sum + c.value, 0);
+    const maxCat = Math.max(...categories.map(c => c.value), 1);
 
     return (
         <div className="rounded-xl border" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
             <div className="px-5 pt-5 flex items-center justify-between">
                 <div>
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Billing & Spend</h3>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Meta Billing & Spend</h3>
                     <p style={{ fontSize: '12px', color: t.secondary, marginTop: 2 }}>Last {periodLabel}</p>
                 </div>
                 <button onClick={() => router.push('/billing')}
@@ -69,7 +72,7 @@ export const BillingSummary = ({ isDarkMode = true, billingData, periodLabel = '
                             <div>
                                 <p style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>Total Spend</p>
                                 <p style={{ fontSize: '24px', fontWeight: 700, color: t.value, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                                    ₹{billingData.totalSpent.toFixed(2)}
+                                    ₹{(billingData?.totalSpent || 0).toFixed(2)}
                                 </p>
                             </div>
                         </div>
@@ -93,7 +96,7 @@ export const BillingSummary = ({ isDarkMode = true, billingData, periodLabel = '
                             </div>
                             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                                 <div className="h-full rounded-full" style={{
-                                    width: show ? `${Math.max((cat.value / maxCat) * 100, 3)}%` : '0%',
+                                    width: show && cat.value > 0 ? `${Math.max((cat.value / maxCat) * 100, 5)}%` : '0%',
                                     background: cat.color, transition: `width 700ms ease ${i * 50 + 150}ms`
                                 }} />
                             </div>
@@ -106,9 +109,9 @@ export const BillingSummary = ({ isDarkMode = true, billingData, periodLabel = '
             {billingData && (
                 <div className="px-5 pb-5 pt-2 grid grid-cols-3 gap-2" style={{ borderTop: `1px solid ${isDarkMode ? '#27272a' : '#e4e4e7'}` }}>
                     {[
-                        { label: 'Messages', value: billingData.totalMessages },
-                        { label: 'Billable', value: billingData.billable },
-                        { label: 'Free Tier', value: billingData.free },
+                        { label: 'Messages', value: billingData?.totalMessages || 0 },
+                        { label: 'Billable', value: billingData?.billable || 0 },
+                        { label: 'Free Tier', value: billingData?.free || 0 },
                     ].map((s, i) => (
                         <div key={i} className="p-2.5 rounded-lg border text-center" style={{ background: isDarkMode ? '#18181b' : '#fafafa', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                             <p style={{ fontSize: '16px', fontWeight: 700, color: t.value, fontVariantNumeric: 'tabular-nums' }}>{s.value.toLocaleString()}</p>

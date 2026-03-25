@@ -297,10 +297,10 @@ export const WhatsAppPreviewPanel = ({
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className={cn("text-sm font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
-                                    {fileName || headerValue.split('/').pop()?.split('?')[0] || 'Document.pdf'}
+                                    {fileName || 'Document.pdf'}
                                 </p>
                                 <p className={cn("text-[10px] uppercase font-bold tracking-tight", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                    {headerValue.split('.').pop()?.toUpperCase().split('?')[0] || 'PDF'} • 1.2 MB
+                                    {(fileName?.split('.').pop()?.toUpperCase()) || 'PDF'}
                                 </p>
                             </div>
                         </div>

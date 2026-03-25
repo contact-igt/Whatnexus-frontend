@@ -38,6 +38,49 @@ export const getDateLabel = (dateStr: string) => {
     return date.toLocaleDateString("en-GB");
 };
 
+/**
+ * Formats a chat message for sidebar preview.
+ * Strips [IMAGE: url], [DOCUMENT: url], [VIDEO: url] markers and shows a friendly label.
+ */
+export const formatChatPreview = (message: string, messageType?: string): string => {
+    if (!message) return '';
+
+    // Strip [TYPE: url] or [TYPE] markers from beginning of message
+    const mediaMarkerRegex = /^\[(IMAGE|DOCUMENT|VIDEO|AUDIO|LOCATION)(?::\s*\S+)?\]\n?/i;
+    const match = message.match(mediaMarkerRegex);
+
+    if (match) {
+        const type = match[1].toUpperCase();
+        const rest = message.replace(mediaMarkerRegex, '').trim();
+        const labels: Record<string, string> = {
+            IMAGE: '📷 Photo',
+            DOCUMENT: '📄 Document',
+            VIDEO: '🎥 Video',
+            AUDIO: '🎵 Audio',
+            LOCATION: '📍 Location',
+        };
+        const label = labels[type] || type;
+        return rest ? `${label}: ${rest}` : label;
+    }
+
+    // No marker in text — use message_type if it's a media type
+    if (messageType) {
+        const mt = messageType.toLowerCase();
+        const typeLabels: Record<string, string> = {
+            image: '📷 Photo',
+            document: '📄 Document',
+            video: '🎥 Video',
+            audio: '🎵 Audio',
+            location: '📍 Location',
+        };
+        if (typeLabels[mt]) {
+            return message.trim() ? `${typeLabels[mt]}: ${message.trim()}` : typeLabels[mt];
+        }
+    }
+
+    return message;
+};
+
 export const formattedTime = (dateString: any) => {
     if (!dateString) return "";
 

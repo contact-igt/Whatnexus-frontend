@@ -161,7 +161,7 @@ export const FileUpload = ({
                                         compact ? "text-xs" : "text-[13px]",
                                         isDarkMode ? "text-white" : "text-slate-900"
                                     )}>
-                                        {fileName || (uploadedUrl ? uploadedUrl.split('/').pop()?.split('?')[0] : 'Document uploaded')}
+                                        {fileName || 'Document uploaded'}
                                     </p>
                                     <div className="flex items-center gap-1 mt-0.5">
                                         <CheckCircle size={compact ? 10 : 12} className="text-emerald-500" />

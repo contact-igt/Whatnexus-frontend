@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, User, MessageSquareOff } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { getDateLabel, formattedTime } from './ChatUtils';
+import { getDateLabel, formattedTime, formatChatPreview } from './ChatUtils';
 
 interface ChatSidebarProps {
     isDarkMode: boolean;
@@ -148,7 +148,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className={cn("text-[12px] truncate pr-2 font-medium", isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-                                        {chat.message}
+                                        {formatChatPreview(chat.message, chat.message_type)}
                                     </span>
                                     {Number(chat?.unread_count) > 0 && (
                                         <span className="min-w-[18px] h-[18px] px-1 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shrink-0">

@@ -96,9 +96,8 @@ export const WhatsAppConnectionView = () => {
         if (status !== 'active') {
             // Check if webhook is verified
             if (!user?.webhook_verified) {
-                // If not verified, show verification UI and return
+                // If not verified, show verification card and return
                 setShowVerification(true);
-                toast.error("Please verify your webhook before activating.");
                 return;
             }
         }
@@ -145,20 +144,17 @@ export const WhatsAppConnectionView = () => {
         if (!user?.tenant_id) return;
 
         setIsCheckingWebhook(true);
+        setShowVerification(true); // Always show verification card when checking
         try {
             const response = await new (await import('@/services/tenant')).TenantApiData().getWebhookStatus(user.tenant_id);
             const webhookVerified = response?.data?.webhook_verified || false;
             dispatch(updateWebhookStatus(webhookVerified));
 
             if (webhookVerified) {
-                await refetchWhatsAppConfig(); // Refetch WhatsApp config
-                toast.success('Webhook verified successfully!');
-                setShowVerification(false); // Hide verification UI after success (optional, or keep it to show status)
-            } else {
-                toast.info('Webhook not yet verified. Please complete Meta verification.');
+                await refetchWhatsAppConfig();
             }
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || 'Failed to check webhook status');
+            console.error('Failed to check webhook status:', error);
         } finally {
             setIsCheckingWebhook(false);
         }
@@ -251,7 +247,7 @@ export const WhatsAppConnectionView = () => {
 
                         {WhatsAppConnectionData?.data?.id ? (
                             <div className="space-y-6">
-                                {/* Meta Verification Card - Show if triggered */}
+                                {/* Meta Verification Card - Show only when triggered by user action */}
                                 {showVerification && (
                                     <MetaVerificationCard
                                         isDarkMode={isDarkMode}

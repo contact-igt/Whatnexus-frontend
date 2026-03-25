@@ -447,6 +447,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 scheduled_at: formData.scheduled_at,
                 variable_values: variableValues, // Kept for reference, though backend uses audience_data
                 header_media_url: formData.header_media_url || null,
+                header_file_name: headerFileName || null,
                 location_params: selectedTemplate?.type === 'location' ? formData.location_params : null,
                 card_media_urls: selectedTemplate?.type === 'carousel' ? formData.card_media_urls : null,
             };

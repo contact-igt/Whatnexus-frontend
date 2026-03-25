@@ -167,6 +167,7 @@ export interface DashboardData {
     marketing: number;
     utility: number;
     authentication: number;
+    service: number;
     totalMessages: number;
     billable: number;
     free: number;

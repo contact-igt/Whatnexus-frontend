@@ -433,6 +433,7 @@ export const ChatView = () => {
                     name: data.name || existing.name,
                     contact_id: data.contact_id || existing.contact_id,
                     message: data.message,
+                    message_type: data.message_type || existing.message_type,
                     last_message_time: data.created_at || data.timestamp,
                     seen: isUser ? "false" : existing.seen,
                     unread_count: isUser ? (Number(existing.unread_count) || 0) + 1 : existing.unread_count
@@ -445,6 +446,7 @@ export const ChatView = () => {
                     contact_id: data.contact_id,
                     name: data.name,
                     message: data.message,
+                    message_type: data.message_type || null,
                     last_message_time: data.created_at || data.timestamp,
                     seen: isUser ? "false" : "true",
                     unread_count: isUser ? 1 : 0

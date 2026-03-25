@@ -34,6 +34,7 @@ export interface CreateCampaignRequest {
     scheduled_at?: string | null; // ISO 8601 format, required if campaign_type = 'scheduled'
     variable_values?: Record<string, string>; // Optional variable values for template
     header_media_url?: string | null;
+    header_file_name?: string | null;
     location_params?: {
         latitude: string;
         longitude: string;

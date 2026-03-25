@@ -242,8 +242,8 @@ export const DashboardView = () => {
                         <section>
                             <SectionHeader
                                 icon={<CreditCard size={18} />}
-                                title={`Billing & Spend — ${dashboardData?.period || '30 Days'}`}
-                                subtitle="Cost breakdown and message usage"
+                                title={`Meta Billing — ${dashboardData?.period || '30 Days'}`}
+                                subtitle="Estimated spend on Meta conversation fees"
                                 accentColor="#8b5cf6"
                                 isDarkMode={isDarkMode}
                             />
