@@ -84,8 +84,9 @@ export const useAddMessageMutation = () => {
             });
             // toast.success('Message sent successfully!');
         },
-        onError: (error: Error) => {
-            // toast.error(error.message || 'Failed to send message');
+        onError: (error: AxiosError<{ message?: string }>) => {
+            const message = error.response?.data?.message || error.message || 'Failed to send message';
+            toast.error(message);
         },
     });
 };

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User, Phone, Calendar, Clock, FileText, Loader2, Stethoscope, Users, XCircle, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { 
+import {
     format, parseISO, addDays, isSameDay, startOfToday,
     startOfMonth, endOfMonth, startOfWeek, endOfWeek,
     eachDayOfInterval, isSameMonth, addMonths, subMonths
@@ -234,25 +234,35 @@ export const AppointmentDrawer = ({
         const allSlots = [];
         const duration = activeDoctor.consultation_duration || 15;
 
+        // Helper to convert 24h time to AM/PM format (e.g., "09:30" -> "09:30 AM")
+        const to12HourFormat = (hour: number, min: number) => {
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+            return `${String(displayHour).padStart(2, '0')}:${String(min).padStart(2, '0')} ${period}`;
+        };
+
         for (const availability of availabilities) {
             let [currentHour, currentMin] = availability.start_time.split(':').map(Number);
             const [endHour, endMin] = availability.end_time.split(':').map(Number);
 
             while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-                const startTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
-                
+                // Generate time in AM/PM format to match backend storage
+                const startTimeStr = to12HourFormat(currentHour, currentMin);
+
                 let nextMin = currentMin + duration;
                 let nextHour = currentHour;
                 if (nextMin >= 60) {
                     nextHour += Math.floor(nextMin / 60);
                     nextMin %= 60;
                 }
-                const endTimeStr = `${nextHour.toString().padStart(2, '0')}:${nextMin.toString().padStart(2, '0')}`;
+                const endTimeStr = to12HourFormat(nextHour, nextMin);
 
                 // Check if slot overlaps with any existing non-cancelled appointment
-                const isBooked = doctorAppointments?.data?.some((appt: any) =>
-                    appt.appointment_time === startTimeStr && appt.status !== 'Cancelled'
-                );
+                // Backend stores time in AM/PM format, so compare directly
+                const isBooked = doctorAppointments?.data?.some((appt: any) => {
+                    const apptTime = appt.appointment_time || '';
+                    return apptTime === startTimeStr && appt.status !== 'Cancelled';
+                });
 
                 allSlots.push({
                     time: startTimeStr,
@@ -274,27 +284,18 @@ export const AppointmentDrawer = ({
             const fullNumber = appointment.contact_number || '';
             let countryCode = appointment.country_code || '+91';
             let phoneNumber = appointment.contact_number || '';
-            
             // Fallback for legacy data where country code might be prefixed to contact_number
             if (!appointment.country_code && phoneNumber.length > 10) {
                 const codeLen = phoneNumber.length - 10;
                 countryCode = '+' + phoneNumber.slice(0, codeLen).replace('+', '');
                 phoneNumber = phoneNumber.slice(codeLen);
             }
-            
             // Ensure country code has +
             if (countryCode && !countryCode.startsWith('+')) {
                 countryCode = '+' + countryCode;
             }
-            // Convert AM/PM time to 24h format for the time input
+            // Keep time in AM/PM format (matches slot generation and backend storage)
             let timeValue = appointment.appointment_time || '';
-            if (timeValue.includes('AM') || timeValue.includes('PM')) {
-                const [timePart, period] = timeValue.split(' ');
-                let [hours, minutes] = timePart.split(':').map(Number);
-                if (period === 'PM' && hours !== 12) hours += 12;
-                if (period === 'AM' && hours === 12) hours = 0;
-                timeValue = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-            }
 
             // Format date to YYYY-MM-DD for the date input
             let dateValue = appointment.appointment_date || '';
@@ -311,7 +312,7 @@ export const AppointmentDrawer = ({
                 status: appointment.status || 'Pending',
                 notes: appointment.notes || '',
                 doctor_id: appointment.doctor_id || '',
-                contact_id: '',
+                contact_id: appointment.contact_id || '',
                 age: appointment.age?.toString() || '',
                 email: appointment.email || '',
             });

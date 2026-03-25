@@ -1,28 +1,67 @@
 import React from 'react';
-import { SearchX, MessageSquareText, FileText, Download } from 'lucide-react';
+import { SearchX, MessageSquareText, FileText, Download, ExternalLink, Phone, Copy } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
 
 // Extracts media URL from "[VIDEO: url]" / "[IMAGE: url]" / "[DOCUMENT: url]" text patterns
 const extractMediaFromText = (message: string) => {
-    const match = message?.match(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*(https?:\/\/[^\]]+)?\]/i);
+    if (!message) return null;
+    // Match [TYPE] or [TYPE: url] at the start of message
+    // URL can be with or without protocol (http/https)
+    const match = message.match(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*([^\]\n]+)?\]/i);
     if (!match) return null;
-    return { type: match[1].toLowerCase(), url: match[2]?.trim() || null };
+    const url = match[2]?.trim();
+    // Return null URL if it's empty or just whitespace
+    return { type: match[1].toLowerCase(), url: url && url.length > 0 ? url : null };
+};
+
+// Extract buttons from template message format "[Button: text]"
+const extractButtonsFromText = (message: string) => {
+    const buttonRegex = /\[Button:\s*([^\]]+)\]/gi;
+    const buttons: string[] = [];
+    let match;
+    while ((match = buttonRegex.exec(message)) !== null) {
+        buttons.push(match[1].trim());
+    }
+    return buttons;
+};
+
+// Remove button text from message body
+const stripButtonsFromText = (message: string) => {
+    return message.replace(/\n?\[Button:\s*[^\]]+\]/gi, '').trim();
+};
+
+// Remove any remaining template variable placeholders like {{1}}, {{2}}, etc.
+const stripVariablePlaceholders = (message: string) => {
+    return message.replace(/\{\{\d+\}\}/g, '').trim();
 };
 
 const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boolean }> = ({ msg, searchText, isDarkMode }) => {
     const type = msg.message_type;
     const mediaUrl = msg.media_url;
 
-    // For template messages: extract media from "[VIDEO: url]" text prefix
-    const embeddedMedia = type === "template" ? extractMediaFromText(msg.message) : null;
+    // Try to extract embedded media from message text (templates store media as "[VIDEO: url]\nBody text")
+    const embeddedMedia = extractMediaFromText(msg.message);
+
+    // Determine effective type: use embedded media type if found, otherwise use message_type
     const effectiveType = embeddedMedia?.type || type;
+
+    // Determine effective URL: prefer embedded URL, then media_url field (filter out meta_media_id placeholders)
     const effectiveUrl = embeddedMedia?.url || (mediaUrl && !mediaUrl.startsWith("meta_media_id:") ? mediaUrl : null);
 
-    // Get body text: strip the "[VIDEO: url]" prefix for template messages
-    const bodyText = embeddedMedia
-        ? msg.message.replace(/^\[.*?\]\n?/, "").trim()
-        : msg.message;
+    // Extract buttons from message text (templates have [Button: text] format)
+    const hasButtons = msg.message?.includes("[Button:");
+    const templateButtons = hasButtons ? extractButtonsFromText(msg.message) : [];
+
+    // Get body text: strip media prefix and buttons
+    let bodyText = msg.message;
+    if (embeddedMedia) {
+        // Remove the [VIDEO: url] or [IMAGE: url] prefix
+        bodyText = msg.message.replace(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*[^\]]*\]\n?/i, "").trim();
+    }
+    if (hasButtons) {
+        bodyText = stripButtonsFromText(bodyText);
+    }
 
     const renderText = (text: string) => {
         if (searchText && text?.toLowerCase().includes(searchText.toLowerCase())) {
@@ -93,13 +132,48 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
             {/* Body text (shown for all types except document which shows it inline) */}
             {effectiveType !== "document" && bodyText ? (
                 <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                    {renderText(bodyText)}
+                    {renderText(stripVariablePlaceholders(bodyText))}
                 </p>
             ) : effectiveType === "text" || (effectiveType === "template" && !embeddedMedia) ? (
                 <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                    {renderText(msg.message)}
+                    {renderText(stripVariablePlaceholders(stripButtonsFromText(msg.message)))}
                 </p>
             ) : null}
+
+            {/* Template Buttons */}
+            {templateButtons.length > 0 && (
+                <div className={cn(
+                    "flex flex-wrap gap-2 mt-2 pt-2 border-t",
+                    isDarkMode ? "border-white/10" : "border-black/10"
+                )}>
+                    {templateButtons.map((btnText, index) => {
+                        // Detect button type based on text patterns
+                        const isUrl = btnText.toLowerCase().includes('http') || btnText.includes('(');
+                        const isPhone = /call|phone|\+\d/i.test(btnText);
+
+                        return (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default",
+                                    isDarkMode
+                                        ? "bg-white/10 text-emerald-400 hover:bg-white/15"
+                                        : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
+                                )}
+                            >
+                                {isPhone ? (
+                                    <Phone className="w-3 h-3" />
+                                ) : isUrl ? (
+                                    <ExternalLink className="w-3 h-3" />
+                                ) : (
+                                    <Copy className="w-3 h-3 opacity-50" />
+                                )}
+                                <span>{btnText}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </>
     );
 };

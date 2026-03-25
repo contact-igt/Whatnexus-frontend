@@ -56,6 +56,10 @@ export class AppointmentApiData {
         return await _axios("get", `/whatsapp/appointment/availability?doctor_id=${doctor_id}&date=${date}&time=${encodeURIComponent(time)}`);
     };
 
+    getAvailableSlots = async (doctor_id: string, date: string) => {
+        return await _axios("get", `/whatsapp/appointment/slots?doctor_id=${doctor_id}&date=${date}`);
+    };
+
     getContactAppointments = async (contactId: string) => {
         return await _axios("get", `/whatsapp/appointment/contact/${contactId}`);
     };

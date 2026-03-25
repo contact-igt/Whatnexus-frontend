@@ -17,6 +17,7 @@ export interface CreateAiLogData {
 export interface AiLogsQueryParams {
     type?: "missing_knowledge" | "out_of_scope" | "urgent" | "sentiment";
     status?: "pending" | "act_on" | "resolved" | "ignored";
+    
 }
 
 export class aiLogsApiData {

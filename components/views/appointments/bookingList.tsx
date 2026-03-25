@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, Eye, Edit2, Clock, Phone, Calendar as CalendarIcon, FileText, UserCircle, Trash2, AlertTriangle, Stethoscope } from 'lucide-react';
@@ -18,6 +18,7 @@ export interface Appointment {
     patient_name: string;
     country_code?: string;
     contact_number: string;
+    contact_id?: string;
     age?: number;
     appointment_date: string;
     appointment_time: string;

@@ -9,7 +9,6 @@ import { BillingKpiCards } from "./billingKpiCards";
 import { BillingLedger } from "./billingLedger";
 import { RechargeModal } from "./rechargeModal";
 import { BillingWallet } from "./billingWallet";
-import { BillingAnalytics } from "./billingAnalytics";
 import { BillingInsights } from "./billingInsights";
 import { AiApiTokensUsage } from "./aiApiTokenUsage";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -186,8 +185,8 @@ export const BillingView = () => {
         <Tabs defaultValue="usage" className="space-y-8 relative z-10">
           <TabsList isDarkMode={isDarkMode}>
             <TabsTrigger value="usage"><div className="flex items-center gap-2"><CreditCard size={12} />Meta Usage</div></TabsTrigger>
-            <TabsTrigger value="wallet"><div className="flex items-center gap-2"><Wallet size={12} />Wallet & Payments</div></TabsTrigger>
             <TabsTrigger value="ai"><div className="flex items-center gap-2"><Cpu size={12} />AI API Tokens</div></TabsTrigger>
+            <TabsTrigger value="wallet"><div className="flex items-center gap-2"><Wallet size={12} />Wallet & Payments</div></TabsTrigger>
           </TabsList>
 
           <AnimatePresence mode="wait">
@@ -211,12 +210,6 @@ export const BillingView = () => {
                 />
 
                 <BillingKpiCards
-                  isDarkMode={isDarkMode}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
-
-                <BillingAnalytics
                   isDarkMode={isDarkMode}
                   startDate={startDate}
                   endDate={endDate}
