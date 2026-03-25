@@ -10,7 +10,6 @@ import { SuperAdminKPILayer } from './superAdminKpiLayer';
 import { TopTenantsList } from './topTenantsList';
 import { RecentTenantsList } from './recentTenantsList';
 import { MessageVolumeChart } from './messageVolumeChart';
-import { RevenueIntelligence } from './revenueIntelligence';
 import { SubscriptionHealthPanel } from './subscriptionHealthPanel';
 import { PlatformLiveOpsPanel } from './platformLiveOpsPanel';
 import { TenantGrowthChart } from './tenantGrowthChart';
@@ -20,7 +19,7 @@ import { AiPlatformUsage } from './aiPlatformUsage';
 import {
     BarChart3, Building2, Clock, Activity,
     TrendingUp, RefreshCcw, AlertCircle, WifiOff,
-    DollarSign, ShieldCheck, Radio, Brain, Rss, MessageSquare, Layers,
+    ShieldCheck, Radio, Brain, Rss, MessageSquare, Layers,
 } from 'lucide-react';
 import { glassCard, tx } from '../dashboard/glassStyles';
 
@@ -213,24 +212,12 @@ export const SuperAdminDashboardView = () => {
                             <MessageVolumeChart isDarkMode={isDarkMode} dailyMessages={dashboardData?.dailyMessages} />
                         </section>
 
-                        {/* Revenue Intelligence */}
-                        <section>
-                            <SectionHeader
-                                icon={<DollarSign size={18} />}
-                                title="Revenue Intelligence"
-                                subtitle="Platform revenue breakdown and top contributors"
-                                accentColor="#10b981"
-                                isDarkMode={isDarkMode}
-                            />
-                            <RevenueIntelligence isDarkMode={isDarkMode} revenue={dashboardData?.revenue} />
-                        </section>
-
                         {/* Platform Live Ops */}
                         <section>
                             <SectionHeader
                                 icon={<Radio size={18} />}
-                                title="Live Operations"
-                                subtitle="Real-time chat activity and agent status"
+                                title="Most Active Organizations"
+                                subtitle="Top organizations by real-time activity"
                                 accentColor="#ef4444"
                                 isDarkMode={isDarkMode}
                             />

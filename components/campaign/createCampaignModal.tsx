@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -232,7 +232,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 }
 
                 // Validate Location Params
-                if ((selectedTemplate?.type as string) === 'location') {
+                if (selectedTemplate?.type === 'location') {
                     if (!formData.location_params?.latitude || !formData.location_params?.longitude || !formData.location_params?.name || !formData.location_params?.address) {
                         setError('Please fill in all the location details (Latitude, Longitude, Name, and Address).');
                         return false;
@@ -447,8 +447,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 scheduled_at: formData.scheduled_at,
                 variable_values: variableValues, // Kept for reference, though backend uses audience_data
                 header_media_url: formData.header_media_url || null,
-                location_params: (selectedTemplate?.type as string) === 'location' ? formData.location_params : null,
-                card_media_urls: (selectedTemplate?.type as string) === 'carousel' ? formData.card_media_urls : null,
+                location_params: selectedTemplate?.type === 'location' ? formData.location_params : null,
+                card_media_urls: selectedTemplate?.type === 'carousel' ? formData.card_media_urls : null,
             };
 
             const response = await campaignService.createCampaign(request);
@@ -680,7 +680,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             isDarkMode ? "bg-[#202c33]" : "bg-[#d9fdd3]"
                                         )}>
                                             {/* Preview Header */}
-                                            {selectedTemplate.type !== 'text' && (
+                                            {selectedTemplate.type !== 'text' && selectedTemplate.type !== 'location' && (
                                                 <div className="mb-2 w-full min-h-[128px] bg-black/10 rounded overflow-hidden flex items-center justify-center text-xs opacity-80 flex-col gap-2">
                                                     {formData.header_media_url ? (
                                                         selectedTemplate.type === 'image' ? (
@@ -713,6 +713,27 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                             {getUploadType(selectedTemplate.type).toUpperCase()} HEADER
                                                         </>
                                                     )}
+                                                </div>
+                                            )}
+                                            {/* Location Preview */}
+                                            {selectedTemplate.type === 'location' && (
+                                                <div className={cn("mb-2 w-full rounded overflow-hidden flex items-center gap-3 p-3", isDarkMode ? 'bg-black/20' : 'bg-black/5')}>
+                                                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100')}>
+                                                        <MapPin size={18} className="text-emerald-500" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className={cn("text-xs font-bold truncate", isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
+                                                            {formData.location_params?.name || 'Location Name'}
+                                                        </p>
+                                                        <p className={cn("text-[10px] truncate", isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                                                            {formData.location_params?.address || 'Full address will appear here'}
+                                                        </p>
+                                                        {(formData.location_params?.latitude && formData.location_params?.longitude) && (
+                                                            <p className={cn("text-[9px] mt-0.5", isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                                                                {formData.location_params.latitude}, {formData.location_params.longitude}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                             {selectedTemplate.headerText && (
@@ -922,7 +943,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 )}
 
                                 {/* Location Header Input */}
-                                {(selectedTemplate?.type as string) === 'location' && (
+                                {selectedTemplate?.type === 'location' && (
                                     <div className="mt-4 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
@@ -1000,7 +1021,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 )}
 
                                 {/* Carousel Media Headers Input */}
-                                {(selectedTemplate?.type as string) === 'carousel' && (
+                                {selectedTemplate?.type === 'carousel' && (
                                     <div className="mt-4 space-y-4">
                                         <div className="flex items-center justify-between">
                                             <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
@@ -1495,6 +1516,22 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             }
                                         </span>
                                     </div>
+                                    {selectedTemplate?.type === 'location' && formData.location_params?.name && (
+                                        <div className="flex justify-between">
+                                            <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Location:</span>
+                                            <span className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                {formData.location_params.name}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {formData.header_media_url && isMediaType(selectedTemplate?.type) && (
+                                        <div className="flex justify-between">
+                                            <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Media:</span>
+                                            <span className={cn("text-sm font-semibold text-emerald-500")}>
+                                                {headerFileName || 'Uploaded'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

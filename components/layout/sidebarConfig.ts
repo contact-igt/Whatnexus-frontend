@@ -25,7 +25,9 @@ import {
     Mail,
     Trash2,
     Terminal,
-    FlaskConical
+    FlaskConical,
+    Landmark,
+    UserPlus
 
 } from 'lucide-react';
 
@@ -116,12 +118,12 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             },
-            // {
-            //     label: "Follow-ups",
-            //     route: "/followups",
-            //     icon: Clock,
-            //     requiresWhatsApp: true,
-            // },
+            {
+                label: "Follow-ups",
+                route: "/followups",
+                icon: Clock,
+                requiresWhatsApp: true,
+            },
             {
                 label: "Appointment",
                 route: "/appointments",
@@ -210,7 +212,7 @@ export const managementSidebarConfig: SidebarGroup[] = [
         groupLabel: "Dashboard",
         items: [
             {
-                label: "Neural Hub",
+                label: "Command Center",
                 route: "/dashboard",
                 icon: LayoutDashboard,
                 requiresWhatsApp: false,
@@ -223,14 +225,14 @@ export const managementSidebarConfig: SidebarGroup[] = [
             {
                 label: "Organizations",
                 route: "/organizations",
-                icon: Building2,
+                icon: Landmark,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             },
             {
                 label: "Onboard Tenants",
                 route: "/management/onboarded",
-                icon: Building2,
+                icon: UserPlus,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             },

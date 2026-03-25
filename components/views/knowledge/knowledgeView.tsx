@@ -1,23 +1,21 @@
 
 "use client";
 
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { PromptConfiguration } from './promptConfiguration';
+import { useTheme } from '@/hooks/useTheme';
+import { DataSource } from './dataSource';
 import { useEffect, useState } from 'react';
 import { Loader2, Type, AlignLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { extractTextFromFile } from '@/utils/ocr';
-import { DataSource } from './dataSource';
 import { Drawer } from "@/components/ui/drawer";
 import { Modal } from "@/components/ui/modal";
 import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation, useDeletePromptPermanentById, useRestorePromptById } from '@/hooks/usePromptQuery';
 import { toast } from "sonner";
 import { useDeleteKnowledgeById, useDeleteKnowledgePermanentById, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useRestoreKnowledgeById } from '@/hooks/useUploadKnowledge';
-import { PromptConfiguration } from './promptConfiguration';
-import { Settings } from './settings';
-import { useTheme } from '@/hooks/useTheme';
-import { AiLogs } from './aiLogs';
-import { useAuth } from '@/redux/selectors/auth/authSelector';
 
-type TabType = 'data-sources' | 'prompts' | 'settings' | 'aiLogs';
+type TabType = 'data-sources' | 'prompts';
 
 export const KnowledgeView = () => {
     const { isDarkMode } = useTheme();
@@ -73,16 +71,8 @@ export const KnowledgeView = () => {
         // { value: "settings", label: "Settings" }
     ];
     console.log("user", user)
-    useEffect(() => {
-        const storedTab = localStorage.getItem("selectedTab");
-        if (storedTab) {
-            setActiveTab(storedTab as TabType);
-        }
-    }, []);
-
     const handleTabChange = (value: TabType) => {
         setActiveTab(value);
-        localStorage.setItem("selectedTab", value);
     };
 
     const dialogTitle = isKnowledge
@@ -440,22 +430,6 @@ export const KnowledgeView = () => {
                     uploading={uploading}
                 />
             )}
-            {
-                activeTab === 'aiLogs' && (
-                    <AiLogs
-                        isDarkMode={isDarkMode}
-                    />
-                )
-            }
-            {
-                activeTab === 'settings' && (
-                    <Settings
-                        isDarkMode={isDarkMode}
-                        handleEdit={handleEdit}
-                        handleView={handleView}
-                    />
-                )
-            }
             <Drawer
                 isOpen={isViewModalOpen}
                 onClose={handleCloseViewModal}

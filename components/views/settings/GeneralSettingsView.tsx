@@ -195,7 +195,7 @@ export const GeneralSettingsView = () => {
         { id: 'capabilities', label: 'AI Capabilities', icon: Sparkles },
         { id: 'models', label: 'AI Models', icon: Cpu },
         { id: 'contacts', label: 'Contact Settings', icon: Users },
-        { id: 'notifications', label: 'Notifications', icon: Bell },
+        // { id: 'notifications', label: 'Notifications', icon: Bell },
     ];
 
     const handleModelChange = (type: 'input' | 'output', model: string) => {

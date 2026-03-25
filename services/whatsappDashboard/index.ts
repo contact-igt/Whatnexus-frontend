@@ -47,6 +47,7 @@ export interface Campaign {
 export interface ActivityEvent {
   event: string;   // emoji + title — render as-is
   detail: string;
+  details?: string;
   time: string;    // pre-formatted — render as-is (Rule 5)
   type: "urgent" | "missing_knowledge" | "out_of_scope" | "sentiment";
   status: "pending" | "act_on" | "resolved" | "ignored";

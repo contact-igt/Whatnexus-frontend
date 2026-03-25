@@ -203,26 +203,24 @@ export const WhatsAppConnectionView = () => {
                                 <span>{WhatsAppConnectionData?.data?.id ? 'Connected' : 'Not Connected'}</span>
                             </div>
 
-                            {!WhatsAppConnectionData?.data?.id && (
-                                <button
-                                    onClick={handleCheckWebhookStatus}
-                                    disabled={isCheckingWebhook}
-                                    className={cn(
-                                        "flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
-                                        isDarkMode
-                                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
-                                            : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100",
-                                        isCheckingWebhook && "opacity-50 cursor-not-allowed"
-                                    )}
-                                >
-                                    {isCheckingWebhook ? (
-                                        <Loader2 size={16} className="animate-spin" />
-                                    ) : (
-                                        <RefreshCw size={16} />
-                                    )}
-                                    <span>{isCheckingWebhook ? 'Checking...' : 'Check Webhook Status'}</span>
-                                </button>
-                            )}
+                            <button
+                                onClick={handleCheckWebhookStatus}
+                                disabled={isCheckingWebhook || !WhatsAppConnectionData?.data?.id}
+                                className={cn(
+                                    "flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
+                                    isDarkMode
+                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100",
+                                    (isCheckingWebhook || !WhatsAppConnectionData?.data?.id) && "opacity-50 cursor-not-allowed hover:bg-transparent"
+                                )}
+                            >
+                                {isCheckingWebhook ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <RefreshCw size={16} />
+                                )}
+                                <span>{isCheckingWebhook ? 'Checking...' : 'Check Webhook Status'}</span>
+                            </button>
                         </div>
 
                         {WhatsAppConnectionData?.data?.id && (

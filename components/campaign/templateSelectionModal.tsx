@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle, RefreshCw, MapPin } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -14,7 +14,7 @@ export interface ProcessedTemplate {
     name: string;
     category: string;
     description: string;
-    type: 'text' | 'image' | 'document' | 'video' | 'carousel';
+    type: 'text' | 'image' | 'document' | 'video' | 'carousel' | 'location';
     variables: number;
     // Add raw components if needed for advanced preview, but description (body) is usually enough
     originalDetails?: any;
@@ -33,7 +33,7 @@ interface TemplateSelectionModalProps {
 }
 
 type CategoryType = 'marketing' | 'utility' | 'authentication';
-type TemplateType = 'all' | 'text' | 'image' | 'document' | 'video' | 'carousel';
+type TemplateType = 'all' | 'text' | 'image' | 'document' | 'video' | 'carousel' | 'location';
 
 
 
@@ -59,6 +59,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
         { id: 'document', label: 'Document', icon: File },
         { id: 'video', label: 'Video', icon: Video },
         { id: 'carousel', label: 'Carousel', icon: Grid3x3 },
+        { id: 'location', label: 'Location', icon: MapPin },
     ];
 
     // Map API templates to component format
@@ -119,7 +120,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                             });
                         }
                     } catch (e) {
-                         console.error("Error parsing template buttons:", e);
+                        console.error("Error parsing template buttons:", e);
                     }
                 }
             }
@@ -143,6 +144,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                     if (ht === 'image') return 'image';
                     if (ht === 'video') return 'video';
                     if (ht === 'document') return 'document';
+                    if (ht === 'location') return 'location';
                     return 'text';
                 })() as any,
                 variables: totalVarCount,

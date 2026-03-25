@@ -315,7 +315,6 @@ export const MessageList: React.FC<MessageListProps> = ({
                     </div>
                 </div>
             )}
-
             <div ref={bottomRef} className="pb-14" />
         </div>
     );

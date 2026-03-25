@@ -31,25 +31,22 @@ const statusChipStyle: Record<string, { bg: string; color: string; label: string
 export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeedProps) => {
     const [visible, setVisible] = useState<boolean[]>([]);
     const t = tx(isDarkMode);
-    const router = useRouter();
+    const filteredActivity = (recentActivity || []).filter(item => 
+        !['urgent', 'missing_knowledge', 'out_of_scope', 'sentiment'].includes(item.type)
+    );
 
-    const handleViewSystemLogs = () => {
-        localStorage.setItem('selectedTab', 'aiLogs');
-        router.push('/knowledge');
-    };
+    const hasData = filteredActivity.length > 0;
 
     useEffect(() => {
-        if (recentActivity) {
-            setVisible(recentActivity.map(() => false));
-            recentActivity.forEach((_, i) => {
+        if (filteredActivity.length > 0) {
+            setVisible(filteredActivity.map(() => false));
+            filteredActivity.forEach((_, i) => {
                 setTimeout(() => {
                     setVisible(prev => { const n = [...prev]; n[i] = true; return n; });
                 }, 100 + i * 50);
             });
         }
-    }, [recentActivity]);
-
-    const hasData = recentActivity && recentActivity.length > 0;
+    }, [filteredActivity.length]);
 
     if (recentActivity && !hasData) {
         return (
@@ -96,7 +93,7 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
                 {!recentActivity ? (
                     Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 w-full bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />)
                 ) : (
-                    recentActivity.map((item, i) => {
+                    filteredActivity.map((item, i) => {
                         const config = typeConfig[item.type] ?? { icon: Activity, hex: '#94a3b8' };
                         const Icon = config.icon;
                         const chip = statusChipStyle[item.status] ?? statusChipStyle.pending;
@@ -114,7 +111,7 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
                                 </div>
                                 <div className="flex flex-col gap-1 pt-0.5 flex-1 min-w-0">
                                     <p style={{ fontSize: '13px', fontWeight: 500, lineHeight: 1.4, color: t.primary }}>{item.event}</p>
-                                    <p className="truncate" style={{ fontSize: '12px', color: t.secondary }}>{item.detail}</p>
+                                    <p className="truncate" style={{ fontSize: '12px', color: t.secondary }}>{item.detail || item.details}</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <p style={{ fontSize: '11px', fontWeight: 500, color: t.micro }}>{item.time}</p>
                                         <span className="px-1.5 py-0.5 rounded-md"
@@ -129,11 +126,6 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
                 )}
             </div>
 
-            <button onClick={handleViewSystemLogs}
-                className="w-full py-2.5 rounded-lg border hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors mt-auto"
-                style={{ fontSize: '13px', fontWeight: 500, color: t.primary, borderColor: isDarkMode ? '#27272a' : '#e4e4e7', background: isDarkMode ? '#18181b' : '#fafafa' }}>
-                View System Logs
-            </button>
         </div>
     );
 };

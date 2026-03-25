@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Globe, Bell, Sun, Moon, Power, Flag, MessageSquare, Bell as BellIcon } from 'lucide-react';
+import { Globe, Bell, Sun, Moon, Power, Flag, MessageSquare, Bell as BellIcon, Shield, Zap } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState, useEffect, useRef } from 'react';
@@ -125,6 +125,7 @@ export const Header = () => {
     };
 
     // ── WABA info from Redux (populated by useGetWhatsappConfigQuery) ──────────
+    const isManagement = user?.user_type === 'management';
     const wabaNumber = whatsappApiDetails?.whatsapp_number ?? whatsappApiDetails?.wabaNumber ?? null;
     const wabaStatus = whatsappApiDetails?.status ?? null;
     const isLive     = wabaStatus === 'active';
@@ -162,8 +163,41 @@ export const Header = () => {
                 {/* Vertical divider */}
                 <div className={cn("h-8 w-px", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
 
-                {/* ── WABA info pills — WhatsApp-bar style ────────────────────── */}
-                <div className="flex items-center gap-3">
+                {isManagement ? (
+                    /* ── Super Admin header info ──────────────────────────────── */
+                    <div className="flex items-center gap-3">
+                        {/* Role badge */}
+                        <div className="flex items-center gap-1.5">
+                            <IconBadge color="bg-violet-500">
+                                <Shield size={10} color="white" strokeWidth={2.5} />
+                            </IconBadge>
+                            <span className={labelCls}>Role:</span>
+                            <span className={cn('text-[10px] font-bold', isDarkMode ? 'text-violet-400' : 'text-violet-600')}>
+                                {user?.role === 'super_admin' ? 'Super Admin' : 'Platform Admin'}
+                            </span>
+                        </div>
+
+                        <Sep isDarkMode={isDarkMode} />
+
+                        {/* Platform status */}
+                        <div className="flex items-center gap-1.5">
+                            <IconBadge color="bg-emerald-500">
+                                <Zap size={10} color="white" strokeWidth={2.5} />
+                            </IconBadge>
+                            <span className={labelCls}>Platform:</span>
+                            <span className={cn('text-[10px] font-bold flex items-center gap-1', isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>
+                                <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                                </span>
+                                Operational
+                            </span>
+                        </div>
+
+                    </div>
+                ) : (
+                    /* ── Tenant WABA info pills ──────────────────────────────── */
+                    <div className="flex items-center gap-3">
 
                     {/* WABA Number */}
                     <div className="flex items-center gap-1.5">
@@ -267,28 +301,31 @@ export const Header = () => {
                         </span>
                     </div>
                 </div>
+                )}
             </div>
 
-            {/* ── RIGHT: Bell + Theme + Org name + Avatar ─────────────────────── */}
+            {/* ── RIGHT: Theme + Org name + Avatar ────────────────────────── */}
             <div className="flex items-center gap-3">
 
-                {/* Bell */}
-                <button
-                    onClick={() => { setUnreadCount(0); router.push('/shared-inbox/live-chats'); }}
-                    className={cn(
-                        "p-2.5 rounded-xl transition-all relative",
-                        isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
-                    )}
-                >
-                    <Bell size={18} />
-                    {unreadCount > 0 ? (
-                        <div className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 flex items-center justify-center">
-                            <span className="text-white text-[8px] font-black px-0.5">{unreadCount > 99 ? '99+' : unreadCount}</span>
-                        </div>
-                    ) : (
-                        <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
-                    )}
-                </button>
+                {/* Bell — tenant only (management has no shared-inbox) */}
+                {!isManagement && (
+                    <button
+                        onClick={() => { setUnreadCount(0); router.push('/shared-inbox/live-chats'); }}
+                        className={cn(
+                            "p-2.5 rounded-xl transition-all relative",
+                            isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
+                        )}
+                    >
+                        <Bell size={18} />
+                        {unreadCount > 0 ? (
+                            <div className="absolute top-1.5 right-1.5 min-w-4 h-4 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 flex items-center justify-center">
+                                <span className="text-white text-[8px] font-black px-0.5">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                            </div>
+                        ) : (
+                            <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
+                        )}
+                    </button>
+                )}
 
                 {/* Theme toggle */}
                 <button
@@ -307,12 +344,19 @@ export const Header = () => {
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
                         className="flex items-center gap-2.5 cursor-pointer group"
                     >
-                        <span className={cn(
-                            "text-[11px] font-bold uppercase tracking-wider transition-colors",
-                            isDarkMode ? 'text-white/70 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'
-                        )}>
-                            {user?.name || user?.organization_name || user?.username || 'Account'}
-                        </span>
+                        <div className="flex flex-col items-end">
+                            <span className={cn(
+                                "text-[11px] font-bold uppercase tracking-wider transition-colors",
+                                isDarkMode ? 'text-white/70 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'
+                            )}>
+                                {user?.name || user?.organization_name || user?.username || 'Account'}
+                            </span>
+                            {isManagement && user?.email && (
+                                <span className={cn('text-[8px] font-medium tracking-wide', isDarkMode ? 'text-white/30' : 'text-slate-400')}>
+                                    {user.email}
+                                </span>
+                            )}
+                        </div>
 
                         <div className={cn(
                             "w-9 h-9 rounded-full flex items-center justify-center font-black text-[12px] border-2 transition-all duration-300 shrink-0",
