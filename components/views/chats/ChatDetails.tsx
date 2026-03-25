@@ -1,5 +1,7 @@
-import React from 'react';
-import { User, Search, Check, UserPlus, ChevronDown, ShieldCheck, Lock, Loader2, Brain, History as HistoryIcon, Bot, BotOff } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Search, Check, UserPlus, ChevronDown, ShieldCheck, Lock, Loader2, Brain, History as HistoryIcon, Bot, BotOff, Pencil, X } from 'lucide-react';
+import { useUpdateContactMutation } from '@/hooks/useContactQuery';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -47,16 +49,100 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
     isTogglingSilence,
     isNeuralSummaryEnabled = true,
 }) => {
+    const queryClient = useQueryClient();
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [editedName, setEditedName] = useState('');
+    const { mutate: updateContactMutate, isPending: isUpdatingName } = useUpdateContactMutation();
+
+    const handleEditName = () => {
+        setEditedName(selectedChat?.name || '');
+        setIsEditingName(true);
+    };
+
+    const handleSaveName = () => {
+        if (!editedName.trim()) return;
+        updateContactMutate(
+            { contactId: selectedChat.contact_id, data: { name: editedName.trim() } },
+            {
+                onSuccess: () => {
+                    setSelectedChat((prev: any) => ({ ...prev, name: editedName.trim() }));
+                    setIsEditingName(false);
+                    queryClient.invalidateQueries({ queryKey: ['livechats'] });
+                    queryClient.invalidateQueries({ queryKey: ['chats'] });
+                    queryClient.invalidateQueries({ queryKey: ['historychats'] });
+                },
+            }
+        );
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditingName(false);
+        setEditedName('');
+    };
+
     return (
         <div className={cn("w-1/4 min-w-[280px] border-l flex flex-col shrink-0", isDarkMode ? "bg-[#111b21] border-white/5" : "bg-white border-slate-200")}>
             <div className="p-4 flex flex-col items-center border-b space-y-3">
                 <div className={cn("w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl overflow-hidden shadow-inner", isDarkMode ? 'bg-[#3b4a54] text-slate-300' : 'bg-slate-200 text-slate-500')}>
                     {selectedChat?.name ? selectedChat?.name?.split("")[0].toUpperCase() : <User size={40} />}
                 </div>
-                <div className="text-center">
-                    <h3 className={cn("font-bold text-base", isDarkMode ? "text-white" : "text-slate-900")}>
-                        {selectedChat?.name || selectedChat?.phone}
-                    </h3>
+                <div className="text-center w-full px-2">
+                    {isEditingName ? (
+                        <div className="flex items-center justify-center gap-2">
+                            <input
+                                type="text"
+                                value={editedName}
+                                onChange={(e) => setEditedName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveName();
+                                    if (e.key === 'Escape') handleCancelEdit();
+                                }}
+                                autoFocus
+                                className={cn(
+                                    "w-full px-2 py-1 text-center font-bold text-base rounded-lg border focus:outline-none focus:ring-2",
+                                    isDarkMode
+                                        ? "bg-[#2a3942] text-white border-white/10 focus:ring-emerald-500/50"
+                                        : "bg-white text-slate-900 border-slate-200 focus:ring-emerald-500/50"
+                                )}
+                                placeholder="Enter name"
+                            />
+                            <button
+                                onClick={handleSaveName}
+                                disabled={isUpdatingName || !editedName.trim()}
+                                className={cn(
+                                    "p-1.5 rounded-lg transition-colors disabled:opacity-50",
+                                    isDarkMode ? "hover:bg-emerald-500/20 text-emerald-400" : "hover:bg-emerald-50 text-emerald-600"
+                                )}
+                            >
+                                {isUpdatingName ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                            </button>
+                            <button
+                                onClick={handleCancelEdit}
+                                className={cn(
+                                    "p-1.5 rounded-lg transition-colors",
+                                    isDarkMode ? "hover:bg-red-500/20 text-red-400" : "hover:bg-red-50 text-red-600"
+                                )}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center gap-2">
+                            <h3 className={cn("font-bold text-base", isDarkMode ? "text-white" : "text-slate-900")}>
+                                {selectedChat?.name || selectedChat?.phone}
+                            </h3>
+                            <button
+                                onClick={handleEditName}
+                                className={cn(
+                                    "p-1 rounded-lg transition-colors opacity-60 hover:opacity-100",
+                                    isDarkMode ? "hover:bg-white/10 text-slate-400" : "hover:bg-slate-100 text-slate-500"
+                                )}
+                                title="Edit name"
+                            >
+                                <Pencil size={14} />
+                            </button>
+                        </div>
+                    )}
                     <p className={cn("text-[11px] mt-0.5", isDarkMode ? "text-slate-400" : "text-slate-500")}>
                         {selectedChat?.phone}
                     </p>
@@ -282,9 +368,9 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                             disabled={isTogglingSilence}
                             className={cn(
                                 "w-full h-10 cursor-pointer flex items-center justify-center space-x-2 px-4 rounded-xl text-xs font-bold uppercase transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50",
-                                selectedChat?.is_ai_silenced 
-                                   ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-400"
-                                   : "bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400"
+                                selectedChat?.is_ai_silenced
+                                    ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-400"
+                                    : "bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400"
                             )}
                         >
                             {selectedChat?.is_ai_silenced ? (

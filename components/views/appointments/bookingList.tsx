@@ -18,6 +18,7 @@ export interface Appointment {
     patient_name: string;
     country_code?: string;
     contact_number: string;
+    contact_id?: string;
     age?: number;
     appointment_date: string;
     appointment_time: string;

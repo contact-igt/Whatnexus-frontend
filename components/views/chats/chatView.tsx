@@ -309,32 +309,13 @@ export const ChatView = () => {
         const dbMessages = messagesData?.data ?? [];
         const socketMessages = newMessage;
 
-<<<<<<< Updated upstream
-        if (socketMessages.length === 0) return dbMessages;
-
-        // Build lookup structures from DB messages
-=======
         // Primary dedup by message ID (most reliable)
->>>>>>> Stashed changes
         const dbIds = new Set(dbMessages.map((m: any) => m.id).filter(Boolean));
         const dbContentIndex = dbMessages.map((m: any) => ({
             key: `${(m.message || "").trim()}:${m.sender}`,
             ts: new Date(m.created_at || m.timestamp).getTime(),
         }));
 
-<<<<<<< Updated upstream
-        // Filter socket messages that already exist in DB
-        const filteredSocketMessages = socketMessages.filter((msg: any) => {
-            // Match by ID (reliable for user/admin messages)
-            if (msg.id && dbIds.has(msg.id)) return false;
-            // Match by content + sender within 120-second window
-            const key = `${(msg.message || "").trim().toLowerCase()}:${msg.sender}`;
-            const ts = new Date(msg.created_at || msg.timestamp).getTime();
-            for (const db of dbContentIndex) {
-                // If the message text and sender are exactly the same and within 2 minutes, it's a duplicate
-                if (db.key.toLowerCase() === key && Math.abs(db.ts - ts) < 120000) return false;
-            }
-=======
         // Secondary dedup using precise second-level timestamp + sender
         // This handles cases where message ID hasn't been assigned yet
         const getCompositeKey = (msg: any) => {
@@ -361,7 +342,6 @@ export const ChatView = () => {
             // Then check by composite key
             const key = getCompositeKey(msg);
             if (dbCompositeKeys.has(key)) return false;
->>>>>>> Stashed changes
             return true;
         });
 

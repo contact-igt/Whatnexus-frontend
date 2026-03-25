@@ -31,6 +31,11 @@ const stripButtonsFromText = (message: string) => {
     return message.replace(/\n?\[Button:\s*[^\]]+\]/gi, '').trim();
 };
 
+// Remove any remaining template variable placeholders like {{1}}, {{2}}, etc.
+const stripVariablePlaceholders = (message: string) => {
+    return message.replace(/\{\{\d+\}\}/g, '').trim();
+};
+
 const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boolean }> = ({ msg, searchText, isDarkMode }) => {
     const type = msg.message_type;
     const mediaUrl = msg.media_url;
@@ -127,11 +132,11 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
             {/* Body text (shown for all types except document which shows it inline) */}
             {effectiveType !== "document" && bodyText ? (
                 <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                    {renderText(bodyText)}
+                    {renderText(stripVariablePlaceholders(bodyText))}
                 </p>
             ) : effectiveType === "text" || (effectiveType === "template" && !embeddedMedia) ? (
                 <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                    {renderText(stripButtonsFromText(msg.message))}
+                    {renderText(stripVariablePlaceholders(stripButtonsFromText(msg.message)))}
                 </p>
             ) : null}
 

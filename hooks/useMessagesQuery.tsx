@@ -76,7 +76,6 @@ export const useAddMessageMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["messages", variables.phone],
             });
-<<<<<<< Updated upstream
             queryClient.invalidateQueries({
                 queryKey: ["livechats"],
             });
@@ -84,8 +83,6 @@ export const useAddMessageMutation = () => {
                 queryKey: ["chats"],
             });
             // toast.success('Message sent successfully!');
-=======
->>>>>>> Stashed changes
         },
         onError: (error: AxiosError<{ message?: string }>) => {
             const message = error.response?.data?.message || error.message || 'Failed to send message';

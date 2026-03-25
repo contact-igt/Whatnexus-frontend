@@ -56,6 +56,14 @@ export const useCheckAvailabilityQuery = (doctor_id: string, date: string, time:
     });
 };
 
+export const useGetAvailableSlotsQuery = (doctor_id: string, date: string) => {
+    return useQuery({
+        queryKey: ["appointment-slots", doctor_id, date],
+        queryFn: () => appointmentApis.getAvailableSlots(doctor_id, date),
+        enabled: !!doctor_id && !!date,
+    });
+};
+
 export const useUpdateAppointmentMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
