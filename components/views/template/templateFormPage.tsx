@@ -815,8 +815,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             { value: 'IMAGE', label: 'Image' },
                                             { value: 'VIDEO', label: 'Video' },
                                             { value: 'DOCUMENT', label: 'Document' },
-                                            { value: 'LOCATION', label: 'Location' },
-                                            { value: 'CAROUSEL', label: 'Carousel' }
+                                            // { value: 'LOCATION', label: 'Location' },
+                                            // { value: 'CAROUSEL', label: 'Carousel' }
                                         ].filter(opt => {
                                             const cat = String(category).toUpperCase();
                                             const currentType = getValues('templateType');
@@ -831,11 +831,11 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     />
                                 )}
                             />
-                            {category === 'UTILITY' && (
+                            {/* {category === 'UTILITY' && (
                                 <p className={cn("text-[10px] mt-1 ml-1 text-amber-500 font-medium")}>
                                     Note: Carousel templates are only supported in the MARKETING category.
                                 </p>
-                            )}
+                            )} */}
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Your template type should fall under one of these categories.
                                 {templateType === 'CAROUSEL' && (
