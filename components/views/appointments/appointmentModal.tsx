@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, Phone, Calendar, Clock, FileText, Loader2 } from 'lucide-react';
+import { User, Phone, Calendar, Clock, FileText, Loader2, Mail } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -31,6 +31,7 @@ export const AppointmentModal = ({
         patient_name: '',
         country_code: '+91',
         contact_number: '',
+        email: '',
         age: '',
         appointment_date: '',
         appointment_time: '',
@@ -49,6 +50,7 @@ export const AppointmentModal = ({
                 patient_name: appointment?.patient_name || (appointment as any).patientName || '',
                 country_code: appointment?.country_code || (appointment as any).country_code || '+91',
                 contact_number: appointment?.contact_number || (appointment as any).contact || '',
+                email: appointment?.email || '',
                 age: appointment?.age ? String(appointment.age) : '',
                 appointment_date: appointment?.appointment_date || '',
                 appointment_time: appointment?.appointment_time || (appointment as any).time || '',
@@ -62,6 +64,7 @@ export const AppointmentModal = ({
                 patient_name: '',
                 country_code: '+91',
                 contact_number: '',
+                email: '',
                 age: '',
                 appointment_date: '',
                 appointment_time: '',
@@ -104,6 +107,7 @@ export const AppointmentModal = ({
                 patient_name: formData.patient_name,
                 country_code: formData.country_code,
                 contact_number: formData.contact_number,
+                email: formData.email || undefined,
                 age: Number(formData.age),
                 appointment_date: formData.appointment_date,
                 appointment_time: formData.appointment_time,
@@ -119,6 +123,7 @@ export const AppointmentModal = ({
                     patient_name: formData.patient_name,
                     country_code: formData.country_code,
                     contact_number: formData.contact_number,
+                    email: formData.email || undefined,
                     age: Number(formData.age),
                     appointment_date: formData.appointment_date,
                     appointment_time: formData.appointment_time,
@@ -268,6 +273,32 @@ export const AppointmentModal = ({
                             placeholder="Enter age"
                             className={cn(
                                 "w-full pl-4 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                                isView && "opacity-60 cursor-not-allowed",
+                                isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
+                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/30'
+                            )}
+                        />
+                    </div>
+                </div>
+
+                {/* Email (Optional) */}
+                <div>
+                    <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                        Email
+                    </label>
+                    <div className="relative">
+                        <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                            <Mail size={16} />
+                        </div>
+                        <input
+                            type="email"
+                            disabled={isView}
+                            value={formData.email}
+                            onChange={(e) => handleChange('email', e.target.value)}
+                            placeholder="patient@example.com (optional)"
+                            className={cn(
+                                "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                 isView && "opacity-60 cursor-not-allowed",
                                 isDarkMode
                                     ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-emerald-500/30'
