@@ -40,7 +40,7 @@ export class billingApiData {
   /**
    * Fetch wallet transactions
    */
-  getWalletTransactions = async (params?: { page?: number; limit?: number }) => {
+  getWalletTransactions = async (params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) => {
     return await _axios("get", "/whatsapp/billing/wallet/transactions", null, undefined, params);
   };
 

@@ -211,9 +211,9 @@ export const ChatView = () => {
                         const localTime = new Date(localChat.last_message_time).getTime();
                         const newTime = new Date(newChat.last_message_time).getTime();
                         if (localTime > newTime) {
-                            return { 
-                                ...newChat, 
-                                message: localChat.message, 
+                            return {
+                                ...newChat,
+                                message: localChat.message,
                                 last_message_time: localChat.last_message_time,
                                 unread_count: localChat.unread_count,
                                 seen: localChat.seen
@@ -309,15 +309,20 @@ export const ChatView = () => {
         const dbMessages = messagesData?.data ?? [];
         const socketMessages = newMessage;
 
+<<<<<<< Updated upstream
         if (socketMessages.length === 0) return dbMessages;
 
         // Build lookup structures from DB messages
+=======
+        // Primary dedup by message ID (most reliable)
+>>>>>>> Stashed changes
         const dbIds = new Set(dbMessages.map((m: any) => m.id).filter(Boolean));
         const dbContentIndex = dbMessages.map((m: any) => ({
             key: `${(m.message || "").trim()}:${m.sender}`,
             ts: new Date(m.created_at || m.timestamp).getTime(),
         }));
 
+<<<<<<< Updated upstream
         // Filter socket messages that already exist in DB
         const filteredSocketMessages = socketMessages.filter((msg: any) => {
             // Match by ID (reliable for user/admin messages)
@@ -329,6 +334,34 @@ export const ChatView = () => {
                 // If the message text and sender are exactly the same and within 2 minutes, it's a duplicate
                 if (db.key.toLowerCase() === key && Math.abs(db.ts - ts) < 120000) return false;
             }
+=======
+        // Secondary dedup using precise second-level timestamp + sender
+        // This handles cases where message ID hasn't been assigned yet
+        const getCompositeKey = (msg: any) => {
+            // If we have wamid (Meta's unique ID), use that for guaranteed uniqueness
+            if (msg.wamid) return `wamid:${msg.wamid}`;
+
+            const date = new Date(msg.created_at || msg.timestamp);
+            // Use second-level precision instead of minute to reduce false duplicates
+            const secondTime = !isNaN(date.getTime())
+                ? date.toISOString().slice(0, 19) // "2024-01-01T12:30:45"
+                : 'nodate';
+
+            // Include message ID if available for extra uniqueness
+            const idPart = msg.id ? `:id${msg.id}` : '';
+            const content = (msg.message?.trim() || '').slice(0, 50); // First 50 chars
+            return `${content}:${msg.sender}:${secondTime}${idPart}`;
+        };
+
+        const dbCompositeKeys = new Set(dbMessages.map(getCompositeKey));
+
+        const filteredSocketMessages = socketMessages.filter((msg: any) => {
+            // Check by ID first (most reliable)
+            if (msg.id && dbIds.has(msg.id)) return false;
+            // Then check by composite key
+            const key = getCompositeKey(msg);
+            if (dbCompositeKeys.has(key)) return false;
+>>>>>>> Stashed changes
             return true;
         });
 
@@ -384,8 +417,8 @@ export const ChatView = () => {
         if (arePhonesEqual(selectedChatRef.current?.phone, data.phone)) {
             setNewMessage(prev => {
                 // Prevent duplicate messages from entering local state (handles socket edge cases)
-                const isDuplicate = prev.some(m => 
-                    (m.id && data.id && m.id === data.id) || 
+                const isDuplicate = prev.some(m =>
+                    (m.id && data.id && m.id === data.id) ||
                     (m.message === data.message && m.sender === data.sender && Math.abs(new Date(m.created_at || m.timestamp).getTime() - new Date(data.created_at || data.timestamp).getTime()) < 2000)
                 );
                 if (isDuplicate) return prev;
@@ -445,37 +478,47 @@ export const ChatView = () => {
     useEffect(() => {
         if (!user?.tenant_id) return;
 
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Already connected, emit join immediately
+        // Register event listeners BEFORE connecting to ensure we don't miss events
+        const handleConnect = () => {
+            console.log("[Socket] Connected, joining tenant room:", user.tenant_id);
             socket.emit("join-tenant", user.tenant_id);
-        }
+        };
 
-        socket.on("connect", () => {
-            socket.emit("join-tenant", user.tenant_id);
-        });
-
-        socket.on("new-message", handleIncomingMessage);
-        socket.on("ai-typing", (data: any) => {
+        const handleAiTyping = (data: any) => {
+            console.log("[Socket] ai-typing event received:", data);
             if (arePhonesEqual(selectedChatRef.current?.phone, data.phone)) {
                 setIsAiTyping(data.status);
             }
-        });
-        socket.off("message-status-update");
-        socket.on("message-status-update", (data: any) => {
-            // Update message status (ticks) in real-time
+        };
+
+        const handleMessageStatusUpdate = (data: any) => {
             queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
-        });
-        socket.on("chat-assignment-updated", () => {
+        };
+
+        const handleChatAssignment = () => {
             queryClient.invalidateQueries({ queryKey: ["livechats"] });
-        });
+        };
+
+        // Register listeners first
+        socket.on("connect", handleConnect);
+        socket.on("new-message", handleIncomingMessage);
+        socket.on("ai-typing", handleAiTyping);
+        socket.on("message-status-update", handleMessageStatusUpdate);
+        socket.on("chat-assignment-updated", handleChatAssignment);
+
+        // Then connect (or emit join if already connected)
+        if (socket.connected) {
+            socket.emit("join-tenant", user.tenant_id);
+        } else {
+            socket.connect();
+        }
+
         return () => {
+            socket.off("connect", handleConnect);
             socket.off("new-message", handleIncomingMessage);
-            socket.off("message-status-update");
-            socket.off("chat-assignment-updated");
-            socket.off("ai-typing");
-            socket.off("connect");
+            socket.off("ai-typing", handleAiTyping);
+            socket.off("message-status-update", handleMessageStatusUpdate);
+            socket.off("chat-assignment-updated", handleChatAssignment);
         };
     }, [user?.tenant_id]);
 
@@ -504,6 +547,16 @@ export const ChatView = () => {
     useEffect(() => {
         selectedChatRef.current = selectedChat;
     }, [selectedChat]);
+
+    // Safety timeout: auto-clear typing indicator after 30 seconds
+    useEffect(() => {
+        if (!isAiTyping) return;
+        const timeoutId = setTimeout(() => {
+            console.log("[Typing] Safety timeout reached, clearing typing indicator");
+            setIsAiTyping(false);
+        }, 30000);
+        return () => clearTimeout(timeoutId);
+    }, [isAiTyping]);
 
     useEffect(() => {
         setNewMessage([]);
