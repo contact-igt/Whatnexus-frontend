@@ -12,6 +12,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import Link from "next/link";
 import { useTenantUserLoginMutation } from "@/hooks/useTenantUserQuery";
+import { useDispatch } from "react-redux";
+import { clearAuthData } from "@/redux/slices/auth/authSlice";
 
 const loginSchema = z.object({
     email: z
@@ -37,13 +39,17 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
     const router = useRouter();
-    const { token } = useAuth();
+    const dispatch = useDispatch();
+    const { token, user } = useAuth();
     const pathname = usePathname();
     console.log("pathname", pathname)
     const { mutate: loginMutate, isPending: isManagementLoading } = useManagementLoginMutation();
     const { mutate: tenantLoginMutate, isPending: isTenantLoading } = useTenantUserLoginMutation();
     const [showPassword, setShowPassword] = useState(false);
     const { theme, setTheme, isDarkMode } = useTheme();
+
+    // Determine which login page we're on
+    const isManagementLoginPage = pathname === "/management/login";
 
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
@@ -65,7 +71,7 @@ export default function LoginPage() {
 
     const rememberMe = watch("rememberMe")
     const onSubmit = async (data: LoginFormData) => {
-        if (pathname == "/management/login") {
+        if (isManagementLoginPage) {
             loginMutate(data, {
                 onSuccess: () => {
                     router.push("/dashboard")
@@ -80,10 +86,22 @@ export default function LoginPage() {
         }
     };
     useEffect(() => {
-        if (token) {
-            router.replace("/dashboard");
+        if (token && user) {
+            // Check if user type matches the login page type
+            const isUserManagement = user.user_type === 'management';
+
+            if (isManagementLoginPage && isUserManagement) {
+                // Management user on management login page - redirect to dashboard
+                router.replace("/dashboard");
+            } else if (!isManagementLoginPage && !isUserManagement) {
+                // Tenant user on tenant login page - redirect to dashboard
+                router.replace("/dashboard");
+            } else {
+                // User type doesn't match login page - clear auth and stay on login
+                dispatch(clearAuthData());
+            }
         }
-    }, [token]);
+    }, [token, user, isManagementLoginPage, router, dispatch]);
 
     return (
         <div className={cn(
@@ -204,13 +222,13 @@ export default function LoginPage() {
                             ? "text-emerald-400"
                             : "text-emerald-600"
                     )}>
-                        {pathname === '/management/login' ? 'Management Portal' : 'Welcome Back'}
+                        {isManagementLoginPage ? 'Management Portal' : 'Welcome Back'}
                     </h1>
                     <p className={cn(
                         "text-sm",
                         isDarkMode ? "text-slate-400" : "text-slate-600"
                     )}>
-                        {pathname === '/management/login' ? 'Secure access for administrators' : 'Sign in to your AI Receptionist Hub'}
+                        {isManagementLoginPage ? 'Secure access for administrators' : 'Sign in to your AI Receptionist Hub'}
                     </p>
                 </div>
 
@@ -348,7 +366,7 @@ export default function LoginPage() {
                         </label>
                         <button
                             type="button"
-                            onClick={() => router.push(pathname === '/management/login' ? '/management/forgotPassword' : '/forgotPassword')}
+                            onClick={() => router.push(isManagementLoginPage ? '/management/forgotPassword' : '/forgotPassword')}
                             className={cn(
                                 "text-sm font-medium transition-colors duration-200",
                                 isDarkMode

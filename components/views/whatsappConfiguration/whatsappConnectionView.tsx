@@ -74,6 +74,7 @@ export const WhatsAppConnectionView = () => {
 
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [isCheckingWebhook, setIsCheckingWebhook] = useState(false);
+    const [isSubscribingWebhook, setIsSubscribingWebhook] = useState(false);
     const [showVerification, setShowVerification] = useState(false);
     const [webhookStatusData, setWebhookStatusData] = useState<any>(null);
 
@@ -160,6 +161,27 @@ export const WhatsAppConnectionView = () => {
             console.error('Failed to check webhook status:', error);
         } finally {
             setIsCheckingWebhook(false);
+        }
+    };
+
+    const handleSubscribeWebhooks = async () => {
+        setIsSubscribingWebhook(true);
+        try {
+            const { whatsappConfigApiData } = await import('@/services/whatsappConfiguration');
+            const response = await new whatsappConfigApiData().subscribeToWebhooks();
+
+            if (response?.data?.success) {
+                toast.success('Successfully subscribed to webhook fields (messages, message_template_status_update)');
+                // Refresh the status to show updated subscription
+                await handleCheckWebhookStatus();
+            } else {
+                toast.error(response?.data?.message || 'Failed to subscribe to webhooks');
+            }
+        } catch (error: any) {
+            console.error('Failed to subscribe to webhooks:', error);
+            toast.error(error?.response?.data?.message || 'Failed to subscribe to webhooks');
+        } finally {
+            setIsSubscribingWebhook(false);
         }
     };
     return (
@@ -257,6 +279,8 @@ export const WhatsAppConnectionView = () => {
                                         user={user}
                                         onCheckStatus={handleCheckWebhookStatus}
                                         isChecking={isCheckingWebhook}
+                                        onSubscribeWebhooks={handleSubscribeWebhooks}
+                                        isSubscribing={isSubscribingWebhook}
                                         statusData={webhookStatusData}
                                     />
                                 )}

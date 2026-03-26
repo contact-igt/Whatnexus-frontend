@@ -1,7 +1,69 @@
 import React from 'react';
-import { SearchX, MessageSquareText, FileText, ExternalLink, Phone, Copy, Download } from 'lucide-react';
+import { SearchX, MessageSquareText, FileText, ExternalLink, Phone, Copy, Download, User, Bot, UserCog } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
+
+// Sender icon component for message bubbles
+const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMode: boolean; isOutgoing: boolean }> = ({ sender, senderName, isDarkMode, isOutgoing }) => {
+    if (sender === 'user') {
+        return (
+            <div className="flex items-center gap-1.5 mb-1">
+                <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center",
+                    isDarkMode ? "bg-blue-500/20" : "bg-blue-100"
+                )}>
+                    <User size={12} className={cn(isDarkMode ? "text-blue-400" : "text-blue-600")} />
+                </div>
+                <span className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide",
+                    isDarkMode ? "text-blue-400/80" : "text-blue-600/80"
+                )}>
+                    Customer
+                </span>
+            </div>
+        );
+    }
+
+    if (sender === 'bot') {
+        return (
+            <div className="flex items-center gap-1.5 mb-1">
+                <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center",
+                    isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
+                )}>
+                    <Bot size={12} className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
+                </div>
+                <span className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide",
+                    isDarkMode ? "text-emerald-400/80" : "text-emerald-600/80"
+                )}>
+                    AI Assistant
+                </span>
+            </div>
+        );
+    }
+
+    if (sender === 'admin') {
+        return (
+            <div className="flex items-center gap-1.5 mb-1">
+                <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center",
+                    isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
+                )}>
+                    <UserCog size={12} className={cn(isDarkMode ? "text-purple-400" : "text-purple-600")} />
+                </div>
+                <span className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide",
+                    isDarkMode ? "text-purple-400/80" : "text-purple-600/80"
+                )}>
+                    {senderName || 'Admin'}
+                </span>
+            </div>
+        );
+    }
+
+    return null;
+};
 
 // Extracts media URL from "[VIDEO: url]" / "[IMAGE: url]" / "[DOCUMENT: url]" text patterns
 const extractMediaFromText = (message: string) => {
@@ -315,6 +377,12 @@ export const MessageList: React.FC<MessageListProps> = ({
                                             ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
                                             : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
                                     )}>
+                                        <SenderIndicator
+                                            sender={msg.sender}
+                                            senderName={msg.sender_id}
+                                            isDarkMode={isDarkMode}
+                                            isOutgoing={isOutgoing}
+                                        />
                                         <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
                                         <div className="flex items-center justify-end space-x-1 opacity-60">
                                             <span className="text-[10px]">

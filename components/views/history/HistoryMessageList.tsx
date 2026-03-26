@@ -1,7 +1,69 @@
 import React from 'react';
-import { SearchX, MessageSquareText, Send, FileText, Download } from 'lucide-react';
+import { SearchX, MessageSquareText, Send, FileText, Download, User, Bot, UserCog } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from '../chats/ChatUtils';
+
+// Sender icon component for message bubbles
+const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMode: boolean }> = ({ sender, senderName, isDarkMode }) => {
+    if (sender === 'user') {
+        return (
+            <div className="flex items-center gap-1.5 mb-1">
+                <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center",
+                    isDarkMode ? "bg-blue-500/20" : "bg-blue-100"
+                )}>
+                    <User size={12} className={cn(isDarkMode ? "text-blue-400" : "text-blue-600")} />
+                </div>
+                <span className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide",
+                    isDarkMode ? "text-blue-400/80" : "text-blue-600/80"
+                )}>
+                    Customer
+                </span>
+            </div>
+        );
+    }
+
+    if (sender === 'bot') {
+        return (
+            <div className="flex items-center gap-1.5 mb-1">
+                <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center",
+                    isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
+                )}>
+                    <Bot size={12} className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
+                </div>
+                <span className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide",
+                    isDarkMode ? "text-emerald-400/80" : "text-emerald-600/80"
+                )}>
+                    AI Assistant
+                </span>
+            </div>
+        );
+    }
+
+    if (sender === 'admin') {
+        return (
+            <div className="flex items-center gap-1.5 mb-1">
+                <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center",
+                    isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
+                )}>
+                    <UserCog size={12} className={cn(isDarkMode ? "text-purple-400" : "text-purple-600")} />
+                </div>
+                <span className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wide",
+                    isDarkMode ? "text-purple-400/80" : "text-purple-600/80"
+                )}>
+                    {senderName || 'Admin'}
+                </span>
+            </div>
+        );
+    }
+
+    return null;
+};
 
 // Extract media from template message format "[TYPE: url]"
 const extractMediaFromText = (message: string) => {
@@ -114,6 +176,11 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                                                 ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
                                                 : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
                                         )}>
+                                            <SenderIndicator
+                                                sender={msg.sender}
+                                                senderName={msg.sender_id}
+                                                isDarkMode={isDarkMode}
+                                            />
                                             {/* Video */}
                                             {effectiveType === "video" && effectiveUrl && (
                                                 <video src={effectiveUrl} controls className="rounded-lg max-w-full max-h-64 mb-1 w-full" preload="metadata" />

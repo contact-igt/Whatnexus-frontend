@@ -287,7 +287,7 @@ export const HistoryView = () => {
 
     useEffect(() => {
         if (!user?.tenant_id) return;
-        
+
         if (!socket.connected) {
             socket.connect();
         } else {
@@ -388,10 +388,10 @@ export const HistoryView = () => {
                             <h3 className="text-xl font-bold">WhatsApp History Hub</h3>
                             {isChatsLoading ? (
                                 <div className="mt-8">
-                                    <ThemedLoader 
-                                        isDarkMode={isDarkMode} 
-                                        text="Accessing Archives" 
-                                        subtext="Retrieving history threads" 
+                                    <ThemedLoader
+                                        isDarkMode={isDarkMode}
+                                        text="Accessing Archives"
+                                        subtext="Retrieving history threads"
                                         showLogo={false}
                                     />
                                 </div>
@@ -445,6 +445,7 @@ export const HistoryView = () => {
                 chatName={selectedChat?.name || selectedChat?.phone}
                 chatPhone={selectedChat?.phone}
                 isDarkMode={isDarkMode}
+                contactId={selectedChat?.contact_id}
             />
 
             <TemplateSelectionModal

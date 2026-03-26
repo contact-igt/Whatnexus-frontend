@@ -366,13 +366,20 @@ export const ChatView = () => {
     const groupedEntries = Object.entries(groupedMessages);
 
     const suggestReply = async () => {
+        if (!selectedChat?.phone) return;
         try {
             const response = await chatSuggestMutate({
                 phone: selectedChat?.phone,
             });
-            setMessage(response?.data);
-        } catch (err) {
-            console.error(err);
+            if (response?.data) {
+                setMessage(response.data);
+            } else {
+                setMessage("I couldn't generate a suggestion right now. Please try again.");
+            }
+        } catch (err: any) {
+            console.error("Smart reply error:", err);
+            const errorMsg = err?.response?.data?.message || "Failed to generate smart reply";
+            setMessage(`[Error: ${errorMsg}]`);
         }
     };
 
@@ -746,6 +753,7 @@ export const ChatView = () => {
                 chatName={selectedChat?.name || selectedChat?.phone}
                 chatPhone={selectedChat?.phone}
                 isDarkMode={isDarkMode}
+                contactId={selectedChat?.contact_id}
             />
         </div>
     );

@@ -29,4 +29,8 @@ export class whatsappConfigApiData {
     updateAccessToken = async (data: { access_token: string }) => {
         return await _axios("put", `/whatsapp/whatsapp-account/token`, data);
     }
+
+    subscribeToWebhooks = async () => {
+        return await _axios("post", `/whatsapp/whatsapp-account/subscribe-webhooks`);
+    }
 }
