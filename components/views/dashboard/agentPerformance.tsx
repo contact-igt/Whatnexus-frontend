@@ -123,7 +123,7 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                                         <div className="h-full rounded-full"
                                             style={{
                                                 background: hex,
-                                                width: bars ? `${Math.max(a.barPct, a.chatCount > 0 ? 5 : 2)}%` : '0%',
+                                                width: bars && a.chatCount > 0 ? `${Math.max(a.barPct, 5)}%` : '0%',
                                                 transition: `width 800ms cubic-bezier(0.22,1,0.36,1) ${i * 60 + 100}ms`
                                             }} />
                                     </div>

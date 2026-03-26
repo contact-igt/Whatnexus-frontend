@@ -5,7 +5,7 @@ import { ActionMenu } from "@/components/ui/actionMenu";
 import { User, Phone } from "lucide-react";
 import { DataTable, ColumnDef } from "@/components/ui/dataTable";
 import { Pagination } from "@/components/ui/pagination";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/ui/Checkbox";
 // import { Checkbox } from "@/components/ui/Checkbox";
 
 interface ContactListProps {
