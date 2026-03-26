@@ -113,4 +113,11 @@ export class billingApiData {
   getAvailableAiModels = async () => {
     return await _axios("get", "/whatsapp/billing/ai-models");
   };
+
+  /**
+   * Fetch wallet status (healthy/low/grace/suspended)
+   */
+  getWalletStatus = async () => {
+    return await _axios("get", "/whatsapp/billing/wallet/status");
+  };
 }

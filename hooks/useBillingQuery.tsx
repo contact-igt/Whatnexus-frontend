@@ -51,6 +51,7 @@ export const useVerifyPaymentMutation = () => {
         mutationFn: (paymentData: any) => billingApis.verifyPayment(paymentData),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+            queryClient.invalidateQueries({ queryKey: ['wallet-status'] });
             queryClient.invalidateQueries({ queryKey: ['billing-kpi'] });
         }
     });
@@ -118,5 +119,13 @@ export const useGetAvailableAiModelsQuery = () => {
         queryKey: ['available-ai-models'],
         queryFn: () => billingApis.getAvailableAiModels(),
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
+};
+
+export const useGetWalletStatusQuery = () => {
+    return useQuery({
+        queryKey: ['wallet-status'],
+        queryFn: () => billingApis.getWalletStatus(),
+        refetchInterval: 60000, // Refetch every minute to stay updated
     });
 };
