@@ -36,14 +36,3 @@ export const useUpdateTenantAiSettingsMutation = () => {
     },
   });
 };
-
-export const useUpdateTenantGeneralSettingsMutation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: { default_contact_name: string }) => tenantApi.updateTenantGeneralSettings(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenantSettings"] });
-    },
-  });
-};

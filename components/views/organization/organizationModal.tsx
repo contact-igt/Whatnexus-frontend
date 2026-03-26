@@ -6,9 +6,10 @@ import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Organization } from "./organizationView";
-import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope, Loader2 } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope, Loader2, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation } from "@/hooks/useTenantQuery";
+import { useGetAiPricingRulesQuery } from "@/hooks/useManagementQuery";
 import { Country, State, City } from 'country-state-city';
 
 interface OrganizationModalProps {
@@ -26,7 +27,7 @@ export const OrganizationModal = ({
     mode,
     isDarkMode
 }: OrganizationModalProps) => {
-    const [formData, setFormData] = useState<Partial<Organization>>({
+    const [formData, setFormData] = useState<Partial<Organization> & { input_model?: string; output_model?: string }>({
         company_name: '',
         owner_name: '',
         owner_email: '',
@@ -44,7 +45,9 @@ export const OrganizationModal = ({
         isActive: true,
         type: 'hospital',
         owner_country_code: '+91',
-        password: ''
+        password: '',
+        input_model: 'gpt-4o-mini',
+        output_model: 'gpt-4o'
     });
     // ISO codes used to drive cascading dropdowns
     const [countryIso, setCountryIso] = useState('');
@@ -53,6 +56,14 @@ export const OrganizationModal = ({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { mutate: createTenantMutate, isPending: isCreateTenantPending } = useCreateTenantMutation();
     const { mutate: updateTenantMutate, isPending: isUpdateTenantPending } = useUpdateTenantMutation();
+    const { data: aiPricingResponse } = useGetAiPricingRulesQuery();
+
+    // AI Models options from pricing table
+    const aiModels = (aiPricingResponse?.data || []);
+    const aiModelOptions = aiModels.map((m: any) => ({
+        label: `${m.model} (${m.category})`,
+        value: m.model
+    }));
 
     // Derived Location Options
     const countryOptions = Country.getAllCountries().map(c => ({
@@ -128,6 +139,23 @@ export const OrganizationModal = ({
                 // Phone
                 owner_country_code: org.owner_country_code || '+91',
                 owner_mobile: org.owner_mobile || '',
+                // AI Models - extract from ai_settings
+                input_model: (() => {
+                    try {
+                        const aiSettings = typeof org.ai_settings === 'string'
+                            ? JSON.parse(org.ai_settings)
+                            : org.ai_settings;
+                        return aiSettings?.input_model || 'gpt-4o-mini';
+                    } catch { return 'gpt-4o-mini'; }
+                })(),
+                output_model: (() => {
+                    try {
+                        const aiSettings = typeof org.ai_settings === 'string'
+                            ? JSON.parse(org.ai_settings)
+                            : org.ai_settings;
+                        return aiSettings?.output_model || 'gpt-4o';
+                    } catch { return 'gpt-4o'; }
+                })(),
             });
         } else {
             setCountryIso('');
@@ -150,13 +178,15 @@ export const OrganizationModal = ({
                 isActive: true,
                 type: 'hospital',
                 owner_country_code: '+91',
-                password: ''
+                password: '',
+                input_model: 'gpt-4o-mini',
+                output_model: 'gpt-4o'
             });
         }
         setErrors({});
     }, [organization, mode, isOpen]);
 
-    const handleChange = (field: keyof Organization, value: any) => {
+    const handleChange = (field: keyof Organization | 'input_model' | 'output_model', value: any) => {
         const sanitizedValue = field === 'owner_mobile' ? value.replace(/\D/g, '') : value;
         setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
         if (errors[field]) {
@@ -199,7 +229,7 @@ export const OrganizationModal = ({
                 ? State.getStatesOfCountry(countryIso).find(s => s.isoCode === formData.state)
                 : undefined;
 
-            const { address, city, country, state, pincode, maxUsers, subscriptionPlan, profile, ...rest } = formData;
+            const { address, city, country, state, pincode, maxUsers, subscriptionPlan, profile, input_model, output_model, ...rest } = formData;
             const submitData = {
                 ...rest,
                 address,
@@ -212,6 +242,11 @@ export const OrganizationModal = ({
                 profile: profile ? JSON.stringify(profile) : null,
                 subscription_start_date: (organization as any)?.subscription_start_date,
                 subscription_end_date: (organization as any)?.subscription_end_date,
+                // AI Model settings
+                ai_settings: {
+                    input_model: input_model || 'gpt-4o-mini',
+                    output_model: output_model || 'gpt-4o',
+                },
             };
 
             if (mode === 'create') {
@@ -499,6 +534,40 @@ export const OrganizationModal = ({
                         ]}
                         disabled={isView}
                         required
+                    />
+                </div>
+
+                {/* AI Model Settings */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                    <div className="col-span-full">
+                        <h3 className={`text-sm font-bold mb-3 ${isDarkMode ? 'text-white/40' : 'text-slate-400'} uppercase tracking-wider flex items-center gap-2`}>
+                            <Cpu className="w-4 h-4" />
+                            AI Model Settings
+                        </h3>
+                    </div>
+
+                    <Select
+                        isDarkMode={isDarkMode}
+                        label="Input Model (Classification/Extraction)"
+                        value={formData.input_model || 'gpt-4o-mini'}
+                        onChange={(value) => handleChange('input_model', value)}
+                        options={aiModelOptions.length > 0 ? aiModelOptions : [
+                            { value: 'gpt-4o-mini', label: 'gpt-4o-mini (mid-tier)' },
+                            { value: 'gpt-4o', label: 'gpt-4o (premium)' },
+                        ]}
+                        disabled={isView}
+                    />
+
+                    <Select
+                        isDarkMode={isDarkMode}
+                        label="Output Model (Generation/Responses)"
+                        value={formData.output_model || 'gpt-4o'}
+                        onChange={(value) => handleChange('output_model', value)}
+                        options={aiModelOptions.length > 0 ? aiModelOptions : [
+                            { value: 'gpt-4o-mini', label: 'gpt-4o-mini (mid-tier)' },
+                            { value: 'gpt-4o', label: 'gpt-4o (premium)' },
+                        ]}
+                        disabled={isView}
                     />
                 </div>
             </div>

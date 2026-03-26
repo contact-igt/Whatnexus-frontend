@@ -425,10 +425,11 @@ export const PricingView = () => {
                         <TableHeader isDarkMode={isDarkMode}>
                             <TableRow isDarkMode={isDarkMode}>
                                 <TableHead isDarkMode={isDarkMode}>Model</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">Input Rate ($/1M)</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">Output Rate ($/1M)</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Input ($/1M)</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Input (₹/1M)</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Output ($/1M)</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Output (₹/1M)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="right">Markup (%)</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">USD → INR</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="center">Status</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="center" width="100px">Actions</TableHead>
                             </TableRow>
@@ -436,7 +437,7 @@ export const PricingView = () => {
                         <TableBody>
                             {isAiLoading ? (
                                 <TableRow isDarkMode={isDarkMode}>
-                                    <TableCell align="center" colSpan={7}>
+                                    <TableCell align="center" colSpan={8}>
                                         <div className="flex flex-col items-center justify-center h-32 text-gray-500">
                                             <Loader2 className="w-6 h-6 animate-spin mb-2" />
                                             Loading AI pricing rules...
@@ -445,7 +446,7 @@ export const PricingView = () => {
                                 </TableRow>
                             ) : aiPricingRules.length === 0 ? (
                                 <TableRow isDarkMode={isDarkMode}>
-                                    <TableCell align="center" colSpan={7}>
+                                    <TableCell align="center" colSpan={8}>
                                         <div className="flex flex-col items-center justify-center h-32 text-gray-500">
                                             <Cpu className="w-6 h-6 mb-2 opacity-40" />
                                             <p>No AI pricing rules configured.</p>
@@ -454,69 +455,81 @@ export const PricingView = () => {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                aiPricingRules.map((rule: any, idx: number) => (
-                                    <TableRow
-                                        key={rule.id}
-                                        isDarkMode={isDarkMode}
-                                        isLast={idx === aiPricingRules.length - 1}
-                                    >
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Cpu className={cn("w-4 h-4", isDarkMode ? "text-violet-400" : "text-violet-600")} />
-                                                <span className="font-medium">{rule.model}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <ArrowDownToLine className={cn("w-3 h-3", isDarkMode ? "text-cyan-400" : "text-cyan-600")} />
-                                                <span>${parseFloat(rule.input_rate).toFixed(4)}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <ArrowUpFromLine className={cn("w-3 h-3", isDarkMode ? "text-violet-400" : "text-violet-600")} />
-                                                <span>${parseFloat(rule.output_rate).toFixed(4)}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <span>{parseFloat(rule.markup_percent).toFixed(1)}%</span>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <span>₹{parseFloat(rule.usd_to_inr_rate).toFixed(2)}</span>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <span className={cn(
-                                                "px-2 py-1 rounded-md text-xs font-semibold",
-                                                rule.is_active
-                                                    ? "bg-emerald-500/10 text-emerald-500"
-                                                    : "bg-red-500/10 text-red-500"
-                                            )}>
-                                                {rule.is_active ? "Active" : "Inactive"}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell align="center" width="100px">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <button
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-colors",
-                                                        isDarkMode
-                                                            ? "text-white/40 hover:bg-white/10 hover:text-white"
-                                                            : "text-slate-400 hover:bg-slate-100 hover:text-slate-900"
-                                                    )}
-                                                    onClick={() => openAiEdit(rule)}
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    className="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-colors"
-                                                    onClick={() => handleAiDelete(rule.id)}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                aiPricingRules.map((rule: any, idx: number) => {
+                                    const usdToInr = parseFloat(rule.usd_to_inr_rate) || 85;
+                                    const markup = parseFloat(rule.markup_percent) || 0;
+                                    const inputRateUsd = parseFloat(rule.input_rate);
+                                    const outputRateUsd = parseFloat(rule.output_rate);
+                                    const inputRateInr = inputRateUsd * usdToInr * (1 + markup / 100);
+                                    const outputRateInr = outputRateUsd * usdToInr * (1 + markup / 100);
+
+                                    return (
+                                        <TableRow
+                                            key={rule.id}
+                                            isDarkMode={isDarkMode}
+                                            isLast={idx === aiPricingRules.length - 1}
+                                        >
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Cpu className={cn("w-4 h-4", isDarkMode ? "text-violet-400" : "text-violet-600")} />
+                                                    <span className="font-medium">{rule.model}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <ArrowDownToLine className={cn("w-3 h-3", isDarkMode ? "text-cyan-400" : "text-cyan-600")} />
+                                                    <span>${inputRateUsd.toFixed(2)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <span className="text-cyan-400">₹{inputRateInr.toFixed(2)}</span>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <ArrowUpFromLine className={cn("w-3 h-3", isDarkMode ? "text-violet-400" : "text-violet-600")} />
+                                                    <span>${outputRateUsd.toFixed(2)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <span className="text-violet-400">₹{outputRateInr.toFixed(2)}</span>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <span>{markup.toFixed(1)}%</span>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <span className={cn(
+                                                    "px-2 py-1 rounded-md text-xs font-semibold",
+                                                    rule.is_active
+                                                        ? "bg-emerald-500/10 text-emerald-500"
+                                                        : "bg-red-500/10 text-red-500"
+                                                )}>
+                                                    {rule.is_active ? "Active" : "Inactive"}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell align="center" width="100px">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        className={cn(
+                                                            "p-2 rounded-lg transition-colors",
+                                                            isDarkMode
+                                                                ? "text-white/40 hover:bg-white/10 hover:text-white"
+                                                                : "text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                                                        )}
+                                                        onClick={() => openAiEdit(rule)}
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        className="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-colors"
+                                                        onClick={() => handleAiDelete(rule.id)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             )}
                         </TableBody>
                     </Table>

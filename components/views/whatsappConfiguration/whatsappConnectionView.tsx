@@ -75,6 +75,7 @@ export const WhatsAppConnectionView = () => {
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [isCheckingWebhook, setIsCheckingWebhook] = useState(false);
     const [showVerification, setShowVerification] = useState(false);
+    const [webhookStatusData, setWebhookStatusData] = useState<any>(null);
 
     const [showAccessToken, setShowAccessToken] = useState(false);
     const [copiedWebhook, setCopiedWebhook] = useState(false);
@@ -147,8 +148,10 @@ export const WhatsAppConnectionView = () => {
         setShowVerification(true); // Always show verification card when checking
         try {
             const response = await new (await import('@/services/tenant')).TenantApiData().getWebhookStatus(user.tenant_id);
-            const webhookVerified = response?.data?.webhook_verified || false;
+            const statusData = response?.data;
+            const webhookVerified = statusData?.webhook_verified || false;
             dispatch(updateWebhookStatus(webhookVerified));
+            setWebhookStatusData(statusData); // Store the status data
 
             if (webhookVerified) {
                 await refetchWhatsAppConfig();
@@ -254,6 +257,7 @@ export const WhatsAppConnectionView = () => {
                                         user={user}
                                         onCheckStatus={handleCheckWebhookStatus}
                                         isChecking={isCheckingWebhook}
+                                        statusData={webhookStatusData}
                                     />
                                 )}
 

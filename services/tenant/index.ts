@@ -72,8 +72,4 @@ export class TenantApiData {
     updateTenantAiSettings = async (data: { ai_settings: any }) => {
         return await _axios("patch", "/tenant/settings/ai", data);
     }
-
-    updateTenantGeneralSettings = async (data: { default_contact_name: string }) => {
-        return await _axios("patch", "/tenant/settings/general", data);
-    }
 }
