@@ -24,6 +24,9 @@ export default function ForgotPassword({ userType }: ForgotPasswordProps) {
     const [currentStep, setCurrentStep] = useState<ForgotPasswordStep>(1);
     const [email, setEmail] = useState("");
 
+    // Use userType-specific storage key to avoid collision between tenant and management flows
+    const storageKey = `forgot_password_state_${userType}`;
+
     // Mutations
     const { mutate: forgotPasswordMutate, isPending: isForgotPasswordPending } = useForgotPasswordMutation(userType);
     const { mutate: verifyOtpMutate, isPending: isVerifyOtpPending } = useVerifyOtpMutation(userType);
@@ -34,34 +37,40 @@ export default function ForgotPassword({ userType }: ForgotPasswordProps) {
 
     // Initial state load
     useEffect(() => {
-        const savedState = sessionStorage.getItem('forgot_password_state');
+        const savedState = sessionStorage.getItem(storageKey);
         if (savedState) {
             try {
                 const parsed = JSON.parse(savedState);
-                if (parsed.step && parsed.email) {
+                // Only restore state if it's not the success state (allow fresh start after success)
+                if (parsed.step && parsed.email && parsed.step !== 'success') {
                     setCurrentStep(parsed.step);
                     setEmail(parsed.email);
+                } else {
+                    // Clear success state so user can reset again
+                    sessionStorage.removeItem(storageKey);
                 }
             } catch (e) {
                 console.error("Failed to parse saved state", e);
-                sessionStorage.removeItem('forgot_password_state');
+                sessionStorage.removeItem(storageKey);
             }
         }
         setIsLoaded(true);
-    }, []);
+    }, [storageKey]);
 
     // Save state on change
     useEffect(() => {
         if (isLoaded) {
-            sessionStorage.setItem('forgot_password_state', JSON.stringify({
-                step: currentStep,
-                email
-            }));
+            // Don't persist success state - clear it instead
+            if (currentStep === 'success') {
+                sessionStorage.removeItem(storageKey);
+            } else {
+                sessionStorage.setItem(storageKey, JSON.stringify({
+                    step: currentStep,
+                    email
+                }));
+            }
         }
-    }, [currentStep, email, isLoaded]);
-
-    // Clear state on success (optional, but good for cleanup if they navigate away manually)
-    // For now we keep it as requested to "persist refresh", only tab close clears it naturally via sessionStorage.
+    }, [currentStep, email, isLoaded, storageKey]);
 
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");

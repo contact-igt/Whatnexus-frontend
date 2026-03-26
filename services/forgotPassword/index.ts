@@ -3,7 +3,7 @@ import { _axios } from "@/helper/axios";
 export class ForgotPasswordApiData {
     // Management APIs
     managementForgotPassword = async (email: string) => {
-        return await _axios("post", "/management/forgotPassword", { email });
+        return await _axios("post", "/management/forgot-Password", { email });
     };
 
     managementVerifyOtp = async (email: string, otp: string) => {
@@ -16,7 +16,7 @@ export class ForgotPasswordApiData {
 
     // Tenant APIs
     tenantForgotPassword = async (email: string) => {
-        return await _axios("post", "/tenant/user/forgotPassword", { email });
+        return await _axios("post", "/tenant/user/forgot-Password", { email });
     };
 
     tenantVerifyOtp = async (email: string, otp: string) => {

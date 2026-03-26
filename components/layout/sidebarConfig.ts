@@ -36,6 +36,7 @@ export interface SidebarItem {
     route: string;
     icon: LucideIcon;
     requiresWhatsApp?: boolean;
+    requiresLocal?: boolean;
     roles?: string[];
 }
 
@@ -200,6 +201,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 route: "/settings/whatsapp-playground",
                 icon: FlaskConical,
                 requiresWhatsApp: false,
+                requiresLocal: true,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }
         ]

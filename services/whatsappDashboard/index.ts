@@ -201,11 +201,81 @@ export interface DashboardResponse {
   data: DashboardData;
 }
 
+// ── Weekly Summary Types ───────────────────────────────────────────────────────
+export interface WeeklySummaryItem {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  summary: string;
+  totalChats: number;
+  newLeads: number;
+  responseRate: number;
+  appointments?: number;
+  resolvedChats?: number;
+  uniqueConversations?: number;
+}
+
+export interface WeeklySummaryResponse {
+  success: boolean;
+  data: {
+    weeks: WeeklySummaryItem[];
+    totalWeeks: number;
+    generatedAt: string;
+  };
+}
+
+export interface ContactWeeklySummary {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  summary: string;
+  messageCount: number;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  avgResponseTime: string;
+  keyTopics: string[];
+  actionItems: string[];
+  engagementScore: number;
+  changeFromPrevious: number;
+}
+
+export interface ContactWeeklySummaryResponse {
+  success: boolean;
+  data: {
+    contact: {
+      contact_id?: string;
+      name?: string;
+      phone: string;
+      email?: string;
+    };
+    totalMessages: number;
+    avgEngagement: number;
+    totalWeeks: number;
+    totalActionItems: number;
+    weeks: ContactWeeklySummary[];
+  };
+}
+
 export class DashboardApiData {
   getDashboardData = async (tenantId: string, period: string = "30days") => {
     return await _axios("get", "/whatsapp/dashboard", undefined, "application/json", {
       tenantId,
       period,
     });
+  };
+
+  // Weekly Summary APIs
+  getWeeklySummary = async () => {
+    return await _axios("get", "/whatsapp/weekly-summary");
+  };
+
+  getContactWeeklySummary = async (contactId?: string, phone?: string) => {
+    const params: Record<string, string> = {};
+    if (phone) params.phone = phone;
+
+    const endpoint = contactId
+      ? `/whatsapp/weekly-summary/contact/${contactId}`
+      : `/whatsapp/weekly-summary/contact`;
+
+    return await _axios("get", endpoint, undefined, "application/json", params);
   };
 }

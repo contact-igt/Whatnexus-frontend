@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Key, RefreshCw, Loader2, CheckCircle2, Copy, Check, ExternalLink, Mail, AlertCircle, XCircle } from 'lucide-react';
+import { Key, RefreshCw, Loader2, CheckCircle2, Copy, Check, ExternalLink, Mail, AlertCircle, XCircle, Webhook } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { getWebhookBaseURL } from '@/helper/axios';
 
@@ -10,6 +10,8 @@ interface MetaVerificationCardProps {
     user: any;
     onCheckStatus: () => void;
     isChecking: boolean;
+    onSubscribeWebhooks?: () => void;
+    isSubscribing?: boolean;
     statusData?: {
         overall_status?: string;
         verify_token_set?: boolean;
@@ -26,6 +28,8 @@ export const MetaVerificationCard = ({
     user,
     onCheckStatus,
     isChecking,
+    onSubscribeWebhooks,
+    isSubscribing = false,
     statusData
 }: MetaVerificationCardProps) => {
     const [copiedWebhook, setCopiedWebhook] = useState(false);
@@ -127,6 +131,49 @@ export const MetaVerificationCard = ({
                             <StatusItem isDarkMode={isDarkMode} label="Access Token Valid" status={statusData.access_token_valid} />
                             <StatusItem isDarkMode={isDarkMode} label="Meta Subscription Active" status={statusData.meta_subscription_active} />
                         </div>
+
+                        {/* Subscribe to Webhooks Button - Show when webhook verified but not subscribed */}
+                        {statusData.webhook_verified && !statusData.meta_subscription_active && onSubscribeWebhooks && (
+                            <div className={cn(
+                                "mt-4 p-4 rounded-lg border-2 border-dashed",
+                                isDarkMode ? "bg-amber-500/10 border-amber-500/30" : "bg-amber-50 border-amber-300"
+                            )}>
+                                <div className="flex items-start gap-3">
+                                    <Webhook className={isDarkMode ? "text-amber-400" : "text-amber-600"} size={20} />
+                                    <div className="flex-1">
+                                        <p className={cn("text-sm font-semibold mb-1", isDarkMode ? "text-amber-300" : "text-amber-700")}>
+                                            Webhook Subscription Required
+                                        </p>
+                                        <p className={cn("text-xs mb-3", isDarkMode ? "text-amber-400/70" : "text-amber-600")}>
+                                            Your webhook is verified, but the app is not subscribed to receive messages. Click below to subscribe.
+                                        </p>
+                                        <button
+                                            onClick={onSubscribeWebhooks}
+                                            disabled={isSubscribing}
+                                            className={cn(
+                                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                                                isDarkMode
+                                                    ? "bg-amber-500 text-black hover:bg-amber-400"
+                                                    : "bg-amber-500 text-white hover:bg-amber-600",
+                                                isSubscribing && "opacity-50 cursor-not-allowed"
+                                            )}
+                                        >
+                                            {isSubscribing ? (
+                                                <>
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                    Subscribing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Webhook size={16} />
+                                                    Subscribe to Webhook Fields
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Issues */}
                         {statusData.issues && statusData.issues.length > 0 && (

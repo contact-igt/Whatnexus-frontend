@@ -1,8 +1,9 @@
-import { X, Calendar, MessageSquare, TrendingUp, TrendingDown, Clock, ChevronRight, Download, Tag, CheckCircle2, AlertCircle, Smile, Meh, Frown, Zap, Target, ArrowUpRight, ArrowDownRight, Minus, Copy, Check } from 'lucide-react';
+import { X, Calendar, MessageSquare, TrendingUp, TrendingDown, Clock, ChevronRight, Download, Tag, CheckCircle2, AlertCircle, Smile, Meh, Frown, Zap, Target, ArrowUpRight, ArrowDownRight, Minus, Copy, Check, Loader2 } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 import React from 'react';
+import { useGetContactWeeklySummaryQuery } from "@/hooks/useWhatsappDashboardQuery";
 
 interface WeeklySummary {
     weekNumber: number;
@@ -24,64 +25,11 @@ interface WeeklyChatSummaryModalProps {
     chatName: string;
     chatPhone: string;
     isDarkMode: boolean;
-    weeklySummaries?: WeeklySummary[];
+    contactId?: number;
 }
 
-// Mock data - you'll replace this with actual API data later
-const generateMockSummaries = (chatName: string): WeeklySummary[] => [
-    {
-        weekNumber: 1,
-        startDate: "2026-01-15",
-        endDate: "2026-01-21",
-        summary: `${chatName} showed high engagement this week with multiple follow-up questions about product features. Expressed strong interest in premium plans and requested detailed pricing information. Conversation quality improved significantly.`,
-        messageCount: 12,
-        sentiment: 'positive',
-        avgResponseTime: '2.5 min',
-        keyTopics: ['Pricing', 'Premium Features', 'Integration'],
-        actionItems: ['Send pricing proposal', 'Schedule demo call'],
-        engagementScore: 92,
-        changeFromPrevious: 50
-    },
-    {
-        weekNumber: 2,
-        startDate: "2026-01-08",
-        endDate: "2026-01-14",
-        summary: `Initial contact established. ${chatName} inquired about service availability and integration options. AI successfully handled technical questions and scheduled a demo call. Good rapport building phase.`,
-        messageCount: 8,
-        sentiment: 'neutral',
-        avgResponseTime: '3.2 min',
-        keyTopics: ['Service Availability', 'Technical Specs', 'Demo Request'],
-        actionItems: ['Confirm demo schedule', 'Share documentation'],
-        engagementScore: 78,
-        changeFromPrevious: -46.7
-    },
-    {
-        weekNumber: 3,
-        startDate: "2026-01-01",
-        endDate: "2026-01-07",
-        summary: `Follow-up conversations regarding implementation timeline. ${chatName} requested case studies and customer testimonials. Positive sentiment throughout interactions. Multiple touchpoints indicate strong interest.`,
-        messageCount: 15,
-        sentiment: 'positive',
-        avgResponseTime: '1.8 min',
-        keyTopics: ['Case Studies', 'Implementation', 'Timeline'],
-        actionItems: ['Send case studies', 'Provide implementation guide'],
-        engagementScore: 88,
-        changeFromPrevious: 200
-    },
-    {
-        weekNumber: 4,
-        startDate: "2025-12-25",
-        endDate: "2025-12-31",
-        summary: `Brief check-in conversation. ${chatName} asked about holiday support availability. Quick response maintained engagement during slower period. Foundation for future conversations established.`,
-        messageCount: 5,
-        sentiment: 'neutral',
-        avgResponseTime: '4.1 min',
-        keyTopics: ['Support Hours', 'Holiday Schedule'],
-        actionItems: [],
-        engagementScore: 65,
-        changeFromPrevious: 0
-    }
-];
+// Mock data fallback for when no contactId is provided
+const getEmptySummaries = (): WeeklySummary[] => [];
 
 const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -119,9 +67,15 @@ export const WeeklyChatSummaryModal = ({
     chatName,
     chatPhone,
     isDarkMode,
-    weeklySummaries
+    contactId
 }: WeeklyChatSummaryModalProps) => {
     const [copiedId, setCopiedId] = React.useState<number | null>(null);
+
+    const { data: summaryData, isLoading, isError } = useGetContactWeeklySummaryQuery(
+        contactId,
+        chatPhone,
+        { enabled: isOpen && (!!contactId || !!chatPhone) }
+    );
 
     if (!isOpen) return null;
 
@@ -132,9 +86,12 @@ export const WeeklyChatSummaryModal = ({
         setTimeout(() => setCopiedId(null), 2000);
     };
 
-    const summaries = weeklySummaries || generateMockSummaries(chatName);
+    // Access data from API response structure: { success, data: { weeks, ... } }
+    const summaries: WeeklySummary[] = summaryData?.data?.weeks || getEmptySummaries();
     const totalMessages = summaries.reduce((sum, week) => sum + week.messageCount, 0);
-    const avgEngagement = Math.round(summaries.reduce((sum, week) => sum + week.engagementScore, 0) / summaries.length);
+    const avgEngagement = summaries.length > 0
+        ? Math.round(summaries.reduce((sum, week) => sum + week.engagementScore, 0) / summaries.length)
+        : 0;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -288,251 +245,269 @@ export const WeeklyChatSummaryModal = ({
 
                 {/* Weekly Summaries */}
                 <div className="overflow-y-auto max-h-[calc(90vh-240px)] p-6 space-y-4 no-scrollbar">
-                    {summaries.map((week, index) => (
-                        <div
-                            key={week.weekNumber}
-                            className={cn(
-                                "p-5 rounded-xl border transition-all hover:scale-[1.01] animate-in slide-in-from-bottom-2 fade-in",
-                                isDarkMode
-                                    ? "bg-white/5 border-white/10 hover:bg-white/10"
-                                    : "bg-white border-slate-200 hover:shadow-lg"
-                            )}
-                            style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
-                        >
-                            {/* Week Header */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div className={cn(
-                                        "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border shadow-lg",
-                                        week.weekNumber === 1
-                                            ? "bg-emerald-500 text-white border-emerald-400 shadow-emerald-500/30"
-                                            : isDarkMode
-                                                ? "bg-white/5 text-white/60 border-white/10"
-                                                : "bg-slate-100 text-slate-600 border-slate-200"
-                                    )}>
-                                        W{week.weekNumber}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center space-x-2 mb-1">
-                                            <span className={cn(
-                                                "text-sm font-bold",
-                                                isDarkMode ? "text-white" : "text-slate-900"
-                                            )}>
-                                                Week {week.weekNumber}
-                                            </span>
-                                            {week.weekNumber === 1 && (
-                                                <span className="text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wide bg-emerald-500/20 text-emerald-400">
-                                                    Current
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className={cn("w-8 h-8 animate-spin", isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
+                        </div>
+                    ) : isError ? (
+                        <div className={cn(
+                            "p-8 text-center rounded-xl border",
+                            isDarkMode ? "bg-red-500/10 border-red-500/20" : "bg-red-50 border-red-200"
+                        )}>
+                            <p className={cn("text-sm", isDarkMode ? "text-red-400" : "text-red-600")}>
+                                Failed to load weekly summary. Please try again.
+                            </p>
+                        </div>
+                    ) : summaries.length === 0 ? (
+                        <div className={cn(
+                            "p-8 text-center rounded-xl border",
+                            isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
+                        )}>
+                            <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                No weekly data available yet. Start conversations to see insights here.
+                            </p>
+                        </div>
+                    ) : (
+                        summaries.map((week, index) => (
+                            <div
+                                key={week.weekNumber}
+                                className={cn(
+                                    "p-5 rounded-xl border transition-all hover:scale-[1.01] animate-in slide-in-from-bottom-2 fade-in",
+                                    isDarkMode
+                                        ? "bg-white/5 border-white/10 hover:bg-white/10"
+                                        : "bg-white border-slate-200 hover:shadow-lg"
+                                )}
+                                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
+                            >
+                                {/* Week Header */}
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border shadow-lg",
+                                            week.weekNumber === 1
+                                                ? "bg-emerald-500 text-white border-emerald-400 shadow-emerald-500/30"
+                                                : isDarkMode
+                                                    ? "bg-white/5 text-white/60 border-white/10"
+                                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                        )}>
+                                            W{week.weekNumber}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center space-x-2 mb-1">
+                                                <span className={cn(
+                                                    "text-sm font-bold",
+                                                    isDarkMode ? "text-white" : "text-slate-900"
+                                                )}>
+                                                    Week {week.weekNumber}
                                                 </span>
+                                                {week.weekNumber === 1 && (
+                                                    <span className="text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wide bg-emerald-500/20 text-emerald-400">
+                                                        Current
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className={cn(
+                                                "text-xs font-medium",
+                                                isDarkMode ? "text-white/40" : "text-slate-500"
+                                            )}>
+                                                {formatDate(week.startDate)} - {formatDate(week.endDate)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Quick Stats */}
+                                    <div className="flex items-center space-x-2">
+                                        <div className={cn(
+                                            "flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border",
+                                            getSentimentColor(week.sentiment, isDarkMode)
+                                        )}>
+                                            {getSentimentIcon(week.sentiment)}
+                                            <span className="text-xs font-bold capitalize">
+                                                {week.sentiment}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Metrics Grid */}
+                                <div className="grid grid-cols-3 gap-3 mb-4">
+                                    <div className={cn(
+                                        "p-3 rounded-lg border",
+                                        isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
+                                    )}>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-wide",
+                                                isDarkMode ? "text-white/60" : "text-slate-600"
+                                            )}>
+                                                Messages
+                                            </span>
+                                            {week.changeFromPrevious !== 0 && (
+                                                <div className={cn(
+                                                    "flex items-center space-x-0.5",
+                                                    week.changeFromPrevious > 0 ? "text-green-500" : "text-red-500"
+                                                )}>
+                                                    {week.changeFromPrevious > 0 ? <ArrowUpRight size={10} /> : week.changeFromPrevious < 0 ? <ArrowDownRight size={10} /> : <Minus size={10} />}
+                                                    <span className="text-[9px] font-bold">
+                                                        {Math.abs(week.changeFromPrevious)}%
+                                                    </span>
+                                                </div>
                                             )}
                                         </div>
                                         <p className={cn(
-                                            "text-xs font-medium",
-                                            isDarkMode ? "text-white/40" : "text-slate-500"
+                                            "text-lg font-bold",
+                                            isDarkMode ? "text-white" : "text-slate-900"
                                         )}>
-                                            {formatDate(week.startDate)} - {formatDate(week.endDate)}
+                                            {week.messageCount}
+                                        </p>
+                                    </div>
+
+                                    <div className={cn(
+                                        "p-3 rounded-lg border",
+                                        isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
+                                    )}>
+                                        <span className={cn(
+                                            "text-[10px] font-bold uppercase tracking-wide block mb-1",
+                                            isDarkMode ? "text-white/60" : "text-slate-600"
+                                        )}>
+                                            Avg Response
+                                        </span>
+                                        <p className={cn(
+                                            "text-lg font-bold",
+                                            isDarkMode ? "text-white" : "text-slate-900"
+                                        )}>
+                                            {week.avgResponseTime}
+                                        </p>
+                                    </div>
+
+                                    <div className={cn(
+                                        "p-3 rounded-lg border",
+                                        isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
+                                    )}>
+                                        <span className={cn(
+                                            "text-[10px] font-bold uppercase tracking-wide block mb-1",
+                                            isDarkMode ? "text-white/60" : "text-slate-600"
+                                        )}>
+                                            Engagement
+                                        </span>
+                                        <p className={cn(
+                                            "text-lg font-bold",
+                                            getEngagementColor(week.engagementScore)
+                                        )}>
+                                            {week.engagementScore}%
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Quick Stats */}
-                                <div className="flex items-center space-x-2">
-                                    <div className={cn(
-                                        "flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border",
-                                        getSentimentColor(week.sentiment, isDarkMode)
-                                    )}>
-                                        {getSentimentIcon(week.sentiment)}
-                                        <span className="text-xs font-bold capitalize">
-                                            {week.sentiment}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Metrics Grid */}
-                            <div className="grid grid-cols-3 gap-3 mb-4">
+                                {/* Summary Content */}
                                 <div className={cn(
-                                    "p-3 rounded-lg border",
-                                    isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
+                                    "p-3 rounded-lg border mb-3",
+                                    isDarkMode
+                                        ? "bg-white/5 border-white/5"
+                                        : "bg-slate-50 border-slate-100"
                                 )}>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className={cn(
-                                            "text-[10px] font-bold uppercase tracking-wide",
-                                            isDarkMode ? "text-white/60" : "text-slate-600"
-                                        )}>
-                                            Messages
-                                        </span>
-                                        {week.changeFromPrevious !== 0 && (
-                                            <div className={cn(
-                                                "flex items-center space-x-0.5",
-                                                week.changeFromPrevious > 0 ? "text-green-500" : "text-red-500"
-                                            )}>
-                                                {week.changeFromPrevious > 0 ? <ArrowUpRight size={10} /> : week.changeFromPrevious < 0 ? <ArrowDownRight size={10} /> : <Minus size={10} />}
-                                                <span className="text-[9px] font-bold">
-                                                    {Math.abs(week.changeFromPrevious)}%
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className={cn(
-                                        "text-lg font-bold",
-                                        isDarkMode ? "text-white" : "text-slate-900"
-                                    )}>
-                                        {week.messageCount}
-                                    </p>
-                                </div>
-
-                                <div className={cn(
-                                    "p-3 rounded-lg border",
-                                    isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
-                                )}>
-                                    <span className={cn(
-                                        "text-[10px] font-bold uppercase tracking-wide block mb-1",
-                                        isDarkMode ? "text-white/60" : "text-slate-600"
-                                    )}>
-                                        Avg Response
-                                    </span>
-                                    <p className={cn(
-                                        "text-lg font-bold",
-                                        isDarkMode ? "text-white" : "text-slate-900"
-                                    )}>
-                                        {week.avgResponseTime}
-                                    </p>
-                                </div>
-
-                                <div className={cn(
-                                    "p-3 rounded-lg border",
-                                    isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
-                                )}>
-                                    <span className={cn(
-                                        "text-[10px] font-bold uppercase tracking-wide block mb-1",
-                                        isDarkMode ? "text-white/60" : "text-slate-600"
-                                    )}>
-                                        Engagement
-                                    </span>
-                                    <p className={cn(
-                                        "text-lg font-bold",
-                                        getEngagementColor(week.engagementScore)
-                                    )}>
-                                        {week.engagementScore}%
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Summary Content */}
-                            <div className={cn(
-                                "p-3 rounded-lg border mb-3",
-                                isDarkMode
-                                    ? "bg-white/5 border-white/5"
-                                    : "bg-slate-50 border-slate-100"
-                            )}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center space-x-2">
-                                        <Clock size={12} className="text-emerald-500" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-500">
-                                            AI Summary
-                                        </span>
-                                    </div>
-                                    <button 
-                                        onClick={() => handleCopy(week.summary, week.weekNumber)}
-                                        className={cn(
-                                            "p-1 rounded hover:bg-emerald-500/10 transition-all",
-                                            isDarkMode ? "text-slate-500 hover:text-emerald-400" : "text-slate-400 hover:text-emerald-600"
-                                        )}
-                                        title="Copy summary"
-                                    >
-                                        {copiedId === week.weekNumber ? <Check size={12} /> : <Copy size={12} />}
-                                    </button>
-                                </div>
-                                <p className={cn(
-                                    "text-sm leading-relaxed",
-                                    isDarkMode ? "text-white/80" : "text-slate-700"
-                                )}>
-                                    {week.summary}
-                                </p>
-                            </div>
-
-                            {/* Key Topics */}
-                            {week.keyTopics.length > 0 && (
-                                <div className="mb-3">
-                                    <div className="flex items-center space-x-2 mb-2">
-                                        <Tag size={12} className="text-blue-500" />
-                                        <span className={cn(
-                                            "text-[10px] font-bold uppercase tracking-wide text-blue-500"
-                                        )}>
-                                            Key Topics
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {week.keyTopics.map((topic, idx) => (
-                                            <span
-                                                key={idx}
-                                                className={cn(
-                                                    "px-2.5 py-1 rounded-lg text-xs font-medium border",
-                                                    isDarkMode
-                                                        ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
-                                                        : "bg-blue-50 border-blue-200 text-blue-600"
-                                                )}
-                                            >
-                                                {topic}
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Clock size={12} className="text-emerald-500" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-500">
+                                                AI Summary
                                             </span>
-                                        ))}
+                                        </div>
+                                        <button
+                                            onClick={() => handleCopy(week.summary, week.weekNumber)}
+                                            className={cn(
+                                                "p-1 rounded hover:bg-emerald-500/10 transition-all",
+                                                isDarkMode ? "text-slate-500 hover:text-emerald-400" : "text-slate-400 hover:text-emerald-600"
+                                            )}
+                                            title="Copy summary"
+                                        >
+                                            {copiedId === week.weekNumber ? <Check size={12} /> : <Copy size={12} />}
+                                        </button>
                                     </div>
+                                    <p className={cn(
+                                        "text-sm leading-relaxed",
+                                        isDarkMode ? "text-white/80" : "text-slate-700"
+                                    )}>
+                                        {week.summary}
+                                    </p>
                                 </div>
-                            )}
 
-                            {/* Action Items */}
-                            {week.actionItems.length > 0 && (
-                                <div>
-                                    <div className="flex items-center space-x-2 mb-2">
-                                        <AlertCircle size={12} className="text-orange-500" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wide text-orange-500">
-                                            Action Items
-                                        </span>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        {week.actionItems.map((item, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={cn(
-                                                    "flex items-start space-x-2 p-2 rounded-lg border",
-                                                    isDarkMode
-                                                        ? "bg-orange-500/5 border-orange-500/20"
-                                                        : "bg-orange-50 border-orange-200"
-                                                )}
-                                            >
-                                                <CheckCircle2 size={14} className="text-orange-500 mt-0.5 shrink-0" />
-                                                <span className={cn(
-                                                    "text-xs font-medium",
-                                                    isDarkMode ? "text-white/80" : "text-slate-700"
-                                                )}>
-                                                    {item}
+                                {/* Key Topics */}
+                                {week.keyTopics.length > 0 && (
+                                    <div className="mb-3">
+                                        <div className="flex items-center space-x-2 mb-2">
+                                            <Tag size={12} className="text-blue-500" />
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-wide text-blue-500"
+                                            )}>
+                                                Key Topics
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {week.keyTopics.map((topic, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className={cn(
+                                                        "px-2.5 py-1 rounded-lg text-xs font-medium border",
+                                                        isDarkMode
+                                                            ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                                                            : "bg-blue-50 border-blue-200 text-blue-600"
+                                                    )}
+                                                >
+                                                    {topic}
                                                 </span>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Export Week Button */}
-                            <button className={cn(
-                                "mt-3 w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide transition-all hover:scale-[1.02]",
-                                isDarkMode
-                                    ? "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-                                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                            )}>
-                                <Download size={12} />
-                                <span>Export Week {week.weekNumber}</span>
-                            </button>
-                        </div>
-                    ))}
-                </div>
+                                {/* Action Items */}
+                                {week.actionItems.length > 0 && (
+                                    <div>
+                                        <div className="flex items-center space-x-2 mb-2">
+                                            <AlertCircle size={12} className="text-orange-500" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wide text-orange-500">
+                                                Action Items
+                                            </span>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            {week.actionItems.map((item, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={cn(
+                                                        "flex items-start space-x-2 p-2 rounded-lg border",
+                                                        isDarkMode
+                                                            ? "bg-orange-500/5 border-orange-500/20"
+                                                            : "bg-orange-50 border-orange-200"
+                                                    )}
+                                                >
+                                                    <CheckCircle2 size={14} className="text-orange-500 mt-0.5 shrink-0" />
+                                                    <span className={cn(
+                                                        "text-xs font-medium",
+                                                        isDarkMode ? "text-white/80" : "text-slate-700"
+                                                    )}>
+                                                        {item}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
-                {/* Footer */}
-                <div className={cn(
-                    "p-4 border-t",
-                    isDarkMode ? "bg-[#151518]/95 border-white/5" : "bg-white/95 border-slate-200"
-                )}>
+                                {/* Export Week Button */}
+                                <button className={cn(
+                                    "mt-3 w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide transition-all hover:scale-[1.02]",
+                                    isDarkMode
+                                        ? "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                                )}>
+                                    <Download size={12} />
+                                    <span>Export Week {week.weekNumber}</span>
+                                </button>
+                            </div>
+                        ))
+                    )}
+
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
