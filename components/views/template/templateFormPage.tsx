@@ -340,6 +340,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     // Watch form values for preview
     const category = watch('category');
+    const language = watch('language');
     const templateName = watch('templateName');
     const templateType = watch('templateType');
     const headerType = watch('headerType');
@@ -348,6 +349,30 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const previous_content = watch('previous_content');
     const footer = watch('footer');
     const variables = watch('variables');
+
+    // Language-content mismatch detection
+    const detectContentLanguage = (text: string): string | null => {
+        if (!text || text.trim().length < 5) return null;
+        const cleaned = text.replace(/\{\{\d+\}\}/g, '').replace(/[\n\r*_~`]/g, ' ').trim();
+        if (!cleaned) return null;
+        // Check for Devanagari (Hindi)
+        const hindiChars = (cleaned.match(/[\u0900-\u097F]/g) || []).length;
+        // Check for Latin (English/Spanish/French/German)
+        const latinChars = (cleaned.match(/[a-zA-Z]/g) || []).length;
+        const total = hindiChars + latinChars;
+        if (total === 0) return null;
+        if (hindiChars / total > 0.5) return 'Hindi';
+        if (latinChars / total > 0.5) return 'Latin';
+        return null;
+    };
+
+    const contentLang = detectContentLanguage(content || '');
+    const isLanguageMismatch = (() => {
+        if (!language || !contentLang) return false;
+        if (language === 'Hindi' && contentLang === 'Latin') return true;
+        if (language !== 'Hindi' && contentLang === 'Hindi') return true;
+        return false;
+    })();
     const interactiveActions = watch('interactiveActions');
     const ctaButtons = watch('ctaButtons');
     const quickReplies = watch('quickReplies');
@@ -401,11 +426,13 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const { mutateAsync: generateTemplate } = useGenerateAiTemplateMutation();
     const handleAIGenerate = async (prompt: string, style: MessageStyle, goal: OptimizationGoal, aiCategory: string) => {
         try {
+            const currentLang = getValues('language') || 'English';
             const payload: any = {
                 prompt,
                 focus: aiCategory,
                 style,
                 optimization: goal,
+                language: currentLang,
                 ...(previous_content && { previous_content })
             };
             console.log("payload", payload)
@@ -467,6 +494,15 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     };
 
     const onSubmit = async (data: FormValues) => {
+        // ─────────────────────────────────────────
+        // Language-content mismatch validation
+        // ─────────────────────────────────────────
+        if (data.category !== 'AUTHENTICATION' && isLanguageMismatch) {
+            const selectedLang = data.language || 'English';
+            toast.error(`Template content language does not match selected language "${selectedLang}". Meta requires the body text to be written in the selected language.`);
+            return;
+        }
+
         // ─────────────────────────────────────────
         // AUTHENTICATION templates: fixed Meta-required structure
         // ─────────────────────────────────────────
@@ -1111,7 +1147,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         isDarkMode={isDarkMode}
                                         label="Template Format"
                                         required
-                                        placeholder="Enter your message in here..."
+                                        placeholder={language === 'Hindi' ? 'अपना संदेश यहाँ लिखें...' : 'Enter your message in here...'}
                                         rows={6}
                                         maxLength={1024}
                                         showCharCount
@@ -1120,6 +1156,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     />
                                 )}
                             />
+                            {isLanguageMismatch && !isAuthMode && (
+                                <div className={cn(
+                                    "flex items-center gap-2 mt-1.5 px-3 py-2 rounded-lg text-xs font-medium border",
+                                    isDarkMode ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-700"
+                                )}>
+                                    <span>⚠️</span>
+                                    <span>
+                                        Content language doesn&apos;t match selected language <strong>&quot;{language}&quot;</strong>. Meta requires body text in the selected language.
+                                    </span>
+                                </div>
+                            )}
                             {isAuthMode ? (
                                 <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-violet-400/70' : 'text-violet-600')}>
                                     🔐 Body text is pre-filled with Meta's required OTP format. The <strong>{`{{1}}`}</strong> placeholder will be replaced with the generated OTP code at send time.

@@ -264,9 +264,9 @@ export const WhatsAppPreviewPanel = ({
                 return (
                     <div className="w-full bg-black/5 flex items-center justify-center overflow-hidden">
                         {isVideo ? (
-                            <video src={headerValue} className="max-w-full w-auto max-h-64 object-contain rounded-t-xl" controls />
+                            <video src={headerValue} className="w-full max-h-52 object-cover rounded-t-xl" controls />
                         ) : (
-                            <img src={headerValue} alt="Header media" className="max-w-full w-auto max-h-64 object-contain rounded-t-xl" />
+                            <img src={headerValue} alt="Header media" className="w-full max-h-52 object-cover rounded-t-xl" />
                         )}
                     </div>
                 );
@@ -534,12 +534,12 @@ export const WhatsAppPreviewPanel = ({
 
                             {/* Quick Replies */}
                             {!isCarousel && quickReplies.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-2">
+                                <div className="mt-1 space-y-1">
                                     {quickReplies.map((reply, index) => (
                                         <button
                                             key={index}
                                             className={cn(
-                                                "py-1.5 px-3 rounded-full text-[12px] font-medium border transition-all hover:scale-105 active:scale-95",
+                                                "w-full py-2.5 px-4 rounded-lg text-[13px] font-medium text-center border transition-all hover:scale-[1.02] active:scale-95",
                                                 isDarkMode
                                                     ? 'bg-[#1c2c33] text-emerald-400 border-emerald-500/20 hover:bg-[#233239]'
                                                     : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 shadow-sm'

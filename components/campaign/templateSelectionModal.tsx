@@ -20,6 +20,7 @@ export interface ProcessedTemplate {
     originalDetails?: any;
     variableArray?: any[];
     buttonVariables?: any[];
+    allButtons?: any[];
     headerText?: string;
     footerText?: string;
     bodyText?: string;
@@ -95,6 +96,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
 
             // Parse Buttons for dynamic variables
             let buttonVariables: any[] = [];
+            let allButtons: any[] = [];
             if (Array.isArray(t.components)) {
                 const buttonsComp = t.components.find((c: any) => c.component_type?.toLowerCase() === 'buttons' || c.type?.toLowerCase() === 'buttons');
                 if (buttonsComp) {
@@ -107,6 +109,13 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                         }
 
                         if (Array.isArray(btns)) {
+                            allButtons = btns.map((btn: any, idx: number) => ({
+                                index: idx,
+                                type: btn.type,
+                                text: btn.text,
+                                url: btn.url || null,
+                                phone_number: btn.phone_number || btn.value || null,
+                            }));
                             btns.forEach((btn: any, idx: number) => {
                                 // WhatsApp only supports {{1}} in URL buttons
                                 if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
@@ -150,6 +159,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                 variables: totalVarCount,
                 variableArray: bodyVariables,
                 buttonVariables,
+                allButtons,
                 headerText,
                 footerText,
                 bodyText: bodyTextData || '',
