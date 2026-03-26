@@ -29,7 +29,7 @@ const requestDemoSchema = z.object({
     industry: z.string().min(1, "Industry is required"),
 });
 
-type RequestDemoFormData = z.infer<typeof requestDemoSchema>;
+type RequestDemoFormData = z.input<typeof requestDemoSchema>;
 
 export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -69,7 +69,7 @@ export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                 name: data?.name,
                 organization: data?.organization,
                 email: data?.email,
-                mobile: data?.country_code.replace('+', '') + data?.mobile,
+                mobile: (data?.country_code || "+91").replace('+', '') + data?.mobile,
                 industry: data?.industry,
                 ip_address: ipData?.ip,
                 utm_source: localStorage.getItem("utm_source") || ""

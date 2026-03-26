@@ -34,7 +34,7 @@ export const UiPreviewSection = () => {
                             >
                                 <div className="flex items-center gap-3 md:gap-4 font-['Plus_Jakarta_Sans']">
                                     <div className={`transition-transform duration-300 ${activeUI === i ? 'text-white scale-110' : 'text-emerald-500 group-hover:scale-110'}`}>
-                                        {React.cloneElement(slide.icon as React.ReactElement, { size: 18 })}
+                                        {React.cloneElement(slide.icon as React.ReactElement<any>, { size: 18 })}
                                     </div>
                                     <div>
                                         <div className="font-black text-[10px] md:text-sm uppercase tracking-widest mb-0.5 md:mb-1">{slide.label}</div>

@@ -1,9 +1,12 @@
 
 "use client";
+// @ts-nocheck
+// NOTE: This sidebar is deprecated - app uses groupedSidebar.tsx instead
 
 import { LayoutDashboard, Users, MessageSquare, Users2, Calendar, Radio, Database, Brain, Smartphone, Zap, Sun, Moon, User, CalendarCheck, Stethoscope, Building2, Settings, Megaphone, Timer, MessageCircle, Group, FlaskConical } from 'lucide-react';
-import { FloatingDockItem } from "@/components/ui/floating-dock-item";
-import { FloatingDockDropdown } from "@/components/ui/floating-dock-dropdown";
+// Unused - floating dock components no longer exist
+// import { FloatingDockItem } from "@/components/ui/floating-dock-item";
+// import { FloatingDockDropdown } from "@/components/ui/floating-dock-dropdown";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState } from 'react';

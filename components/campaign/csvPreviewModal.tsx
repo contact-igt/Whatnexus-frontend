@@ -244,7 +244,7 @@ export const CSVPreviewModal = ({
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-wrap gap-1">
                                                     {row.dynamic_variables && row.dynamic_variables.length > 0 ? (
-                                                        row.dynamic_variables.map((variable, vidx) => (
+                                                        row.dynamic_variables.map((variable: any, vidx: number) => (
                                                             <span
                                                                 key={vidx}
                                                                 className={cn(
