@@ -4,6 +4,10 @@ interface User {
   email: string;
   role: string;
   name?: string;
+  username?: string;
+  tenant_user_id?: string;
+  tenant_id?: string;
+  organization?: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }

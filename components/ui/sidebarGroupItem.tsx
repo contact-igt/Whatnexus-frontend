@@ -51,25 +51,18 @@ export const SidebarGroupItem = ({
                     ? (isDarkMode ? 'text-white/15 cursor-not-allowed' : 'text-slate-300 cursor-not-allowed')
                     : active
                         ? (isDarkMode
-                            ? 'text-white bg-gradient-to-r from-white/10 via-white/8 to-white/5 shadow-lg shadow-emerald-500/5 border border-white/10'
-                            : 'text-emerald-700 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-50 shadow-md border border-emerald-200/50')
+                            ? 'text-white bg-[#18181b] border border-[#27272a]'
+                            : 'text-emerald-700 bg-emerald-50 border border-emerald-200/50')
                         : (isDarkMode
-                            ? 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5'
-                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200')
+                            ? 'text-white/50 hover:text-white hover:bg-[#18181b] border border-transparent hover:border-[#27272a]'
+                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-[#e4e4e7]')
             )}
         >
-            {/* Gradient sweep on hover */}
-            {!isDisabled && !active && (
-                <div className={cn(
-                    "absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/8 to-teal-500/0 opacity-0 group-hover/item:opacity-100 transition-opacity duration-500"
-                )} />
-            )}
-
             {/* Active indicator bar */}
             {active && !isDisabled && (
                 <div className={cn(
                     "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full",
-                    "bg-gradient-to-b from-emerald-400 via-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/50"
+                    "bg-emerald-500"
                 )} />
             )}
 
@@ -108,11 +101,11 @@ export const SidebarGroupItem = ({
                     "absolute left-full ml-3 px-3 py-2 rounded-xl text-[11px] font-bold tracking-wide opacity-0 group-hover/item:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[150] shadow-2xl translate-x-2 group-hover/item:translate-x-0",
                     isDisabled
                         ? (isDarkMode
-                            ? 'bg-gradient-to-br from-rose-500/20 to-rose-600/20 text-rose-300 border border-rose-500/30 backdrop-blur-xl'
-                            : 'bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border border-rose-200 backdrop-blur-xl')
+                            ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20 backdrop-blur-xl'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200 backdrop-blur-xl')
                         : (isDarkMode
-                            ? 'bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-white/10 backdrop-blur-xl'
-                            : 'bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-700 backdrop-blur-xl')
+                            ? 'bg-[#18181b] text-white border border-[#27272a] backdrop-blur-xl'
+                            : 'bg-slate-900 text-white border border-slate-700 backdrop-blur-xl')
                 )}>
                     {isDisabled && requiresWhatsApp ? (
                         <span className="flex items-center gap-1.5">

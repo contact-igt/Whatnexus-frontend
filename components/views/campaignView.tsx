@@ -26,6 +26,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Campaign } from '@/services/campaign/campaign.types';
 import { CreateCampaignModal } from '@/components/campaign/createCampaignModal';
 import { PageTransition } from '@/components/ui/pageTransition';
+import { socket } from '@/utils/socket';
 
 type TabType = 'all' | 'broadcast' | 'api' | 'scheduled' | 'immediate' | 'trash';
 
@@ -56,6 +57,32 @@ export const CampaignView = memo(() => {
             fetchDeletedCampaigns();
         }
     }, [activeTab, fetchDeletedCampaigns]);
+
+    // Socket: real-time campaign delivery status updates
+    const { user } = useAuth();
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+        
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit('join-tenant', user.tenant_id);
+        }
+
+        socket.on('connect', () => {
+            socket.emit('join-tenant', user.tenant_id);
+        });
+
+        socket.on('campaign-status-update', () => {
+            refetch();
+        });
+
+        return () => {
+            socket.off('campaign-status-update');
+            socket.off('connect');
+        };
+    }, [user?.tenant_id]);
 
 
     const handleCampaignSuccess = (campaignId: string) => {

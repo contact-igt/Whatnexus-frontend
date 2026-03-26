@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Link2, File, Database } from 'lucide-react';
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { GlassCard } from "@/components/ui/glassCard";
@@ -100,6 +100,15 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
         urlTitle: "",
         textTitle: ""
     });
+
+    const [currentTime, setCurrentTime] = useState(Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(Date.now());
+        }, 5000);
+        return () => clearInterval(timer);
+    }, []);
 
     const handleFileButtonClick = () => {
         fileInputRef.current?.click();
@@ -451,66 +460,38 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Add Website URL Card */}
                 <GlassCard isDarkMode={isDarkMode} className="p-6">
-                    <h3 className={cn("text-lg font-bold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                        Add Website URL
-                    </h3>
-                    <p className={cn("text-xs mb-5", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className={cn("text-lg font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                            Add Website URL
+                        </h3>
+                        <span className={cn(
+                            "px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border",
+                            isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-emerald-50 border-emerald-200 text-emerald-600"
+                        )}>
+                            <Clock size={12} />
+                            Coming Soon
+                        </span>
+                    </div>
+                    <p className={cn("text-xs mb-6", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
                         Crawl your website for information.
                     </p>
 
-                    <div className="space-y-7">
-                        <div>
-                            <label className={cn("text-xs font-semibold mb-2 block", isDarkMode ? 'text-white/70' : 'text-slate-600')}>
-                                Title <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={inputValue.websiteUrlTitle}
-                                onChange={handleInputChange}
-                                placeholder="Enter a title for this URL"
-                                className={cn(
-                                    "w-full px-3 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
-                                    isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
-                                    error.websiteUrlTitle ? "border-red-500" : ""
-                                )}
-                                name="websiteUrlTitle"
-                            />
-                            <p className="text-red-500 text-xs font-bold mt-2">
-                                {error.websiteUrlTitle}
-                            </p>
+                    <div className={cn(
+                        "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all h-[268px]",
+                        isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'
+                    )}>
+                        <div className={cn(
+                            "w-16 h-16 rounded-full flex items-center justify-center mb-4",
+                            isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50'
+                        )}>
+                            <Globe className="text-emerald-500" size={28} />
                         </div>
-                        <div className="relative">
-                            <h4 className={cn("text-xs font-semibold mb-1.5", isDarkMode ? 'text-white/70' : 'text-slate-600')}>
-                                Website URL <span className="text-red-500">*</span>
-                            </h4>
-                            <div className="relative">
-                                <Globe className={cn("absolute left-3 top-6 -translate-y-1/2", isDarkMode ? 'text-white/30' : 'text-slate-400')} size={18} />
-                                <input
-                                    type="url"
-                                    value={inputValue.websiteUrl}
-                                    onChange={handleInputChange}
-                                    placeholder="https://cityhospital.com/services"
-                                    className={cn(
-                                        "w-full pl-11 pr-4 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
-                                        isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400',
-                                        error.websiteUrl ? "border-red-500" : ""
-                                    )}
-                                    name="websiteUrl"
-                                />
-                                <p className="text-red-500 text-xs font-bold mt-2">
-                                    {error.websiteUrl}
-                                </p>
-                            </div>
-                        </div>
-
-                        <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                            The AI will automatically re-crawl this URL every 24 hours.
+                        <h4 className={cn("text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                            Automated Web Scraping
+                        </h4>
+                        <p className={cn("text-xs max-w-[280px] leading-relaxed", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                            We are building a powerful web crawler that will automatically scan and learn from your website content to keep your AI perfectly in sync.
                         </p>
-                        <button onClick={() => {
-                            handleUploadKnowledge("url")
-                        }} disabled={isPending || uploading} className={cn("w-full px-6 py-2.5 flex justify-center items-center rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20", (isPending || uploading) && 'opacity-50 cursor-not-allowed')}>
-                            {isPending && isUpdating.status == true && isUpdating.type == "url" ? <Loader2 className={cn("animate-spin w-6 h-6", isDarkMode ? 'text-white/40' : 'text-slate-400')} size={32} /> : "Add"}
-                        </button>
                     </div>
                 </GlassCard>
 
@@ -623,8 +604,8 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     ) : activeKnowledgeData?.length > 0 ? (
                         activeKnowledgeData?.map((source: any, index: number) => {
                             const createdAt = new Date(source?.created_at).getTime();
-                            const now = Date.now();
-                            const isProcessing = now - createdAt < 5 * 60 * 1000;
+                            const now = currentTime;
+                            const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
                             return (
                                 <div
                                     key={index}
@@ -664,7 +645,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                     ) : (
                                                         <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-500/10 text-slate-500 border border-slate-500/20">
                                                             <Clock size={12} />
-                                                            <span className="text-xs font-semibold">Processing</span>
+                                                            <span className="text-xs font-semibold">{source?.type === 'url' ? 'Scraping...' : 'Processing...'}</span>
                                                         </span>
                                                     )}
                                                 </div>
@@ -708,7 +689,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                             isDarkMode={isDarkMode}
                                             isView={source?.type == "text" || source?.type == "file"}
                                             isEdit={source?.type == "text" || source?.type == "file"}
-                                            isDelete={source?.type == "text" || source?.type == "file"}
+                                            isDelete={source?.type == "text" || source?.type == "file" || source?.type == "url"}
                                             onView={() => handleView(source, 'knowledge')}
                                             onEdit={() => handleEdit(source, 'knowledge')}
                                             onDelete={() => handleDeleteClick(source, 'knowledge')}
@@ -775,8 +756,8 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                         ))
                     ) : inactiveKnowledgeData?.map((source: any, index: number) => {
                         const createdAt = new Date(source?.created_at).getTime();
-                        const now = Date.now();
-                        const isProcessing = now - createdAt < 5 * 60 * 1000;
+                        const now = currentTime;
+                        const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
                         return (
                             <div
                                 key={index}
@@ -816,7 +797,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                 ) : (
                                                     <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-500/10 text-slate-500 border border-slate-500/20">
                                                         <Clock size={12} />
-                                                        <span className="text-xs font-semibold">Processing</span>
+                                                        <span className="text-xs font-semibold">{source?.type === 'url' ? 'Scraping...' : 'Processing...'}</span>
                                                     </span>
                                                 )}
                                             </div>
@@ -860,7 +841,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         isDarkMode={isDarkMode}
                                         isView={source?.type == "text" || source?.type == "file"}
                                         isEdit={source?.type == "text" || source?.type == "file"}
-                                        isDelete={source?.type == "text" || source?.type == "file"}
+                                        isDelete={source?.type == "text" || source?.type == "file" || source?.type == "url"}
                                         onView={() => handleView(source, 'knowledge')}
                                         onEdit={() => handleEdit(source, 'knowledge')}
                                         onDelete={() => handleDeleteClick(source, 'knowledge')}
@@ -918,7 +899,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     ) : deletedKnowledgesData?.data?.sources?.length > 0 ? (
                         deletedKnowledgesData?.data?.sources?.map((source: any, index: number) => {
                             const createdAt = new Date(source?.created_at).getTime();
-                            const now = Date.now();
+                            const now = currentTime;
                             const isProcessing = now - createdAt < 5 * 60 * 1000;
                             return (
                                 <div
@@ -959,7 +940,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                                     ) : (
                                                         <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-500/10 text-slate-500 border border-slate-500/20">
                                                             <Clock size={12} />
-                                                            <span className="text-xs font-semibold">Processing</span>
+                                                            <span className="text-xs font-semibold">{source?.type === 'url' ? 'Scraping...' : 'Processing...'}</span>
                                                         </span>
                                                     )}
                                                 </div>
@@ -983,7 +964,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                         </div>
                                         {user?.role == "tenant_admin" && <ActionMenu
                                             isDarkMode={isDarkMode}
-                                            isPermanentDelete={source?.type == "text" || source?.type == "file"}
+                                            isPermanentDelete={source?.type == "text" || source?.type == "file" || source?.type == "url"}
                                             isRestore={true}
                                             onPermanentDelete={() => handlePermanentDeleteClick(source, "knowledge", true)}
                                             onRestore={() => handleRestore(source, "knowledge")}

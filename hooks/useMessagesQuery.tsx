@@ -58,7 +58,8 @@ export const useMessagesByPhoneQuery = (phone_number: string) => {
         queryKey: ['messages', phone_number],
         queryFn: () => MessagesApis.getMessagesByPhone(phone_number),
         enabled: !!phone_number,
-        staleTime: 0,
+        staleTime: 30 * 1000,
+        refetchOnWindowFocus: false,
     });
 
     return { data, isLoading, isError };
@@ -75,10 +76,17 @@ export const useAddMessageMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["messages", variables.phone],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
+            });
             // toast.success('Message sent successfully!');
         },
-        onError: (error: Error) => {
-            // toast.error(error.message || 'Failed to send message');
+        onError: (error: AxiosError<{ message?: string }>) => {
+            const message = error.response?.data?.message || error.message || 'Failed to send message';
+            toast.error(message);
         },
     });
 };
@@ -96,6 +104,12 @@ export const useUpdateSeenMutation = () => {
             });
             queryClient.invalidateQueries({
                 queryKey: ["chats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["livechats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["historychats"],
             });
         },
     })
@@ -153,10 +167,17 @@ export const useClaimChatMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["livechats"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["historychats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
+            });
             toast.success('Chat claimed successfully!');
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Failed to claim chat');
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
         },
     });
 };
@@ -172,10 +193,17 @@ export const useAssignAgentMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["livechats"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["historychats"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["chats"],
+            });
             toast.success('Agent assigned successfully!');
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Failed to assign agent');
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
         },
     });
 };
@@ -188,4 +216,22 @@ export const useGetAgentsQuery = () => {
     });
 
     return { data, isLoading, isError };
+};
+
+export const useToggleSilenceAIMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { contact_id: string, is_ai_silenced: boolean }) => {
+            return MessagesApis.toggleSilenceAi(data.contact_id, data.is_ai_silenced);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
+            queryClient.invalidateQueries({ queryKey: ["chats"] });
+            toast.success('AI Silence status updated successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to toggle AI Silence');
+        },
+    });
 };

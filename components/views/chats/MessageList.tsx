@@ -1,7 +1,230 @@
 import React from 'react';
-import { SearchX, MessageSquareText, Sparkles, Wand2 } from 'lucide-react';
+import { SearchX, MessageSquareText, FileText, ExternalLink, Phone, Copy, Download } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
+
+// Extracts media URL from "[VIDEO: url]" / "[IMAGE: url]" / "[DOCUMENT: url]" text patterns
+const extractMediaFromText = (message: string) => {
+    if (!message) return null;
+    // Match [TYPE] or [TYPE: url] at the start of message
+    // URL can be with or without protocol (http/https)
+    const match = message.match(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*([^\]\n]+)?\]/i);
+    if (!match) return null;
+    const url = match[2]?.trim();
+    // Return null URL if it's empty or just whitespace
+    return { type: match[1].toLowerCase(), url: url && url.length > 0 ? url : null };
+};
+
+// Extract buttons from template message format "[Button: text]"
+const extractButtonsFromText = (message: string) => {
+    const buttonRegex = /\[Button:\s*([^\]]+)\]/gi;
+    const buttons: string[] = [];
+    let match;
+    while ((match = buttonRegex.exec(message)) !== null) {
+        buttons.push(match[1].trim());
+    }
+    return buttons;
+};
+
+// Remove button text from message body
+const stripButtonsFromText = (message: string) => {
+    return message.replace(/\n?\[Button:\s*[^\]]+\]/gi, '').trim();
+};
+
+// Remove any remaining template variable placeholders like {{1}}, {{2}}, etc.
+const stripVariablePlaceholders = (message: string) => {
+    return message.replace(/\{\{\d+\}\}/g, '').trim();
+};
+
+// MIME type lookup from filename extension
+const getMimeFromFilename = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mimeMap: Record<string, string> = {
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        csv: 'text/csv',
+        txt: 'text/plain',
+        zip: 'application/zip',
+    };
+    return mimeMap[ext || ''] || 'application/octet-stream';
+};
+
+// Blob-based download: fetches file, creates typed blob, triggers proper download
+const handleDocumentDownload = async (url: string, filename: string) => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const mimeType = getMimeFromFilename(filename);
+        const typedBlob = new Blob([blob], { type: mimeType });
+        const blobUrl = URL.createObjectURL(typedBlob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+    } catch {
+        window.open(url, '_blank');
+    }
+};
+
+const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boolean }> = ({ msg, searchText, isDarkMode }) => {
+    const type = msg.message_type;
+    const mediaUrl = msg.media_url;
+
+    // Try to extract embedded media from message text (templates store media as "[VIDEO: url]\nBody text")
+    const embeddedMedia = extractMediaFromText(msg.message);
+
+    // Determine effective type: use embedded media type if found, otherwise use message_type
+    const effectiveType = embeddedMedia?.type || type;
+
+    // Determine effective URL: prefer embedded URL, then media_url field (filter out meta_media_id placeholders)
+    const effectiveUrl = embeddedMedia?.url || (mediaUrl && !mediaUrl.startsWith("meta_media_id:") ? mediaUrl : null);
+
+    // Extract buttons from message text (templates have [Button: text] format)
+    const hasButtons = msg.message?.includes("[Button:");
+    const templateButtons = hasButtons ? extractButtonsFromText(msg.message) : [];
+
+    // Get body text: strip media prefix and buttons
+    let bodyText = msg.message;
+    if (embeddedMedia) {
+        // Remove the [VIDEO: url] or [IMAGE: url] prefix
+        bodyText = msg.message.replace(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*[^\]]*\]\n?/i, "").trim();
+    }
+    if (hasButtons) {
+        bodyText = stripButtonsFromText(bodyText);
+    }
+
+    const renderText = (text: string) => {
+        if (searchText && text?.toLowerCase().includes(searchText.toLowerCase())) {
+            return text.split(new RegExp(`(${searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, i: number) =>
+                part.toLowerCase() === searchText.toLowerCase() ? (
+                    <mark key={i} className={cn("p-0 px-0.5 rounded-sm inline-block", isDarkMode ? "bg-emerald-500/30 text-emerald-400" : "bg-yellow-200 text-slate-900")}>
+                        {part}
+                    </mark>
+                ) : part
+            );
+        }
+        return text;
+    };
+
+    return (
+        <>
+            {/* Video */}
+            {effectiveType === "video" && effectiveUrl && (
+                <video
+                    src={effectiveUrl}
+                    controls
+                    className="rounded-lg max-w-full max-h-64 mb-1 w-full"
+                    preload="metadata"
+                />
+            )}
+            {effectiveType === "video" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <span>🎬</span>
+                    <span className="opacity-70">Video</span>
+                </div>
+            )}
+
+            {/* Image */}
+            {effectiveType === "image" && effectiveUrl && (
+                <img src={effectiveUrl} alt="media" className="rounded-lg max-w-full max-h-64 mb-1 object-cover" />
+            )}
+            {effectiveType === "image" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <span>🖼️</span>
+                    <span className="opacity-70">Image</span>
+                </div>
+            )}
+
+            {/* Document */}
+            {effectiveType === "document" && effectiveUrl && (
+                <div
+                    onClick={() => handleDocumentDownload(effectiveUrl, msg.media_filename || "Document")}
+                    className={cn(
+                        "flex items-center gap-2 mb-1 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors",
+                        isDarkMode ? "bg-white/10 hover:bg-white/15" : "bg-black/5 hover:bg-black/10"
+                    )}
+                >
+                    <FileText className="w-5 h-5 shrink-0 opacity-70" />
+                    <span className="flex-1 truncate opacity-90 font-medium">{msg.media_filename || "Document"}</span>
+                    <Download className="w-4 h-4 shrink-0 opacity-60" />
+                </div>
+            )}
+            {effectiveType === "document" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-3 py-2.5 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <FileText className="w-5 h-5 shrink-0 opacity-70" />
+                    <span className="flex-1 truncate opacity-80">{msg.media_filename || "Document"}</span>
+                </div>
+            )}
+
+            {/* Audio */}
+            {effectiveType === "audio" && effectiveUrl && (
+                <audio src={effectiveUrl} controls className="w-full max-w-xs mb-1" />
+            )}
+            {effectiveType === "audio" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <span>🎵</span>
+                    <span className="opacity-70">Audio message</span>
+                </div>
+            )}
+
+            {/* Body text */}
+            {bodyText ? (
+                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
+                    {renderText(stripVariablePlaceholders(bodyText))}
+                </p>
+            ) : effectiveType === "text" || (effectiveType === "template" && !embeddedMedia) ? (
+                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
+                    {renderText(stripVariablePlaceholders(stripButtonsFromText(msg.message)))}
+                </p>
+            ) : null}
+
+            {/* Template Buttons */}
+            {templateButtons.length > 0 && (
+                <div className={cn(
+                    "flex flex-wrap gap-2 mt-2 pt-2 border-t",
+                    isDarkMode ? "border-white/10" : "border-black/10"
+                )}>
+                    {templateButtons.map((btnText, index) => {
+                        // Detect button type based on text patterns
+                        const isUrl = btnText.toLowerCase().includes('http') || btnText.includes('(');
+                        const isPhone = /call|phone|\+\d/i.test(btnText);
+
+                        return (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default",
+                                    isDarkMode
+                                        ? "bg-white/10 text-emerald-400 hover:bg-white/15"
+                                        : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
+                                )}
+                            >
+                                {isPhone ? (
+                                    <Phone className="w-3 h-3" />
+                                ) : isUrl ? (
+                                    <ExternalLink className="w-3 h-3" />
+                                ) : (
+                                    <Copy className="w-3 h-3 opacity-50" />
+                                )}
+                                <span>{btnText}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </>
+    );
+};
+
+
 
 interface MessageListProps {
     isDarkMode: boolean;
@@ -11,6 +234,8 @@ interface MessageListProps {
     groupedEntries: any[];
     bottomRef: React.RefObject<HTMLDivElement | null>;
     selectedChat: any;
+    searchText?: string;
+    isAiTyping?: boolean;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -20,7 +245,9 @@ export const MessageList: React.FC<MessageListProps> = ({
     filteredMessage,
     groupedEntries,
     bottomRef,
-    selectedChat
+    selectedChat,
+    searchText = "",
+    isAiTyping = false
 }) => {
     return (
         <div className={cn(
@@ -88,12 +315,10 @@ export const MessageList: React.FC<MessageListProps> = ({
                                             ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
                                             : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
                                     )}>
-                                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                                            {msg.message}
-                                        </p>
+                                        <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
                                         <div className="flex items-center justify-end space-x-1 opacity-60">
                                             <span className="text-[10px]">
-                                                {formattedTime(msg.created_at)}
+                                                {formattedTime(msg.created_at || msg.timestamp)}
                                             </span>
                                             {isOutgoing && (
                                                 <MessageStatusTicks status={msg.status} />
@@ -119,6 +344,23 @@ export const MessageList: React.FC<MessageListProps> = ({
                 </div>
             )}
 
+            {isAiTyping && (
+                <div className="flex justify-end px-4 py-1 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className={cn(
+                        "p-3 rounded-2xl shadow-sm bg-white/10 backdrop-blur-md border border-white/5 flex items-center space-x-2",
+                        isDarkMode ? "bg-[#005c4b] text-[#e9edef]" : "bg-[#d9fdd3] text-[#111b21]"
+                    )}>
+                        <div className="flex space-x-1">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
+                        </div>
+                        <span className={cn("text-[11px] font-bold uppercase tracking-wider", isDarkMode ? "text-emerald-400/80" : "text-emerald-600/80")}>
+                            AI is thinking
+                        </span>
+                    </div>
+                </div>
+            )}
             <div ref={bottomRef} className="pb-14" />
         </div>
     );

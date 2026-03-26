@@ -1,55 +1,51 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Upload, X, Image as ImageIcon, Video, FileText } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Video, FileText, Loader2, CheckCircle } from "lucide-react";
 import { useState, useRef } from "react";
 
 interface FileUploadProps {
     isDarkMode: boolean;
     label?: string;
     accept: string;
-    value?: string;
-    onChange: (file: File | null, preview: string) => void;
+    uploadedUrl?: string | null;
+    onFileSelected: (file: File) => void;
+    onRemove: () => void;
     placeholder?: string;
     uploadType: 'image' | 'video' | 'document';
     disabled?: boolean;
+    isUploading?: boolean;
+    compact?: boolean; // Reduced size variant for use inside form panels
+    fileName?: string | null; // Optional: Display actual filename if available
 }
 
 export const FileUpload = ({
     isDarkMode,
     label,
     accept,
-    value,
-    onChange,
+    uploadedUrl,
+    onFileSelected,
+    onRemove,
     placeholder = "Click to upload or drag and drop",
     uploadType,
-    disabled = false
+    disabled = false,
+    isUploading = false,
+    compact = false,
+    fileName = null,
 }: FileUploadProps) => {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (file: File | null) => {
-        if (!file) {
-            onChange(null, '');
-            return;
-        }
-
-        // Create preview URL
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            onChange(file, reader.result as string);
-        };
-        reader.readAsDataURL(file);
+        if (!file) return;
+        onFileSelected(file);
     };
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-
         const file = e.dataTransfer.files[0];
-        if (file) {
-            handleFileChange(file);
-        }
+        if (file) handleFileChange(file);
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -57,43 +53,42 @@ export const FileUpload = ({
         setIsDragging(true);
     };
 
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
+    const handleDragLeave = () => setIsDragging(false);
 
     const handleClick = () => {
-        fileInputRef.current?.click();
+        if (!disabled && !isUploading) fileInputRef.current?.click();
     };
 
     const handleRemove = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onChange(null, '');
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
+        onRemove();
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
+
+    const iconSize = compact ? 18 : 32;
 
     const getIcon = () => {
         switch (uploadType) {
-            case 'image':
-                return <ImageIcon size={32} />;
-            case 'video':
-                return <Video size={32} />;
-            case 'document':
-                return <FileText size={32} />;
+            case 'image': return <ImageIcon size={iconSize} />;
+            case 'video': return <Video size={iconSize} />;
+            case 'document': return <FileText size={iconSize} />;
         }
     };
 
     const getTypeLabel = () => {
         switch (uploadType) {
-            case 'image':
-                return 'Image';
-            case 'video':
-                return 'Video';
-            case 'document':
-                return 'Document';
+            case 'image': return 'Image';
+            case 'video': return 'Video';
+            case 'document': return 'Document';
         }
     };
+
+    const hasContent = !!uploadedUrl;
+    const isInteractive = !disabled && !isUploading;
+
+    // compact: taller portrait card (h-64), narrower container controlled by parent (w-2/5)
+    const previewHeight = compact ? 'h-64' : 'h-80';
+    const emptyPadding = compact ? 'py-12' : 'py-20';
 
     return (
         <div className="w-full">
@@ -107,65 +102,84 @@ export const FileUpload = ({
             )}
 
             <div
-                onClick={() => !disabled && handleClick()}
-                onDrop={(e) => !disabled && handleDrop(e)}
-                onDragOver={(e) => !disabled && handleDragOver(e)}
-                onDragLeave={() => !disabled && handleDragLeave()}
+                onClick={handleClick}
+                onDrop={(e) => isInteractive && handleDrop(e)}
+                onDragOver={(e) => isInteractive && handleDragOver(e)}
+                onDragLeave={() => isInteractive && handleDragLeave()}
                 className={cn(
                     "relative w-full rounded-xl border-2 border-dashed transition-all overflow-hidden",
-                    disabled ? "cursor-not-allowed opacity-60 grayscale-[0.5]" : "cursor-pointer",
-                    isDragging && !disabled && "border-emerald-500 bg-emerald-500/5",
-                    !isDragging && isDarkMode && (disabled ? "border-white/10 bg-white/5" : "border-white/20 hover:border-emerald-500/50 bg-white/5"),
-                    !isDragging && !isDarkMode && (disabled ? "border-slate-200 bg-slate-50" : "border-slate-300 hover:border-emerald-500 bg-slate-50")
+                    (!isInteractive) ? "cursor-not-allowed opacity-70" : "cursor-pointer",
+                    isDragging && isInteractive && "border-emerald-500 bg-emerald-500/5",
+                    !isDragging && isDarkMode && (!isInteractive ? "border-white/10 bg-white/5" : "border-white/20 hover:border-emerald-500/50 bg-white/5"),
+                    !isDragging && !isDarkMode && (!isInteractive ? "border-slate-200 bg-slate-50" : "border-slate-300 hover:border-emerald-500 bg-slate-50")
                 )}
             >
                 <input
                     ref={fileInputRef}
                     type="file"
                     accept={accept}
-                    disabled={disabled}
+                    disabled={disabled || isUploading}
                     onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
                     className="hidden"
                 />
 
-                {value ? (
+                {isUploading && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl">
+                        <Loader2 className={cn("animate-spin text-emerald-400", compact ? "mb-1" : "mb-2")} size={compact ? 20 : 32} />
+                        <p className={cn("text-white font-medium", compact ? "text-xs" : "text-sm")}>Uploading...</p>
+                    </div>
+                )}
+
+                {hasContent ? (
                     <div className="relative">
                         {uploadType === 'image' && (
                             <img
-                                src={value}
+                                src={uploadedUrl!}
                                 alt="Preview"
-                                className="w-full h-64 object-cover"
+                                className={cn("w-full object-cover", previewHeight)}
                             />
                         )}
                         {uploadType === 'video' && (
                             <video
-                                src={value}
-                                className="w-full h-64 object-cover"
+                                src={uploadedUrl!}
+                                className={cn("w-full object-cover", previewHeight)}
                                 controls
                             />
                         )}
                         {uploadType === 'document' && (
-                            <div className="flex items-center gap-3 p-4">
+                            <div className={cn("flex items-center gap-3", compact ? "p-3" : "p-4")}>
                                 <div className={cn(
-                                    "p-3 rounded-lg",
+                                    "rounded-lg flex-shrink-0",
+                                    compact ? "p-2" : "p-3",
                                     isDarkMode ? "bg-purple-500/10" : "bg-purple-100"
                                 )}>
-                                    <FileText size={24} className="text-purple-500" />
+                                    <FileText size={compact ? 18 : 24} className="text-purple-500" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className={cn(
-                                        "text-sm font-medium truncate",
+                                        "font-medium truncate",
+                                        compact ? "text-xs" : "text-[13px]",
                                         isDarkMode ? "text-white" : "text-slate-900"
                                     )}>
-                                        Document uploaded
+                                        {fileName || 'Document uploaded'}
                                     </p>
-                                    <p className={cn(
-                                        "text-xs",
-                                        isDarkMode ? "text-white/50" : "text-slate-500"
-                                    )}>
-                                        Click to change
-                                    </p>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                        <CheckCircle size={compact ? 10 : 12} className="text-emerald-500" />
+                                        <p className={cn(compact ? "text-[10px]" : "text-xs", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>
+                                            Click to change
+                                        </p>
+                                    </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {(uploadType === 'image' || uploadType === 'video') && (
+                            <div className={cn(
+                                "absolute left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2",
+                                compact ? "bottom-1.5 py-0.5" : "bottom-2 py-1"
+                            )}>
+                                <CheckCircle size={compact ? 10 : 12} className="text-emerald-400" />
+                                <span className={cn("text-white font-medium", compact ? "text-[10px]" : "text-xs")}>Successfully Uploaded</span>
                             </div>
                         )}
 
@@ -173,35 +187,42 @@ export const FileUpload = ({
                             <button
                                 onClick={handleRemove}
                                 className={cn(
-                                    "absolute top-2 right-2 p-1.5 rounded-full transition-all",
+                                    "absolute right-2 rounded-full transition-all z-10",
+                                    compact ? "top-1.5 p-1" : "top-2 p-1.5",
                                     isDarkMode
                                         ? "bg-black/60 hover:bg-black/80 text-white"
                                         : "bg-white/90 hover:bg-white text-slate-900 shadow-lg"
                                 )}
                             >
-                                <X size={16} />
+                                <X size={compact ? 12 : 16} />
                             </button>
                         )}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-16 px-4">
+                    <div className={cn(
+                        "flex flex-col items-center justify-center px-4",
+                        emptyPadding
+                    )}>
                         <div className={cn(
-                            "p-3 rounded-full mb-3",
+                            "rounded-full",
+                            compact ? "p-2 mb-2" : "p-3 mb-3",
                             isDarkMode ? "bg-white/5" : "bg-slate-200"
                         )}>
                             {getIcon()}
                         </div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Upload size={16} className="text-emerald-500" />
+                        <div className={cn("flex items-center mb-1", compact ? "gap-1.5" : "gap-2")}>
+                            <Upload size={compact ? 13 : 16} className="text-emerald-500" />
                             <p className={cn(
-                                "text-sm font-medium",
+                                "font-medium",
+                                compact ? "text-xs" : "text-sm",
                                 isDarkMode ? "text-white" : "text-slate-900"
                             )}>
                                 Upload {getTypeLabel()}
                             </p>
                         </div>
                         <p className={cn(
-                            "text-xs text-center",
+                            "text-center",
+                            compact ? "text-[10px]" : "text-xs",
                             isDarkMode ? "text-white/40" : "text-slate-500"
                         )}>
                             {placeholder}

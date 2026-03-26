@@ -10,10 +10,10 @@ const whatsappConfigApis = new whatsappConfigApiData();
 
 export const useGetWhatsappConfigQuery = () => {
     const dispatch = useDispatch();
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const { data, isLoading, isError, refetch } = useQuery({
         queryKey: ['whatsapp-config'],
-        enabled: !!token,
+        enabled: !!token && (user?.role !== 'super_admin' && user?.role !== 'platform_admin'),
         queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
         staleTime: 2 * 60 * 1000,
     })
@@ -64,6 +64,7 @@ export const useSendTestWhatsAppConfigQuery = () => {
 
     return useMutation({
         mutationFn: (data: any) => {
+            console.log("data", data)
             return whatsappConfigApis.sendTestWhatsAppConfig(data);
         },
         onSuccess: (response) => {
@@ -75,6 +76,23 @@ export const useSendTestWhatsAppConfigQuery = () => {
         }
     })
 }
+
+export const useUpdateAccessTokenMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { access_token: string }) => {
+            return whatsappConfigApis.updateAccessToken(data);
+        },
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] });
+            toast.success(response?.data?.message || response?.message || 'Access token updated successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to update access token');
+        },
+    });
+};
 
 export const useStatusWhatsAppConfigQuery = () => {
     const queryClient = useQueryClient();

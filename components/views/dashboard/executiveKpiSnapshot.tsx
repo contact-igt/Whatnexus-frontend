@@ -4,19 +4,23 @@ import React, { useEffect, useState } from 'react';
 import {
     Users, UserPlus, MessageCircle,
     Brain, PhoneForwarded, CalendarCheck,
-    TrendingUp, TrendingDown, ArrowRight
+    TrendingUp, TrendingDown, FileText, Megaphone
 } from 'lucide-react';
-import { glassCard, glassInner, tx, trackBg } from './glassStyles';
+import { glassCard, tx } from './glassStyles';
+import { useTemplates } from '@/hooks/useTemplates';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { NoDataFound } from './noDataFound';
 
 interface ExecutiveKPILayerProps { 
     isDarkMode?: boolean; 
     kpisData?: any;
+    periodLabel?: string;
 }
 
-const statusBadge: Record<string, { label: string; bg: string; color: string }> = {
-    great: { label: '✓ Great', bg: 'rgba(16,185,129,0.15)',  color: '#34d399' },
-    good:  { label: '↑ Good',  bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa' },
-    watch: { label: '! Watch', bg: 'rgba(244,63,94,0.15)',   color: '#fb7185' },
+const statusBadge: Record<string, { label: string; bg: string; color: string; border: string; dot: string }> = {
+    great: { label: '✓ Great', bg: 'rgba(16,185,129,0.12)',  color: '#34d399', border: 'rgba(16,185,129,0.25)', dot: '#10b981' },
+    good:  { label: '↑ Good',  bg: 'rgba(59,130,246,0.12)',  color: '#60a5fa', border: 'rgba(59,130,246,0.25)', dot: '#3b82f6' },
+    watch: { label: '! Watch', bg: 'rgba(244,63,94,0.12)',   color: '#fb7185', border: 'rgba(244,63,94,0.25)',  dot: '#f43f5e' },
 };
 
 const KPICard = ({ kpi, index, isDarkMode, show }: { kpi: any; index: number; isDarkMode: boolean; show: boolean }) => {
@@ -24,47 +28,49 @@ const KPICard = ({ kpi, index, isDarkMode, show }: { kpi: any; index: number; is
     const badge = statusBadge[kpi.status] ?? statusBadge.good;
     const t = tx(isDarkMode);
     return (
-        <div className="rounded-2xl p-4 flex flex-col gap-3.5 relative overflow-hidden group cursor-default"
+        <div className="rounded-xl p-5 flex flex-col gap-3 relative transition-all duration-300 border hover:border-zinc-300 dark:hover:border-zinc-700"
             style={{
                 ...glassCard(isDarkMode),
                 opacity: show ? 1 : 0,
-                transform: show ? 'translateY(0)' : 'translateY(18px)',
-                transition: `opacity 0.45s ease ${index * 55}ms, transform 0.45s ease ${index * 55}ms`,
-            }}>
-            {/* Corner glow */}
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none"
-                style={{ background: `${kpi.color}18`, filter: 'blur(20px)' }} />
-
-            <div className="flex items-start justify-between relative z-10">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: `${kpi.color}20`, color: kpi.color }}>
+                transform: show ? 'translateY(0)' : 'translateY(8px)',
+                transition: `opacity 0.4s ease ${index * 40}ms, transform 0.4s ease ${index * 40}ms`,
+            }}
+        >
+            <div className="flex items-start justify-between">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center border"
+                    style={{ background: isDarkMode ? `${kpi.color}15` : `${kpi.color}10`, color: kpi.color, borderColor: isDarkMode ? `${kpi.color}30` : `${kpi.color}20` }}>
                     <Icon size={18} />
                 </div>
-                <span className="text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-wider"
-                    style={{ background: badge.bg, color: badge.color }}>
+                <span className="px-2 py-0.5 rounded-md flex items-center gap-1.5"
+                    style={{ background: badge.bg, color: badge.color, fontSize: '11px', fontWeight: 600, border: `1px solid ${badge.border}` }}>
+                    <div className="w-1 h-1 rounded-full" style={{ background: badge.dot }} />
                     {badge.label}
                 </span>
             </div>
 
-            <div className="relative z-10">
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: t.label }}>{kpi.label}</p>
-                <h4 className="text-3xl font-black tracking-tighter leading-none tabular-nums" style={{ color: t.value }}>{kpi.value}</h4>
-                <p className="text-[9px] font-medium mt-1.5" style={{ color: t.secondary }}>{kpi.sub}</p>
+            <div className="mt-1">
+                <p style={{ fontSize: '13px', fontWeight: 500, color: t.secondary, marginBottom: 6 }}>
+                    {kpi.label}
+                </p>
+                <h4 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: t.value }}>
+                    {kpi.value}
+                </h4>
             </div>
 
-            <div className="flex items-center gap-1.5 relative z-10">
-                {kpi.up ? <TrendingUp size={11} style={{ color: kpi.color }} /> : <TrendingDown size={11} style={{ color: kpi.color }} />}
-                <span className="text-[9px] font-bold" style={{ color: kpi.color }}>{kpi.trend}</span>
-                <ArrowRight size={9} className="ml-auto" style={{ color: t.micro }} />
+            <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-1">
+                    {kpi.up ? <TrendingUp size={12} style={{ color: kpi.color }} /> : <TrendingDown size={12} style={{ color: kpi.color }} />}
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: kpi.color }}>{kpi.trend}</span>
+                </div>
+                <span style={{ fontSize: '12px', color: t.micro }}>• {kpi.sub}</span>
             </div>
-
-            <div className="h-[3px] w-full rounded-full overflow-hidden relative z-10" style={{ background: trackBg(isDarkMode) }}>
+            
+            <div className="h-1 w-full rounded-full overflow-hidden mt-3" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                 <div className="h-full rounded-full"
                     style={{
                         width: show ? `${kpi.barW}%` : '0%',
-                        background: `linear-gradient(90deg,${kpi.color},${kpi.color2})`,
-                        boxShadow: `0 0 10px ${kpi.color}80`,
-                        transition: `width 1000ms cubic-bezier(0.22,1,0.36,1) ${index * 55 + 200}ms`,
+                        background: kpi.color,
+                        transition: `width 1000ms cubic-bezier(0.22,1,0.36,1) ${index * 50 + 200}ms`,
                     }}
                 />
             </div>
@@ -73,50 +79,90 @@ const KPICard = ({ kpi, index, isDarkMode, show }: { kpi: any; index: number; is
 };
 
 const SkeletonCard = ({ isDarkMode }: { isDarkMode: boolean }) => (
-    <div className="rounded-2xl p-4 flex flex-col gap-3.5" style={glassCard(isDarkMode)}>
+    <div className="rounded-xl p-5 flex flex-col gap-4 border" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
         <div className="flex items-start justify-between">
-            <div className="w-10 h-10 rounded-xl sk" />
-            <div className="w-14 h-5 rounded-full sk" />
+            <div className="w-10 h-10 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+            <div className="w-16 h-6 rounded-md bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
         </div>
-        <div className="space-y-2">
-            <div className="w-20 h-2.5 rounded sk" />
-            <div className="w-16 h-9 rounded sk" />
-            <div className="w-32 h-2.5 rounded sk" />
+        <div className="space-y-3 mt-2">
+            <div className="w-24 h-3 rounded bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+            <div className="w-20 h-8 rounded bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
         </div>
-        <div className="w-28 h-3 rounded sk" />
-        <div className="h-[3px] w-full rounded-full sk" />
+        <div className="w-32 h-3 rounded bg-zinc-200 dark:bg-zinc-800 animate-pulse mt-2" />
+        <div className="h-1 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 animate-pulse mt-3" />
     </div>
 );
 
-// Helper: format trend text — skip if null
 const trendText = (trend: number | null, suffix = '% vs prev') => {
     if (trend === null || trend === undefined) return 'Live monitoring';
     return `${trend > 0 ? '+' : ''}${trend}${suffix}`;
 };
 
-import { NoDataFound } from './noDataFound';
 
-export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPILayerProps) => {
+
+export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData, periodLabel = '30 Days' }: ExecutiveKPILayerProps) => {
     const [show, setShow] = useState(false);
-    
+    const { templates = [] } = useTemplates();
+    const { pagination } = useCampaigns(false);
+    const totalCampaigns = pagination?.totalCampaigns ?? 0;
+
     useEffect(() => {
         const timer = setTimeout(() => setShow(true), 100);
         return () => clearTimeout(timer);
     }, []);
 
-    // 6 KPI cards — exact fields from API
+    const approvedTemplates = (templates || []).filter(t => 
+        t.status?.toUpperCase() === 'APPROVED' || t.status === 'approved'
+    ).length;
+
     const kpiList = [
         { 
             label: 'Total Leads', 
-            // value is a plain number → toLocaleString
             value: kpisData?.totalLeads?.value?.toLocaleString() ?? '0', 
             icon: Users, 
             trend: trendText(kpisData?.totalLeads?.trend), 
             up: (kpisData?.totalLeads?.trend ?? 0) >= 0, 
             color: '#10b981', color2: '#34d399', 
-            sub: 'All contacts captured', 
-            barW: Math.min(100, kpisData?.totalLeads?.value ? (kpisData.totalLeads.value / 2000) * 100 : 0),
+            sub: `Last ${periodLabel}`, 
+            barW: kpisData?.totalLeads?.value > 0 ? Math.max(2, Math.min(100, (kpisData.totalLeads.value / 2000) * 100)) : 0,
             status: kpisData?.totalLeads?.status ?? 'great',
+            group: 'period',
+        },
+        { 
+            label: 'AI Auto-Resolved', 
+            value: `${kpisData?.aiAutoResolved?.value ?? 0}%`, 
+            icon: Brain, 
+            trend: trendText(kpisData?.aiAutoResolved?.trend),
+            up: (kpisData?.aiAutoResolved?.trend ?? 0) >= 0, 
+            color: '#6366f1', color2: '#818cf8', 
+            sub: `Handled without agent · ${periodLabel}`, 
+            barW: kpisData?.aiAutoResolved?.value ?? 0, 
+            status: kpisData?.aiAutoResolved?.status ?? 'great',
+            group: 'period',
+        },
+        {
+            label: 'Total Campaigns',
+            value: totalCampaigns.toLocaleString(),
+            icon: Megaphone,
+            trend: 'Created campaigns',
+            up: true,
+            color: '#f59e0b', color2: '#fbbf24',
+            sub: `Active & scheduled · ${periodLabel}`,
+            barW: Math.min(100, (totalCampaigns / 20) * 100),
+            status: totalCampaigns > 0 ? 'good' : 'watch',
+            group: 'period',
+        },
+        {
+            label: 'Approved Templates',
+            value: approvedTemplates.toLocaleString(),
+            icon: FileText,
+            trend: 'Available for campaigns',
+            up: true,
+            color: '#14b8a6', color2: '#2dd4bf',
+            sub: 'Ready to send',
+            barW: Math.min(100, (approvedTemplates / 20) * 100),
+            status: approvedTemplates > 0 ? 'great' : 'watch',
+            group: 'period',
         },
         { 
             label: 'New Leads Today', 
@@ -126,43 +172,33 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
             up: (kpisData?.newLeadsToday?.trend ?? 0) >= 0, 
             color: '#3b82f6', color2: '#60a5fa', 
             sub: 'Inbound today', 
-            barW: 42, 
+            barW: kpisData?.newLeadsToday?.value > 0 ? Math.max(2, Math.min(100, (kpisData.newLeadsToday.value / 50) * 100)) : 0, 
             status: kpisData?.newLeadsToday?.status ?? 'good',
+            group: 'live',
         },
         { 
-            label: 'Active Chats Now', 
+            label: 'Active Chats', 
             value: kpisData?.activeChats?.value?.toLocaleString() ?? '0', 
             icon: MessageCircle, 
             trend: 'Live monitoring', 
             up: true, 
             color: '#a855f7', color2: '#c084fc', 
             sub: 'Conversations in progress', 
-            barW: 55, 
+            barW: kpisData?.activeChats?.value > 0 ? Math.max(2, Math.min(100, (kpisData.activeChats.value / 20) * 100)) : 0, 
             status: kpisData?.activeChats?.status ?? 'good',
-        },
-        { 
-            label: 'AI Auto-Resolved', 
-            // value is already a % number (e.g. 78.4) → just append %
-            value: `${kpisData?.aiAutoResolved?.value ?? 0}%`, 
-            icon: Brain, 
-            trend: trendText(kpisData?.aiAutoResolved?.trend),
-            up: (kpisData?.aiAutoResolved?.trend ?? 0) >= 0, 
-            color: '#6366f1', color2: '#818cf8', 
-            sub: 'Handled without agent', 
-            barW: kpisData?.aiAutoResolved?.value ?? 0, 
-            status: kpisData?.aiAutoResolved?.status ?? 'great',
+            group: 'live',
         },
         { 
             label: 'Escalated to Agent', 
-            // escalatedToAgent.value is a COUNT (not a %) → show as plain number
             value: kpisData?.escalatedToAgent?.value?.toLocaleString() ?? '0', 
             icon: PhoneForwarded, 
             trend: trendText(kpisData?.escalatedToAgent?.trend),
-            up: (kpisData?.escalatedToAgent?.trend ?? 0) <= 0,  // fewer escalations = good
+            up: (kpisData?.escalatedToAgent?.trend ?? 0) <= 0,
             color: '#f43f5e', color2: '#fb7185', 
             sub: 'Required human takeover', 
-            barW: Math.min(100, kpisData?.escalatedToAgent?.value ? kpisData.escalatedToAgent.value * 5 : 0),
+            barW: kpisData?.escalatedToAgent?.value > 0 ? Math.max(2, Math.min(100, (kpisData.escalatedToAgent.value / 10) * 100)) : 0,
             status: kpisData?.escalatedToAgent?.status ?? 'good',
+            group: 'live',
         },
         { 
             label: 'Appointments Today', 
@@ -172,12 +208,17 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
             up: (kpisData?.appointmentsToday?.trend ?? 0) >= 0, 
             color: '#f97316', color2: '#fb923c', 
             sub: 'Confirmed bookings today', 
-            barW: 65, 
+            barW: kpisData?.appointmentsToday?.value > 0 ? Math.max(2, Math.min(100, (kpisData.appointmentsToday.value / 10) * 100)) : 0, 
             status: kpisData?.appointmentsToday?.status ?? 'great',
+            group: 'live',
         },
     ];
 
     const hasData = kpisData && Object.values(kpisData).some((kpi: any) => kpi?.value > 0);
+    const t = tx(isDarkMode);
+
+    const periodKpis = kpiList.filter(k => k.group === 'period');
+    const liveKpis = kpiList.filter(k => k.group === 'live');
 
     if (kpisData && !hasData) {
         return (
@@ -190,11 +231,40 @@ export const ExecutiveKPILayer = ({ isDarkMode = true, kpisData }: ExecutiveKPIL
     }
 
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-            {!kpisData
-                ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} isDarkMode={isDarkMode} />)
-                : kpiList.map((kpi, i) => <KPICard key={i} kpi={kpi as any} index={i} isDarkMode={isDarkMode} show={show} />)
-            }
+        <div className="space-y-6">
+            {/* Period-Filtered Analytics */}
+            <div>
+                <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3b82f6' }} />
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.secondary, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+                        Analytics — Last {periodLabel}
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {!kpisData
+                        ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} isDarkMode={isDarkMode} />)
+                        : periodKpis.map((kpi, i) => <KPICard key={i} kpi={kpi as any} index={i} isDarkMode={isDarkMode} show={show} />)
+                    }
+                </div>
+            </div>
+
+            {/* Live / Today */}
+            <div>
+                <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#10b981' }} />
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: t.secondary, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+                        Live &amp; Today
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {!kpisData
+                        ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={`live-${i}`} isDarkMode={isDarkMode} />)
+                        : liveKpis.map((kpi, i) => <KPICard key={i} kpi={kpi as any} index={i + periodKpis.length} isDarkMode={isDarkMode} show={show} />)
+                    }
+                </div>
+            </div>
         </div>
     );
 };

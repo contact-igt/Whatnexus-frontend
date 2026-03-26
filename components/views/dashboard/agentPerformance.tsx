@@ -2,16 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clock, MoreHorizontal } from 'lucide-react';
-import { glassCard, glassInner, tx, trackBg } from './glassStyles';
+import { Clock, MoreHorizontal, Users2 } from 'lucide-react';
+import { tx } from './glassStyles';
 import { AgentPerformanceData } from '@/services/whatsappDashboard';
+import { NoDataFound } from './noDataFound';
 
 interface AgentPerformanceProps {
     isDarkMode?: boolean;
     agentData?: AgentPerformanceData;
 }
 
-// Cycling gradient per agent row
 const agentGradients = [
     'linear-gradient(135deg,#10b981,#14b8a6)',
     'linear-gradient(135deg,#6366f1,#8b5cf6)',
@@ -28,14 +28,12 @@ const agentBarGradients = [
     { from: '#f59e0b', to: '#f97316' },
 ];
 
-// onlineStatus → badge colours
 const onlineBadge = {
     online:  { bg: 'rgba(16,185,129,0.15)',  color: '#34d399',  border: 'rgba(16,185,129,0.25)',  dot: '#22c55e' },
     offline: { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8',  border: 'rgba(100,116,139,0.25)', dot: '#64748b' },
 };
 
-import { NoDataFound } from './noDataFound';
-import { Users2 } from 'lucide-react';
+
 
 export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerformanceProps) => {
     const [show, setShow] = useState(false);
@@ -45,90 +43,94 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
 
     useEffect(() => {
         if (agentData) {
-            const t1 = setTimeout(() => setShow(true), 300);
-            const t2 = setTimeout(() => setBars(true), 480);
+            const t1 = setTimeout(() => setShow(true), 150);
+            const t2 = setTimeout(() => setBars(true), 300);
             return () => { clearTimeout(t1); clearTimeout(t2); };
         }
     }, [agentData]);
 
-    const agents = agentData?.agents ?? [];
+    const agents = [...(agentData?.agents ?? [])]
+        .sort((a, b) => (b.chatCount || 0) - (a.chatCount || 0))
+        .slice(0, 5);
     const summary = agentData?.summary;
 
     return (
-        <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+        <div className="rounded-xl p-5 border flex flex-col gap-5 h-full transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#6366f1' }} />
-                    <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>Agent Performance</span>
+                <div>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Agent Performance</h3>
                 </div>
-                <MoreHorizontal size={14} style={{ color: t.micro, cursor: 'pointer' }} onClick={() => router.push('/team')} />
+                <button onClick={() => router.push('/team')}
+                    className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    style={{ color: t.secondary }}>
+                    <MoreHorizontal size={18} />
+                </button>
             </div>
 
-            <div className="space-y-2 flex-1 flex flex-col">
+            <div className="space-y-2 flex-1 flex flex-col justify-start">
                 {!agentData ? (
-                    Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 w-full sk rounded-xl" />)
+                    Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 w-full bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />)
                 ) : agents.length === 0 ? (
                     <NoDataFound 
                         isDarkMode={isDarkMode}
                         title="No Agent Records"
                         description="Team workload and response metrics will appear here."
-                        icon={<Users2 size={32} />}
+                        icon={<Users2 size={36} />}
                         className="bg-transparent border-none shadow-none py-10"
                     />
                 ) : agents.map((a, i) => {
-                    const grad = agentGradients[i % agentGradients.length];
-                    const barGrad = agentBarGradients[i % agentBarGradients.length];
                     const badge = onlineBadge[a.onlineStatus] ?? onlineBadge.offline;
-                    // Initials from name
-                    const initials = a.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                    const initials = a.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                    // Softer fallback colors instead of bright neon logic based on position:
+                    const colorList = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                    const hex = colorList[i % colorList.length];
+                    const roleLabel = a.role === 'doctor' ? 'Doctor' : a.role === 'staff' ? 'Staff' : 'Agent';
 
                     return (
-                        <div key={i} onClick={() => router.push('/team')} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-transform hover:-translate-y-px"
+                        <div key={i} onClick={() => router.push('/team')}
+                            className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
                             style={{
-                                ...glassInner(isDarkMode),
-                                opacity: show ? 1 : 0,
-                                transform: show ? 'translateX(0)' : 'translateX(-8px)',
-                                transition: `opacity 0.35s ease ${i * 80}ms, transform 0.35s ease ${i * 80}ms`
+                                opacity: show ? 1 : 0, transform: show ? 'translateX(0)' : 'translateX(-8px)',
+                                transition: `opacity 0.35s ease ${i * 60}ms, transform 0.35s ease ${i * 60}ms`
                             }}>
-                            {/* Avatar + online dot */}
+                            {/* Avatar */}
                             <div className="relative shrink-0">
-                                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-lg"
-                                    style={{ background: grad }}>{initials}</div>
-                                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
-                                    style={{ background: badge.dot, borderColor: isDarkMode ? '#080b12' : '#f1f5f9' }} />
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-sm"
+                                    style={{ background: hex }}>{initials}</div>
+                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
+                                    style={{ background: badge.dot, borderColor: isDarkMode ? '#09090b' : '#ffffff' }} />
                             </div>
 
-                            {/* Name + status chip + bar */}
+                            {/* Name + bar */}
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1.5">
-                                    <p className="text-xs font-black tracking-tight leading-none" style={{ color: t.primary }}>{a.name}</p>
-                                    {/* onlineStatus → "online"=green, "offline"=grey */}
-                                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider"
-                                        style={{ background: badge.bg, color: badge.color, borderColor: badge.border }}>
-                                        {a.onlineStatus}
-                                    </span>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2">
+                                        <p style={{ fontSize: '14px', fontWeight: 500, color: t.primary }}>{a.name}</p>
+                                        <span className="px-1.5 py-0.5 rounded"
+                                            style={{ fontSize: '10px', fontWeight: 600, color: t.secondary, background: isDarkMode ? '#27272a' : '#f4f4f5' }}>
+                                            {roleLabel}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <div className="flex items-center gap-1 text-right">
+                                            <span style={{ fontSize: '14px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: t.primary }}>{a.chatCount}</span>
+                                            <span style={{ fontSize: '11px', color: t.secondary }}>chats</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                {/* barPct → progress bar width */}
-                                <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: trackBg(isDarkMode) }}>
-                                    <div className="h-full rounded-full"
-                                        style={{
-                                            background: `linear-gradient(90deg,${barGrad.from},${barGrad.to})`,
-                                            width: bars ? `${a.barPct}%` : '0%',
-                                            transition: `width 800ms cubic-bezier(0.22,1,0.36,1) ${i * 80 + 150}ms`
-                                        }} />
-                                </div>
-                            </div>
-
-                            {/* chatCount + responseTime (pre-formatted) */}
-                            <div className="flex flex-col items-end gap-1 shrink-0">
-                                <div className="flex items-center gap-1">
-                                    <span className="text-xs font-black tabular-nums" style={{ color: t.secondary }}>{a.chatCount}</span>
-                                    <span className="text-[8px]" style={{ color: t.micro }}>chats</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Clock size={9} style={{ color: t.micro }} />
-                                    {/* responseTime is pre-formatted → render as-is */}
-                                    <span className="text-[10px] font-black tabular-nums" style={{ color: t.secondary }}>{a.responseTime}</span>
+                                <div className="flex items-center gap-3">
+                                    <div className="h-1.5 flex-1 rounded-full overflow-hidden" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+                                        <div className="h-full rounded-full"
+                                            style={{
+                                                background: hex,
+                                                width: bars && a.chatCount > 0 ? `${Math.max(a.barPct, 5)}%` : '0%',
+                                                transition: `width 800ms cubic-bezier(0.22,1,0.36,1) ${i * 60 + 100}ms`
+                                            }} />
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 w-12 justify-end">
+                                        <Clock size={12} style={{ color: t.secondary }} />
+                                        <span style={{ fontSize: '11px', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: t.secondary }}>{a.responseTime}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -136,18 +138,18 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                 })}
             </div>
 
-            {/* Summary bar — peakTime / active / satisfaction */}
-            <div className="pt-3 grid grid-cols-3 gap-2" style={{ borderTop: `1px solid ${t.divider}` }}>
+            {/* Summary bar */}
+            <div className="pt-4 grid grid-cols-3 gap-3" style={{ borderTop: `1px solid ${isDarkMode ? '#27272a' : '#e4e4e7'}` }}>
                 {!agentData ? (
-                    Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-12 w-full sk rounded-xl" />)
+                    Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 w-full bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />)
                 ) : [
                     { label: 'Peak Time',    value: summary?.peakTime ?? '—' },
                     { label: 'Active',       value: summary?.active ?? '—'   },
                     { label: 'Satisfaction', value: summary?.satisfaction ?? '—' },
                 ].map((s, i) => (
-                    <div key={i} className="p-2 rounded-xl flex flex-col items-center gap-1" style={glassInner(isDarkMode)}>
-                        <p className="text-[8px] font-bold uppercase tracking-widest text-center" style={{ color: t.label }}>{s.label}</p>
-                        <p className="text-[11px] font-black" style={{ color: t.value }}>{s.value}</p>
+                    <div key={i} className="p-3 rounded-xl flex flex-col justify-center border" style={{ background: isDarkMode ? '#18181b' : '#fafafa', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+                        <p style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>{s.label}</p>
+                        <p style={{ fontSize: '16px', fontWeight: 700, color: t.value, marginTop: 2 }}>{s.value}</p>
                     </div>
                 ))}
             </div>

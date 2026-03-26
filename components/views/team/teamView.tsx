@@ -13,7 +13,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { RoleBasedWrapper } from '@/components/ui/roleBasedWrapper';
 import { Select } from '../../ui/select';
 import { Input } from '../../ui/input';
-import { useCreateTenantUserMutation, useTenantUserQuery, useSoftDeleteTenantUserMutation, useUpdateTenantUserMutation, usePermanentDeleteTenantUserMutation, useGetTenantUserByIdQuery } from '@/hooks/useTenantUserQuery';
+import { useCreateTenantUserMutation, useTenantUserQuery, useSoftDeleteTenantUserMutation, useUpdateTenantUserMutation, usePermanentDeleteTenantUserMutation, useGetTenantUserByIdQuery, useDeletedTenantUserQuery, useRestoreTenantUserMutation } from '@/hooks/useTenantUserQuery';
 import { ActionMenu } from '@/components/ui/actionMenu';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { DataTable, ColumnDef } from '@/components/ui/dataTable';
@@ -63,23 +63,36 @@ export const TeamManagementView = () => {
     const [isPermanentDeleteModalOpen, setIsPermanentDeleteModalOpen] = useState(false);
 
     // Data and mutations
-    const { data: tenantUserData, isLoading } = useTenantUserQuery();
+    const { data: tenantUserData, isLoading: activeLoading } = useTenantUserQuery();
+    const { data: deletedTenantUserData, isLoading: deletedLoading } = useDeletedTenantUserQuery();
     const { data: userDetails, isLoading: userDetailsLoading } = useGetTenantUserByIdQuery(selectedUser?.tenant_user_id || "");
     const { mutate: createTenantUserMutate, isPending: createLoading } = useCreateTenantUserMutation();
     const { mutate: deleteTenantUserMutate, isPending: deleteLoading } = useSoftDeleteTenantUserMutation();
     const { mutate: updateTenantUserMutate, isPending: updateLoading } = useUpdateTenantUserMutation();
     const { mutate: permanentDeleteMutate, isPending: permanentDeleteLoading } = usePermanentDeleteTenantUserMutation();
+    const { mutate: restoreTenantUserMutate, isPending: restoreLoading } = useRestoreTenantUserMutation();
+
+    const isLoading = activeTab === 'active' ? activeLoading : deletedLoading;
 
 
-    const filteredUsers = tenantUserData?.data?.users?.filter((user: any) => 
-        user.role !== "super_admin" && 
-        (user.username?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-         user.email?.toLowerCase().includes(searchQuery.toLowerCase()))
-    ) || [];
+    const activeUsers = useMemo(() => {
+        return (tenantUserData?.data?.users || []).filter((u: any) => {
+            if (u.role === "super_admin") return false;
+            const searchLower = searchQuery.toLowerCase();
+            return [u.username, u.email, u.mobile, u.role, u.status].some(field =>
+                field?.toString().toLowerCase().includes(searchLower)
+            );
+        });
+    }, [tenantUserData, searchQuery]);
 
-    // Separate active and deleted users
-    const activeUsers = filteredUsers.filter((user: any) => user.status !== 'deleted' && user.is_deleted !== true);
-    const deletedUsers = filteredUsers.filter((user: any) => user.status === 'deleted' || user.is_deleted === true);
+    const deletedUsers = useMemo(() => {
+        return (deletedTenantUserData?.data || []).filter((u: any) => {
+            const searchLower = searchQuery.toLowerCase();
+            return [u.username, u.email, u.mobile, u.role, u.status].some(field =>
+                field?.toString().toLowerCase().includes(searchLower)
+            );
+        });
+    }, [deletedTenantUserData, searchQuery]);
 
     const displayUsers = activeTab === 'active' ? activeUsers : deletedUsers;
 
@@ -136,8 +149,9 @@ export const TeamManagementView = () => {
     };
 
     const handleRestoreClick = (user: any) => {
-        // We need a restore mutation for tenant users if it exists, otherwise we'll just use update status
-        updateTenantUserMutate({ tenantUserId: user.tenant_user_id, data: { status: 'active' } });
+        if (user.tenant_user_id) {
+            restoreTenantUserMutate(user.tenant_user_id);
+        }
     };
 
     const handleDeleteClick = (user: any) => {
@@ -228,7 +242,8 @@ export const TeamManagementView = () => {
                     "text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide",
                     row.role === 'tenant_admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
                         row.role === 'admin' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            row.role === 'doctor' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
+                                'bg-slate-500/10 text-slate-400 border-slate-500/20'
                 )}>
                     {row?.role || 'staff'}
                 </span>
@@ -258,6 +273,8 @@ export const TeamManagementView = () => {
                                 isDarkMode={isDarkMode}
                                 isPermanentDelete={true}
                                 onPermanentDelete={() => handlePermanentDeleteClick(row)}
+                                isRestore={true}
+                                onRestore={() => handleRestoreClick(row)}
                             />
                         </RoleBasedWrapper>
                     )}
@@ -354,11 +371,14 @@ export const TeamManagementView = () => {
 
             <TeamUserDrawer
                 isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
-                user={selectedUser}
+                onClose={() => {
+                    setIsDrawerOpen(false);
+                    setSelectedUser(null);
+                }}
+                user={userDetails?.data || selectedUser}
                 mode={drawerMode}
                 isDarkMode={isDarkMode}
-                isSaving={createLoading || updateLoading}
+                isSaving={createLoading || updateLoading || userDetailsLoading}
                 onSubmit={onDrawerSubmit}
             />
 

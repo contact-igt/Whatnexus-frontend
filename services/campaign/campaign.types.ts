@@ -15,14 +15,14 @@ export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'faile
 
 export interface CSVRecipient {
     mobile_number: string;
-    dynamic_variables?: string[];
+    dynamic_variables?: any;
     contact_id?: string; // Optional for manual selection
 }
 
 export interface ManualRecipient {
     contact_id: string;
     mobile_number: string;
-    dynamic_variables?: string[];
+    dynamic_variables?: any;
 }
 
 export interface CreateCampaignRequest {
@@ -34,12 +34,14 @@ export interface CreateCampaignRequest {
     scheduled_at?: string | null; // ISO 8601 format, required if campaign_type = 'scheduled'
     variable_values?: Record<string, string>; // Optional variable values for template
     header_media_url?: string | null;
+    header_file_name?: string | null;
     location_params?: {
         latitude: string;
         longitude: string;
         name: string;
         address: string;
     } | null;
+    card_media_urls?: Record<number, string> | null;
 }
 
 export interface CampaignListParams {

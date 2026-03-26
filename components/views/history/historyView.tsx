@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { History as HistoryIcon, MessageCircle, Send } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,8 @@ import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign
 import { TemplateVariableModal } from './templateVariableModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useQueryClient } from '@tanstack/react-query';
+import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
+// Extracted Components
 
 // Extracted Components
 import { getDateLabel } from '../chats/ChatUtils';
@@ -22,8 +24,15 @@ import { HistoryHeader } from './HistoryHeader';
 import { HistoryMessageList } from './HistoryMessageList';
 import { HistoryDetails } from './HistoryDetails';
 import { ChatSummaryOverlay } from '../chats/ChatSummaryOverlay';
+import { ThemedLoader } from '@/components/ui/themedLoader';
 
 export const HistoryView = () => {
+    const queryClient = useQueryClient();
+    const { data: tenantSettingsData } = useGetTenantSettingsQuery();
+    const rawAiSettings = tenantSettingsData?.data?.ai_settings || {};
+    const aiSettings = {
+        neural_summary: rawAiSettings.neural_summary ?? true,
+    };
     const { user, whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -32,7 +41,7 @@ export const HistoryView = () => {
         data: chatHistoryList,
         isLoading: isChatsLoading,
     } = useGetAllHistoryChatsQuery();
-    
+
     const [filteredChats, setFilteredChats] = useState(chatHistoryList?.data?.chats);
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -56,7 +65,6 @@ export const HistoryView = () => {
     const selectedChatRef = useRef<any>(null);
     const searchParams = useSearchParams();
     const phoneParam = searchParams.get('phone');
-    const queryClient = useQueryClient();
     const [chatFilter, setChatFilter] = useState<'all' | 'read' | 'unread'>('all');
     const handleChatSearch = (e: any) => {
         setChatSearchText(e.target.value);
@@ -81,11 +89,17 @@ export const HistoryView = () => {
         if (!selectedChat?.phone) return;
         if (!chatHistoryList?.data?.chats?.length) return;
 
-        const hasUnreadUserMessages = chatHistoryList.data.chats.some(
-            (msg: any) => msg.seen === "false"
-        );
+        const currentChat = chatHistoryList.data.chats.find((c: any) => c.phone === selectedChat.phone);
+        const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
+
         if (hasUnreadUserMessages) {
             updateSeenMutate(selectedChat?.phone);
+            setFilteredChats((prev: any) => {
+                if (!prev) return prev;
+                return prev.map((c: any) =>
+                    c.phone === selectedChat?.phone ? { ...c, unread_count: 0 } : c
+                );
+            });
         }
     }, [selectedChat?.phone, chatHistoryList?.data?.chats]);
 
@@ -141,9 +155,9 @@ export const HistoryView = () => {
                 filtered = filtered?.filter((chat: any) => chat?.name?.toLowerCase().includes(value) || chat?.phone?.includes(value));
             }
             if (chatFilter === 'read') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "true");
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) === 0);
             } else if (chatFilter === 'unread') {
-                filtered = filtered?.filter((chat: any) => chat?.seen == "false" || chat?.seen == null);
+                filtered = filtered?.filter((chat: any) => Number(chat?.unread_count) > 0);
             }
             setFilteredChats(filtered);
         }, 200);
@@ -186,10 +200,40 @@ export const HistoryView = () => {
     }, [chatHistoryList?.data?.chats, phoneParam]);
 
     const isSearching = messageSearchText.trim().length > 0;
-    const updatedMessageData =
-        newMessage.length > 0
-            ? [...(messagesData?.data ?? []), ...newMessage]
-            : messagesData?.data ?? [];
+    const updatedMessageData = useMemo(() => {
+        const dbMessages = messagesData?.data ?? [];
+        const socketMessages = newMessage;
+
+        if (socketMessages.length === 0) return dbMessages;
+
+        const dbIds = new Set(dbMessages.map((m: any) => m.id).filter(Boolean));
+        const dbContentIndex = dbMessages.map((m: any) => ({
+            key: `${(m.message || "").trim()}:${m.sender}`,
+            ts: new Date(m.created_at).getTime(),
+        }));
+
+        const filtered = socketMessages.filter((msg: any) => {
+            if (msg.id && dbIds.has(msg.id)) return false;
+            const key = `${(msg.message || "").trim()}:${msg.sender}`;
+            const ts = new Date(msg.created_at || msg.timestamp).getTime();
+            for (const db of dbContentIndex) {
+                if (db.key === key && Math.abs(db.ts - ts) < 120000) return false;
+            }
+            return true;
+        });
+
+        const unique: any[] = [];
+        const seen = new Set<string>();
+        for (const msg of filtered) {
+            const dedupKey = msg.id ? `id:${msg.id}` : `${(msg.message || "").trim()}:${msg.sender}`;
+            if (!seen.has(dedupKey)) {
+                unique.push(msg);
+                seen.add(dedupKey);
+            }
+        }
+
+        return [...dbMessages, ...unique];
+    }, [messagesData?.data, newMessage]);
     const displayMessages = isSearching
         ? filteredMessage ?? []
         : updatedMessageData ?? [];
@@ -218,6 +262,8 @@ export const HistoryView = () => {
             setNewMessage(prev => [...prev, data]);
         }
 
+        const isUser = data.sender === 'user';
+
         setFilteredChats((prev: any) => {
             if (!prev) return prev;
             const index = prev.findIndex((c: any) => c.phone === data.phone);
@@ -228,40 +274,44 @@ export const HistoryView = () => {
                     name: data.name,
                     message: data.message,
                     last_message_time: data.created_at,
-                    seen: "false",
+                    seen: isUser ? "false" : updated[index].seen,
+                    unread_count: isUser ? (Number(updated[index].unread_count) || 0) + 1 : updated[index].unread_count
                 };
                 return [updated[index], ...updated.filter((_, i) => i !== index)];
             }
-            return [
-                {
-                    phone: data.phone,
-                    name: data.name,
-                    message: data.message,
-                    last_message_time: data.created_at,
-                    seen: "false",
-                },
-                ...prev,
-            ];
+            return prev;
         });
+
+        queryClient.invalidateQueries({ queryKey: ["historychats"] });
     };
 
     useEffect(() => {
         if (!user?.tenant_id) return;
-        if (!socket.connected) socket.connect();
+        
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit("join-tenant", user.tenant_id);
+        }
+
         socket.on("connect", () => {
             socket.emit("join-tenant", user.tenant_id);
         });
+
         socket.off("new-message");
         socket.on("new-message", handleIncomingMessage);
-        socket.on("message-status-update", (data: any) => {
-            queryClient.invalidateQueries({ queryKey: ["messages", data.phone] });
+        socket.on("session-activated", (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ["history-chats"] });
         });
+
         return () => {
             socket.off("new-message", handleIncomingMessage);
             socket.off("message-status-update");
+            socket.off("session-activated");
             socket.off("connect");
         };
-    }, []);
+    }, [user?.tenant_id]);
 
     useEffect(() => {
         if (groupedEntries?.length > 0) {
@@ -288,7 +338,7 @@ export const HistoryView = () => {
 
     return (
         <div className={cn("flex h-[calc(100vh-56px)] overflow-hidden", isDarkMode ? "bg-[#0b141a]" : "bg-[#f0f2f5]")}>
-            <HistorySidebar 
+            <HistorySidebar
                 isDarkMode={isDarkMode}
                 chatSearchText={chatSearchText}
                 handleChatSearch={handleChatSearch}
@@ -299,9 +349,8 @@ export const HistoryView = () => {
                 selectedChat={selectedChat}
                 handleSelectChat={handleSelectChat}
             />
-
             <div className="flex-1 flex flex-col min-w-0 relative">
-                <ChatSummaryOverlay 
+                <ChatSummaryOverlay
                     isDarkMode={isDarkMode}
                     chatSummary={chatSummary}
                     setChatSummary={setChatSummary}
@@ -310,7 +359,7 @@ export const HistoryView = () => {
                 <GlassCard isDarkMode={isDarkMode} className="flex-1 flex flex-col min-h-0 relative p-0 overflow-hidden rounded-2xl">
                     {selectedChat ? (
                         <>
-                            <HistoryHeader 
+                            <HistoryHeader
                                 isDarkMode={isDarkMode}
                                 selectedChat={selectedChat}
                                 isSearchVisible={isSearchVisible}
@@ -320,7 +369,7 @@ export const HistoryView = () => {
                                 handleMessageSearch={handleMessageSearch}
                             />
 
-                            <HistoryMessageList 
+                            <HistoryMessageList
                                 isDarkMode={isDarkMode}
                                 isMessagesLoading={isMessagesLoading}
                                 isSearching={isSearching}
@@ -338,50 +387,55 @@ export const HistoryView = () => {
                             </div>
                             <h3 className="text-xl font-bold">WhatsApp History Hub</h3>
                             {isChatsLoading ? (
-                                <div className="mt-6 flex flex-col items-center space-y-3">
-                                    <div className="w-6 h-6 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                                    <p className="text-sm font-medium text-emerald-600/80">Loading history...</p>
+                                <div className="mt-8">
+                                    <ThemedLoader 
+                                        isDarkMode={isDarkMode} 
+                                        text="Accessing Archives" 
+                                        subtext="Retrieving history threads" 
+                                        showLogo={false}
+                                    />
                                 </div>
                             ) : (
                                 <p className="text-sm mt-2">Select a thread to view archives</p>
                             )}
                         </div>
                     )}
-                        {/* Bottom Template Area */}
-                        {selectedChat && (
-                            <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
-                                <div className={cn(
-                                    "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
-                                    isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
-                                )}>
-                                    <div>
-                                        <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                            History Thread Closed
-                                        </h3>
-                                        <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                            Send a template to re-initiate this conversation.
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => setIsTemplateModalOpen(true)}
-                                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
-                                    >
-                                        <Send size={16} />
-                                        <span>Send Template</span>
-                                    </button>
+                    {/* Bottom Template Area */}
+                    {selectedChat && (
+                        <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
+                            <div className={cn(
+                                "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
+                                isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
+                            )}>
+                                <div>
+                                    <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                        History Thread Closed
+                                    </h3>
+                                    <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                        Send a template to re-initiate this conversation.
+                                    </p>
                                 </div>
+                                <button
+                                    onClick={() => setIsTemplateModalOpen(true)}
+                                    className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                >
+                                    <Send size={16} />
+                                    <span>Send Template</span>
+                                </button>
                             </div>
-                        )}
+                        </div>
+                    )}
                 </GlassCard>
             </div>
 
             {selectedChat && (
-                <HistoryDetails 
+                <HistoryDetails
                     isDarkMode={isDarkMode}
                     selectedChat={selectedChat}
                     summarizeChat={summarizeChat}
                     isSummarizing={isSummarizing}
                     setIsWeeklySummaryOpen={setIsWeeklySummaryOpen}
+                    isNeuralSummaryEnabled={aiSettings?.neural_summary !== false}
                 />
             )}
 

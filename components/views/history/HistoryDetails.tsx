@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Loader2, Brain, History as HistoryIcon } from 'lucide-react';
+import { User, Loader2, Brain, History as HistoryIcon, Lock } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { getDateLabel } from '../chats/ChatUtils';
 
@@ -9,6 +9,7 @@ interface HistoryDetailsProps {
     summarizeChat: () => void;
     isSummarizing: boolean;
     setIsWeeklySummaryOpen: (isOpen: boolean) => void;
+    isNeuralSummaryEnabled?: boolean;
 }
 
 export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
@@ -16,7 +17,8 @@ export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
     selectedChat,
     summarizeChat,
     isSummarizing,
-    setIsWeeklySummaryOpen
+    setIsWeeklySummaryOpen,
+    isNeuralSummaryEnabled = true
 }) => {
     return (
         <div className={cn("w-1/4 min-w-[280px] border-l flex flex-col shrink-0", isDarkMode ? "bg-[#111b21] border-white/5" : "bg-white border-slate-200")}>
@@ -56,16 +58,25 @@ export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
                 <div className="pt-4 border-t border-gray-100 dark:border-white/5">
                     <div className="space-y-3">
                         <button
-                            onClick={summarizeChat}
-                            disabled={isSummarizing}
-                            className="w-full h-10 flex items-center justify-center space-x-2 bg-blue-600/10 text-blue-500 px-4 rounded-xl text-xs font-bold uppercase hover:bg-blue-600/20 transition-colors disabled:opacity-50"
-                        >
-                            {isSummarizing ? (
-                                <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                                <Brain size={14} />
+                            onClick={isNeuralSummaryEnabled ? summarizeChat : undefined}
+                            disabled={isSummarizing || !isNeuralSummaryEnabled}
+                            title={!isNeuralSummaryEnabled ? "Neural Summary is disabled in settings" : undefined}
+                            className={cn(
+                                "w-full h-10 flex items-center px-4 rounded-xl text-xs font-bold uppercase transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed",
+                                !isNeuralSummaryEnabled
+                                    ? (isDarkMode ? "bg-slate-800/50 text-slate-500 border border-white/5" : "bg-slate-100 text-slate-400 border border-slate-200")
+                                    : "bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 border border-blue-500/10"
                             )}
-                            <span>Neural Summary</span>
+                        >
+                            <div className="flex items-center justify-center flex-1 space-x-2 mr-[-14px]">
+                                {isSummarizing ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                    <Brain size={14} />
+                                )}
+                                <span>Neural Summary</span>
+                            </div>
+                            {!isNeuralSummaryEnabled && <Lock size={12} className="ml-auto shrink-0 opacity-70" />}
                         </button>
                         <button
                             onClick={() => setIsWeeklySummaryOpen(true)}

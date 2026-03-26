@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Brain, Wifi, Users, MessageSquare, Bell, Clock, CheckCircle, AlertTriangle, TrendingUp, Layers } from 'lucide-react';
-import { glassCard, glassInner, tx } from './glassStyles';
-import { cn } from "@/lib/utils";
+import React, { useEffect, useState, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Brain, Wifi, Bell, Layers, Shield } from 'lucide-react';
+import { glassCard, tx } from './glassStyles';
+import { socket } from '@/utils/socket';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 
 interface GlobalCommandBarProps { 
     isDarkMode?: boolean;
@@ -12,25 +13,7 @@ interface GlobalCommandBarProps {
     wabaInfo?: any;
     period?: string;
     setPeriod?: (p: string) => void;
-}
-
-function useLiveClock() {
-    const [time, setTime] = useState('');
-    const [date, setDate] = useState('');
-    const [greeting, setGreeting] = useState('');
-    useEffect(() => {
-        const tick = () => {
-            const now = new Date();
-            const h = now.getHours();
-            setGreeting(h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening');
-            setTime(now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
-            setDate(now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
-        };
-        tick();
-        const id = setInterval(tick, 1000);
-        return () => clearInterval(id);
-    }, []);
-    return { time, date, greeting };
+    isManagement?: boolean;
 }
 
 const STATUS = {
@@ -39,20 +22,16 @@ const STATUS = {
     offline: { dot: '#f87171', ring: '' },
 } as const;
 
-// wabaInfo.quality → badge colour
 const qualityColor: Record<string, string> = {
-    GREEN:  '#22c55e',
-    YELLOW: '#eab308',
-    RED:    '#ef4444',
+    GREEN:  '#10b981',
+    YELLOW: '#f59e0b',
+    RED:    '#f43f5e',
 };
 
-// Period toggle config:
-// query param value → display label
-// Must match exactly what the API expects in the `period` query param
 const PERIOD_OPTIONS: { value: string; label: string }[] = [
-    { value: '7days',   label: '7D'  },
-    { value: '30days',  label: '30D' },
-    { value: 'alltime', label: 'All' },
+    { value: '7days',   label: '7 Days'  },
+    { value: '30days',  label: '30 Days' },
+    { value: 'alltime', label: 'All Time' },
 ];
 
 export const GlobalCommandBar = ({ 
@@ -60,176 +39,175 @@ export const GlobalCommandBar = ({
     headerData, 
     wabaInfo,
     period = "30days",
-    setPeriod 
+    setPeriod,
+    isManagement = false
 }: GlobalCommandBarProps) => {
-    const { time, date, greeting } = useLiveClock();
     const t = tx(isDarkMode);
     const router = useRouter();
+    const pathname = usePathname();
+    const { user } = useAuth();
+    
+    const [unreadCount, setUnreadCount] = useState(headerData?.needsAttention || 0);
+    const pathnameRef = useRef(pathname);
+
+    useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+        
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit('join-tenant', user.tenant_id);
+        }
+
+        socket.on('connect', () => {
+            socket.emit('join-tenant', user.tenant_id);
+        });
+
+        const handleNewMessage = () => {
+            if (!pathnameRef.current?.includes('/shared-inbox')) {
+                setUnreadCount((prev: number) => prev + 1);
+            }
+        };
+
+        socket.on('new-message', handleNewMessage);
+
+        return () => {
+            socket.off('new-message', handleNewMessage);
+            socket.off('connect');
+        };
+    }, [user?.tenant_id]);
 
     const qualityHex = qualityColor[wabaInfo?.quality] ?? '#94a3b8';
 
-    const systemHealth: Array<{ icon: any; label: string; status: 'online' | 'offline' | 'warning'; value: string }> = [
-        // wabaInfo.status "Live" → green dot
+    const systemHealth: Array<{ icon: any; label: string; status: 'online' | 'offline' | 'warning'; value: string }> = ([
         { icon: <Wifi size={14} />, label: 'WhatsApp', status: wabaInfo?.status === 'Live' ? 'online' : 'offline', value: wabaInfo?.status || 'Offline' },
         { icon: <Brain size={14} />, label: 'AI Engine', status: 'online', value: 'Running' },
-        // wabaInfo.quality → coloured badge
-        { icon: <Layers size={14} />, label: 'Quality', status: wabaInfo?.quality === 'GREEN' ? 'online' : wabaInfo?.quality === 'YELLOW' ? 'warning' : 'offline', value: wabaInfo?.quality || '—' },
-        { icon: <Users size={14} />, label: 'Tier', status: 'online', value: wabaInfo?.tier || '—' },
-    ];
+        { icon: <Shield size={14} />, label: 'Quality', status: wabaInfo?.quality === 'GREEN' ? 'online' : wabaInfo?.quality === 'YELLOW' ? 'warning' : 'offline', value: wabaInfo?.quality || '—' },
+    ] as const).filter(s => {
+        if (isManagement && (s.label === 'WhatsApp' || s.label === 'Quality')) return false;
+        return true;
+    }) as Array<{ icon: any; label: string; status: 'online' | 'offline' | 'warning'; value: string }>;
 
     return (
-        <div className="rounded-2xl overflow-hidden" style={glassCard(isDarkMode)}>
-            {/* Accent stripe */}
-            <div style={{ height: 3, background: 'linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6)' }} />
+        <div className="rounded-xl border transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+            <div className="px-5 py-3.5 flex items-center justify-between gap-3 flex-wrap">
 
-            <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-                {/* Left */}
-                <div className="flex items-center gap-5">
-                    <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#10b981' }}>Live Dashboard</span>
+                {/* Left: Logo / Brand + WABA number */}
+                <div className="flex items-center gap-4">
+                    {/* Live indicator + Title */}
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center"
+                            style={{ background: isDarkMode ? 'rgba(16,185,129,0.12)' : '#ecfdf5', border: `1px solid ${isDarkMode ? 'rgba(16,185,129,0.25)' : '#a7f3d0'}` }}>
+                            <div className="relative">
+                                <Layers size={16} style={{ color: '#10b981' }} />
+                                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-emerald-400 animate-pulse" />
+                            </div>
                         </div>
-                        <h1 className="text-xl font-black tracking-tighter" style={{ color: t.value }}>
-                            {greeting}, Admin 👋
-                        </h1>
-                        <p className="text-[11px] font-medium mt-0.5" style={{ color: t.secondary }}>{date}</p>
-                    </div>
-
-                    <div style={{ width: 1, height: 44, background: t.divider }} className="hidden md:block" />
-
-                    {/* Clock & Period Switcher */}
-                    <div className="hidden md:flex flex-col items-start translate-y-0.5">
-                        <div className="flex items-center gap-1.5 mb-1 opacity-60">
-                            <Clock size={10} style={{ color: t.label }} />
-                            <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: t.label }}>{time}</span>
-                        </div>
-                        {/* Period toggle buttons — values match API query param */}
-                        <div className="flex items-center gap-1">
-                            {PERIOD_OPTIONS.map(({ value, label }) => (
-                                <button
-                                    key={value}
-                                    onClick={() => setPeriod?.(value)}
-                                    className={cn(
-                                        "px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all",
-                                        period === value 
-                                            ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
-                                            : "opacity-40 hover:opacity-100"
-                                    )}
-                                    style={{ color: period === value ? '#10b981' : t.label }}
-                                >
-                                    {label}
-                                </button>
-                            ))}
+                        <div>
+                            <h1 style={{ fontSize: '16px', fontWeight: 700, color: t.primary, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                                Dashboard
+                            </h1>
+                            <span style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>
+                                Real-time overview
+                            </span>
                         </div>
                     </div>
 
-                    {/* WABA number + quality chip */}
-                    {wabaInfo?.number && (
+                    {/* Divider */}
+                    {!isManagement && wabaInfo?.number && (
                         <>
-                            <div style={{ width: 1, height: 44, background: t.divider }} className="hidden lg:block" />
-                            <div className="hidden lg:flex flex-col gap-1">
-                                <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: t.label }}>WA Number</span>
+                            <div style={{ width: 1, height: 32, background: isDarkMode ? '#27272a' : '#e4e4e7' }} className="hidden md:block" />
+
+                            {/* WABA number */}
+                            <div className="hidden md:flex items-center gap-2.5">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[12px] font-black" style={{ color: t.primary }}>+{wabaInfo.number}</span>
-                                    {/* quality badge */}
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider"
-                                        style={{ background: `${qualityHex}20`, color: qualityHex, border: `1px solid ${qualityHex}40` }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 600, color: t.primary, fontVariantNumeric: 'tabular-nums' }}>
+                                        +{wabaInfo.number}
+                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded" style={{
+                                        fontSize: '10px', fontWeight: 700,
+                                        background: `${qualityHex}15`, color: qualityHex,
+                                        letterSpacing: '0.02em'
+                                    }}>
                                         {wabaInfo.quality}
                                     </span>
+                                    <span className="px-1.5 py-0.5 rounded" style={{
+                                        fontSize: '10px', fontWeight: 600,
+                                        background: isDarkMode ? 'rgba(59,130,246,0.1)' : '#eff6ff',
+                                        color: isDarkMode ? '#60a5fa' : '#2563eb'
+                                    }}>
+                                        {wabaInfo.tier?.replace('TIER_', '') || wabaInfo.tier}
+                                    </span>
                                 </div>
-                                <span className="text-[9px] font-semibold" style={{ color: t.secondary }}>{wabaInfo.region}</span>
                             </div>
                         </>
                     )}
                 </div>
 
-                {/* Right — system health chips + alerts */}
-                <div className="flex items-center gap-3 flex-wrap">
-                    <div className="hidden xl:flex items-center gap-2.5">
-                        {systemHealth.map((s, i) => {
-                            const cfg = STATUS[s.status];
-                            return (
-                                <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/5" style={glassInner(isDarkMode)}>
-                                    <div className="relative w-3 h-3 flex items-center justify-center shrink-0">
-                                        <div className="w-2 h-2 rounded-full z-10 relative" style={{ background: cfg.dot }} />
-                                        {s.status !== 'offline' && (
-                                            <div className="absolute inset-0 rounded-full animate-live-ring"
-                                                style={{ background: cfg.ring, opacity: 0.55 }} />
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col leading-none gap-1">
-                                        <div className="flex items-center gap-1.5">
-                                            <span style={{ color: t.label }}>{s.icon}</span>
-                                            <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: t.label }}>{s.label}</span>
-                                        </div>
-                                        <span className="text-[12px] font-black"
-                                            style={{ color: s.status === 'online' ? t.primary : cfg.dot }}>
-                                            {s.value}
-                                        </span>
-                                    </div>
+                {/* Center: System health pills */}
+                <div className="hidden xl:flex items-center gap-2">
+                    {systemHealth.map((s, i) => {
+                        const cfg = STATUS[s.status];
+                        return (
+                            <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border"
+                                style={{ background: isDarkMode ? '#18181b' : '#fafafa', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+                                <div className="flex items-center gap-1.5" style={{ color: t.secondary }}>
+                                    {React.cloneElement(s.icon, { size: 13 })}
+                                    <span style={{ fontSize: '11px', fontWeight: 600 }}>{s.label}</span>
                                 </div>
-                            );
-                        })}
+                                <div className="flex items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} />
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: cfg.dot }}>{s.value}</span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Right: Period toggle + Alert bell + Refresh */}
+                <div className="flex items-center gap-2.5">
+                    {/* Period toggle */}
+                    <div className="flex items-center gap-0.5 p-0.5 rounded-lg border" style={{
+                        background: isDarkMode ? '#18181b' : '#f4f4f5',
+                        borderColor: isDarkMode ? '#27272a' : '#e4e4e7'
+                    }}>
+                        {PERIOD_OPTIONS.map(({ value, label }) => (
+                            <button
+                                key={value}
+                                onClick={() => setPeriod?.(value)}
+                                className="rounded-md px-3 py-1.5 transition-all"
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: period === value ? 600 : 500,
+                                    ...(period === value
+                                        ? { background: '#10b981', color: '#ffffff', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }
+                                        : { color: t.secondary, background: 'transparent' })
+                                }}
+                            >
+                                {label}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Needs Attention bell */}
-                    <button onClick={() => router.push('/shared-inbox')} className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl cursor-pointer group relative"
-                        style={{ background: 'rgba(244,63,94,0.18)', border: '1px solid rgba(244,63,94,0.30)' }}>
-                        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center">
-                            <span className="text-[8px] font-black text-white">{headerData?.needsAttention ?? 0}</span>
-                        </div>
-                        <Bell size={14} className="text-rose-400 group-hover:animate-bounce" />
-                        <div className="flex flex-col items-start leading-none gap-1">
-                            <span className="text-[8px] font-bold uppercase tracking-widest text-rose-300">Operations</span>
-                            <span className="text-[11px] font-black text-rose-400">{headerData?.needsAttention ?? 0} Urgent</span>
-                        </div>
+                    {/* Alert bell */}
+                    <button onClick={() => { setUnreadCount(0); router.push('/shared-inbox/live-chats'); }}
+                        className="relative w-9 h-9 rounded-lg border flex items-center justify-center hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                        style={{ 
+                            borderColor: unreadCount > 0 ? (isDarkMode ? 'rgba(244,63,94,0.3)' : 'rgba(244,63,94,0.2)') : (isDarkMode ? '#27272a' : '#e4e4e7'),
+                            background: unreadCount > 0 ? (isDarkMode ? 'rgba(244,63,94,0.08)' : 'rgba(244,63,94,0.04)') : 'transparent'
+                        }}>
+                        {unreadCount > 0 && (
+                            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-rose-500 flex items-center justify-center border-2 px-0.5"
+                                style={{ borderColor: isDarkMode ? '#09090b' : '#ffffff' }}>
+                                <span style={{ fontSize: '9px', fontWeight: 700, color: '#fff' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+                            </div>
+                        )}
+                        <Bell size={15} style={{ color: unreadCount > 0 ? '#f43f5e' : t.secondary }} />
                     </button>
                 </div>
-            </div>
-
-            {/* Bottom summary bar — header fields */}
-            <div className="px-6 py-3 flex items-center gap-6 flex-wrap"
-                style={{ borderTop: `1px solid ${t.divider}`, background: isDarkMode ? 'rgba(0,0,0,0.20)' : 'rgba(241,245,249,0.80)' }}>
-                {[
-                    {
-                        icon: <TrendingUp size={11} />,
-                        label: 'Revenue today',
-                        // header.revenueToday is a string with ₹ already — do NOT add ₹ again
-                        value: headerData?.revenueToday ?? '₹0',
-                        color: '#34d399',
-                    },
-                    {
-                        icon: <Users size={11} />,
-                        label: 'New leads today',
-                        value: headerData?.newLeadsToday ?? 0,
-                        color: t.primary,
-                    },
-                    {
-                        icon: <CheckCircle size={11} />,
-                        label: 'Resolved today',
-                        value: `${headerData?.resolvedToday ?? 0} chats`,
-                        color: '#818cf8',
-                    },
-                    {
-                        icon: <MessageSquare size={11} />,
-                        label: 'Sent today',
-                        value: headerData?.messagesSentToday ?? 0,
-                        color: t.primary,
-                    },
-                    {
-                        icon: <AlertTriangle size={11} />,
-                        label: 'Needs attention',
-                        value: `${headerData?.needsAttention ?? 0} alerts`,
-                        color: '#fbbf24',
-                    },
-                ].map((s, i) => (
-                    <div key={i} className="flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-default">
-                        <div style={{ color: s.color }}>{s.icon}</div>
-                        <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: t.label }}>{s.label}:</span>
-                        <span className="text-[11px] font-black" style={{ color: s.color }}>{s.value}</span>
-                    </div>
-                ))}
             </div>
         </div>
     );

@@ -104,6 +104,9 @@ export const useSoftDeleteTenantUserMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["tenant-user"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["deleted-tenant-user"],
+            });
             toast.success("Tenant user deleted successfully")
         },
         onError: (error: any) => {
@@ -119,6 +122,9 @@ export const usePermanentDeleteTenantUserMutation = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["tenant-user"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["deleted-tenant-user"],
             });
             toast.success("Tenant user deleted successfully")
         },
@@ -155,4 +161,45 @@ export const useGetTenantProfileQuery = () => {
     }
 
     return { data, isLoading, isError, refetch }
+}
+
+export const useUpdateTenantOrganizationMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => tenantUserApis.updateTenantOrganization(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["tenant-profile"],
+            });
+            toast.success("Organization details updated successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "Failed to update organization details")
+        }
+    })
+}
+
+export const useDeletedTenantUserQuery = () => {
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ["deleted-tenant-user"],
+        queryFn: () => tenantUserApis.getDeletedTenantUserList(),
+        staleTime: 2 * 60 * 1000,
+    })
+
+    return { data, isLoading, isError }
+}
+
+export const useRestoreTenantUserMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (tenantUserId: string) => tenantUserApis.restoreTenantUser(tenantUserId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["tenant-user"] });
+            queryClient.invalidateQueries({ queryKey: ["deleted-tenant-user"] });
+            toast.success("Tenant user restored successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "Failed to restore tenant user")
+        }
+    })
 }

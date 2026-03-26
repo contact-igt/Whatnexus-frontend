@@ -203,3 +203,57 @@ export const useDeletePricingRuleMutation = () => {
         }
     })
 }
+
+// --- AI Model Pricing Hooks ---
+
+export const useGetAiPricingRulesQuery = () => {
+    return useQuery({
+        queryKey: ["ai-pricing-rules"],
+        queryFn: () => managementApis.getAiPricingRules(),
+        staleTime: 5 * 60 * 1000,
+    })
+}
+
+export const useCreateAiPricingRuleMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { model: string, input_rate: number, output_rate: number, markup_percent?: number, usd_to_inr_rate?: number, description?: string, recommended_for?: "input" | "output" | "both", category?: "premium" | "mid-tier" | "budget" | "reasoning" }) =>
+            managementApis.createAiPricingRule(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["ai-pricing-rules"] });
+            toast.success("AI pricing rule created successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to create AI pricing rule")
+        }
+    })
+}
+
+export const useUpdateAiPricingRuleMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: number, data: { input_rate?: number, output_rate?: number, markup_percent?: number, usd_to_inr_rate?: number, is_active?: boolean, description?: string, recommended_for?: "input" | "output" | "both", category?: "premium" | "mid-tier" | "budget" | "reasoning" } }) =>
+            managementApis.updateAiPricingRule(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["ai-pricing-rules"] });
+            toast.success("AI pricing rule updated successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to update AI pricing rule")
+        }
+    })
+}
+
+export const useDeleteAiPricingRuleMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => managementApis.deleteAiPricingRule(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["ai-pricing-rules"] });
+            toast.success("AI pricing rule deleted successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to delete AI pricing rule")
+        }
+    })
+}

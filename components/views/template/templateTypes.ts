@@ -1,7 +1,7 @@
 // Template Type Definitions for WhatsApp Template Management
 
 export type TemplateCategory = 'UTILITY' | 'MARKETING' | 'AUTHENTICATION';
-export type TemplateType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
+export type TemplateType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION' | 'CAROUSEL';
 export type TemplateStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'paused' | 'deleted';
 export type TemplateHealth = 'High' | 'Medium' | 'Low';
 export type InteractiveActionType = 'None' | 'CTA' | 'QuickReplies' | 'Marketing' | 'Authentication' | 'All';
@@ -9,6 +9,26 @@ export type CTAType = 'URL' | 'PHONE' | 'COPY_CODE' | 'CATALOG' | 'MPM';
 export type MessageStyle = 'Normal' | 'Poetic' | 'Exciting' | 'Funny';
 export type OptimizationGoal = 'Click Rate' | 'Reply Rate';
 export type HeaderType = 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
+
+export interface CTAButton {
+    id: string;
+    type: CTAType;
+    label: string;
+    value: string; // URL, phone number, or code to copy
+}
+
+export interface QuickReply {
+    id: string;
+    text: string;
+}
+
+export interface CarouselCard {
+    id: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    mediaUrl: string;
+    bodyText: string;
+    buttons: CTAButton[];
+}
 
 export interface Template {
     template_id: string;
@@ -31,18 +51,6 @@ export interface Template {
     updated_at?: string;
 }
 
-export interface CTAButton {
-    id: string;
-    type: CTAType;
-    label: string;
-    value: string; // URL, phone number, or code to copy
-}
-
-export interface QuickReply {
-    id: string;
-    text: string;
-}
-
 export interface TemplateFormData {
     category: TemplateCategory;
     language: string;
@@ -57,6 +65,9 @@ export interface TemplateFormData {
     interactiveActions: InteractiveActionType;
     ctaButtons: CTAButton[];
     quickReplies: string[];
+    carouselCards?: CarouselCard[];
+    carouselMediaType?: 'IMAGE' | 'VIDEO';
+    status?: TemplateStatus; // Passed in edit mode to enforce Meta edit limitations
 }
 
 export interface AIGeneratorData {

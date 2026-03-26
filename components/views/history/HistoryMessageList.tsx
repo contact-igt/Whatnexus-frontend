@@ -1,7 +1,27 @@
 import React from 'react';
-import { SearchX, MessageSquareText, Send } from 'lucide-react';
+import { SearchX, MessageSquareText, Send, FileText, Download } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from '../chats/ChatUtils';
+
+// Extract media from template message format "[TYPE: url]"
+const extractMediaFromText = (message: string) => {
+    if (!message) return null;
+    const match = message.match(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*([^\]\n]+)?\]/i);
+    if (!match) return null;
+    const url = match[2]?.trim();
+    return { type: match[1].toLowerCase(), url: url && url.length > 0 ? url : null };
+};
+
+// Strip media prefix, buttons, and variable placeholders from message
+const cleanMessageText = (message: string) => {
+    if (!message) return '';
+    let text = message
+        .replace(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*[^\]]*\]\n?/i, '') // Remove media prefix
+        .replace(/\n?\[Button:\s*[^\]]+\]/gi, '') // Remove button markers
+        .replace(/\{\{\d+\}\}/g, '') // Remove variable placeholders like {{1}}
+        .trim();
+    return text;
+};
 
 interface HistoryMessageListProps {
     isDarkMode: boolean;
@@ -81,6 +101,10 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                             </div>
                             {msgs.map((msg: any, msgIndex: number) => {
                                 const isOutgoing = msg.sender !== 'user';
+                                const embeddedMedia = extractMediaFromText(msg.message);
+                                const effectiveType = embeddedMedia?.type || msg.message_type;
+                                const effectiveUrl = embeddedMedia?.url || (msg.media_url && !msg.media_url.startsWith("meta_media_id:") ? msg.media_url : null);
+                                const bodyText = cleanMessageText(msg.message);
 
                                 return (
                                     <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
@@ -90,9 +114,46 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                                                 ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
                                                 : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
                                         )}>
-                                            <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                                                {msg.message}
-                                            </p>
+                                            {/* Video */}
+                                            {effectiveType === "video" && effectiveUrl && (
+                                                <video src={effectiveUrl} controls className="rounded-lg max-w-full max-h-64 mb-1 w-full" preload="metadata" />
+                                            )}
+                                            {effectiveType === "video" && !effectiveUrl && (
+                                                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                                                    <span>🎬</span><span className="opacity-70">Video</span>
+                                                </div>
+                                            )}
+                                            {/* Image */}
+                                            {effectiveType === "image" && effectiveUrl && (
+                                                <img src={effectiveUrl} alt="media" className="rounded-lg max-w-full max-h-64 mb-1 object-cover" />
+                                            )}
+                                            {effectiveType === "image" && !effectiveUrl && (
+                                                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                                                    <span>🖼️</span><span className="opacity-70">Image</span>
+                                                </div>
+                                            )}
+                                            {/* Document */}
+                                            {effectiveType === "document" && (
+                                                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                                                    <FileText className="w-4 h-4 shrink-0 opacity-70" />
+                                                    <span className="flex-1 truncate opacity-80">{bodyText || "Document"}</span>
+                                                    {effectiveUrl && (
+                                                        <a href={effectiveUrl} download target="_blank" rel="noreferrer" className="shrink-0 text-emerald-400 hover:text-emerald-300">
+                                                            <Download className="w-4 h-4" />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {/* Audio */}
+                                            {effectiveType === "audio" && effectiveUrl && (
+                                                <audio src={effectiveUrl} controls className="w-full max-w-xs mb-1" />
+                                            )}
+                                            {/* Text body */}
+                                            {effectiveType !== "document" && bodyText && (
+                                                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
+                                                    {bodyText}
+                                                </p>
+                                            )}
                                             <div className="flex items-center justify-end space-x-1 opacity-60">
                                                 <span className="text-[10px]">
                                                     {formattedTime(msg.created_at)}

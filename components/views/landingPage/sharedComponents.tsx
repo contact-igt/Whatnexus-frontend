@@ -58,8 +58,8 @@ export const SectionHeader = ({
     centered?: boolean;
     mobileCenter?: boolean;
 }) => (
-    <div className={`mb-12 ${centered ? 'text-center' : ''} ${mobileCenter && window.innerWidth < 768 ? 'text-center' : ''}`}>
+    <div className={`mb-8 md:mb-16 ${centered ? 'text-center' : ''} ${mobileCenter ? 'max-md:text-center' : ''}`}>
         <p className="text-[#10B981] font-bold tracking-[0.2em] uppercase text-[10px] mb-3">{subtitle}</p>
-        <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter">{title}</h2>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] tracking-tighter">{title}</h2>
     </div>
 );

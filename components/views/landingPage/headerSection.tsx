@@ -30,30 +30,37 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
                         <span className="text-[8.9px] text-white/30 font-bold tracking-widest uppercase">Powered by Kingpin Ventures</span>
                     </div>
                 </div>
-                <div className="hidden min-[992px]:flex items-center gap-8">
-                    <nav className="flex items-center gap-8 text-[11px] font-black uppercase tracking-widest text-white/40">
+                <div className="hidden xl:flex items-center gap-4 2xl:gap-8">
+                    <nav className="flex items-center gap-4 2xl:gap-8 text-[11px] font-black uppercase tracking-widest text-white/40">
                         <a href="#matrix" className="hover:text-emerald-400 transition-colors">Matrix</a>
                         <a href="#ui" className="hover:text-emerald-400 transition-colors">UI Preview</a>
                         <a href="#healthcare" className="hover:text-emerald-400 transition-colors">Healthcare</a>
                     </nav>
-                    <Link href="/login">
-                        <Button variant="secondary" className="py-2 text-[11px] uppercase tracking-widest">
-                            <LogIn size={16} /> Login
-                        </Button>
-                    </Link>
-                    <Button onClick={onDemoClick} className="py-2 text-[11px] uppercase tracking-widest">Request Demo</Button>
+                    <div className="flex items-center gap-2 2xl:gap-3">
+                        <Link href="/management/login">
+                            <Button variant="secondary" className="px-3 py-2 text-[10px] 2xl:text-[11px] uppercase tracking-widest flex items-center gap-1.5">
+                                <LogIn size={14} /> Admin
+                            </Button>
+                        </Link>
+                        <Link href="/login">
+                            <Button variant="secondary" className="py-2 text-[11px] uppercase tracking-widest">
+                                <LogIn size={16} /> Login
+                            </Button>
+                        </Link>
+                        <Button onClick={onDemoClick} className="py-2 text-[11px] uppercase tracking-widest">Request Demo</Button>
+                    </div>
                 </div>
                 <button
-                    className="min-[992px]:hidden text-white/50 hover:text-emerald-400 transition-colors"
+                    className="xl:hidden text-white/50 hover:text-emerald-400 transition-colors p-2 -mr-2"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 >
-                    {isMobileMenuOpen ? <X /> : <Menu />}
+                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
             </div>
 
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
-                <div className="min-[992px]:hidden absolute top-full left-0 right-0 bg-[#0A0A0B] border-b border-white/5 p-6 animate-in slide-in-from-top-2">
+                <div className="xl:hidden absolute top-full left-0 right-0 bg-[#0A0A0B] border-b border-white/5 p-6 animate-in slide-in-from-top-2">
                     <nav className="flex flex-col gap-6 text-sm font-bold uppercase tracking-widest text-white/60">
                         <a href="#matrix" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Matrix</a>
                         <a href="#ui" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>UI Preview</a>
@@ -61,11 +68,19 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
 
                         <div className="h-px bg-white/5 my-2" />
 
-                        <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full">
-                            <Button variant="secondary" className="w-full py-3 text-xs uppercase tracking-widest">
-                                <LogIn size={16} /> Login
-                            </Button>
-                        </Link>
+                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                            <Link href="/management/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full sm:w-1/2">
+                                <Button variant="secondary" className="w-full py-3 text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                                    <LogIn size={14} /> Admin Login
+                                </Button>
+                            </Link>
+
+                            <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full sm:w-1/2">
+                                <Button variant="secondary" className="w-full py-3 text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                                    <LogIn size={16} /> Login
+                                </Button>
+                            </Link>
+                        </div>
 
                         <Button onClick={() => { onDemoClick(); setIsMobileMenuOpen(false); }} className="w-full py-3 text-xs uppercase tracking-widest mt-2">
                             Request Demo

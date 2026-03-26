@@ -7,7 +7,7 @@ import { Button } from './sharedComponents';
 
 export const HeroSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
     return (
-        <section className="relative pt-48 pb-32 px-6 overflow-hidden">
+        <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0,transparent_70%)] pointer-events-none" />
             <div className="container mx-auto text-center relative z-10">
                 <motion.div
@@ -21,15 +21,15 @@ export const HeroSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
                 <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-5xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8"
+                    className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[1] md:leading-[0.9] mb-8"
                 >
-                    Your AI receptionist <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">that never sleeps.</span>
+                    Your AI receptionist <br className="hidden md:block" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">that never sleeps.</span>
                 </motion.h1>
                 <motion.p
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="max-w-2xl mx-auto text-white/50 text-lg md:text-xl leading-relaxed mb-10"
+                    className="max-w-2xl mx-auto text-white/50 text-base md:text-xl leading-relaxed mb-10"
                 >
                     Instant replies, lead qualification, and automated follow-ups—built on WhatsApp API with Neural Intelligence.
                 </motion.p>

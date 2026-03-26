@@ -1,7 +1,6 @@
 "use client";
-
 import { useState } from 'react';
-import { Sparkles, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp, Wand2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageStyle, OptimizationGoal } from './templateTypes';
@@ -12,6 +11,7 @@ interface AIGeneratorSectionProps {
     onGenerateTitle?: (prompt: string) => Promise<void>;
     generationsLeft?: number;
     currentCategory?: string;
+    isLocked?: boolean;
 }
 
 export const AIGeneratorSection = ({
@@ -19,7 +19,8 @@ export const AIGeneratorSection = ({
     onGenerate,
     onGenerateTitle,
     generationsLeft = 3,
-    currentCategory
+    currentCategory,
+    isLocked = false
 }: AIGeneratorSectionProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [prompt, setPrompt] = useState('');
@@ -41,7 +42,7 @@ export const AIGeneratorSection = ({
     };
 
     const handleGenerate = async () => {
-        if (!prompt.trim() || isGenerating) return;
+        if (!prompt.trim() || isGenerating || isLocked) return;
 
         setIsGenerating(true);
         try {
@@ -56,52 +57,48 @@ export const AIGeneratorSection = ({
         }
     };
 
-    // const handleGenerateTitle = async () => {
-    //     if (!prompt.trim() || isGeneratingTitle || !onGenerateTitle) return;
-
-    //     setIsGeneratingTitle(true);
-    //     try {
-    //         await onGenerateTitle(prompt);
-    //     } finally {
-    //         setIsGeneratingTitle(false);
-    //     }
-    // };
-
     return (
         <div className={cn(
-            "rounded-xl border overflow-hidden transition-all",
-            isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+            "rounded-xl border relative overflow-hidden transition-all",
+            isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200',
+            isLocked && 'opacity-60 grayscale cursor-not-allowed select-none'
         )}>
             {/* Header */}
             <button
-                onClick={() => setIsExpanded(!isExpanded)}
+                type="button"
+                onClick={() => !isLocked && setIsExpanded(!isExpanded)}
+                disabled={isLocked}
                 className={cn(
                     "w-full p-4 flex items-center justify-between transition-colors",
-                    isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-100'
+                    isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-100',
+                    isLocked && 'cursor-not-allowed'
                 )}
             >
                 <div className="flex items-center gap-2">
                     <Sparkles size={16} className="text-purple-500" />
-                    <h3 className={cn("text-sm font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                    <h3 className={cn("text-sm font-bold flex items-center gap-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
                         Generate with AI
+                        {isLocked && <Lock size={14} className="text-slate-400" />}
                     </h3>
-                    <span className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full font-bold",
-                        isDarkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-100 text-purple-600'
-                    )}>
-                        BETA
-                    </span>
+                    {!isLocked && (
+                        <span className={cn(
+                            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                            isDarkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-100 text-purple-600'
+                        )}>
+                            BETA
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <span className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                        Create customized variations with AI
+                        {isLocked ? "Disabled by Tenant Settings" : "Create customized variations with AI"}
                     </span>
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    {!isLocked && (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
                 </div>
             </button>
 
             {/* Expanded Content */}
-            {isExpanded && (
+            {isExpanded && !isLocked && (
                 <div className={cn(
                     "p-4 pt-0 space-y-4 border-t",
                     isDarkMode ? 'border-white/10' : 'border-slate-200'

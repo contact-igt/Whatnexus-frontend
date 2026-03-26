@@ -1,8 +1,10 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { socket } from '@/utils/socket';
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Contact, CreateContactDto, UpdateContactDto } from "@/types/contact";
 import {
     useGetAllContactsQuery,
@@ -17,10 +19,11 @@ import {
 import { handleCSVDownloadData } from "@/hooks/useExportDataToExcel";
 import { ContactsHeader } from "./contactsHeader";
 import { ContactList } from "./contactList";
-import { AddContactModal } from "./addContactModal";
+import { AddContactDrawer } from "./addContactDrawer";
 import { EditContactDrawer } from "./editContactDrawer";
 import { ImportContactsModal } from "./importContactsModal";
-import { ConfirmationModal } from "@/components/ui/confirmationModal";
+import { ConfirmationDrawer } from "@/components/ui/confirmationDrawer";
+
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +49,33 @@ export const ContactsView = () => {
     const [searchQuery, setSearchQuery] = useState("");
 
     // React Query Hooks
-    const { data: contactsData, isLoading: isLoadingContacts } = useGetAllContactsQuery();
+    const { data: contactsData, isLoading: isLoadingContacts, refetch: refetchContacts } = useGetAllContactsQuery();
+
+    // Socket: auto-refresh when new contact is created via WhatsApp
+    const { user } = useAuth();
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+        
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit('join-tenant', user.tenant_id);
+        }
+
+        socket.on('connect', () => {
+            socket.emit('join-tenant', user.tenant_id);
+        });
+
+        socket.on('contact-created', () => {
+            if (activeTab === 'all') refetchContacts();
+        });
+
+        return () => {
+            socket.off('contact-created');
+            socket.off('connect');
+        };
+    }, [user?.tenant_id, activeTab]);
     const { data: deletedContactsData, isLoading: isLoadingDeleted } = useGetDeletedContactsQuery();
 
     const { mutate: createContact, isPending: isCreating } = useCreateContactMutation();
@@ -271,14 +300,15 @@ export const ContactsView = () => {
                 isTrash={activeTab === 'trash'}
             />
 
-            {/* Add Contact Modal */}
-            <AddContactModal
+            {/* Add Contact Drawer */}
+            <AddContactDrawer
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 onSubmit={handleAddContact}
                 isDarkMode={isDarkMode}
                 isLoading={isCreating}
             />
+
 
             {/* Edit Contact Drawer */}
             <EditContactDrawer
@@ -302,8 +332,8 @@ export const ContactsView = () => {
                 isLoading={isImporting}
             />
 
-            {/* Confirmation Modal */}
-            <ConfirmationModal
+            {/* Confirmation Drawer */}
+            <ConfirmationDrawer
                 isOpen={isDeleteModalOpen}
                 onClose={() => {
                     setIsDeleteModalOpen(false);
@@ -333,8 +363,9 @@ export const ContactsView = () => {
                 variant={actionType === 'restore' ? 'info' : 'danger'}
             />
 
-            {/* Bulk Delete Confirmation Modal */}
-            <ConfirmationModal
+
+            {/* Bulk Delete Confirmation Drawer */}
+            <ConfirmationDrawer
                 isOpen={isBulkDeleteModalOpen}
                 onClose={() => setIsBulkDeleteModalOpen(false)}
                 onConfirm={handleBulkDelete}
@@ -346,6 +377,7 @@ export const ContactsView = () => {
                 isLoading={isDeleting || isPermanentlyDeleting}
                 variant="danger"
             />
+
         </div>
     );
 };

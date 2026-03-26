@@ -21,7 +21,14 @@ import {
     Clock,
     Workflow,
     BadgeCheck,
-    CreditCard
+    CreditCard,
+    Mail,
+    Trash2,
+    Terminal,
+    FlaskConical,
+    Landmark,
+    UserPlus
+
 } from 'lucide-react';
 
 export interface SidebarItem {
@@ -123,12 +130,12 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 icon: Calendar,
                 requiresWhatsApp: false,
             },
-            {
-                label: "Logic",
-                route: "/logic",
-                icon: Workflow,
-                requiresWhatsApp: false,
-            }
+            // {
+            //     label: "Logic",
+            //     route: "/logic",
+            //     icon: Workflow,
+            //     requiresWhatsApp: false,
+            // }
         ]
     },
     {
@@ -166,7 +173,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Billing & Payments",
                 route: "/billing",
                 icon: CreditCard,
-                requiresWhatsApp: false,
+                requiresWhatsApp: true,
                 roles: ['tenant_admin']
             }
         ]
@@ -175,9 +182,23 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         groupLabel: "Settings",
         items: [
             {
+                label: "General Settings",
+                route: "/settings/general",
+                icon: Settings,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
                 label: "WhatsApp Settings",
                 route: "/settings/whatsapp-settings",
                 icon: MessageSquare,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "WhatsApp Playground",
+                route: "/settings/whatsapp-playground",
+                icon: FlaskConical,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }
@@ -191,7 +212,7 @@ export const managementSidebarConfig: SidebarGroup[] = [
         groupLabel: "Dashboard",
         items: [
             {
-                label: "Neural Hub",
+                label: "Command Center",
                 route: "/dashboard",
                 icon: LayoutDashboard,
                 requiresWhatsApp: false,
@@ -204,7 +225,21 @@ export const managementSidebarConfig: SidebarGroup[] = [
             {
                 label: "Organizations",
                 route: "/organizations",
-                icon: Building2,
+                icon: Landmark,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Onboard Tenants",
+                route: "/management/onboarded",
+                icon: UserPlus,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Tenant Invitation",
+                route: "/management/invitations",
+                icon: Mail,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             },
@@ -216,22 +251,8 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 roles: ['super_admin', 'platform_admin']
             },
             {
-                label: "Tenant Invitations",
-                route: "/admin/invitations",
-                icon: MessageSquare,
-                requiresWhatsApp: false,
-                roles: ['super_admin', 'platform_admin']
-            },
-            {
-                label: "Onboarded Tenants",
-                route: "/admin/tenants",
-                icon: Users,
-                requiresWhatsApp: false,
-                roles: ['super_admin', 'platform_admin']
-            },
-            {
-                label: "Pricing & Rates",
-                route: "/pricing",
+                label: "Admin Billing",
+                route: "/billing",
                 icon: CreditCard,
                 requiresWhatsApp: false,
                 roles: ['super_admin']
@@ -239,3 +260,4 @@ export const managementSidebarConfig: SidebarGroup[] = [
         ]
     }
 ];
+

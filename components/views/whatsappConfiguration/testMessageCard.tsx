@@ -23,6 +23,7 @@ import { TemplateSelectionModal, ProcessedTemplate } from '@/components/campaign
 import { X, FileText, MessageSquare } from 'lucide-react';
 
 export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMessageCardProps) => {
+    const [testCountryCode, setTestCountryCode] = useState('+91');
     const [testPhoneNumber, setTestPhoneNumber] = useState('');
     const [messageType, setMessageType] = useState<'normal' | 'template'>('normal');
     const [messageText, setMessageText] = useState('');
@@ -30,6 +31,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
     const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
     const [headerValues, setHeaderValues] = useState<string[]>([]);
     const [bodyValues, setBodyValues] = useState<string[]>([]);
+    const [buttonValues, setButtonValues] = useState<string[]>([]);
     const [errors, setErrors] = useState<{
         phone?: string;
         message?: string;
@@ -43,13 +45,20 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
     const handleTemplateSelect = (template: ProcessedTemplate) => {
         setSelectedTemplate(template);
         // Reset values based on template params count
-        setHeaderValues([]); // Initialize if header params exist
-        setBodyValues(new Array(template.variables).fill(''));
+        setHeaderValues([]);
+
+        // Body Variables
+        setBodyValues(new Array(template.variableArray?.length || 0).fill(''));
+
+        // Button Variables
+        setButtonValues(new Array(template.buttonVariables?.length || 0).fill(''));
+
         // Clear template error when a template is selected
         setErrors(prev => ({ ...prev, template: undefined, variables: undefined }));
     };
 
     const resetForm = () => {
+        setTestCountryCode('+91');
         setTestPhoneNumber('');
         setMessageText('');
         setSelectedTemplate(null);
@@ -60,13 +69,13 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
 
     const handleSendTestMessage = () => {
         const newErrors: typeof errors = {};
-        const phoneRegex = /^\d{10,15}$/;
+        const phoneRegex = /^\d{10}$/;
 
         // Phone Validation
         if (!testPhoneNumber) {
             newErrors.phone = "Phone number is required";
         } else if (!phoneRegex.test(testPhoneNumber)) {
-            newErrors.phone = "Enter a valid numeric phone number (10-15 digits)";
+            newErrors.phone = "Mobile number must be 10 digits";
         }
 
         if (messageType === 'normal') {
@@ -74,15 +83,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                 newErrors.message = "Message cannot be empty";
             }
         } else {
-            if (!selectedTemplate) {
-                newErrors.template = "Please select a template";
-            } else {
-                // Variable Validation
-                const variableErrors = bodyValues.map(val => (!val || val.trim() === '') ? "Value required" : "");
-                if (variableErrors.some(err => err)) {
-                    newErrors.variables = variableErrors;
-                }
-            }
+            // For template testing, we send the default hardcoded hello_world template
         }
 
         if (Object.keys(newErrors).length > 0 || (newErrors.variables && newErrors.variables.some(e => e))) {
@@ -94,8 +95,9 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
         setErrors({}); // Clear errors if valid
 
         if (messageType === 'normal') {
+            const fullPhone = testCountryCode.replace('+', '') + testPhoneNumber;
             sendTestWhatsConfigMutate({
-                phone: testPhoneNumber,
+                phone: fullPhone,
                 message_type: "text",
                 message: messageText
             }, {
@@ -108,36 +110,17 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                 }
             });
         } else {
-            // Construct components payload
-            const components = [];
-
-            // Header params
-            if (headerValues.length > 0) {
-                components.push({
-                    type: "header",
-                    parameters: headerValues.map(val => ({
-                        type: "text",
-                        text: val || "-"
-                    }))
-                });
-            }
-
-            // Body params
-            if (bodyValues.length > 0) {
-                components.push({
-                    type: "body",
-                    parameters: bodyValues.map(val => ({
-                        type: "text",
-                        text: val || "-"
-                    }))
-                });
-            }
-
+            const fullPhoneTemplate = testCountryCode.replace('+', '') + testPhoneNumber;
+            
+            // Use selected template or fallback to hello_world
+            const tplName = selectedTemplate?.name || "hello_world";
+            const tplId = selectedTemplate?.id || "hello_world";
+            
             sendTestWhatsConfigMutate({
-                phone: testPhoneNumber,
+                phone: fullPhoneTemplate,
                 message_type: "template",
-                template_id: selectedTemplate?.id,
-                components: components
+                template_name: tplName,
+                template_id: tplId
             }, {
                 onSuccess: () => {
                     toast.success(`Template message sent to ${testPhoneNumber}`);
@@ -201,23 +184,42 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                     <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
                         Recipient Number
                     </label>
-                    <div className="relative mt-2">
-                        <Phone className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors",
-                            isDarkMode ? "text-white/30" : "text-slate-400")} size={16} />
-                        <Input
-                            isDarkMode={isDarkMode}
-                            placeholder="e.g. 919876543210"
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                        <select
+                            value={testCountryCode}
+                            onChange={(e) => setTestCountryCode(e.target.value)}
                             className={cn(
-                                "pl-10",
-                                isDarkMode ? "bg-white/5 border-white/10 placeholder:text-white/30" : "bg-white border-slate-200",
-                                errors.phone && "border-red-500 focus-visible:ring-red-500"
+                                "w-full px-3 py-2.5 rounded-xl text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-offset-0",
+                                isDarkMode
+                                    ? "bg-white/5 border-white/10 text-white focus:ring-blue-500/50 [&>option]:bg-slate-800 [&>option]:text-white"
+                                    : "bg-white border-slate-200 text-slate-900 focus:ring-blue-500/50"
                             )}
-                            value={testPhoneNumber}
-                            onChange={(e) => {
-                                setTestPhoneNumber(e.target.value);
-                                if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
-                            }}
-                        />
+                        >
+                            <option value="+91">+91</option>
+                            <option value="+1">+1</option>
+                            <option value="+44">+44</option>
+                            <option value="+971">+971</option>
+                        </select>
+                        <div className="col-span-2 relative">
+                            <Phone className={cn("absolute left-3 top-1/2 -translate-y-1/2 transition-colors",
+                                isDarkMode ? "text-white/30" : "text-slate-400")} size={16} />
+                            <Input
+                                isDarkMode={isDarkMode}
+                                placeholder="9876543210"
+                                className={cn(
+                                    "pl-10",
+                                    isDarkMode ? "bg-white/5 border-white/10 placeholder:text-white/30" : "bg-white border-slate-200",
+                                    errors.phone && "border-red-500 focus-visible:ring-red-500"
+                                )}
+                                value={testPhoneNumber}
+                                maxLength={10}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setTestPhoneNumber(val);
+                                    if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
+                                }}
+                            />
+                        </div>
                     </div>
                     {errors.phone && (
                         <p className="text-red-500 text-xs ml-1 animate-in slide-in-from-top-1">{errors.phone}</p>
@@ -252,137 +254,39 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                Template <span className="text-red-500">*</span>
+                                Template
                             </label>
-                            {selectedTemplate ? (
-                                <div className={cn("p-3 rounded-xl border relative group mt-2", isDarkMode ? "bg-white/5 border-emerald-500/30" : "bg-emerald-50/50 border-emerald-200")}>
-                                    <button
-                                        onClick={() => {
-                                            setSelectedTemplate(null);
-                                            setHeaderValues([]);
-                                            setBodyValues([]);
-                                            setErrors({});
-                                        }}
-                                        className={cn(
-                                            "absolute right-2 top-2 p-1.5 rounded-full transition-colors",
-                                            isDarkMode
-                                                ? "bg-black/20 text-white/70 hover:bg-black/40 hover:text-white"
-                                                : "bg-slate-200/50 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
-                                        )}
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                    <div className="flex items-center gap-3 pr-8">
-                                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", isDarkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600")}>
-                                            <FileText size={18} />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className={cn("font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                {selectedTemplate.name}
-                                            </p>
-                                            <p className={cn("text-xs truncate", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                {selectedTemplate.category} • {selectedTemplate.variables} variables
-                                            </p>
-                                        </div>
+                            
+                            {/* Static Hello World Card */}
+                            <div className={cn("p-3 rounded-xl border relative mt-2", isDarkMode ? "bg-white/5 border-emerald-500/30" : "bg-emerald-50/50 border-emerald-200")}>
+                                <div className="flex items-center gap-3">
+                                    <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", isDarkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600")}>
+                                        <FileText size={18} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className={cn("font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            hello_world
+                                        </p>
+                                        <p className={cn("text-xs truncate", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                            utility • 0 variables
+                                        </p>
                                     </div>
                                 </div>
-                            ) : (
-                                <>
-                                    <button
-                                        onClick={() => setIsTemplateModalOpen(true)}
-                                        className={cn(
-                                            "w-full mt-2 p-4 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 transition-all group",
-                                            errors.template
-                                                ? "border-red-500/60 bg-red-500/5"
-                                                : isDarkMode
-                                                    ? "border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5"
-                                                    : "border-slate-300 hover:border-emerald-500/50 hover:bg-emerald-50"
-                                        )}
-                                    >
-                                        <MessageSquare className={cn("group-hover:scale-110 transition-transform", errors.template ? "text-red-400" : isDarkMode ? "text-white/30 group-hover:text-emerald-400" : "text-slate-400 group-hover:text-emerald-600")} />
-                                        <span className={cn("text-sm font-medium", errors.template ? "text-red-400" : isDarkMode ? "text-white/50 group-hover:text-emerald-400" : "text-slate-500 group-hover:text-emerald-700")}>Select a template</span>
-                                    </button>
-                                    {errors.template && (
-                                        <p className="text-red-500 text-xs ml-1 mt-1 animate-in slide-in-from-top-1">{errors.template}</p>
-                                    )}
-                                </>
-                            )}
+                            </div>
                         </div>
+
                         {/* Message Preview */}
-                        {selectedTemplate && (
-                            <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-bottom-3">
-                                <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                    Message Preview
-                                </label>
-                                <div className={cn(
-                                    "p-4 rounded-xl border mt-2 text-sm leading-relaxed whitespace-pre-wrap",
-                                    isDarkMode ? "bg-white/5 border-white/10 text-white/90" : "bg-slate-50 border-slate-200 text-slate-800"
-                                )}>
-                                    {(() => {
-                                        let preview = selectedTemplate.bodyText || selectedTemplate.description || '';
-                                        // Replace variables {{1}}, {{2}} with bold values
-                                        const parts = preview.split(/({{\d+}})/g);
-                                        return parts.map((part, index) => {
-                                            const match = part.match(/{{(\d+)}}/);
-                                            if (match) {
-                                                const varIndex = parseInt(match[1]) - 1;
-                                                const value = bodyValues[varIndex];
-                                                return (
-                                                    <span key={index} className={cn(
-                                                        "font-bold px-1 rounded mx-0.5 transition-colors",
-                                                        value
-                                                            ? isDarkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700"
-                                                            : isDarkMode ? "bg-white/10 text-white/50" : "bg-slate-200 text-slate-500"
-                                                    )}>
-                                                        {value || part}
-                                                    </span>
-                                                );
-                                            }
-                                            return <span key={index}>{part}</span>;
-                                        });
-                                    })()}
-                                </div>
+                        <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-bottom-2">
+                            <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                Message Preview
+                            </label>
+                            <div className={cn(
+                                "p-4 rounded-xl border mt-2 text-sm leading-relaxed whitespace-pre-wrap",
+                                isDarkMode ? "bg-white/5 border-white/10 text-white/90" : "bg-slate-50 border-slate-200 text-slate-800"
+                            )}>
+                                Welcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification from the Cloud API, hosted by Meta. Thank you for taking the time to test with us.
                             </div>
-                        )}
-                        {selectedTemplate && bodyValues.length > 0 && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                                <label className={cn("text-xs font-medium uppercase tracking-wider ml-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                    Customize Template
-                                </label>
-                                <div className="grid gap-2 mt-2">
-                                    {bodyValues.map((val, idx) => (
-                                        <div key={idx} className="space-y-1">
-                                            <div className="relative mt-1">
-                                                <span className={cn("absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono opacity-50 select-none", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                    {'{{'}{idx + 1}{'}}'}
-                                                </span>
-                                                <Input
-                                                    isDarkMode={isDarkMode}
-                                                    placeholder={`Value for variable ${idx + 1}`}
-                                                    className={cn("pl-12", isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200",
-                                                        errors.variables?.[idx] && "border-red-500 focus-visible:ring-red-500"
-                                                    )}
-                                                    value={val}
-                                                    onChange={(e) => {
-                                                        const newValues = [...bodyValues];
-                                                        newValues[idx] = e.target.value;
-                                                        setBodyValues(newValues);
-                                                        if (errors.variables) {
-                                                            const newVarErrors = [...(errors.variables || [])];
-                                                            newVarErrors[idx] = "";
-                                                            setErrors(prev => ({ ...prev, variables: newVarErrors }));
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
-                                            {errors.variables?.[idx] && (
-                                                <p className="text-red-500 text-[10px] ml-1 animate-in slide-in-from-top-1">{errors.variables[idx]}</p>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 )}
 

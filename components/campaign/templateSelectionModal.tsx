@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle, RefreshCw, MapPin } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -14,14 +14,16 @@ export interface ProcessedTemplate {
     name: string;
     category: string;
     description: string;
-    type: 'text' | 'image' | 'file' | 'video' | 'carousel';
+    type: 'text' | 'image' | 'document' | 'video' | 'carousel' | 'location';
     variables: number;
     // Add raw components if needed for advanced preview, but description (body) is usually enough
     originalDetails?: any;
-    variableArray?: any[]; // Add parsed variables to processed template
+    variableArray?: any[];
+    buttonVariables?: any[];
     headerText?: string;
     footerText?: string;
     bodyText?: string;
+    carouselCards?: any[];
 }
 
 interface TemplateSelectionModalProps {
@@ -31,7 +33,7 @@ interface TemplateSelectionModalProps {
 }
 
 type CategoryType = 'marketing' | 'utility' | 'authentication';
-type TemplateType = 'all' | 'text' | 'image' | 'file' | 'video' | 'carousel';
+type TemplateType = 'all' | 'text' | 'image' | 'document' | 'video' | 'carousel' | 'location';
 
 
 
@@ -54,14 +56,15 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
         { id: 'all', label: 'All', icon: Grid3x3 },
         { id: 'text', label: 'Text', icon: FileText },
         { id: 'image', label: 'Image', icon: ImageIcon },
-        { id: 'file', label: 'File', icon: File },
+        { id: 'document', label: 'Document', icon: File },
         { id: 'video', label: 'Video', icon: Video },
         { id: 'carousel', label: 'Carousel', icon: Grid3x3 },
+        { id: 'location', label: 'Location', icon: MapPin },
     ];
 
     // Map API templates to component format
     const templates: ProcessedTemplate[] = apiTemplates
-        .filter(t => t.status?.toUpperCase() === 'APPROVED')
+        .filter(t => (t.status?.toUpperCase() === 'APPROVED' || t.status === 'approved'))
         .map(t => {
             // Extract data from components if standard fields are missing
             let bodyTextData = t.body;
@@ -90,31 +93,77 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                 if (f) footerText = f.text_content || f.text || '';
             }
 
+            // Parse Buttons for dynamic variables
+            let buttonVariables: any[] = [];
+            if (Array.isArray(t.components)) {
+                const buttonsComp = t.components.find((c: any) => c.component_type?.toLowerCase() === 'buttons' || c.type?.toLowerCase() === 'buttons');
+                if (buttonsComp) {
+                    try {
+                        let btns = [];
+                        if (buttonsComp.text_content) {
+                            btns = typeof buttonsComp.text_content === 'string' ? JSON.parse(buttonsComp.text_content) : buttonsComp.text_content;
+                        } else if (buttonsComp.buttons) {
+                            btns = buttonsComp.buttons;
+                        }
+
+                        if (Array.isArray(btns)) {
+                            btns.forEach((btn: any, idx: number) => {
+                                // WhatsApp only supports {{1}} in URL buttons
+                                if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
+                                    buttonVariables.push({
+                                        index: idx,
+                                        text: btn.text,
+                                        variable_key: `button_${idx}_1`, // Unique key for internal mapping
+                                        sample_value: btn.example || ''
+                                    });
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Error parsing template buttons:", e);
+                    }
+                }
+            }
+
+            const bodyVariables = t.variables || [];
+            const totalVarCount = bodyVariables.length + buttonVariables.length;
+
             return {
                 id: t.template_id || t.id || '',
                 name: t.name || t.template_name || (t as any).element_name || t.id || 'Untitled',
                 category: (t.category?.toLowerCase() as any) || 'marketing',
                 description: bodyTextData || 'No description',
-                type: (headerType ? headerType.toLowerCase() : 'text') as any,
-                variables: t.variables_count || t.variables?.length || 0,
-                variableArray: t.variables || [],
+                type: (() => {
+                    // Check for carousel component
+                    const isCarousel = Array.isArray(t.components) && t.components.some((c: any) =>
+                        c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
+                    );
+                    if (isCarousel) return 'carousel';
+                    if (!headerType) return 'text';
+                    const ht = headerType.toLowerCase();
+                    if (ht === 'image') return 'image';
+                    if (ht === 'video') return 'video';
+                    if (ht === 'document') return 'document';
+                    if (ht === 'location') return 'location';
+                    return 'text';
+                })() as any,
+                variables: totalVarCount,
+                variableArray: bodyVariables,
+                buttonVariables,
                 headerText,
                 footerText,
                 bodyText: bodyTextData || '',
+                carouselCards: (() => {
+                    const carouselComp = Array.isArray(t.components) && t.components.find((c: any) =>
+                        c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
+                    );
+                    return carouselComp?.cards || [];
+                })(),
+                originalDetails: t,
             };
         });
 
     const filteredTemplates = templates.filter(template => {
-        // Filter by status (APPROVED only) - Check original API template status if available
-        // Since we mapped it, we need to access original from apiTemplates or ensure mapping carries it.
-        // Better approach: Filter apiTemplates BEFORE mapping or check matching apiTemplate here.
-        // But since we already mapped, let's just make sure we map status or check it.
-        // Wait, ProcessedTemplate doesn't have status. 
-        // Let's modify the map function to include filtering source.
-        return true;
-    }).filter(template => {
-        // ... existing name/category filters
-
         const matchesCategory = template.category === activeCategory;
         const matchesType = activeType === 'all' || template.type === activeType;
         const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -289,9 +338,15 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                             >
                                                 <div className={cn(
                                                     "w-12 h-12 rounded-lg flex items-center justify-center mb-3",
-                                                    isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                                                    template.category === 'authentication'
+                                                        ? isDarkMode ? 'bg-violet-500/20' : 'bg-violet-100'
+                                                        : isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
                                                 )}>
-                                                    <FileText size={24} className="text-emerald-500" />
+                                                    {template.category === 'authentication' ? (
+                                                        <span className="text-2xl">🔐</span>
+                                                    ) : (
+                                                        <FileText size={24} className="text-emerald-500" />
+                                                    )}
                                                 </div>
                                                 <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                                     {template.name}
@@ -300,13 +355,15 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                                     {template.description}
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-3">
-                                                    <span className={cn(
-                                                        "text-[10px] px-2 py-0.5 rounded uppercase font-bold",
-                                                        isDarkMode ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-600'
-                                                    )}>
-                                                        {template.id}
-                                                    </span>
-                                                    {template.variables > 0 && (
+                                                    {template.category === 'authentication' && (
+                                                        <span className={cn(
+                                                            "text-[10px] px-2 py-0.5 rounded-full uppercase font-bold",
+                                                            isDarkMode ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-100 text-violet-700'
+                                                        )}>
+                                                            OTP Template
+                                                        </span>
+                                                    )}
+                                                    {template.variables > 0 && template.category !== 'authentication' && (
                                                         <span className={cn(
                                                             "text-[10px] px-2 py-0.5 rounded font-semibold",
                                                             isDarkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'

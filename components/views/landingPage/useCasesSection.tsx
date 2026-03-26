@@ -21,18 +21,18 @@ export const UseCasesSection = () => {
     ];
 
     return (
-        <section className="py-32 px-6">
+        <section className="py-20 md:py-32 px-6">
             <div className="container mx-auto max-w-4xl">
-                <div className="flex justify-center gap-4 mb-16">
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 mb-16">
                     <button
                         onClick={() => setUseCaseTab('sales')}
-                        className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${useCaseTab === 'sales' ? 'bg-emerald-600 text-white shadow-xl' : 'bg-white/5 text-white/40'}`}
+                        className={`w-full sm:w-auto px-6 md:px-8 py-3 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${useCaseTab === 'sales' ? 'bg-emerald-600 text-white shadow-xl' : 'bg-white/5 text-white/40'}`}
                     >
                         Sales Mode
                     </button>
                     <button
                         onClick={() => setUseCaseTab('support')}
-                        className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${useCaseTab === 'support' ? 'bg-emerald-600 text-white shadow-xl' : 'bg-white/5 text-white/40'}`}
+                        className={`w-full sm:w-auto px-6 md:px-8 py-3 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${useCaseTab === 'support' ? 'bg-emerald-600 text-white shadow-xl' : 'bg-white/5 text-white/40'}`}
                     >
                         Support Mode
                     </button>
@@ -43,10 +43,10 @@ export const UseCasesSection = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="grid md:grid-cols-2 gap-8"
+                        className="grid md:grid-cols-2 gap-6 md:gap-8"
                     >
                         {(useCaseTab === 'sales' ? salesCases : supportCases).map((item, i) => (
-                            <div key={i} className="p-8 rounded-[32px] bg-white/[0.02] border border-white/5">
+                            <div key={i} className="p-6 md:p-8 rounded-[32px] bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-colors">
                                 <h5 className="font-black text-lg mb-2 text-white">{item.t}</h5>
                                 <p className="text-white/40 text-sm leading-relaxed">{item.d}</p>
                             </div>

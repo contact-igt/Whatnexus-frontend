@@ -23,6 +23,7 @@ interface DataTableProps<T> {
     onRowClick?: (row: T) => void;
     emptyState?: ReactNode;
     className?: string; // Additional classes for the wrapper
+    getRowClassName?: (row: T) => string;
 }
 
 export function DataTable<T>({
@@ -32,7 +33,8 @@ export function DataTable<T>({
     isDarkMode,
     onRowClick,
     emptyState,
-    className
+    className,
+    getRowClassName
 }: DataTableProps<T>) {
     return (
         <div className={cn(
@@ -123,8 +125,9 @@ export function DataTable<T>({
                                     onClick={() => onRowClick?.(row)}
                                     className={cn(
                                         "group transition-all duration-200 border-b last:border-b-0",
-                                        isDarkMode ? 'border-white/5 hover:bg-emerald-500/5' : 'border-slate-100 hover:bg-emerald-500/5', // Changed hover to emerald
-                                        onRowClick ? "cursor-pointer" : ""
+                                        isDarkMode ? 'border-white/5 hover:bg-emerald-500/5' : 'border-slate-100 hover:bg-emerald-500/5', 
+                                        onRowClick ? "cursor-pointer" : "",
+                                        getRowClassName?.(row)
                                     )}
                                 >
                                     {columns.map((col, colIndex) => (

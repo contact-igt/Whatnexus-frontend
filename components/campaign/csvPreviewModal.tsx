@@ -143,22 +143,22 @@ export const CSVPreviewModal = ({
                                         isDarkMode ? 'bg-black/20 text-emerald-400' : 'bg-white text-emerald-600'
                                     )}>
                                         <div className="font-bold mb-1">Row 1 (Header):</div>
-                                        <div>mobile_number,variable_1,variable_2,...</div>
+                                        <div>country_code,mobile_number,variable_1,variable_2,...</div>
                                         <div className="font-bold mt-2 mb-1">Row 2+ (Data):</div>
-                                        <div>916369441531,John Doe,john@example.com,...</div>
+                                        <div>91,6369441531,John Doe,john@example.com,...</div>
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                         <div>
-                                            <span className={cn("font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>✓ Column 1 (Required):</span>
+                                            <span className={cn("font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>✓ Phone Columns (Required):</span>
                                             <p className={cn(isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                                Mobile number in format <code className="px-1.5 py-0.5 rounded bg-white/10">91XXXXXXXXXX</code> (12 digits starting with 91)
+                                                Separated <code className="px-1.5 py-0.5 rounded bg-white/10">country_code</code> (e.g. 91) and <code className="px-1.5 py-0.5 rounded bg-white/10">mobile_number</code> (10 digits)
                                             </p>
                                         </div>
                                         <div>
-                                            <span className={cn("font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>✓ Remaining Columns:</span>
+                                            <span className={cn("font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}>✓ Remaining Columns (Required):</span>
                                             <p className={cn(isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                                Dynamic variables matching your template (Name, Email, etc. - cannot be empty)
+                                                Dynamic variables matching your template (cannot be empty)
                                             </p>
                                         </div>
                                     </div>
@@ -244,7 +244,7 @@ export const CSVPreviewModal = ({
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-wrap gap-1">
                                                     {row.dynamic_variables && row.dynamic_variables.length > 0 ? (
-                                                        row.dynamic_variables.map((variable, vidx) => (
+                                                        row.dynamic_variables.map((variable: any, vidx: number) => (
                                                             <span
                                                                 key={vidx}
                                                                 className={cn(

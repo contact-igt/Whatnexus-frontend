@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { UserPlus, User, Mail, Phone, Lock } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
-import { Modal } from "@/components/ui/modal";
+import { Drawer } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import * as z from "zod";
 import {
@@ -422,13 +422,13 @@ export const PlatformAdminsView = () => {
             </div>
 
             {/* Create Admin Modal */}
-            <Modal
+            <Drawer
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 title="Add System Admin"
                 description="Create a new system administrator account"
                 isDarkMode={isDarkMode}
-                className="max-w-2xl font-sans"
+                className="max-w-xl font-sans"
                 footer={
                     <div className="flex justify-end gap-3">
                         <button
@@ -479,7 +479,7 @@ export const PlatformAdminsView = () => {
                         required
                     />
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Controller
                             name="country_code"
                             control={createControl}
@@ -511,15 +511,15 @@ export const PlatformAdminsView = () => {
                             placeholder="Enter mobile number"
                             disabled={createLoading}
                             error={createErrors.mobile?.message}
-                            wrapperClassName="col-span-2"
+                            wrapperClassName="col-span-1 md:col-span-2"
                             required
                         />
                     </div>
                 </form>
-            </Modal>
+            </Drawer>
 
             {/* View Admin Modal */}
-            <Modal
+            <Drawer
                 isOpen={isViewModalOpen}
                 onClose={() => {
                     setIsViewModalOpen(false);
@@ -528,7 +528,7 @@ export const PlatformAdminsView = () => {
                 title="Admin Details"
                 description="View system administrator information"
                 isDarkMode={isDarkMode}
-                className="max-w-2xl font-sans"
+                className="max-w-xl font-sans"
             >
                 {userDetailsLoading ? (
                     <div className="space-y-4 animate-pulse">
@@ -639,10 +639,10 @@ export const PlatformAdminsView = () => {
                         </div>
                     </div>
                 )}
-            </Modal>
+            </Drawer>
 
             {/* Edit Admin Modal */}
-            <Modal
+            <Drawer
                 isOpen={isEditModalOpen}
                 onClose={() => {
                     setIsEditModalOpen(false);
@@ -652,7 +652,7 @@ export const PlatformAdminsView = () => {
                 title="Edit Admin"
                 description="Update system administrator information"
                 isDarkMode={isDarkMode}
-                className="max-w-2xl font-sans"
+                className="max-w-xl font-sans"
                 footer={
                     <div className="flex justify-end gap-3">
                         <button
@@ -702,7 +702,7 @@ export const PlatformAdminsView = () => {
                             error={editErrors.username?.message}
                         />
 
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Controller
                                 name="country_code"
                                 control={editControl}
@@ -733,12 +733,12 @@ export const PlatformAdminsView = () => {
                                 placeholder="Enter mobile number"
                                 disabled={updateLoading}
                                 error={editErrors.mobile?.message}
-                                wrapperClassName="col-span-2"
+                                wrapperClassName="col-span-1 md:col-span-2"
                             />
                         </div>
                     </form>
                 )}
-            </Modal>
+            </Drawer>
 
             {/* Soft Delete Confirmation Modal */}
             <ConfirmationModal

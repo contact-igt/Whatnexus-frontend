@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, User, MessageSquareOff } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { getDateLabel } from '../chats/ChatUtils';
+import { getDateLabel, formatChatPreview } from '../chats/ChatUtils';
 
 interface HistorySidebarProps {
     isDarkMode: boolean;
@@ -114,7 +114,7 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className={cn("text-[12px] truncate pr-2 font-medium", isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-                                        {chat.message}
+                                        {formatChatPreview(chat.message, chat.message_type)}
                                     </span>
                                     {Number(chat?.unread_count) > 0 && (
                                         <span className="min-w-[18px] h-[18px] px-1 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shrink-0">

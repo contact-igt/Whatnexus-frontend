@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { Brain, AlertCircle, BookOpen, Ban, Frown, CheckCircle2 } from 'lucide-react';
-import { glassCard, glassInner, tx, trackBg } from './glassStyles';
+import { glassCard, glassInner, tx, trackBg, fs } from './glassStyles';
+import { NoDataFound } from './noDataFound';
 
 interface AiPerformanceData {
     autoResolvedPct: number;
@@ -10,7 +11,7 @@ interface AiPerformanceData {
     missingKnowledge: number;
     outOfScope: number;
     sentimentAlerts: number;
-    hubStatus: string; // "active"
+    hubStatus: string;
 }
 
 interface AIIntelligencePanelProps { 
@@ -18,7 +19,7 @@ interface AIIntelligencePanelProps {
     aiData?: AiPerformanceData;
 }
 
-import { NoDataFound } from './noDataFound';
+
 
 export const AIIntelligencePanel = ({ isDarkMode = true, aiData }: AIIntelligencePanelProps) => {
     const [show, setShow] = useState(false);
@@ -37,20 +38,16 @@ export const AIIntelligencePanel = ({ isDarkMode = true, aiData }: AIIntelligenc
 
     if (aiData && !hasData) {
         return (
-            <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#10b981' }} />
-                        <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>AI Performance</span>
-                    </div>
+            <div className="rounded-xl p-5 flex flex-col gap-5 h-full border transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+                <div className="flex items-center gap-2">
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>AI Performance</h3>
                 </div>
                 <div className="flex-1 flex flex-col justify-center">
                     <NoDataFound 
                         isDarkMode={isDarkMode}
                         title="No AI Neural Activity"
                         description="Automation metrics and intent analytics will appear as AI handles more chats."
-                        icon={<Brain size={32} />}
+                        icon={<Brain size={36} />}
                         className="bg-transparent border-none shadow-none py-12"
                     />
                 </div>
@@ -68,77 +65,72 @@ export const AIIntelligencePanel = ({ isDarkMode = true, aiData }: AIIntelligenc
     ] : [];
 
     return (
-        <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+        <div className="rounded-xl p-5 border flex flex-col gap-6 h-full transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#10b981' }} />
-                    <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>AI Performance</span>
-                </div>
-                {/* hubStatus "active" → green HUB ACTIVE badge */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>AI Performance</h3>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
                     style={{ 
-                        background: isHubActive ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)', 
-                        border: `1px solid ${isHubActive ? 'rgba(16,185,129,0.25)' : 'rgba(148,163,184,0.25)'}` 
+                        background: isHubActive ? 'rgba(16,185,129,0.1)' : 'rgba(148,163,184,0.1)', 
+                        color: isHubActive ? '#10b981' : '#94a3b8' 
                     }}>
-                    <Brain size={10} className={isHubActive ? 'text-emerald-400' : 'text-slate-400'} />
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${isHubActive ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    <Brain size={13} />
+                    <span style={{ fontSize: '12px', fontWeight: 500 }}>
                         {isHubActive ? 'Hub Active' : 'Hub Offline'}
                     </span>
                 </div>
             </div>
 
-            {/* Auto-resolved progress bar — main metric */}
-            <div className="space-y-2.5">
-                <div className="flex items-end justify-between">
-                    <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-0.5" style={{ color: t.label }}>AI Auto-Resolved</p>
-                        {!aiData ? (
-                            <div className="w-16 h-9 sk rounded" />
-                        ) : (
-                            <span className="text-3xl font-black tracking-tighter leading-none tabular-nums" style={{ color: t.value }}>
-                                {/* autoResolvedPct is already a % number → just append % */}
-                                {aiData.autoResolvedPct}%
-                            </span>
-                        )}
+            {/* Auto-resolved progress */}
+            <div className="space-y-3">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                        <p style={{ fontSize: '13px', fontWeight: 600, color: t.secondary }}>Auto-Resolved</p>
+                        <CheckCircle2 size={24} className="text-emerald-500" style={{ opacity: aiData ? 1 : 0.2 }} />
                     </div>
-                    <CheckCircle2 size={28} className="text-emerald-400 mb-1" style={{ opacity: aiData ? 1 : 0.2 }} />
+                    {!aiData ? (
+                        <div className="w-20 h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-md" />
+                    ) : (
+                        <span style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, color: t.primary }}>
+                            {aiData.autoResolvedPct}%
+                        </span>
+                    )}
                 </div>
-                <div className="h-3 w-full rounded-full overflow-hidden" style={{ background: trackBg(isDarkMode) }}>
+                <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                     <div className="h-full rounded-full"
                         style={{
                             width: `${barW}%`,
-                            background: 'linear-gradient(90deg, #10b981, #34d399)',
-                            boxShadow: '0 0 12px rgba(16,185,129,0.5)',
-                            transition: 'width 1000ms cubic-bezier(0.22, 1, 0.36, 1) 0ms',
+                            background: '#10b981',
+                            transition: 'width 1000ms ease-out 0ms',
                         }} />
                 </div>
-                <p className="text-[9px] font-semibold" style={{ color: t.secondary }}>
+                <p style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>
                     Chats resolved without human intervention
                 </p>
             </div>
 
             {/* Alert stat grid */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3 mt-auto">
                 {!aiData ? (
-                    Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 w-full sk rounded-xl" />)
+                    Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 w-full bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />)
                 ) : (
                     alertStats.map((s, i) => {
                         const Icon = s.icon;
                         return (
-                            <div key={i} className="p-3 rounded-xl flex flex-col gap-2"
+                            <div key={i} className="p-3 rounded-xl border flex flex-col gap-3 transition-all"
                                 style={{
-                                    ...glassInner(isDarkMode),
+                                    background: isDarkMode ? '#18181b' : '#fafafa',
+                                    borderColor: isDarkMode ? '#27272a' : '#e4e4e7',
                                     opacity: show ? 1 : 0, 
-                                    transform: show ? 'translateY(0)' : 'translateY(6px)',
-                                    transition: `opacity 0.3s ease ${i * 60 + 200}ms, transform 0.3s ease ${i * 60 + 200}ms`
+                                    transform: show ? 'translateY(0)' : 'translateY(4px)',
+                                    transition: `opacity 0.3s ease ${i * 50 + 100}ms, transform 0.3s ease ${i * 50 + 100}ms`
                                 }}>
-                                <div className="w-fit p-1.5 rounded-lg" style={{ background: `${s.hex}20`, color: s.hex }}>
-                                    <Icon size={12} />
+                                <div className="flex items-center gap-2" style={{ color: s.hex }}>
+                                    <Icon size={16} />
+                                    <span style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>{s.label}</span>
                                 </div>
                                 <div>
-                                    <p className="text-lg font-black tracking-tight leading-none tabular-nums" style={{ color: s.hex }}>{s.value}</p>
-                                    <p className="text-[9px] font-black uppercase tracking-widest mt-0.5" style={{ color: t.label }}>{s.label}</p>
+                                    <p style={{ fontSize: '20px', fontWeight: 600, color: t.primary, lineHeight: 1 }}>{s.value}</p>
                                 </div>
                             </div>
                         );

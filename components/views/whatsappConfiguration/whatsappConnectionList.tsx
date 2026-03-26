@@ -29,6 +29,7 @@ export const WhatsappConnectionList = ({
     const [editedTokens, setEditedTokens] = useState<Record<string, string>>({});
     const isEditing = editingId === WhatsAppConnectionData.data.id;
     const isActive = WhatsAppConnectionData.data.status === "active";
+    const isToggleDisabled = !["verified", "active", "inactive"].includes(WhatsAppConnectionData.data.status);
     const toggleAccessTokenVisibility = (id: string) => {
         setShowAccessToken(prev => ({ ...prev, [id]: !prev[id] }));
     };
@@ -102,10 +103,13 @@ export const WhatsappConnectionList = ({
                         <span className={cn("text-sm font-medium", isDarkMode ? "text-white/70" : "text-slate-600")}>
                             {isActive ? "Active" : "Inactive"}
                         </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label className={cn(
+                            "relative inline-flex items-center",
+                            isToggleDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                        )}>
                             <input
                                 type="checkbox"
-                                disabled={WhatsAppConnectionData.data.status == "pending"}
+                                disabled={isToggleDisabled}
                                 className="sr-only peer"
                                 checked={isActive}
                                 onChange={() => handleToggleActive(WhatsAppConnectionData.data.id, WhatsAppConnectionData.data.status)}

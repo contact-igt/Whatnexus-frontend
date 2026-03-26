@@ -65,24 +65,16 @@ export const GroupedSidebar = () => {
                 "shrink-0 flex flex-col z-[100] transition-all duration-500 ease-out relative group/sidebar",
                 isExpanded ? "w-72" : "w-20",
                 isDarkMode
-                    ? 'bg-[#0A0A0B]/95 backdrop-blur-2xl'
-                    : 'bg-white/95 backdrop-blur-2xl shadow-2xl shadow-slate-900/5'
+                    ? 'bg-[#09090b]'
+                    : 'bg-white shadow-lg shadow-slate-900/5'
             )}
         >
-            {/* Animated border */}
+            {/* Right border */}
             <div className={cn(
-                "absolute inset-y-0 right-0 w-px transition-all duration-500",
+                "absolute inset-y-0 right-0 w-px",
                 isDarkMode
-                    ? 'bg-gradient-to-b from-transparent via-white/10 to-transparent'
-                    : 'bg-gradient-to-b from-transparent via-slate-200 to-transparent'
-            )} />
-
-            {/* Ambient glow effect */}
-            <div className={cn(
-                "absolute inset-0 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-700 pointer-events-none",
-                isDarkMode
-                    ? "bg-gradient-to-br from-emerald-500/5 via-transparent to-teal-500/5"
-                    : "bg-gradient-to-br from-emerald-500/3 via-transparent to-teal-500/3"
+                    ? 'bg-[#27272a]'
+                    : 'bg-[#e4e4e7]'
             )} />
 
             {/* Logo Section */}
@@ -99,23 +91,18 @@ export const GroupedSidebar = () => {
                         <div className={cn(
                             "w-full h-full rounded-2xl flex items-center justify-center font-black text-lg relative overflow-hidden group/logo transition-all duration-300",
                             isDarkMode
-                                ? 'bg-gradient-to-br from-white/10 to-white/5 border border-white/10'
-                                : 'bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700',
-                            !isExpanded && "hover:scale-110 hover:rotate-6"
+                                ? 'bg-[#18181b] border border-[#27272a]'
+                                : 'bg-slate-900 border border-slate-700',
+                            !isExpanded && "hover:scale-110"
                         )}>
-                            {/* Shimmer effect */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/logo:translate-x-full transition-transform duration-1000" />
-
                             <span className={cn(
-                                "relative z-10 transition-all duration-300",
+                                "relative z-10",
                                 isDarkMode ? 'text-white' : 'text-white'
                             )}>
-                                W<span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">.</span>
+                                W<span className="text-emerald-400">.</span>
                             </span>
                         </div>
 
-                        {/* Glow effect */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl blur-xl opacity-0 group-hover/logo:opacity-100 transition-opacity duration-500 -z-10" />
                     </div>
 
                     {/* Logo Text */}
@@ -143,27 +130,37 @@ export const GroupedSidebar = () => {
                 <div className="px-4 pb-5 relative z-10">
                     {isWhatsAppActive ? (
                         <div className={cn(
-                            "rounded-xl p-3 transition-all duration-500 relative overflow-hidden group/status",
+                            "rounded-xl transition-all duration-300 relative overflow-hidden group/status cursor-default",
                             isDarkMode
-                                ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20'
-                                : 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200',
-                            isExpanded ? "" : "flex justify-center p-2.5"
+                                ? 'bg-[#18181b] border border-emerald-500/25 hover:border-emerald-500/40'
+                                : 'bg-emerald-50 border border-emerald-200 hover:border-emerald-300',
+                            isExpanded ? "p-3" : "p-2.5 flex justify-center"
                         )}>
-                            {/* Animated background */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-teal-500/0 translate-x-[-100%] group-hover/status:translate-x-[100%] transition-transform duration-1000" />
-
-                            <div className={cn("flex items-center gap-2.5 relative z-10", !isExpanded && "justify-center")}>
-                                <div className="relative">
-                                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400" />
-                                    <div className="absolute inset-0 w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 animate-ping" />
+                            <div className={cn("flex items-center relative z-10", isExpanded ? "gap-2.5" : "justify-center")}>
+                                {/* Status indicator — icon with ring */}
+                                <div className="relative shrink-0 flex items-center justify-center">
+                                    <div className={cn(
+                                        "rounded-lg flex items-center justify-center",
+                                        isExpanded ? "w-8 h-8" : "w-8 h-8",
+                                        isDarkMode ? 'bg-emerald-500/15' : 'bg-emerald-100'
+                                    )}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-emerald-500">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                        </svg>
+                                    </div>
+                                    {/* Live dot */}
+                                    <div className="absolute -top-0.5 -right-0.5">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 border-2" style={{ borderColor: isDarkMode ? '#18181b' : '#ecfdf5' }} />
+                                        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-60" />
+                                    </div>
                                 </div>
                                 {isExpanded && (
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-emerald-500">
                                             WhatsApp
                                         </span>
                                         <span className={cn(
-                                            "text-[11px] font-black",
+                                            "text-[11px] font-black leading-tight",
                                             isDarkMode ? 'text-white' : 'text-slate-900'
                                         )}>
                                             Connected
@@ -182,18 +179,18 @@ export const GroupedSidebar = () => {
                                 className={cn(
                                     "w-full rounded-xl transition-all duration-300 relative overflow-hidden group/status hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
                                     isDarkMode
-                                        ? 'bg-gradient-to-br from-rose-500/10 to-rose-600/10 border border-rose-500/20 hover:border-rose-500/40'
-                                        : 'bg-gradient-to-br from-rose-50 to-rose-100/50 border border-rose-200 hover:border-rose-300',
+                                        ? 'bg-[#18181b] border border-rose-500/20 hover:border-rose-500/40'
+                                        : 'bg-rose-50 border border-rose-200 hover:border-rose-300',
                                     isExpanded ? "p-3" : "p-2.5"
                                 )}
                             >
                                 {/* Sweep effect */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/20 to-rose-500/0 translate-x-[-100%] group-hover/status:translate-x-[100%] transition-transform duration-700" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/10 to-rose-500/0 translate-x-[-100%] group-hover/status:translate-x-[100%] transition-transform duration-700" />
 
                                 {/* Pulse ring animation */}
                                 <div className={cn(
                                     "absolute inset-0 rounded-xl opacity-0 group-hover/status:opacity-100 transition-opacity duration-500",
-                                    isDarkMode ? "bg-rose-500/5" : "bg-rose-500/10"
+                                    isDarkMode ? "bg-rose-500/5" : "bg-rose-500/5"
                                 )} />
 
                                 <div className={cn("flex items-center gap-2.5 relative z-10", !isExpanded && "justify-center")}>
@@ -288,11 +285,9 @@ export const GroupedSidebar = () => {
                                 {hasMoreVisibleGroups && (
                                     <div className="py-2 px-2">
                                         <div className={cn(
-                                            "h-px relative overflow-hidden rounded-full",
-                                            isDarkMode ? 'bg-white/5' : 'bg-slate-200'
-                                        )}>
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
-                                        </div>
+                                            "h-px",
+                                            isDarkMode ? 'bg-[#27272a]' : 'bg-[#e4e4e7]'
+                                        )} />
                                     </div>
                                 )}
                             </div>
@@ -306,13 +301,10 @@ export const GroupedSidebar = () => {
                 <div className={cn(
                     "rounded-2xl transition-all duration-300 relative overflow-hidden group/profile cursor-pointer",
                     isDarkMode
-                        ? 'bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 hover:border-white/20'
-                        : 'bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 hover:border-slate-600',
+                        ? 'bg-[#18181b] border border-[#27272a] hover:border-[#3f3f46]'
+                        : 'bg-slate-900 border border-slate-700 hover:border-slate-600',
                     isExpanded ? "p-3" : "p-3 flex justify-center"
                 )}>
-                    {/* Glow effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-teal-500/0 opacity-0 group-hover/profile:opacity-100 transition-opacity duration-500" />
-
                     <div className={cn(
                         "flex items-center gap-3 relative z-10",
                         !isExpanded && "justify-center"
@@ -320,8 +312,8 @@ export const GroupedSidebar = () => {
                         <div className={cn(
                             "shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm relative overflow-hidden",
                             isDarkMode
-                                ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-white'
-                                : 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white'
+                                ? 'bg-emerald-500/15 text-emerald-400'
+                                : 'bg-emerald-500 text-white'
                         )}>
                             {user?.username ? user?.username?.split("")[0].toUpperCase() : <User size={18} />}
                         </div>

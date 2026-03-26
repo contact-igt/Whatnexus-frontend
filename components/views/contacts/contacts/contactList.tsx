@@ -6,6 +6,7 @@ import { User, Phone } from "lucide-react";
 import { DataTable, ColumnDef } from "@/components/ui/dataTable";
 import { Pagination } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/Checkbox";
+// import { Checkbox } from "@/components/ui/Checkbox";
 
 interface ContactListProps {
     isDarkMode: boolean;
@@ -113,7 +114,7 @@ export const ContactList = ({
                         "text-sm",
                         isDarkMode ? 'text-white/70' : 'text-slate-600'
                     )}>
-                        {row.phone}
+                        +{row.phone}
                     </span>
                 </div>
             )

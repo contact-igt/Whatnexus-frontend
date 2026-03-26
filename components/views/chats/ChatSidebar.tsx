@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, User, MessageSquareOff } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { getDateLabel } from './ChatUtils';
+import { getDateLabel, formattedTime, formatChatPreview } from './ChatUtils';
 
 interface ChatSidebarProps {
     isDarkMode: boolean;
@@ -116,7 +116,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                         <span className={cn("text-sm font-bold truncate", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             {chat?.name || chat.phone}
                                         </span>
-                                        {chat?.assigned_admin_id && (
+                                        {chat?.assigned_admin_id ? (
                                             <div className={cn(
                                                 "px-1.5 py-[2px] rounded text-[9px] font-bold flex items-center gap-1 shrink-0",
                                                 chat.assigned_admin_id === user?.tenant_user_id
@@ -125,6 +125,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                             )}>
                                                 {chat.assigned_admin_id === user?.tenant_user_id ? "Yours" : chat.assigned_agent_name}
                                             </div>
+                                        ) : (
+                                            <div className={cn(
+                                                "px-1.5 py-[2px] rounded text-[9px] font-bold flex items-center gap-1 shrink-0",
+                                                isDarkMode ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" : "bg-rose-50 text-rose-600 border border-rose-100"
+                                            )}>
+                                                Unassigned
+                                            </div>
                                         )}
                                     </div>
                                     <span className={cn("text-[10px] whitespace-nowrap ml-1 shrink-0",
@@ -132,12 +139,16 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                             ? (isDarkMode ? 'text-emerald-400 font-bold' : 'text-emerald-600 font-bold')
                                             : (isDarkMode ? 'text-slate-500' : 'text-slate-400')
                                     )}>
-                                        {chat?.last_message_time ? getDateLabel(chat.last_message_time) : ""}
+                                        {chat?.last_message_time ? (
+                                            getDateLabel(chat.last_message_time) === "Today"
+                                                ? formattedTime(chat.last_message_time)
+                                                : getDateLabel(chat.last_message_time)
+                                        ) : ""}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className={cn("text-[12px] truncate pr-2 font-medium", isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-                                        {chat.message}
+                                        {formatChatPreview(chat.message, chat.message_type)}
                                     </span>
                                     {Number(chat?.unread_count) > 0 && (
                                         <span className="min-w-[18px] h-[18px] px-1 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shrink-0">

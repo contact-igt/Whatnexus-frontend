@@ -3,16 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, BookOpen, Ban, Frown, Activity } from 'lucide-react';
-import { glassCard, glassInner, tx } from './glassStyles';
+import { tx } from './glassStyles';
 import { ActivityEvent } from '@/services/whatsappDashboard';
+import { NoDataFound } from './noDataFound';
 
 interface ActivityFeedProps { 
     isDarkMode?: boolean; 
     recentActivity?: ActivityEvent[];
 }
 
-// type → icon + accent colour
-// urgent=red, missing_knowledge=blue, out_of_scope=yellow, sentiment=purple
 const typeConfig: Record<string, { icon: any; hex: string }> = {
     urgent:            { icon: AlertCircle, hex: '#f43f5e' },
     missing_knowledge: { icon: BookOpen,    hex: '#3b82f6' },
@@ -20,7 +19,6 @@ const typeConfig: Record<string, { icon: any; hex: string }> = {
     sentiment:         { icon: Frown,       hex: '#a855f7' },
 };
 
-// status chip styling
 const statusChipStyle: Record<string, { bg: string; color: string; label: string }> = {
     pending:  { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', label: 'Pending'  },
     act_on:   { bg: 'rgba(244,63,94,0.15)',  color: '#f87171', label: 'Act On'   },
@@ -28,46 +26,40 @@ const statusChipStyle: Record<string, { bg: string; color: string; label: string
     ignored:  { bg: 'rgba(148,163,184,0.1)', color: '#94a3b8', label: 'Ignored'  },
 };
 
-import { NoDataFound } from './noDataFound';
+
 
 export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeedProps) => {
     const [visible, setVisible] = useState<boolean[]>([]);
     const t = tx(isDarkMode);
-    const router = useRouter();
+    const filteredActivity = (recentActivity || []).filter(item => 
+        !['urgent', 'missing_knowledge', 'out_of_scope', 'sentiment'].includes(item.type)
+    );
 
-    const handleViewSystemLogs = () => {
-        localStorage.setItem('selectedTab', 'aiLogs');
-        router.push('/knowledge');
-    };
+    const hasData = filteredActivity.length > 0;
 
     useEffect(() => {
-        if (recentActivity) {
-            setVisible(recentActivity.map(() => false));
-            recentActivity.forEach((_, i) => {
+        if (filteredActivity.length > 0) {
+            setVisible(filteredActivity.map(() => false));
+            filteredActivity.forEach((_, i) => {
                 setTimeout(() => {
                     setVisible(prev => { const n = [...prev]; n[i] = true; return n; });
-                }, 300 + i * 100);
+                }, 100 + i * 50);
             });
         }
-    }, [recentActivity]);
-
-    const hasData = recentActivity && recentActivity.length > 0;
+    }, [filteredActivity.length]);
 
     if (recentActivity && !hasData) {
         return (
-            <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#a855f7' }} />
-                        <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>Activity Feed</span>
-                    </div>
+            <div className="rounded-xl p-5 flex flex-col gap-5 h-full border transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+                <div className="flex items-center gap-2">
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Activity Feed</h3>
                 </div>
                 <div className="flex-1 flex flex-col justify-center">
                     <NoDataFound 
                         isDarkMode={isDarkMode}
                         title="No Recent Activity"
                         description="Your team's latest actions and system events will stream here."
-                        icon={<Activity size={32} />}
+                        icon={<Activity size={36} />}
                         className="bg-transparent border-none shadow-none py-12"
                     />
                 </div>
@@ -76,58 +68,54 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
     }
 
     return (
-        <div className="rounded-2xl p-5 flex flex-col gap-5 h-full" style={glassCard(isDarkMode)}>
+        <div className="rounded-xl p-5 border flex flex-col gap-4 h-full transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div style={{ width: 2, height: 14, borderRadius: 9999, background: '#a855f7' }} />
-                    <span className="text-[9px] font-black uppercase tracking-[0.24em]" style={{ color: t.label }}>Activity Feed</span>
+                <div className="flex items-center gap-2.5">
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Activity Feed</h3>
+                    {recentActivity && recentActivity.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-md"
+                            style={{ fontSize: '11px', fontWeight: 600, background: isDarkMode ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', color: '#a855f7', border: `1px solid ${isDarkMode ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.15)'}` }}>
+                            {recentActivity.filter(a => a.status === 'pending' || a.status === 'act_on').length} pending
+                        </span>
+                    )}
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.25)' }}>
-                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                        <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest">Live</span>
-                    </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
+                    style={{ background: isDarkMode ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.05)', color: '#a855f7' }}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                    <span style={{ fontSize: '11px', fontWeight: 600 }}>Live</span>
                 </div>
             </div>
 
-            <div className="relative space-y-3.5 overflow-y-auto max-h-[370px] no-scrollbar pr-1 flex-1">
-                <div className="absolute left-[13px] top-2 bottom-2 w-px pointer-events-none"
-                    style={{ background: `linear-gradient(to bottom, rgba(16,185,129,0.3), ${t.divider}, transparent)` }} />
+            <div className="relative space-y-4 overflow-y-auto max-h-[380px] no-scrollbar pr-1 flex-1 mt-2">
+                <div className="absolute left-[15px] top-2 bottom-2 w-px pointer-events-none"
+                    style={{ background: `linear-gradient(to bottom, rgba(168,85,247,0.3), ${isDarkMode ? '#27272a' : '#e4e4e7'}, transparent)` }} />
 
                 {!recentActivity ? (
-                    Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-14 w-full sk rounded-xl" />)
+                    Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 w-full bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />)
                 ) : (
-                    recentActivity.map((item, i) => {
-                        // type → accent colour / icon
+                    filteredActivity.map((item, i) => {
                         const config = typeConfig[item.type] ?? { icon: Activity, hex: '#94a3b8' };
                         const Icon = config.icon;
-                        // status chip
                         const chip = statusChipStyle[item.status] ?? statusChipStyle.pending;
 
                         return (
-                            <div key={i} className="flex items-start gap-3 group cursor-pointer"
+                            <div key={i} className="flex items-start gap-4 group cursor-pointer"
                                 style={{
                                     opacity: visible[i] ? 1 : 0, 
                                     transform: visible[i] ? 'translateX(0)' : 'translateX(-8px)',
-                                    transition: `opacity 0.3s ease ${i * 80}ms, transform 0.3s ease ${i * 80}ms`
+                                    transition: `opacity 0.3s ease ${i * 40}ms, transform 0.3s ease ${i * 40}ms`
                                 }}>
-                                {/* Icon dot coloured by type */}
-                                <div className="relative z-10 w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-                                    style={{ background: `${config.hex}20`, border: `1px solid ${config.hex}30`, color: config.hex }}>
-                                    <Icon size={13} />
+                                <div className="relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-sm"
+                                    style={{ background: isDarkMode ? '#18181b' : '#ffffff', border: `1px solid ${isDarkMode ? '#27272a' : '#e4e4e7'}`, color: config.hex }}>
+                                    <Icon size={14} />
                                 </div>
-                                <div className="flex flex-col gap-0.5 pt-0.5 flex-1 min-w-0">
-                                    {/* event — emoji + title, render as-is */}
-                                    <p className="text-xs font-black tracking-tight leading-snug" style={{ color: t.primary }}>{item.event}</p>
-                                    {/* detail — 40-char snippet */}
-                                    <p className="text-[9px] font-semibold truncate" style={{ color: t.secondary }}>{item.detail}</p>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                        {/* time — pre-formatted string, render as-is (NO extra "ago") */}
-                                        <p className="text-[8px] font-black uppercase tracking-widest" style={{ color: t.micro }}>{item.time}</p>
-                                        {/* status chip */}
-                                        <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded"
-                                            style={{ background: chip.bg, color: chip.color }}>
+                                <div className="flex flex-col gap-1 pt-0.5 flex-1 min-w-0">
+                                    <p style={{ fontSize: '13px', fontWeight: 500, lineHeight: 1.4, color: t.primary }}>{item.event}</p>
+                                    <p className="truncate" style={{ fontSize: '12px', color: t.secondary }}>{item.detail || item.details}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <p style={{ fontSize: '11px', fontWeight: 500, color: t.micro }}>{item.time}</p>
+                                        <span className="px-1.5 py-0.5 rounded-md"
+                                            style={{ fontSize: '10px', fontWeight: 600, background: chip.bg, color: chip.color }}>
                                             {chip.label}
                                         </span>
                                     </div>
@@ -138,10 +126,6 @@ export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeed
                 )}
             </div>
 
-            <button onClick={handleViewSystemLogs} className="w-full py-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all mt-auto"
-                style={{ ...glassInner(isDarkMode), color: t.secondary }}>
-                View System Logs
-            </button>
         </div>
     );
 };

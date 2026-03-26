@@ -66,3 +66,39 @@ export const useToggleSpecializationStatusMutation = () => {
         }
     })
 }
+
+export const useGetDeletedSpecializationsQuery = () => {
+    return useQuery({
+        queryKey: ['deleted-specializations'],
+        queryFn: () => specializationsApis.getDeletedSpecializations()
+    })
+}
+
+export const useRestoreSpecializationMutation = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (id: string) => specializationsApis.restoreSpecialization(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['specializations'] })
+            queryClient.invalidateQueries({ queryKey: ['deleted-specializations'] })
+            toast.success("Specialization restored successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || "Failed to restore specialization")
+        }
+    })
+}
+
+export const usePermanentDeleteSpecializationMutation = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (id: string) => specializationsApis.permanentDeleteSpecialization(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['deleted-specializations'] })
+            toast.success("Specialization permanently deleted")
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || "Failed to permanently delete specialization")
+        }
+    })
+}

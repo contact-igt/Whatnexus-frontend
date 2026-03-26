@@ -41,16 +41,21 @@ export const EditContactDrawer = ({
                 is_blocked: contact.is_blocked
             });
 
-            // Parse phone number for display
+            // Parse phone number for display (stored without + prefix, e.g. "919876543210")
             const phone = contact.phone || '';
-            let code = '+91';
+            let code = contact.country_code || '+91';
             let number = phone;
 
-            if (phone.startsWith('+91')) { code = '+91'; number = phone.slice(3); }
+            // Try matching known country codes (without + prefix as stored in DB)
+            if (phone.startsWith('971') && phone.length > 10) { code = '+971'; number = phone.slice(3); }
+            else if (phone.startsWith('91') && phone.length > 10) { code = '+91'; number = phone.slice(2); }
+            else if (phone.startsWith('44') && phone.length > 10) { code = '+44'; number = phone.slice(2); }
+            else if (phone.startsWith('1') && phone.length > 10) { code = '+1'; number = phone.slice(1); }
+            // Legacy: handle if stored with + prefix
+            else if (phone.startsWith('+91')) { code = '+91'; number = phone.slice(3); }
             else if (phone.startsWith('+1')) { code = '+1'; number = phone.slice(2); }
             else if (phone.startsWith('+44')) { code = '+44'; number = phone.slice(3); }
             else if (phone.startsWith('+971')) { code = '+971'; number = phone.slice(4); }
-
             setDisplayPhone({ code, number });
         }
     }, [contact]);
@@ -260,7 +265,7 @@ export const EditContactDrawer = ({
                 </div>
 
                 {/* Email */}
-                {/* <Input
+                <Input
                     isDarkMode={isDarkMode}
                     label="Email"
                     type="email"
@@ -269,7 +274,8 @@ export const EditContactDrawer = ({
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     error={errors.email}
                     icon={Mail}
-                /> */}
+                />
+
 
                 {/* Tags */}
                 {/* <div>

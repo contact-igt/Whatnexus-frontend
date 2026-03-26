@@ -127,6 +127,9 @@ export const WhatsAppPlaygroundView = () => {
                 technicalLogs: result.data.technicalLogs,
                 responseOrigin: result.data.responseOrigin,
                 tokenUsage: result.data.tokenUsage,
+                classification: result.data.classification,
+                knowledgeChunksUsed: result.data.knowledgeChunksUsed,
+                resolvedLogsUsed: result.data.resolvedLogsUsed,
             };
 
             setMessages((prev) => [...prev, aiMessage]);
@@ -914,7 +917,6 @@ export const WhatsAppPlaygroundView = () => {
                                             </div>
                                         </div>
                                     )}
-
                                     {/* Classification */}
                                     {classification && (
                                         <div className="px-4 pb-2">

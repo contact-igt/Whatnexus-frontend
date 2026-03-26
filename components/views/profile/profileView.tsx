@@ -15,6 +15,7 @@ export const ProfileView = () => {
         title: user?.title || '',
         username: user?.username || '',
         email: user?.email || '',
+        country_code: user?.country_code || '+91',
         mobile: user?.mobile || '',
         role: user?.role || ''
     });
@@ -30,6 +31,7 @@ export const ProfileView = () => {
             title: user?.title || '',
             username: user?.username || '',
             email: user?.email || '',
+            country_code: user?.country_code || '+91',
             mobile: user?.mobile || '',
             role: user?.role || ''
         });
@@ -179,23 +181,44 @@ export const ProfileView = () => {
                                 Phone Number
                             </label>
                             {isEditMode ? (
-                                <div className="relative">
-                                    <Phone size={16} className={cn(
-                                        "absolute left-3 top-1/2 -translate-y-1/2",
-                                        isDarkMode ? 'text-white/40' : 'text-slate-400'
-                                    )} />
-                                    <input
-                                        type="tel"
-                                        value={formData.mobile}
-                                        onChange={(e) => handleInputChange('mobile', e.target.value)}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <select
+                                        value={formData.country_code}
+                                        onChange={(e) => handleInputChange('country_code', e.target.value)}
                                         className={cn(
-                                            "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
+                                            "w-full px-3 py-2.5 rounded-xl border font-medium text-sm transition-all",
                                             isDarkMode
-                                                ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10'
+                                                ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10 [&>option]:bg-slate-800 [&>option]:text-white'
                                                 : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white'
                                         )}
-                                        placeholder="Enter phone number"
-                                    />
+                                    >
+                                        <option value="+91">+91</option>
+                                        <option value="+1">+1</option>
+                                        <option value="+44">+44</option>
+                                        <option value="+971">+971</option>
+                                    </select>
+                                    <div className="col-span-2 relative">
+                                        <Phone size={16} className={cn(
+                                            "absolute left-3 top-1/2 -translate-y-1/2",
+                                            isDarkMode ? 'text-white/40' : 'text-slate-400'
+                                        )} />
+                                        <input
+                                            type="tel"
+                                            value={formData.mobile}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '');
+                                                handleInputChange('mobile', val);
+                                            }}
+                                            maxLength={10}
+                                            className={cn(
+                                                "w-full pl-10 pr-4 py-2.5 rounded-xl border font-medium text-sm transition-all",
+                                                isDarkMode
+                                                    ? 'bg-white/5 border-white/10 text-white focus:border-emerald-500/50 focus:bg-white/10'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500 focus:bg-white'
+                                            )}
+                                            placeholder="9876543210"
+                                        />
+                                    </div>
                                 </div>
                             ) : (
                                 <div className={cn(
@@ -205,7 +228,7 @@ export const ProfileView = () => {
                                         : 'bg-slate-50 border-slate-200 text-slate-600'
                                 )}>
                                     <Phone size={16} className={isDarkMode ? 'text-white/40' : 'text-slate-400'} />
-                                    {formData?.mobile || "Not set"}
+                                    {formData?.mobile ? `${formData.country_code} ${formData.mobile}` : "Not set"}
                                 </div>
                             )}
                         </div>

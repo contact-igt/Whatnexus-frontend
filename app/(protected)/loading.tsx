@@ -1,7 +1,13 @@
-// Next.js calls this file on every route transition within (protected).
-// Since all routes are eagerly prefetched by the sidebar on mount, actual
-// navigation is already instant. We still need this file to exist so Next.js
-// doesn't throw, but we render nothing — no spinner, no "Loading Hub".
+import { ThemedLoader } from "@/components/ui/themedLoader";
+
 export default function ProtectedLoading() {
-    return null;
+    return (
+        <div className="fixed inset-0 z-[999] bg-zinc-950 flex items-center justify-center">
+            <ThemedLoader 
+                isDarkMode={true} 
+                text="Accessing Neural Hub" 
+                subtext="Decrypting secure channels" 
+            />
+        </div>
+    );
 }

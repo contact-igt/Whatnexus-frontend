@@ -37,26 +37,14 @@ export default function AccountActivation() {
     const { currentStatusDataState, activeStatus } = useAuth();
     const { isDarkMode, setTheme } = useTheme();
     const searchParams = useSearchParams();
-    console.log("searchParams", searchParams)
     // Get URL parameters
     const token = searchParams.get("token");
     const urlStatus = searchParams.get("status") as ActivationStatus | null;
     const sessionKey = token ? `activation_checked_${token}` : "";
     const hasChecked = typeof window !== "undefined" && sessionKey && sessionStorage.getItem(sessionKey) === "true";
-    console.log("hasChecked", hasChecked)
     const { data: currentStatusData, isLoading } = useTenantActivationCheckQuery(token ?? "", Boolean(hasChecked));
     // const [currentStatus, setCurrentStatus] = useState<ActivationStatus>(activeStatus ?? "pending");
     const inviteCurrentStatus = currentStatusData ? currentStatusData : currentStatusDataState;
-    console.log("currentStatusDataState", currentStatusDataState)
-    // Mock invitation data (in production, fetch from API using token)
-    // const [invitationData] = useState({
-    //     organizationName: "Kingpin Ventures",
-    //     invitedBy: "Admin User",
-    //     email: "user@example.com",
-    //     invitedDate: new Date().toLocaleDateString(),
-    //     userName: "John Doe",
-    // });
-    console.log("activeStatus", activeStatus)
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
     };
@@ -85,7 +73,6 @@ export default function AccountActivation() {
 
     useEffect(() => {
         if (!token) {
-            console.log("test")
             dispatch(resetActiveStatus());
             return;
         }
@@ -103,7 +90,7 @@ export default function AccountActivation() {
             sessionStorage.setItem(sessionKey, "true");
             dispatch(setCurrentStatusData(currentStatusData))
         }
-    }, [currentStatusData, sessionKey, currentStatusDataState]);
+    }, [currentStatusData, sessionKey]);
 
     const getCurrentStep = () => {
         switch (activeStatus) {
@@ -119,9 +106,7 @@ export default function AccountActivation() {
                 return 1;
         }
     };
-    console.log("currentStatusData", currentStatusData)
     useEffect(() => {
-        console.log("inviteCurrentStatus", inviteCurrentStatus)
         if (inviteCurrentStatus && !hasChecked) {
             if (inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "pending" && !inviteCurrentStatus?.is_password) {
                 dispatch(setActiveStatus("pending"));
@@ -139,7 +124,7 @@ export default function AccountActivation() {
                 dispatch(setActiveStatus("expired"));
             }
         }
-    }, [inviteCurrentStatus, hasChecked, currentStatusDataState])
+    }, [inviteCurrentStatus, hasChecked])
     const isUnifiedFlow = ["pending", "security-setup", "success", "resume-setup"].includes(activeStatus);
 
     const renderScreenContent = () => {
@@ -209,7 +194,6 @@ export default function AccountActivation() {
                 );
         }
     };
-    console.log("currentStatus", activeStatus)
     return (
         <div
             className={cn(

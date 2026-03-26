@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useGetWhatsappConfigQuery, useSaveWhatsAppConfigMutation, useStatusWhatsAppConfigQuery, useTestWhatsAppConfigQuery } from '@/hooks/useWhatsappConfigQuery';
+import { useGetWhatsappConfigQuery, useSaveWhatsAppConfigMutation, useStatusWhatsAppConfigQuery, useTestWhatsAppConfigQuery, useUpdateAccessTokenMutation } from '@/hooks/useWhatsappConfigQuery';
 import { WhatsappConnectionList } from './whatsappConnectionList';
 import { TestMessageCard } from './testMessageCard';
 import { MetaVerificationCard } from './metaVerificationCard';
@@ -69,11 +69,13 @@ export const WhatsAppConnectionView = () => {
     const { mutate: saveWhatsConfigMutate, isPending: isSaveLoading } = useSaveWhatsAppConfigMutation();
     const { mutate: testWhatsConfigMutate, isPending: isTestLoading } = useTestWhatsAppConfigQuery();
     const { mutate: updateWhatsappConfigMutate, isPending: isUpdateLoading } = useStatusWhatsAppConfigQuery();
+    const { mutate: updateAccessTokenMutate, isPending: isTokenUpdateLoading } = useUpdateAccessTokenMutation();
     const { isDarkMode } = useTheme();
 
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [isCheckingWebhook, setIsCheckingWebhook] = useState(false);
     const [showVerification, setShowVerification] = useState(false);
+    const [webhookStatusData, setWebhookStatusData] = useState<any>(null);
 
     const [showAccessToken, setShowAccessToken] = useState(false);
     const [copiedWebhook, setCopiedWebhook] = useState(false);
@@ -95,9 +97,8 @@ export const WhatsAppConnectionView = () => {
         if (status !== 'active') {
             // Check if webhook is verified
             if (!user?.webhook_verified) {
-                // If not verified, show verification UI and return
+                // If not verified, show verification card and return
                 setShowVerification(true);
-                toast.error("Please verify your webhook before activating.");
                 return;
             }
         }
@@ -114,8 +115,11 @@ export const WhatsAppConnectionView = () => {
     };
 
     const handleSaveEdit = (connection: any) => {
-        console.log('Save configuration for:', connection.id);
-        // TODO: Implement save logic
+        if (!connection.access_token || connection.access_token.length < 50) {
+            toast.error('Access token is too short. Please enter a valid token.');
+            return;
+        }
+        updateAccessTokenMutate({ access_token: connection.access_token });
     };
 
     const getStatusColor = () => {
@@ -141,20 +145,19 @@ export const WhatsAppConnectionView = () => {
         if (!user?.tenant_id) return;
 
         setIsCheckingWebhook(true);
+        setShowVerification(true); // Always show verification card when checking
         try {
             const response = await new (await import('@/services/tenant')).TenantApiData().getWebhookStatus(user.tenant_id);
-            const webhookVerified = response?.data?.webhook_verified || false;
+            const statusData = response?.data;
+            const webhookVerified = statusData?.webhook_verified || false;
             dispatch(updateWebhookStatus(webhookVerified));
+            setWebhookStatusData(statusData); // Store the status data
 
             if (webhookVerified) {
-                await refetchWhatsAppConfig(); // Refetch WhatsApp config
-                toast.success('Webhook verified successfully!');
-                setShowVerification(false); // Hide verification UI after success (optional, or keep it to show status)
-            } else {
-                toast.info('Webhook not yet verified. Please complete Meta verification.');
+                await refetchWhatsAppConfig();
             }
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || 'Failed to check webhook status');
+            console.error('Failed to check webhook status:', error);
         } finally {
             setIsCheckingWebhook(false);
         }
@@ -199,26 +202,24 @@ export const WhatsAppConnectionView = () => {
                                 <span>{WhatsAppConnectionData?.data?.id ? 'Connected' : 'Not Connected'}</span>
                             </div>
 
-                            {!WhatsAppConnectionData?.data?.id && (
-                                <button
-                                    onClick={handleCheckWebhookStatus}
-                                    disabled={isCheckingWebhook}
-                                    className={cn(
-                                        "flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
-                                        isDarkMode
-                                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
-                                            : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100",
-                                        isCheckingWebhook && "opacity-50 cursor-not-allowed"
-                                    )}
-                                >
-                                    {isCheckingWebhook ? (
-                                        <Loader2 size={16} className="animate-spin" />
-                                    ) : (
-                                        <RefreshCw size={16} />
-                                    )}
-                                    <span>{isCheckingWebhook ? 'Checking...' : 'Check Webhook Status'}</span>
-                                </button>
-                            )}
+                            <button
+                                onClick={handleCheckWebhookStatus}
+                                disabled={isCheckingWebhook || !WhatsAppConnectionData?.data?.id}
+                                className={cn(
+                                    "flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
+                                    isDarkMode
+                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100",
+                                    (isCheckingWebhook || !WhatsAppConnectionData?.data?.id) && "opacity-50 cursor-not-allowed hover:bg-transparent"
+                                )}
+                            >
+                                {isCheckingWebhook ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <RefreshCw size={16} />
+                                )}
+                                <span>{isCheckingWebhook ? 'Checking...' : 'Check Webhook Status'}</span>
+                            </button>
                         </div>
 
                         {WhatsAppConnectionData?.data?.id && (
@@ -249,13 +250,14 @@ export const WhatsAppConnectionView = () => {
 
                         {WhatsAppConnectionData?.data?.id ? (
                             <div className="space-y-6">
-                                {/* Meta Verification Card - Show if triggered */}
+                                {/* Meta Verification Card - Show only when triggered by user action */}
                                 {showVerification && (
                                     <MetaVerificationCard
                                         isDarkMode={isDarkMode}
                                         user={user}
                                         onCheckStatus={handleCheckWebhookStatus}
                                         isChecking={isCheckingWebhook}
+                                        statusData={webhookStatusData}
                                     />
                                 )}
 

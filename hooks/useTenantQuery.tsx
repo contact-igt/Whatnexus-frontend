@@ -18,6 +18,8 @@ export const useCreateTenantMutation = () => {
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
             toast.success(response?.data?.message || response?.message);
         },
         onError: (error: any) => {
@@ -35,6 +37,8 @@ export const useUpdateTenantMutation = () => {
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
             toast.success(response?.data?.message || response?.message || 'Tenant updated successfully');
         },
         onError: (error: any) => {
@@ -51,6 +55,8 @@ export const useTenantStatusMutation = () => {
         },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
             toast.success(response?.data?.message || response?.message || 'Tenant status updated successfully');
         },
         onError: (error: any) => {
@@ -100,6 +106,8 @@ export const useDeleteTenantMutation = () => {
         },
         onSuccess: (response: any, variables: any) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
             toast.success(response?.data?.message || response?.message || 'Organization deleted successfully');
         },
         onError: (error: any) => {
@@ -108,6 +116,20 @@ export const useDeleteTenantMutation = () => {
     });
 };
 
+
+export const useResendInvitationMutation = () => {
+    return useMutation({
+        mutationFn: (tenantUserId: string) => {
+            return TenantApis.resendInvitation(tenantUserId);
+        },
+        onSuccess: (response: any) => {
+            toast.success(response?.data?.message || response?.message || 'Invitation resent successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to resend invitation');
+        },
+    });
+};
 
 export const usePermanentDeleteTenantMutation = () => {
     const queryClient = useQueryClient();
@@ -118,10 +140,79 @@ export const usePermanentDeleteTenantMutation = () => {
         },
         onSuccess: (response: any, variables: any) => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
             toast.success(response?.data?.message || response?.message || 'Organization deleted successfully');
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || error.message || 'Failed to delete organization');
+        },
+    });
+};
+
+export const useGetOnboardedTenantsQuery = () => {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['onboarded-tenants'],
+        queryFn: () => TenantApis.getOnboardedTenants(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    useEffect(() => {
+        if (isError) {
+            toast.error(error instanceof Error ? error.message : 'Failed to load onboarded tenants');
+        }
+    }, [isError, error]);
+
+    return { data, isLoading, isError };
+};
+
+export const useGetTenantInvitationsQuery = () => {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['tenant-invitations'],
+        queryFn: () => TenantApis.getTenantInvitations(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    useEffect(() => {
+        if (isError) {
+            toast.error(error instanceof Error ? error.message : 'Failed to load tenant invitations');
+        }
+    }, [isError, error]);
+
+    return { data, isLoading, isError };
+};
+
+export const useGetDeletedTenantsQuery = () => {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['deleted-tenants'],
+        queryFn: () => TenantApis.getDeletedTenants(),
+        staleTime: 2 * 60 * 1000,
+    });
+
+    useEffect(() => {
+        if (isError) {
+            toast.error(error instanceof Error ? error.message : 'Failed to load deleted tenants');
+        }
+    }, [isError, error]);
+
+    return { data, isLoading, isError };
+};
+
+export const useRestoreTenantMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (tenantId: string) => {
+            return TenantApis.restoreTenant(tenantId);
+        },
+        onSuccess: (response: any) => {
+            queryClient.invalidateQueries({ queryKey: ['tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-tenants'] });
+            toast.success(response?.data?.message || response?.message || 'Organization restored successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to restore organization');
         },
     });
 };

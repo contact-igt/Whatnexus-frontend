@@ -47,6 +47,7 @@ export interface Campaign {
 export interface ActivityEvent {
   event: string;   // emoji + title — render as-is
   detail: string;
+  details?: string;
   time: string;    // pre-formatted — render as-is (Rule 5)
   type: "urgent" | "missing_knowledge" | "out_of_scope" | "sentiment";
   status: "pending" | "act_on" | "resolved" | "ignored";
@@ -123,6 +124,8 @@ export interface DashboardData {
     quality: string; // "GREEN" | "YELLOW" | "RED"
     region: string;
     tier: string;
+    rolling24hUsed: number;
+    sevenDayUnique: number;
   };
 
   header: {
@@ -142,27 +145,10 @@ export interface DashboardData {
     appointmentsToday: KpiItem;
   };
 
-  funnel: FunnelRow[];
-
-  funnelSummary: {
-    totalReach: number;       // → .toLocaleString()
-    conversionRate: number;   // → append %
-    revenueEst: string;       // ₹ already in string — Rule 7
-  };
-
   liveOperations: {
     hotLeads: HotLead[];
     metrics: { unassigned: number; escalated: number };
     agentWorkload: AgentWorkload[];
-  };
-
-  aiPerformance: {
-    autoResolvedPct: number;   // main % progress bar → append %
-    urgentCount: number;
-    missingKnowledge: number;
-    outOfScope: number;
-    sentimentAlerts: number;
-    hubStatus: string;         // "active" → green HUB ACTIVE badge
   };
 
   campaigns: Campaign[];
@@ -174,6 +160,40 @@ export interface DashboardData {
   followUps: FollowUpsData;
 
   messagingAnalytics: MessagingAnalyticsData;
+
+  // New sections
+  billingSummary: {
+    totalSpent: number;
+    marketing: number;
+    utility: number;
+    authentication: number;
+    service: number;
+    totalMessages: number;
+    billable: number;
+    free: number;
+  };
+
+  doctorOverview: {
+    statusBreakdown: { status: string; count: number }[];
+    totalDoctors: number;
+    specializations: number;
+  };
+
+  knowledgeHealth: {
+    totalSources: number;
+    activeSources: number;
+    inactiveSources: number;
+    totalChunks: number;
+    sourceTypes: { type: string; count: number }[];
+  };
+
+  contactOverview: {
+    totalContacts: number;
+    blocked: number;
+    aiSilenced: number;
+    totalGroups: number;
+    avgGroupSize: number;
+  };
 }
 
 export interface DashboardResponse {

@@ -49,6 +49,35 @@ export const FollowUpHubView = () => {
                 </div>
             </div>
 
+            <div className="flex flex-col items-center justify-center mt-8 border-2 border-dashed rounded-3xl transition-all min-h-[500px]"
+                style={{
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+                }}>
+                <div className={cn(
+                    "w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-xl",
+                    isDarkMode ? 'bg-emerald-500/10 shadow-emerald-500/5' : 'bg-emerald-50 shadow-emerald-500/10'
+                )}>
+                    <Timer size={40} className="text-emerald-500" />
+                </div>
+                
+                <span className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border mb-5", 
+                    isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-emerald-50 border-emerald-200 text-emerald-600"
+                )}>
+                    <Sparkles size={14} />
+                    Coming Soon
+                </span>
+
+                <h2 className={cn("text-2xl font-bold mb-3 tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                    Automated Follow-up Engine
+                </h2>
+                <p className={cn("text-sm max-w-[460px] text-center leading-relaxed", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                    We are building an intelligent system that will automatically orchestrate personalized follow-ups to re-engage your leads precisely when they're most responsive.
+                </p>
+            </div>
+
+            {/* ------------- PENDING MVP CODE -------------
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                     <GlassCard isDarkMode={isDarkMode} className="p-0">
@@ -177,6 +206,7 @@ export const FollowUpHubView = () => {
                     </GlassCard>
                 </div>
             </div>
+            */}
         </div>
     );
 };
