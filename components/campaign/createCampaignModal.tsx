@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin, Video } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -118,7 +118,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             const result = await campaignService.uploadMedia(file, headerFormat as any);
             setFormData(prev => ({ ...prev, header_media_url: result.url }));
         } catch (err: any) {
-            setError(err.message || 'Failed to upload media');
+            const errorMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || 'Failed to upload media';
+            setError(errorMsg);
         } finally {
             setIsUploading(false);
         }
@@ -139,7 +140,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 }
             }));
         } catch (err: any) {
-            setError(err.message || `Failed to upload media for Card ${cardIndex + 1}`);
+            const errorMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || `Failed to upload media for Card ${cardIndex + 1}`;
+            setError(errorMsg);
         } finally {
             setCardUploading(prev => ({ ...prev, [cardIndex]: false }));
         }
@@ -472,7 +474,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             }
         } catch (err: any) {
             console.error("Submit Error:", err);
-            setError(err?.response?.data?.message || err.message || 'Failed to create campaign');
+            const errorMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || 'Failed to create campaign';
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -677,18 +680,19 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             </span>
                                         </div>
                                         <div className={cn(
-                                            "relative p-3 rounded-lg max-w-[90%] shadow-sm",
+                                            "relative p-2 rounded-lg max-w-[320px] shadow-sm",
                                             isDarkMode ? "bg-[#202c33]" : "bg-[#d9fdd3]"
                                         )}>
                                             {/* Preview Header */}
                                             {selectedTemplate.type !== 'text' && selectedTemplate.type !== 'location' && (
-                                                <div className="mb-2 w-full min-h-[128px] bg-black/10 rounded overflow-hidden flex items-center justify-center text-xs opacity-80 flex-col gap-2">
+                                                <div className="mb-2 w-full">
+                                                    <div className="w-full bg-black/10 rounded overflow-hidden flex items-center justify-center text-xs opacity-80 flex-col gap-2">
                                                     {formData.header_media_url ? (
                                                         selectedTemplate.type === 'image' ? (
                                                             <img 
                                                                 src={formData.header_media_url} 
                                                                 alt="Header" 
-                                                                className="w-full h-full object-cover"
+                                                                className="w-full max-h-[200px] object-cover rounded"
                                                                 onError={(e) => {
                                                                     (e.target as any).style.display = 'none';
                                                                 }}
@@ -696,55 +700,78 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                         ) : selectedTemplate.type === 'video' ? (
                                                             <video 
                                                                 src={formData.header_media_url} 
-                                                                className="w-full h-full object-cover"
+                                                                className="w-full max-h-[200px] object-cover rounded"
                                                                 muted
                                                             />
                                                         ) : (
-                                                            <div className="flex flex-col items-center gap-2 p-4 text-center">
-                                                                <FileText size={32} />
-                                                                <span className="font-semibold">DOCUMENT ATTACHED</span>
+                                                            <div className={cn(
+                                                                "flex items-center gap-3 p-3 w-full",
+                                                                isDarkMode ? "bg-white/5" : "bg-slate-50"
+                                                            )}>
+                                                                <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-purple-500/20" : "bg-purple-100/50")}>
+                                                                    <FileText size={18} className="text-purple-500" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0 text-left">
+                                                                    <p className={cn("text-xs font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                                        {headerFileName || 'Document.pdf'}
+                                                                    </p>
+                                                                    <p className={cn("text-[9px] uppercase font-bold tracking-tight", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                                        PDF
+                                                                    </p>
+                                                                </div>
                                                             </div>
                                                         )
                                                     ) : (
-                                                        <>
-                                                            <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center">
-                                                                {/* Icon placeholder */}
-                                                                {selectedTemplate.type === 'image' ? <ImageIcon size={16} /> : <FileText size={16} />}
+                                                        <div className={cn(
+                                                            "flex flex-col items-center justify-center gap-2 w-full py-6 transition-colors",
+                                                            isDocType(selectedTemplate.type) ? (isDarkMode ? "bg-purple-500/10" : "bg-purple-50") : (isDarkMode ? "bg-black/20" : "bg-black/5")
+                                                        )}>
+                                                            <div className={cn(
+                                                                "w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg",
+                                                                isDocType(selectedTemplate.type) 
+                                                                    ? (isDarkMode ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-500")
+                                                                    : (isDarkMode ? "bg-white/10 text-white/40" : "bg-white text-slate-400")
+                                                            )}>
+                                                                {selectedTemplate.type === 'image' ? <ImageIcon size={20} /> : 
+                                                                 selectedTemplate.type === 'video' ? <Video size={20} /> : <FileText size={20} />}
                                                             </div>
-                                                            {getUploadType(selectedTemplate.type).toUpperCase()} HEADER
-                                                        </>
+                                                            <span className={cn(
+                                                                "text-[9px] font-bold tracking-widest uppercase",
+                                                                isDocType(selectedTemplate.type) 
+                                                                    ? (isDarkMode ? "text-purple-400/80" : "text-purple-600")
+                                                                    : (isDarkMode ? "text-white/40" : "text-slate-500")
+                                                            )}>
+                                                                {getUploadType(selectedTemplate.type)} Required
+                                                            </span>
+                                                        </div>
                                                     )}
                                                 </div>
+                                            </div>
                                             )}
                                             {/* Location Preview */}
                                             {selectedTemplate.type === 'location' && (
-                                                <div className={cn("mb-2 w-full rounded overflow-hidden flex items-center gap-3 p-3", isDarkMode ? 'bg-black/20' : 'bg-black/5')}>
-                                                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100')}>
-                                                        <MapPin size={18} className="text-emerald-500" />
+                                                <div className={cn("mb-2 w-full rounded overflow-hidden flex items-center gap-2 p-2", isDarkMode ? 'bg-black/20' : 'bg-black/5')}>
+                                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-100')}>
+                                                        <MapPin size={14} className="text-emerald-500" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className={cn("text-xs font-bold truncate", isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
+                                                        <p className={cn("text-[11px] font-bold truncate", isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
                                                             {formData.location_params?.name || 'Location Name'}
                                                         </p>
-                                                        <p className={cn("text-[10px] truncate", isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                                                        <p className={cn("text-[9px] truncate", isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
                                                             {formData.location_params?.address || 'Full address will appear here'}
                                                         </p>
-                                                        {(formData.location_params?.latitude && formData.location_params?.longitude) && (
-                                                            <p className={cn("text-[9px] mt-0.5", isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
-                                                                {formData.location_params.latitude}, {formData.location_params.longitude}
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </div>
                                             )}
                                             {selectedTemplate.headerText && (
-                                                <div className={cn("font-bold text-sm mb-1", isDarkMode ? "text-gray-100" : "text-gray-900")}>
+                                                <div className={cn("font-bold text-xs mb-1", isDarkMode ? "text-gray-100" : "text-gray-900")}>
                                                     {selectedTemplate.headerText}
                                                 </div>
                                             )}
 
                                             {/* Preview Body */}
-                                            <p className={cn("text-sm whitespace-pre-wrap leading-relaxed", isDarkMode ? "text-gray-100" : "text-gray-900")}>
+                                            <p className={cn("text-xs whitespace-pre-wrap leading-relaxed", isDarkMode ? "text-gray-100" : "text-gray-900")}>
                                                 {/* Replaces {{variable}} with variable values if available or keeps placeholders */}
                                                 {(selectedTemplate.bodyText || selectedTemplate.description).split(/(\{\{[\w]+\}\})/).map((part, i) => {
                                                     if (part.match(/\{\{[\w]+\}\}/)) {
@@ -774,7 +801,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                         const val = variableValues[btn.variable_key];
                                                         return (
                                                             <div key={btn.variable_key} className={cn(
-                                                                "py-2 px-3 rounded-lg text-sm text-center font-medium",
+                                                                "py-1.5 px-2 rounded text-xs text-center font-medium",
                                                                 isDarkMode ? "bg-white/5 text-blue-400" : "bg-white text-blue-600"
                                                             )}>
                                                                 {btn.text} {val ? `(${val})` : ''}

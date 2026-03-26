@@ -1,5 +1,5 @@
 import React from 'react';
-import { SearchX, MessageSquareText, FileText, ExternalLink, Phone, Copy } from 'lucide-react';
+import { SearchX, MessageSquareText, FileText, ExternalLink, Phone, Copy, Download } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
 
@@ -34,6 +34,44 @@ const stripButtonsFromText = (message: string) => {
 // Remove any remaining template variable placeholders like {{1}}, {{2}}, etc.
 const stripVariablePlaceholders = (message: string) => {
     return message.replace(/\{\{\d+\}\}/g, '').trim();
+};
+
+// MIME type lookup from filename extension
+const getMimeFromFilename = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mimeMap: Record<string, string> = {
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        csv: 'text/csv',
+        txt: 'text/plain',
+        zip: 'application/zip',
+    };
+    return mimeMap[ext || ''] || 'application/octet-stream';
+};
+
+// Blob-based download: fetches file, creates typed blob, triggers proper download
+const handleDocumentDownload = async (url: string, filename: string) => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const mimeType = getMimeFromFilename(filename);
+        const typedBlob = new Blob([blob], { type: mimeType });
+        const blobUrl = URL.createObjectURL(typedBlob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+    } catch {
+        window.open(url, '_blank');
+    }
 };
 
 const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boolean }> = ({ msg, searchText, isDarkMode }) => {
@@ -106,9 +144,22 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
             )}
 
             {/* Document */}
-            {effectiveType === "document" && (
-                <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
-                    <FileText className="w-4 h-4 shrink-0 opacity-70" />
+            {effectiveType === "document" && effectiveUrl && (
+                <div
+                    onClick={() => handleDocumentDownload(effectiveUrl, msg.media_filename || "Document")}
+                    className={cn(
+                        "flex items-center gap-2 mb-1 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors",
+                        isDarkMode ? "bg-white/10 hover:bg-white/15" : "bg-black/5 hover:bg-black/10"
+                    )}
+                >
+                    <FileText className="w-5 h-5 shrink-0 opacity-70" />
+                    <span className="flex-1 truncate opacity-90 font-medium">{msg.media_filename || "Document"}</span>
+                    <Download className="w-4 h-4 shrink-0 opacity-60" />
+                </div>
+            )}
+            {effectiveType === "document" && !effectiveUrl && (
+                <div className={cn("flex items-center gap-2 mb-1 px-3 py-2.5 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                    <FileText className="w-5 h-5 shrink-0 opacity-70" />
                     <span className="flex-1 truncate opacity-80">{msg.media_filename || "Document"}</span>
                 </div>
             )}

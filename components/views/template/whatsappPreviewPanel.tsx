@@ -262,11 +262,11 @@ export const WhatsAppPreviewPanel = ({
                 const isVideo = normalizedType === 'VIDEO' || headerValue.startsWith('data:video') || headerValue.match(/\.(mp4|webm|ogg)$/i);
 
                 return (
-                    <div className="w-full">
+                    <div className="w-full bg-black/5 flex items-center justify-center overflow-hidden">
                         {isVideo ? (
-                            <video src={headerValue} className="w-full max-h-64 object-cover rounded-t-xl" controls />
+                            <video src={headerValue} className="max-w-full w-auto max-h-64 object-contain rounded-t-xl" controls />
                         ) : (
-                            <img src={headerValue} alt="Header media" className="w-full max-h-64 object-cover rounded-t-xl" />
+                            <img src={headerValue} alt="Header media" className="max-w-full w-auto max-h-64 object-contain rounded-t-xl" />
                         )}
                     </div>
                 );
