@@ -161,6 +161,11 @@ const templateSchema = z.object({
                 message: langError,
                 path: ['content']
             });
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Content does not match "${data.language}". Write body text in ${data.language} or change the language.`,
+                path: ['language']
+            });
         }
     }
 
@@ -579,6 +584,23 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     const onSubmit = async (data: FormValues) => {
         // ─────────────────────────────────────────
+        // Language-content validation before save
+        // ─────────────────────────────────────────
+        const langCode = getLanguageCode(data.language);
+        if (!langCode || langCode === 'en' && data.language !== 'English' && data.language !== 'English (UK)' && data.language !== 'English (US)') {
+            toast.error(`Unrecognized language "${data.language}". Please select a valid language.`);
+            return;
+        }
+
+        if (data.category !== 'AUTHENTICATION') {
+            const langValidationError = validateContentLanguageMatch(data.content, data.language);
+            if (langValidationError) {
+                toast.error(langValidationError);
+                return;
+            }
+        }
+
+        // ─────────────────────────────────────────
         // AUTHENTICATION templates: fixed Meta-required structure
         // ─────────────────────────────────────────
         if (data.category === 'AUTHENTICATION') {
@@ -586,7 +608,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 template_name: data.templateName,
                 template_type: 'text',
                 category: 'authentication',
-                language: getLanguageCode(data.language),
+                language: langCode,
                 components: {
                     body: { text: data.content || AUTH_BODY_TEXT },
                     footer: { text: AUTH_FOOTER_TEXT },
@@ -602,7 +624,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             template_name: data.templateName,
             template_type: data.templateType.toLowerCase(),
             category: data.category.toLowerCase(),
-            language: getLanguageCode(data.language),
+            language: langCode,
             components: {
                 body: {
                     text: data.content
@@ -662,7 +684,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 'IMAGE': 'image',
                 'VIDEO': 'video',
                 'DOCUMENT': 'document',
-                'LOCATION': 'location'
+                // 'LOCATION': 'location'
             };
 
             const typeToUse = (data.headerType as string) === 'NONE' ? data.templateType : (data.headerType as string);
@@ -847,7 +869,11 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                     label="Template Language"
                                                     required
                                                     value={field.value}
-                                                    onChange={field.onChange}
+                                                    onChange={(val: string) => {
+                                                        field.onChange(val);
+                                                        // Re-validate content when language changes
+                                                        setTimeout(() => trigger('content'), 0);
+                                                    }}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
                                                     disabled={isViewMode || isExistingTemplate} // Language cannot be changed for submitted templates
@@ -855,9 +881,19 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             )
                                         }}
                                     />
-                                    <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                        You will need to specify the language in which message template is submitted
-                                    </p>
+                                    {isLanguageMismatch && !isAuthMode ? (
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border",
+                                            isDarkMode ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"
+                                        )}>
+                                            <span>⚠️</span>
+                                            <span>Content does not match <strong>&quot;{language}&quot;</strong>. Write body in {language} or change language.</span>
+                                        </div>
+                                    ) : (
+                                        <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                            You will need to specify the language in which message template is submitted
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>

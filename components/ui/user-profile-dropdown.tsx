@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { LogOut, User, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { getProfileRoute } from "@/lib/profileUtils";
 
 interface UserProfileDropdownProps {
     isDarkMode: boolean;
@@ -70,7 +71,7 @@ export const UserProfileDropdown = ({
 
             <div className="py-1.5">
                 <button
-                    onClick={() => { onClose(); router.push("/profile"); }}
+                    onClick={() => { onClose(); router.push(getProfileRoute(user?.role || '')); }}
                     className={cn(
                         "w-full flex items-center space-x-3 px-4 py-2.5 text-sm transition-all",
                         isDarkMode

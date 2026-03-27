@@ -353,11 +353,22 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                             {!isNeuralSummaryEnabled && <Lock size={14} className="ml-2 shrink-0 opacity-80" />}
                         </button>
                         <button
-                            onClick={() => setIsWeeklySummaryOpen(true)}
-                            className="w-full h-10 cursor-pointer flex items-center justify-center space-x-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 px-4 rounded-xl text-xs font-bold uppercase transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                            onClick={isNeuralSummaryEnabled ? () => setIsWeeklySummaryOpen(true) : undefined}
+                            disabled={!isNeuralSummaryEnabled}
+                            title={!isNeuralSummaryEnabled ? "Neural Summary is disabled in settings" : undefined}
+                            className={cn(
+                                "w-full h-10 flex items-center px-4 rounded-xl text-xs font-bold uppercase transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed",
+                                !isNeuralSummaryEnabled
+                                    ? (isDarkMode ? "bg-slate-800/50 text-slate-500 border border-white/5" : "bg-slate-100 text-slate-400 border border-slate-200")
+                                    : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                            )}
                         >
-                            <HistoryIcon size={15} />
-                            <span>Weekly Summary</span>
+                            {!isNeuralSummaryEnabled && <div className="w-4 shrink-0" />}
+                            <div className="flex-1 flex items-center justify-center gap-2">
+                                <HistoryIcon size={15} />
+                                <span>Weekly Summary</span>
+                            </div>
+                            {!isNeuralSummaryEnabled && <Lock size={14} className="ml-2 shrink-0 opacity-80" />}
                         </button>
                         <button
                             onClick={() => {

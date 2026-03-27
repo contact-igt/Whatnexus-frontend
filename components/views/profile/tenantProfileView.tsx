@@ -12,22 +12,12 @@ import { useUpdateTenantUserMutation, useGetTenantProfileQuery } from '@/hooks/u
 import { updateUserData } from '@/redux/slices/auth/authSlice';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Country, State } from 'country-state-city';
-import { useUpdateTenantOrganizationMutation } from '@/hooks/useTenantUserQuery';
 
-// Form Schema
+// Form Schema - Only fields editable via backend
 const editProfileSchema = z.object({
-    username: z.string().optional().or(z.literal('')),
-    country_code: z.string().optional().or(z.literal('')),
-    mobile: z.string().optional().or(z.literal('')).refine((val) => !val || /^[0-9]{10}$/.test(val), { message: "Phone number must be 10 digits." }),
-    // Organization fields (optional if not admin or not yet set)
-    company_name: z.string().optional().or(z.literal('')),
-    type: z.string().optional().or(z.literal('')),
-    address: z.string().optional().or(z.literal('')),
-    country: z.string().optional().or(z.literal('')),
-    state: z.string().optional().or(z.literal('')),
-    city: z.string().optional().or(z.literal('')),
-    pincode: z.string().optional().or(z.literal('')),
+    username: z.string().min(2, { message: "Username must be at least 2 characters." }),
+    country_code: z.string().min(2, { message: "Country code is required." }),
+    mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
 });
 
 type EditProfileData = z.infer<typeof editProfileSchema>;
@@ -37,79 +27,38 @@ export default function TenantProfileView() {
     const dispatch = useDispatch();
     const user = useSelector((state: RootState) => state.auth.user);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [countryIso, setCountryIso] = useState('');
-    const [stateIso, setStateIso] = useState('');
 
-    const { mutate: updateProfile, isPending: isUpdatingUser } = useUpdateTenantUserMutation();
-    const { mutate: updateOrganization, isPending: isUpdatingOrg } = useUpdateTenantOrganizationMutation();
-    const isUpdating = isUpdatingUser || isUpdatingOrg;
+    const { mutate: updateProfile, isPending: isUpdating } = useUpdateTenantUserMutation();
     const { data: profileData, refetch: refetchProfile } = useGetTenantProfileQuery();
 
-    const { control, register, handleSubmit, formState: { errors }, reset, setValue } = useForm<EditProfileData>({
+    // Display data: prefer fresh profile data over Redux user
+    const displayUser = profileData?.data || user;
+
+    const { control, register, handleSubmit, formState: { errors }, reset } = useForm<EditProfileData>({
         defaultValues: {
             username: user?.username || user?.name || '',
             country_code: user?.country_code?.startsWith('+') ? user?.country_code : `+${user?.country_code || '91'}`,
             mobile: user?.mobile || '',
-            company_name: user?.organization?.company_name || '',
-            type: user?.organization?.type || 'hospital',
-            address: user?.organization?.address || '',
-            country: user?.organization?.country || '',
-            state: user?.organization?.state || '',
-            city: user?.organization?.city || '',
-            pincode: user?.organization?.pincode || '',
         },
         resolver: zodResolver(editProfileSchema)
     });
 
-    const onSubmit = async (data: EditProfileData) => {
+    const onSubmit = (data: EditProfileData) => {
         const tenantUserId = user?.tenant_user_id;
         if (!tenantUserId) return;
 
-        try {
-            // 1. User Profile Update (Always)
-            const userData = {
-                username: data.username,
-                country_code: data.country_code,
-                mobile: data.mobile
-            };
-
-            const userUpdatePromise = new Promise((resolve, reject) => {
-                updateProfile({ tenantUserId, data: userData }, { onSuccess: resolve, onError: reject });
-            });
-
-            const promises: Promise<any>[] = [userUpdatePromise];
-
-            // 2. Organization Update (Only for tenant_admin)
-            if (user?.role === 'tenant_admin' && data.company_name) {
-                const orgData = {
-                    company_name: data.company_name,
-                    type: data.type || 'organization',
-                    address: data.address || '',
-                    country: data.country || '',
-                    state: data.state || '',
-                    city: data.city || '',
-                    pincode: data.pincode || ''
-                };
-
-                const orgUpdatePromise = new Promise((resolve, reject) => {
-                    updateOrganization(orgData, { onSuccess: resolve, onError: reject });
-                });
-                promises.push(orgUpdatePromise);
+        updateProfile(
+            { tenantUserId, data: { username: data.username, country_code: data.country_code, mobile: data.mobile } },
+            {
+                onSuccess: async () => {
+                    setIsEditMode(false);
+                    const result = await refetchProfile();
+                    if (result.data?.data) {
+                        dispatch(updateUserData(result.data.data));
+                    }
+                }
             }
-
-            // Wait for all mutations to settle
-            await Promise.all(promises);
-
-            // Re-fetch and sync state
-            setIsEditMode(false);
-            const result = await refetchProfile();
-            if (result.data?.data) {
-                dispatch(updateUserData(result.data.data));
-            }
-        } catch (error) {
-            console.error('Update failed:', error);
-            // Error toasts are handled by mutation hooks
-        }
+        );
     };
 
     const handleCancel = () => {
@@ -126,47 +75,9 @@ export default function TenantProfileView() {
                 username: user?.username || user?.name || '',
                 country_code: normalizedCountryCode,
                 mobile: user?.mobile || '',
-                company_name: user?.organization?.company_name || '',
-                type: user?.organization?.type || 'hospital',
-                address: user?.organization?.address || '',
-                country: user?.organization?.country || '',
-                state: user?.organization?.state || '',
-                city: user?.organization?.city || '',
-                pincode: user?.organization?.pincode || '',
             });
-
-            // Set ISO codes for selects if we can resolve them
-            if (user?.organization?.country) {
-                const c = Country.getAllCountries().find(count => count.name.toLowerCase() === user.organization.country.toLowerCase());
-                if (c) {
-                    setCountryIso(c.isoCode);
-                    if (user?.organization?.state) {
-                        const s = State.getStatesOfCountry(c.isoCode).find(st => st.name.toLowerCase() === user.organization.state.toLowerCase());
-                        if (s) setStateIso(s.isoCode);
-                    }
-                }
-            }
         }
     }, [user, reset]);
-
-    const handleCountryChange = (countryName: string) => {
-        const c = Country.getAllCountries().find(count => count.name === countryName);
-        if (c) {
-            setCountryIso(c.isoCode);
-            setValue('state', '');
-            setValue('city', '');
-            setStateIso('');
-        }
-    };
-
-    const handleStateChange = (stateName: string) => {
-        if (!countryIso) return;
-        const s = State.getStatesOfCountry(countryIso).find(st => st.name === stateName);
-        if (s) {
-            setStateIso(s.isoCode);
-            setValue('city', '');
-        }
-    };
 
     // Fetch and update profile data on mount
     useEffect(() => {
@@ -208,21 +119,21 @@ export default function TenantProfileView() {
                     <div className="flex items-start justify-between mb-8 pb-6 border-b border-white/10">
                         <div className="flex items-center space-x-4">
                             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center font-bold text-3xl text-white shadow-xl shadow-emerald-500/20">
-                                {(user?.username || user?.name)?.charAt(0).toUpperCase() || <User size={32} />}
+                                {(displayUser?.username || displayUser?.name)?.charAt(0).toUpperCase() || <User size={32} />}
                             </div>
                             <div>
                                 <h2 className={cn(
                                     "text-2xl font-bold",
                                     isDarkMode ? 'text-white' : 'text-slate-900'
                                 )}>
-                                    {user?.username || user?.name || 'N/A'}
+                                    {displayUser?.username || displayUser?.name || 'N/A'}
                                 </h2>
                                 <div className="flex items-center space-x-2 mt-2">
                                     <span className={cn(
                                         "text-[10px] font-bold px-3 py-1.5 rounded-lg border uppercase tracking-wide",
                                         'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                     )}>
-                                        {user?.role || 'N/A'}
+                                        {displayUser?.role || 'N/A'}
                                     </span>
                                 </div>
                             </div>
@@ -295,127 +206,6 @@ export default function TenantProfileView() {
                                 />
                             </div>
 
-                            {/* Organization Details - Only for tenant_admin */}
-                            {user?.role === 'tenant_admin' && (
-                                <div className="space-y-6 pt-6 border-t border-white/10">
-                                    <h3 className={cn(
-                                        "text-base font-bold flex items-center space-x-2",
-                                        isDarkMode ? "text-white/70" : "text-slate-600"
-                                    )}>
-                                        <Building2 size={18} className="text-emerald-500" />
-                                        <span>Organization Details</span>
-                                    </h3>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input
-                                            isDarkMode={isDarkMode}
-                                            label="Organization Name"
-                                            {...register('company_name')}
-                                            icon={Building2}
-                                            placeholder="Enter company name"
-                                            disabled={isUpdating}
-                                            error={errors.company_name?.message}
-                                            required
-                                        />
-
-                                        <Controller
-                                            name="type"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select
-                                                    isDarkMode={isDarkMode}
-                                                    label="Organization Type"
-                                                    value={field.value}
-                                                    onChange={field.onChange}
-                                                    options={[
-                                                        { value: 'hospital', label: 'Hospital' },
-                                                        { value: 'clinic', label: 'Clinic' },
-                                                    ]}
-                                                    disabled={isUpdating}
-                                                    error={errors.type?.message}
-                                                    required
-                                                />
-                                            )}
-                                        />
-
-                                        <div className="md:col-span-2">
-                                            <Input
-                                                isDarkMode={isDarkMode}
-                                                label="Full Address"
-                                                {...register('address')}
-                                                icon={MapPin}
-                                                placeholder="Enter full organization address"
-                                                disabled={isUpdating}
-                                                error={errors.address?.message}
-                                                required
-                                            />
-                                        </div>
-
-                                        <Controller
-                                            name="country"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select
-                                                    isDarkMode={isDarkMode}
-                                                    label="Country"
-                                                    value={field.value}
-                                                    onChange={(val) => {
-                                                        field.onChange(val);
-                                                        handleCountryChange(val);
-                                                    }}
-                                                    options={Country.getAllCountries().map(c => ({ value: c.name, label: c.name }))}
-                                                    disabled={isUpdating}
-                                                    error={errors.country?.message}
-                                                    required
-                                                />
-                                            )}
-                                        />
-
-                                        <Controller
-                                            name="state"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select
-                                                    isDarkMode={isDarkMode}
-                                                    label="State"
-                                                    value={field.value}
-                                                    onChange={(val) => {
-                                                        field.onChange(val);
-                                                        handleStateChange(val);
-                                                    }}
-                                                    options={countryIso ? State.getStatesOfCountry(countryIso).map(s => ({ value: s.name, label: s.name })) : []}
-                                                    disabled={isUpdating || !countryIso}
-                                                    error={errors.state?.message}
-                                                    required
-                                                />
-                                            )}
-                                        />
-
-                                        <Input
-                                            isDarkMode={isDarkMode}
-                                            label="City"
-                                            {...register('city')}
-                                            icon={Globe}
-                                            placeholder="Enter city"
-                                            disabled={isUpdating}
-                                            error={errors.city?.message}
-                                            required
-                                        />
-
-                                        <Input
-                                            isDarkMode={isDarkMode}
-                                            label="Pincode"
-                                            {...register('pincode')}
-                                            icon={Navigation}
-                                            placeholder="Enter pincode"
-                                            disabled={isUpdating}
-                                            error={errors.pincode?.message}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
                             <div className="flex justify-end gap-3 pt-4">
                                 <button
                                     type="button"
@@ -472,7 +262,7 @@ export default function TenantProfileView() {
                                             "text-sm font-semibold",
                                             isDarkMode ? 'text-white' : 'text-slate-800'
                                         )}>
-                                            {user?.email || 'N/A'}
+                                            {displayUser?.email || 'N/A'}
                                         </p>
                                     </div>
                                 </div>
@@ -503,14 +293,14 @@ export default function TenantProfileView() {
                                             "text-sm font-semibold",
                                             isDarkMode ? 'text-white' : 'text-slate-800'
                                         )}>
-                                            {user?.country_code} {user?.mobile || 'N/A'}
+                                            +{displayUser?.country_code?.replace(/^\+/, '')} {displayUser?.mobile || 'N/A'}
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Organization Information - Added Sections */}
-                            {(user as any)?.organization && (
+                            {(displayUser as any)?.organization && (
                                 <div className="pt-6 mt-6 border-t border-white/10 space-y-6">
                                     <h3 className={cn(
                                         "text-lg font-bold flex items-center space-x-2",
@@ -527,8 +317,8 @@ export default function TenantProfileView() {
                                             isDarkMode ? 'bg-white/[0.03] border-white/10' : 'bg-slate-50 border-slate-200'
                                         )}>
                                             <p className={cn("text-[11px] font-bold uppercase tracking-wide mb-2 opacity-50", isDarkMode ? "text-white" : "text-slate-900")}>Company Details</p>
-                                            <p className={cn("text-base font-bold", isDarkMode ? "text-white" : "text-slate-900")}>{(user as any).organization.company_name}</p>
-                                            <p className="text-xs opacity-60 mt-1 capitalize text-emerald-500 font-semibold">{(user as any).organization.type || 'Organization'}</p>
+                                            <p className={cn("text-base font-bold", isDarkMode ? "text-white" : "text-slate-900")}>{(displayUser as any).organization.company_name}</p>
+                                            <p className="text-xs opacity-60 mt-1 capitalize text-emerald-500 font-semibold">{(displayUser as any).organization.type || 'Organization'}</p>
                                         </div>
 
                                         {/* Subscription & Max Users */}
@@ -540,20 +330,20 @@ export default function TenantProfileView() {
                                             <div className="flex items-center justify-between">
                                                 <span className={cn(
                                                     "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
-                                                    (user as any).organization.subscription_plan === 'enterprise' ? 'bg-amber-500/10 text-amber-500' :
-                                                        (user as any).organization.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-500' :
+                                                    (displayUser as any).organization.subscription_plan === 'enterprise' ? 'bg-amber-500/10 text-amber-500' :
+                                                        (displayUser as any).organization.subscription_plan === 'pro' ? 'bg-purple-500/10 text-purple-500' :
                                                             'bg-emerald-500/10 text-emerald-500'
                                                 )}>
-                                                    {(user as any).organization.subscription_plan || 'Basic'} Plan
+                                                    {(displayUser as any).organization.subscription_plan || 'Basic'} Plan
                                                 </span>
                                                 <span className="text-xs font-bold opacity-70">
-                                                    {(user as any).organization.max_users || 10} Max Users
+                                                    {(displayUser as any).organization.max_users || 10} Max Users
                                                 </span>
                                             </div>
-                                            {(user as any).organization.subscription_end_date && (
+                                            {(displayUser as any).organization.subscription_end_date && (
                                                 <p className="text-[10px] mt-2 opacity-50 flex items-center">
                                                     <Calendar size={10} className="mr-1" />
-                                                    Renews on: {new Date((user as any).organization.subscription_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    Renews on: {new Date((displayUser as any).organization.subscription_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </p>
                                             )}
                                         </div>
@@ -570,17 +360,17 @@ export default function TenantProfileView() {
                                                 <div className="flex-1">
                                                     <p className={cn("text-[11px] font-bold uppercase tracking-wide mb-1 opacity-50", isDarkMode ? "text-white" : "text-slate-900")}>Address Details</p>
                                                     <p className={cn("text-sm leading-relaxed", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                                        {(user as any).organization.address || 'Address not provided'}
+                                                        {(displayUser as any).organization.address || 'Address not provided'}
                                                     </p>
                                                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                                                        {[(user as any).organization.city, (user as any).organization.state, (user as any).organization.country].filter(Boolean).map((loc, i) => (
+                                                        {[(displayUser as any).organization.city, (displayUser as any).organization.state, (displayUser as any).organization.country].filter(Boolean).map((loc, i) => (
                                                             <span key={i} className="text-xs opacity-50 flex items-center">
                                                                 <Globe size={10} className="mr-1" /> {loc}
                                                             </span>
                                                         ))}
-                                                        {(user as any).organization.pincode && (
+                                                        {(displayUser as any).organization.pincode && (
                                                             <span className="text-xs opacity-50 flex items-center">
-                                                                <Navigation size={10} className="mr-1" /> {(user as any).organization.pincode}
+                                                                <Navigation size={10} className="mr-1" /> {(displayUser as any).organization.pincode}
                                                             </span>
                                                         )}
                                                     </div>

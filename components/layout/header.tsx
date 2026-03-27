@@ -213,7 +213,7 @@ export const Header = () => {
                         <span className={cn('text-[10px] font-bold',
                             isWabaConnected
                                 ? isDarkMode ? 'text-white/80' : 'text-slate-700'
-                                : isDarkMode ? 'text-red-500' : 'text-red-600'
+                                : 'text-[#ef4444]'
                         )}>
                             {isWabaConnected ? wabaNumber : 'Not Connected'}
                         </span>
@@ -223,14 +223,14 @@ export const Header = () => {
 
                     {/* ── Status ── */}
                     <div className="flex items-center gap-1.5">
-                        <IconBadge color={isWabaConnected ? 'bg-emerald-500' : 'bg-slate-400'}>
+                        <IconBadge color={isWabaConnected ? 'bg-emerald-500' : 'bg-[#ef4444]'}>
                             <Power size={10} color="white" strokeWidth={2.5} />
                         </IconBadge>
                         <span className={labelCls}>Status:</span>
                         <span className={cn('text-[10px] font-bold flex items-center gap-1',
                             isWabaConnected
                                 ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                                : isDarkMode ? 'text-white/40' : 'text-slate-500'
+                                : 'text-[#ef4444]'
                         )}>
                             {isWabaConnected ? (
                                 <>
@@ -242,7 +242,7 @@ export const Header = () => {
                                 </>
                             ) : (
                                 <>
-                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
                                     Inactive
                                 </>
                             )}

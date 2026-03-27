@@ -24,6 +24,7 @@ import { useGetAgentsQuery } from '@/hooks/useMessagesQuery';
 import { useBulkUpdateLeadsMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { toast } from 'sonner';
 import { socket } from '@/utils/socket';
+import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 
 
 export const LeadsView = () => {
@@ -31,6 +32,9 @@ export const LeadsView = () => {
     const { whatsappApiDetails, user } = useAuth();
     console.log("whatsappApiDetails", whatsappApiDetails);
     const router = useRouter();
+
+    const { data: tenantSettingsData } = useGetTenantSettingsQuery();
+    const isNeuralSummaryEnabled = tenantSettingsData?.data?.ai_settings?.neural_summary !== false;
 
     const [activeTab, setActiveTab] = useState<'all' | 'trash'>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -625,6 +629,7 @@ export const LeadsView = () => {
                         isPermanentDelete={activeTab === 'trash'}
                         onPermanentDelete={() => handleAction('permanent_delete', row?.lead_id)}
                         isSummary={activeTab === 'all'}
+                        isSummaryLocked={!isNeuralSummaryEnabled}
                         onSummary={() => summarizeLead(undefined, row)}
                         isMessage={activeTab === 'all'}
                         onMessage={() => handleLeadOpen(row?.phone)}

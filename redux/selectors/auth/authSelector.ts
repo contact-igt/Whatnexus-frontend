@@ -1,14 +1,18 @@
 "use client"
 import type { RootState } from '@/redux/store';
-import { useSelector } from 'react-redux';
+import { useSelector, shallowEqual } from 'react-redux';
 
 export function useAuth() {
-  const token = useSelector((state: RootState) => state.auth.token);
-  const user  = useSelector((state: RootState) => state.auth.user);
-  const whatsappApiDetails = useSelector((state: RootState)=> state.auth.whatsappApiDetails)
-  const activeTabData = useSelector((state: RootState)=> state.auth.activeTabData);
-  const activationToken = useSelector((state: RootState)=> state.auth.activationToken);
-  const activeStatus = useSelector((state: RootState)=> state.auth.activeStatus);
-  const currentStatusDataState = useSelector((state: RootState)=> state.auth.currentStatusDataState);
-  return { token, user, whatsappApiDetails, activeTabData, activationToken, activeStatus, currentStatusDataState };
+  return useSelector(
+    (state: RootState) => ({
+      token: state.auth.token,
+      user: state.auth.user,
+      whatsappApiDetails: state.auth.whatsappApiDetails,
+      activeTabData: state.auth.activeTabData,
+      activationToken: state.auth.activationToken,
+      activeStatus: state.auth.activeStatus,
+      currentStatusDataState: state.auth.currentStatusDataState,
+    }),
+    shallowEqual
+  );
 }

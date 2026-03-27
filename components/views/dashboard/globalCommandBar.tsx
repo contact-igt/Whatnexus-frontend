@@ -100,11 +100,10 @@ export const GlobalCommandBar = ({
         {
             icon: <Shield size={14} />,
             label: 'Quality',
-            // Only show meaningful quality when actually connected
             status: isWabaConnected
                 ? (wabaInfo?.quality === 'GREEN' ? 'online' : wabaInfo?.quality === 'YELLOW' ? 'warning' : 'offline')
-                : 'offline',
-            value: isWabaConnected ? (wabaInfo?.quality || '—') : '—'
+                : 'warning',
+            value: isWabaConnected ? (wabaInfo?.quality || 'N/A') : 'N/A'
         },
     ] as const).filter(s => {
         if (isManagement && (s.label === 'WhatsApp' || s.label === 'Quality')) return false;

@@ -14,8 +14,9 @@ import { updateUserData } from '@/redux/slices/auth/authSlice';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 
-// Form Schema
+// Form Schema - Only fields editable via backend
 const editProfileSchema = z.object({
+    title: z.string().optional().or(z.literal('')),
     username: z.string().min(2, { message: "Name must be at least 2 characters." }),
     country_code: z.string().min(2, { message: "Country code is required." }),
     mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
@@ -32,8 +33,12 @@ export default function ManagementProfileView() {
     const { mutate: updateProfile, isPending: isUpdating } = useUpdateManagementMutation();
     const { data: profileData, refetch: refetchProfile } = useGetManagementProfileQuery();
 
+    // Display data: prefer fresh profile data over Redux user
+    const displayUser = profileData?.data || user;
+
     const { control, register, handleSubmit, formState: { errors }, reset } = useForm<EditProfileData>({
         defaultValues: {
+            title: user?.title || '',
             username: user?.username || user?.name || '',
             country_code: user?.country_code?.startsWith('+') ? user?.country_code : `+${user?.country_code || '91'}`,
             mobile: (() => {
@@ -73,6 +78,7 @@ export default function ManagementProfileView() {
     const handleCancel = () => {
         const countryCode = user?.country_code?.startsWith('+') ? user?.country_code : `+${user?.country_code || '91'}`;
         reset({
+            title: user?.title || '',
             username: user?.username || user?.name || '',
             country_code: countryCode,
             mobile: user?.mobile || '',
@@ -94,6 +100,7 @@ export default function ManagementProfileView() {
             }
 
             reset({
+                title: user?.title || '',
                 username: user?.username || user?.name || '',
                 country_code: normalizedCountryCode,
                 mobile: mobile,
@@ -141,21 +148,21 @@ export default function ManagementProfileView() {
                     <div className="flex items-start justify-between mb-8 pb-6 border-b border-white/10">
                         <div className="flex items-center space-x-4">
                             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center font-bold text-3xl text-white shadow-xl shadow-emerald-500/20">
-                                {(user?.username || user?.name)?.charAt(0).toUpperCase() || <User size={32} />}
+                                {(displayUser?.username || displayUser?.name)?.charAt(0).toUpperCase() || <User size={32} />}
                             </div>
                             <div>
                                 <h2 className={cn(
                                     "text-2xl font-bold",
                                     isDarkMode ? 'text-white' : 'text-slate-900'
                                 )}>
-                                    {user?.username || user?.name || 'N/A'}
+                                    {displayUser?.username || displayUser?.name || 'N/A'}
                                 </h2>
                                 <div className="flex items-center space-x-2 mt-2">
                                     <span className={cn(
                                         "text-[10px] font-bold px-3 py-1.5 rounded-lg border uppercase tracking-wide",
                                         'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                     )}>
-                                        {user?.role || 'N/A'}
+                                        {displayUser?.role || 'N/A'}
                                     </span>
                                 </div>
                             </div>
@@ -178,16 +185,40 @@ export default function ManagementProfileView() {
                     {/* Profile Content */}
                     {isEditMode ? (
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                            <Input
-                                isDarkMode={isDarkMode}
-                                label="Username"
-                                {...register('username')}
-                                icon={User}
-                                placeholder="Enter username"
-                                disabled={isUpdating}
-                                error={errors.username?.message}
-                                required
-                            />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Controller
+                                    name="title"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            isDarkMode={isDarkMode}
+                                            label="Title"
+                                            value={field.value || ''}
+                                            onChange={field.onChange}
+                                            options={[
+                                                { value: '', label: 'Select Title' },
+                                                { value: 'Mr', label: 'Mr' },
+                                                { value: 'Mrs', label: 'Mrs' },
+                                                { value: 'Ms', label: 'Ms' },
+                                                { value: 'Dr', label: 'Dr' },
+                                            ]}
+                                            disabled={isUpdating}
+                                            error={errors.title?.message}
+                                        />
+                                    )}
+                                />
+
+                                <Input
+                                    isDarkMode={isDarkMode}
+                                    label="Username"
+                                    {...register('username')}
+                                    icon={User}
+                                    placeholder="Enter username"
+                                    disabled={isUpdating}
+                                    error={errors.username?.message}
+                                    required
+                                />
+                            </div>
 
                             <div className="grid grid-cols-3 gap-4">
                                 <Controller
@@ -282,7 +313,7 @@ export default function ManagementProfileView() {
                                             "text-sm font-semibold",
                                             isDarkMode ? 'text-white' : 'text-slate-800'
                                         )}>
-                                            {user?.email || 'N/A'}
+                                            {displayUser?.email || 'N/A'}
                                         </p>
                                     </div>
                                 </div>
@@ -313,7 +344,7 @@ export default function ManagementProfileView() {
                                             "text-sm font-semibold",
                                             isDarkMode ? 'text-white' : 'text-slate-800'
                                         )}>
-                                            {user?.country_code} {user?.mobile || 'N/A'}
+                                            +{displayUser?.country_code?.replace(/^\+/, '')} {displayUser?.mobile || 'N/A'}
                                         </p>
                                     </div>
                                 </div>
@@ -335,7 +366,7 @@ export default function ManagementProfileView() {
                                         "text-xs font-mono",
                                         isDarkMode ? 'text-white/60' : 'text-slate-600'
                                     )}>
-                                        {user?.management_id || 'N/A'}
+                                        {displayUser?.management_id || 'N/A'}
                                     </p>
                                 </div>
                                 <div>

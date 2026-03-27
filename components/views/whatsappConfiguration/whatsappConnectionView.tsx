@@ -303,7 +303,7 @@ export const WhatsAppConnectionView = () => {
                             </div>
                         ) : (
                             <div className={cn(
-                                "p-8 rounded-xl border backdrop-blur-xl",
+                                "p-8 rounded-xl border backdrop-blur-xl mt-5",
                                 isDarkMode
                                     ? "bg-white/[0.02] border-white/10"
                                     : "bg-white border-slate-200"
