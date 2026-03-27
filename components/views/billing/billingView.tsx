@@ -62,24 +62,44 @@ export const BillingView = () => {
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
     };
 
-    const handleLowBalance = (data: { balance: number; message: string }) => {
+    const handleLowBalance = (data: any) => {
+      // Validate payload structure to prevent crashes
+      if (typeof data?.balance !== 'number' || typeof data?.message !== 'string') {
+        console.warn("[BILLING] Invalid low-balance payload:", data);
+        return;
+      }
       setLowBalanceWarning(data);
       toast.warning(data.message, { duration: 8000 });
     };
 
-    const handleAutoRechargeTrigger = (data: { balance: number; threshold: number; amount: number; message: string }) => {
+    const handleAutoRechargeTrigger = (data: any) => {
+      // Validate payload structure
+      if (typeof data?.amount !== 'number') {
+        console.warn("[BILLING] Invalid auto-recharge payload:", data);
+        return;
+      }
       toast.info(`Auto-recharge: Initiating ₹${data.amount.toFixed(0)} recharge...`, { duration: 5000 });
       setIsRechargeModalOpen(true);
     };
 
-    const handleWalletSuspended = (data: { balance: number; status: string; message: string }) => {
+    const handleWalletSuspended = (data: any) => {
+      // Validate payload structure
+      if (typeof data?.message !== 'string') {
+        console.warn("[BILLING] Invalid wallet-suspended payload:", data);
+        return;
+      }
       console.log("🚫 Wallet suspended:", data);
       setWalletSuspension(data);
       setLowBalanceWarning(null); // Clear low balance warning when suspended
       toast.error("Account Suspended: " + data.message, { duration: 10000 });
     };
 
-    const handleWalletRestored = (data: { balance: number; status: string; message: string }) => {
+    const handleWalletRestored = (data: any) => {
+      // Validate payload structure
+      if (!data || typeof data !== 'object') {
+        console.warn("[BILLING] Invalid wallet-restored payload:", data);
+        return;
+      }
       console.log("✅ Wallet restored:", data);
       setWalletSuspension(null);
       toast.success(data.message || "Services restored!", { duration: 5000 });
@@ -89,7 +109,12 @@ export const BillingView = () => {
       queryClient.invalidateQueries({ queryKey: ['billing-kpi'] });
     };
 
-    const handleWalletGrace = (data: { balance: number; status: string; message: string }) => {
+    const handleWalletGrace = (data: any) => {
+      // Validate payload structure
+      if (typeof data?.balance !== 'number' || typeof data?.message !== 'string') {
+        console.warn("[BILLING] Invalid wallet-grace payload:", data);
+        return;
+      }
       console.log("⚠️ Wallet in grace period:", data);
       setLowBalanceWarning({ balance: data.balance, message: data.message });
       toast.warning(data.message, { duration: 8000 });

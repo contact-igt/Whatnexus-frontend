@@ -203,7 +203,7 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                                             {effectiveType === "document" && (
                                                 <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
                                                     <FileText className="w-4 h-4 shrink-0 opacity-70" />
-                                                    <span className="flex-1 truncate opacity-80">{bodyText || "Document"}</span>
+                                                    <span className="flex-1 truncate opacity-80">{msg.media_filename || "Document"}</span>
                                                     {effectiveUrl && (
                                                         <a href={effectiveUrl} download target="_blank" rel="noreferrer" className="shrink-0 text-emerald-400 hover:text-emerald-300">
                                                             <Download className="w-4 h-4" />
@@ -215,8 +215,8 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                                             {effectiveType === "audio" && effectiveUrl && (
                                                 <audio src={effectiveUrl} controls className="w-full max-w-xs mb-1" />
                                             )}
-                                            {/* Text body */}
-                                            {effectiveType !== "document" && bodyText && (
+                                            {/* Text body - show for ALL types including documents */}
+                                            {bodyText && (
                                                 <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
                                                     {bodyText}
                                                 </p>

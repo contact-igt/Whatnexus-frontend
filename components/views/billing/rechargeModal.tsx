@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -36,9 +36,18 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
   const { loadScript } = useRazorpay();
 
   const handleRecharge = async () => {
+    // Prevent double-click - check if already processing
+    if (isProcessing) return;
+
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount < 100) {
       toast.error("Minimum recharge amount is ₹100");
+      return;
+    }
+
+    // Add maximum amount validation
+    if (numAmount > 500000) {
+      toast.error("Maximum recharge amount is ₹5,00,000");
       return;
     }
 
@@ -92,7 +101,10 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
       };
 
       const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', (resp: any) => toast.error(`Payment failed: ${resp.error.description}`));
+      rzp.on('payment.failed', (resp: any) => {
+        setIsProcessing(false);
+        toast.error(`Payment failed: ${resp.error.description}`);
+      });
       rzp.open();
     } catch (err: any) {
       toast.error(`Initiation failed: ${err.message || "Error"}`);
@@ -109,28 +121,28 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
       )}>
         {/* Elite Header with Background Effect */}
         <div className="relative p-8 pb-4">
-           <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
-           
-           <div className="relative z-10 flex flex-col items-center">
-              <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className={cn(
-                  "w-16 h-16 rounded-[22px] flex items-center justify-center mb-6 border shadow-xl relative group",
-                  isDarkMode ? "bg-white/5 border-white/10" : "bg-emerald-50 border-emerald-100"
-                )}
-              >
-                <div className="absolute inset-0 bg-emerald-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <Wallet className="w-7 h-7 text-emerald-500 relative z-10" />
-              </motion.div>
-              
-              <DialogTitle className="text-2xl font-black tracking-tight text-center uppercase tracking-[0.05em]">
-                Elite Top-Up
-              </DialogTitle>
-              <DialogDescription className={cn("text-center text-[11px] font-black uppercase tracking-[0.2em] mt-2 opacity-30")}>
-                Secured Financial Channel
-              </DialogDescription>
-           </div>
+          <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
+
+          <div className="relative z-10 flex flex-col items-center">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={cn(
+                "w-16 h-16 rounded-[22px] flex items-center justify-center mb-6 border shadow-xl relative group",
+                isDarkMode ? "bg-white/5 border-white/10" : "bg-emerald-50 border-emerald-100"
+              )}
+            >
+              <div className="absolute inset-0 bg-emerald-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Wallet className="w-7 h-7 text-emerald-500 relative z-10" />
+            </motion.div>
+
+            <DialogTitle className="text-2xl font-black tracking-tight text-center uppercase tracking-[0.05em]">
+              Elite Top-Up
+            </DialogTitle>
+            <DialogDescription className={cn("text-center text-[11px] font-black uppercase tracking-[0.2em] mt-2 opacity-30")}>
+              Secured Financial Channel
+            </DialogDescription>
+          </div>
         </div>
 
         <div className="px-8 pb-8 space-y-8 relative z-10">
@@ -142,8 +154,8 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
                   onClick={() => setAmount(amt.toString())}
                   className={cn(
                     "relative py-4 rounded-[20px] text-xs font-black uppercase tracking-widest transition-all duration-500 border group overflow-hidden",
-                    amount === amt.toString() 
-                      ? "bg-slate-900 border-slate-800 text-white shadow-xl scale-[1.03]" 
+                    amount === amt.toString()
+                      ? "bg-slate-900 border-slate-800 text-white shadow-xl scale-[1.03]"
                       : isDarkMode ? "bg-white/[0.03] border-white/5 text-white/40 hover:text-white hover:border-white/10" : "bg-slate-50 border-slate-100 text-slate-500 hover:border-emerald-200"
                   )}
                 >
@@ -171,14 +183,14 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
 
           {/* Benefits/Security Grid */}
           <div className="grid grid-cols-2 gap-3">
-             <div className={cn("p-4 rounded-[20px] border flex flex-col gap-2 transition-all duration-500", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100")}>
-                <ShieldCheck size={14} className="text-emerald-500" />
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Verified Channel</span>
-             </div>
-             <div className={cn("p-4 rounded-[20px] border flex flex-col gap-2 transition-all duration-500", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100")}>
-                <Sparkles size={14} className="text-blue-500" />
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Instant Credit</span>
-             </div>
+            <div className={cn("p-4 rounded-[20px] border flex flex-col gap-2 transition-all duration-500", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100")}>
+              <ShieldCheck size={14} className="text-emerald-500" />
+              <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Verified Channel</span>
+            </div>
+            <div className={cn("p-4 rounded-[20px] border flex flex-col gap-2 transition-all duration-500", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100")}>
+              <Sparkles size={14} className="text-blue-500" />
+              <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Instant Credit</span>
+            </div>
           </div>
 
           <button

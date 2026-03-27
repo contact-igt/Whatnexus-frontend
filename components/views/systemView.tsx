@@ -5,13 +5,13 @@ import { useState } from 'react';
 import { Shield, ZapOff, Smartphone, Webhook, Server, Eye, ShieldCheck, Lock } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { SYSTEM_LOGS } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
+import { callOpenAI } from "@/lib/openai";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 
 
 export const SystemGovernanceView = () => {
-    const {isDarkMode} = useTheme();
+    const { isDarkMode } = useTheme();
     const [isAuditing, setIsAuditing] = useState(false);
     const [auditReport, setAuditReport] = useState<string | null>(null);
 
@@ -24,7 +24,7 @@ export const SystemGovernanceView = () => {
       Logs:\n${logs}
       
       Identify the most critical issue if any exists.`;
-            const result = await callGemini(prompt, "You are a cyber-security and system performance auditor.");
+            const result = await callOpenAI(prompt, "You are a cyber-security and system performance auditor.");
             setAuditReport(result);
         } catch (err) {
             setAuditReport("Audit link severed. Retry system check.");

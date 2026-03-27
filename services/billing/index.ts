@@ -59,6 +59,13 @@ export class billingApiData {
   };
 
   /**
+   * Fetch payment history (recharge transactions only)
+   */
+  getPaymentHistory = async (params?: { page?: number; limit?: number }) => {
+    return await _axios("get", "/whatsapp/payment/history", null, undefined, params);
+  };
+
+  /**
    * Fetch all pricing table entries (SuperAdmin)
    */
   getPricingTable = async () => {

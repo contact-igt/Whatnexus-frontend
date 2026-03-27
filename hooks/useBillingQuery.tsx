@@ -53,7 +53,16 @@ export const useVerifyPaymentMutation = () => {
             queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
             queryClient.invalidateQueries({ queryKey: ['wallet-status'] });
             queryClient.invalidateQueries({ queryKey: ['billing-kpi'] });
+            queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['payment-history'] });
         }
+    });
+};
+
+export const useGetPaymentHistoryQuery = (params?: { page?: number; limit?: number }) => {
+    return useQuery({
+        queryKey: ['payment-history', params],
+        queryFn: () => billingApis.getPaymentHistory(params)
     });
 };
 
