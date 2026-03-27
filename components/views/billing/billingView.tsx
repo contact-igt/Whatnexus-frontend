@@ -240,12 +240,15 @@ export const BillingView = () => {
           >
             Recharge Now
           </button>
-          <button
-            onClick={() => setLowBalanceWarning(null)}
-            className="p-1 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <X size={14} />
-          </button>
+          {/* Only allow dismissing non-critical warnings (balance > 0) */}
+          {lowBalanceWarning.balance > 0 && (
+            <button
+              onClick={() => setLowBalanceWarning(null)}
+              className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
         </motion.div>
       )}
 
