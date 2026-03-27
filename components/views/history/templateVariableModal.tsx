@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Send, Variable } from "lucide-react";
+import { X, Send, Variable, MapPin } from "lucide-react";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
@@ -27,6 +27,10 @@ export const TemplateVariableModal = ({
     const [bodyValues, setBodyValues] = useState<string[]>([]);
     const [headerErrors, setHeaderErrors] = useState<string[]>([]);
     const [bodyErrors, setBodyErrors] = useState<string[]>([]);
+    const [locationParams, setLocationParams] = useState({ latitude: '', longitude: '', name: '', address: '' });
+    const [locationErrors, setLocationErrors] = useState({ latitude: '', longitude: '', name: '', address: '' });
+
+    const isLocationTemplate = template?.type === 'location';
 
     // Detect variables on template change
     useEffect(() => {
@@ -40,6 +44,10 @@ export const TemplateVariableModal = ({
             const bodyVars = template.variables || (template.description?.match(/\{\{\d+\}\}/g) || []).length;
             setBodyValues(new Array(bodyVars).fill(""));
             setBodyErrors(new Array(bodyVars).fill(""));
+
+            // Reset location params
+            setLocationParams({ latitude: '', longitude: '', name: '', address: '' });
+            setLocationErrors({ latitude: '', longitude: '', name: '', address: '' });
         }
     }, [template]);
 
@@ -57,12 +65,40 @@ export const TemplateVariableModal = ({
         const hasHeaderError = newHeaderErrors.some(e => e);
         const hasBodyError = newBodyErrors.some(e => e);
 
-        if (hasHeaderError || hasBodyError) return;
+        // Validate location params
+        let hasLocationError = false;
+        if (isLocationTemplate) {
+            const newLocErrors = {
+                latitude: !locationParams.latitude.trim() ? "Latitude is required" : (isNaN(Number(locationParams.latitude)) ? "Must be a valid number" : ""),
+                longitude: !locationParams.longitude.trim() ? "Longitude is required" : (isNaN(Number(locationParams.longitude)) ? "Must be a valid number" : ""),
+                name: !locationParams.name.trim() ? "Location name is required" : "",
+                address: !locationParams.address.trim() ? "Address is required" : "",
+            };
+            setLocationErrors(newLocErrors);
+            hasLocationError = Object.values(newLocErrors).some(e => e);
+        }
+
+        if (hasHeaderError || hasBodyError || hasLocationError) return;
 
         const components = [];
 
-        // Construct Header Component Payload
-        if (headerValues.length > 0) {
+        // Construct Location Header Component
+        if (isLocationTemplate) {
+            components.push({
+                type: "header",
+                parameters: [{
+                    type: "location",
+                    location: {
+                        latitude: locationParams.latitude.trim(),
+                        longitude: locationParams.longitude.trim(),
+                        name: locationParams.name.trim(),
+                        address: locationParams.address.trim(),
+                    }
+                }]
+            });
+        }
+        // Construct Text Header Component Payload
+        else if (headerValues.length > 0) {
             components.push({
                 type: "header",
                 parameters: headerValues.map(val => ({
@@ -115,6 +151,61 @@ export const TemplateVariableModal = ({
                 </div>
 
                 <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                    {/* Location Fields */}
+                    {isLocationTemplate && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                <MapPin size={16} className="text-emerald-500" />
+                                <h3 className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/60" : "text-slate-500")}>
+                                    Location Details
+                                </h3>
+                            </div>
+                            <p className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                Provide the location coordinates and details to display in WhatsApp
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
+                                {([
+                                    { key: 'latitude' as const, label: 'Latitude', placeholder: 'e.g. 37.4421', type: 'number' },
+                                    { key: 'longitude' as const, label: 'Longitude', placeholder: 'e.g. -122.1615', type: 'number' },
+                                    { key: 'name' as const, label: 'Location Name', placeholder: 'e.g. Philz Coffee', type: 'text', full: true },
+                                    { key: 'address' as const, label: 'Address', placeholder: 'e.g. 101 Forest Ave, Palo Alto', type: 'text', full: true },
+                                ] as const).map((field) => (
+                                    <div key={field.key} className={cn("flex flex-col space-y-1", ('full' in field && field.full) && "col-span-2")}>
+                                        <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                            {field.label}
+                                            <span className="text-red-500 ml-0.5">*</span>
+                                        </label>
+                                        <input
+                                            type={field.type}
+                                            step={field.type === 'number' ? 'any' : undefined}
+                                            value={locationParams[field.key]}
+                                            onChange={(e) => {
+                                                setLocationParams(prev => ({ ...prev, [field.key]: e.target.value }));
+                                                if (locationErrors[field.key]) {
+                                                    setLocationErrors(prev => ({ ...prev, [field.key]: '' }));
+                                                }
+                                            }}
+                                            placeholder={field.placeholder}
+                                            className={cn(
+                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
+                                                locationErrors[field.key]
+                                                    ? "border-red-500 focus:ring-red-500/20 bg-red-500/5"
+                                                    : isDarkMode
+                                                        ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
+                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
+                                            )}
+                                        />
+                                        {locationErrors[field.key] && (
+                                            <p className="text-red-500 text-[11px] ml-0.5 animate-in slide-in-from-top-1">
+                                                {locationErrors[field.key]}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Header Variables */}
                     {headerValues.length > 0 && (
                         <div className="space-y-4">

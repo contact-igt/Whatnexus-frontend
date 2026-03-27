@@ -119,8 +119,9 @@ export const HistoryView = () => {
     const handleTemplateSelect = (template: ProcessedTemplate) => {
         const hasHeaderVars = template.headerText && /\{\{\d+\}\}/.test(template.headerText);
         const hasBodyVars = template.variables > 0 || (template.description && /\{\{\d+\}\}/.test(template.description));
+        const isLocationTemplate = template.type === 'location';
 
-        if (hasHeaderVars || hasBodyVars) {
+        if (hasHeaderVars || hasBodyVars || isLocationTemplate) {
             setSelectedTemplateForVariables(template);
             setIsVariableModalOpen(true);
         } else {

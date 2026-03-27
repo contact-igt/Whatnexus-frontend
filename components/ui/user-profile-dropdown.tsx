@@ -82,7 +82,7 @@ export const UserProfileDropdown = ({
                     <span>Profile</span>
                 </button>
                 <button
-                    onClick={() => { onClose(); router.push("/settings"); }}
+                    onClick={() => { onClose(); router.push("/settings/general"); }}
                     className={cn(
                         "w-full flex items-center space-x-3 px-4 py-2.5 text-sm transition-all",
                         isDarkMode

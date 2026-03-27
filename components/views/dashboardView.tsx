@@ -19,11 +19,13 @@ import {
     BarChart3, Inbox, MessageCircle,
     CalendarCheck, Activity, Layers3,
     RefreshCcw, AlertCircle, CreditCard,
-    Stethoscope, BookOpen, Users
+    Stethoscope, BookOpen, Users,
+    ArrowRight, X, Settings
 } from 'lucide-react';
 import { useGetWhatsappDashboardQuery } from '@/hooks/useWhatsappDashboardQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { ThemedLoader } from '@/components/ui/themedLoader';
+import { useRouter } from 'next/navigation';
 
 // ─── Section Header ─────────────────────────────────────────────────────────
 interface SectionHeaderProps {
@@ -64,8 +66,10 @@ const SectionHeader = ({ icon, title, subtitle, accentColor = '#3b82f6', isDarkM
 export const DashboardView = () => {
     const { isDarkMode } = useTheme();
     const { user } = useAuth();
+    const router = useRouter();
     const isManagement = user?.role === 'super_admin' || user?.role === 'platform_admin';
     const [period, setPeriod] = useState<string>("30days");
+    const [waBannerDismissed, setWaBannerDismissed] = useState(false);
     const { data: dashboardResult, isLoading, isError, refetch } = useGetWhatsappDashboardQuery(period);
 
     const dashboardData = dashboardResult?.data;
@@ -125,27 +129,165 @@ export const DashboardView = () => {
                     isManagement={isManagement}
                 />
 
-                {/* 2. Messaging Limit Tracker (CRITICAL) */}
-                {!isManagement && dashboardData?.wabaInfo && (
-                    <section>
-                        <SectionHeader
-                            icon={<Layers3 size={18} />}
-                            title="Account & Messaging Limits"
-                            subtitle="Rolling 24-hour limit status and account upgrade protection"
-                            accentColor="#8b5cf6"
-                            isDarkMode={isDarkMode}
-                        />
-                        <MessagingLimitTracker 
-                            isDarkMode={isDarkMode} 
-                            limitData={{
-                                limit: dashboardData.wabaInfo.tier === 'TIER_10K' ? 10000 : dashboardData.wabaInfo.tier === 'TIER_100K' ? 100000 : dashboardData.wabaInfo.tier === 'TIER_UNLIMITED' ? Infinity : 1000,
-                                used: dashboardData.wabaInfo?.rolling24hUsed ?? 0,
-                                sevenDayUnique: dashboardData.wabaInfo?.sevenDayUnique ?? 0,
-                                quality: dashboardData.wabaInfo.quality
+                {/* 1b. WhatsApp Not Connected Banner */}
+                {(() => {
+                    if (isManagement || waBannerDismissed) return null;
+                    const wn = dashboardData?.wabaInfo?.number;
+                    const ws = dashboardData?.wabaInfo?.status;
+                    const wabaConnected = !!wn &&
+                        /^\d+$/.test(String(wn).replace(/[\s+]/g, '')) &&
+                        (ws === 'Live' || ws === 'active');
+                    if (wabaConnected) return null;
+
+                    const steps = [
+                        { label: 'Create a Meta Business Account', done: false },
+                        { label: 'Register a WhatsApp Business phone number', done: false },
+                        { label: 'Connect your WABA in WhatsApp Settings', done: false },
+                    ];
+
+                    return (
+                        <div className="relative overflow-hidden rounded-2xl border animate-in fade-in slide-in-from-top-2 duration-500"
+                            style={{
+                                background: isDarkMode
+                                    ? 'linear-gradient(135deg, rgba(239,68,68,0.07) 0%, rgba(249,115,22,0.05) 50%, rgba(239,68,68,0.04) 100%)'
+                                    : 'linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(249,115,22,0.04) 100%)',
+                                borderColor: isDarkMode ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.2)',
                             }}
-                        />
-                    </section>
-                )}
+                        >
+                            {/* Subtle animated background glow */}
+                            <div className="absolute inset-0 pointer-events-none">
+                                <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full opacity-[0.06] blur-3xl"
+                                    style={{ background: 'radial-gradient(circle, #ef4444 0%, transparent 70%)' }} />
+                                <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-[0.04] blur-2xl"
+                                    style={{ background: 'radial-gradient(circle, #f97316 0%, transparent 70%)' }} />
+                            </div>
+
+                            <div className="relative px-5 py-4 flex items-start gap-5 flex-wrap md:flex-nowrap">
+
+                                {/* Icon column */}
+                                <div className="shrink-0 flex flex-col items-center gap-2 pt-0.5">
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                                        style={{
+                                            background: isDarkMode ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)',
+                                            border: '1px solid rgba(239,68,68,0.3)',
+                                        }}
+                                    >
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#ef4444"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                    </div>
+                                    {/* Animated signal bars */}
+                                    <div className="flex items-end gap-[3px] h-5">
+                                        {[3, 5, 7, 9].map((h, i) => (
+                                            <div key={i}
+                                                className="w-1 rounded-sm opacity-30"
+                                                style={{
+                                                    height: `${h * 2}px`,
+                                                    background: '#ef4444',
+                                                    animation: `pulse ${0.8 + i * 0.15}s ease-in-out infinite alternate`,
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 min-w-0 space-y-3">
+                                    <div>
+                                        <h3 className="text-[15px] font-bold tracking-tight"
+                                            style={{ color: isDarkMode ? '#fca5a5' : '#b91c1c' }}>
+                                            WhatsApp Business Account Not Connected
+                                        </h3>
+                                        <p className="text-[12px] mt-0.5"
+                                            style={{ color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}>
+                                            Your WABA is not set up. Messages cannot be sent or received until connected.
+                                        </p>
+                                    </div>
+
+                                    {/* Setup steps */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {steps.map((step, i) => (
+                                            <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                                                style={{
+                                                    background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                                                }}
+                                            >
+                                                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0"
+                                                    style={{
+                                                        background: 'rgba(239,68,68,0.15)',
+                                                        color: '#ef4444',
+                                                        border: '1px solid rgba(239,68,68,0.3)'
+                                                    }}
+                                                >
+                                                    {i + 1}
+                                                </span>
+                                                <span className="text-[11px] font-medium"
+                                                    style={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}>
+                                                    {step.label}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* CTA + Dismiss */}
+                                <div className="flex items-center gap-2 shrink-0 self-center">
+                                    <button
+                                        onClick={() => router.push('/whatsapp-settings')}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm text-white transition-all hover:brightness-110 active:scale-95"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                        }}
+                                    >
+                                        <Settings size={14} />
+                                        Connect Now
+                                        <ArrowRight size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => setWaBannerDismissed(true)}
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
+                                        style={{ color: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' }}
+                                        title="Dismiss"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* 2. Messaging Limit Tracker (only when genuinely connected) */}
+                {(() => {
+                    const wn = dashboardData?.wabaInfo?.number;
+                    const ws = dashboardData?.wabaInfo?.status;
+                    const wabaConnected = !!wn &&
+                        /^\d+$/.test(String(wn).replace(/[\s+]/g, '')) &&
+                        (ws === 'Live' || ws === 'active');
+                    if (!wabaConnected || isManagement) return null;
+
+                    const tier = dashboardData!.wabaInfo.tier;
+                    const limit = tier === 'TIER_10K' ? 10000 : tier === 'TIER_100K' ? 100000 : tier === 'TIER_UNLIMITED' ? Infinity : 1000;
+                    return (
+                        <section>
+                            <SectionHeader
+                                icon={<Layers3 size={18} />}
+                                title="Account & Messaging Limits"
+                                subtitle="Rolling 24-hour limit status and account upgrade protection"
+                                accentColor="#8b5cf6"
+                                isDarkMode={isDarkMode}
+                            />
+                            <MessagingLimitTracker
+                                isDarkMode={isDarkMode}
+                                limitData={{
+                                    limit,
+                                    used: dashboardData!.wabaInfo?.rolling24hUsed ?? 0,
+                                    sevenDayUnique: dashboardData!.wabaInfo?.sevenDayUnique ?? 0,
+                                    quality: dashboardData!.wabaInfo.quality
+                                }}
+                            />
+                        </section>
+                    );
+                })()}
 
                 {/* 3. KPI Cards — 4 per row */}
                 <section>

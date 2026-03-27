@@ -13,6 +13,8 @@ interface WhatsAppConnectionListProps {
     WhatsAppConnectionData: any;
     onTestConnection: () => void;
     onSaveConfiguration: (connection: any) => void;
+    testConnectionSuccess: boolean;
+    isWebhookVerified: boolean;
 }
 
 export const WhatsappConnectionList = ({
@@ -22,14 +24,21 @@ export const WhatsappConnectionList = ({
     handleEditClick,
     WhatsAppConnectionData,
     onTestConnection,
-    onSaveConfiguration
+    onSaveConfiguration,
+    testConnectionSuccess,
+    isWebhookVerified
 }: WhatsAppConnectionListProps) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showAccessToken, setShowAccessToken] = useState<Record<string, boolean>>({});
     const [editedTokens, setEditedTokens] = useState<Record<string, string>>({});
     const isEditing = editingId === WhatsAppConnectionData.data.id;
     const isActive = WhatsAppConnectionData.data.status === "active";
-    const isToggleDisabled = !["verified", "active", "inactive"].includes(WhatsAppConnectionData.data.status);
+    // Toggle is disabled if:
+    // 1. Status is not one of the valid ones
+    // 2. We're trying to activate (not currently active) BUT haven't tested successfully or verified webhook
+    const isToggleDisabled = 
+        !["verified", "active", "inactive"].includes(WhatsAppConnectionData.data.status) ||
+        (!isActive && (!testConnectionSuccess || !isWebhookVerified));
     const toggleAccessTokenVisibility = (id: string) => {
         setShowAccessToken(prev => ({ ...prev, [id]: !prev[id] }));
     };

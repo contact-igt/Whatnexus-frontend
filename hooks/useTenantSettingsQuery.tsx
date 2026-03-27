@@ -15,23 +15,18 @@ export const useUpdateTenantAiSettingsMutation = () => {
 
   return useMutation({
     mutationFn: (data: { ai_settings: any }) => tenantApi.updateTenantAiSettings(data),
-    onSuccess: (_, variables) => {
-      // Manually update the cache with the new settings to avoid flicker
-      // when the local optimistic state is cleared in GeneralSettingsView
-      queryClient.setQueryData(["tenantSettings"], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          data: {
-            ...old.data,
-            ai_settings: {
-              ...(old.data?.ai_settings || {}),
-              ...(variables.ai_settings || {})
-            }
-          }
-        };
-      });
-      // Invalidate to ensure consistency with server
+    onSuccess: (response) => {
+      // Use refreshed data from server response (includes masked key info)
+      if (response?.data) {
+        queryClient.setQueryData(["tenantSettings"], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: response.data,
+          };
+        });
+      }
+      // Invalidate to ensure full consistency
       queryClient.invalidateQueries({ queryKey: ["tenantSettings"] });
     },
   });

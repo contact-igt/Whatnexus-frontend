@@ -129,7 +129,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Appointment",
                 route: "/appointments",
                 icon: Calendar,
-                requiresWhatsApp: false,
+                requiresWhatsApp: true,
             },
             // {
             //     label: "Logic",

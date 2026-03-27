@@ -10,11 +10,21 @@ export type MessageStyle = 'Normal' | 'Poetic' | 'Exciting' | 'Funny';
 export type OptimizationGoal = 'Click Rate' | 'Reply Rate';
 export type HeaderType = 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
 
+export interface MPMSection {
+    title: string;
+    productRetailerIds: string[];
+}
+
 export interface CTAButton {
     id: string;
     type: CTAType;
     label: string;
     value: string; // URL, phone number, or code to copy
+    // CATALOG specific
+    thumbnailProductRetailerId?: string;
+    // MPM specific
+    mpmThumbnailProductRetailerId?: string;
+    mpmSections?: MPMSection[];
 }
 
 export interface QuickReply {

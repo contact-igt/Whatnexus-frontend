@@ -212,3 +212,116 @@ export function formatDate(dateString: string): string {
         year: 'numeric'
     });
 }
+
+// ─────────────────────────────────────────────────
+// Language-Script Validation for Template Content
+// ─────────────────────────────────────────────────
+
+interface ScriptRange {
+    name: string;
+    regex: RegExp;
+}
+
+const SCRIPT_RANGES: ScriptRange[] = [
+    { name: 'Devanagari', regex: /[\u0900-\u097F]/g },
+    { name: 'Arabic', regex: /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g },
+    { name: 'Bengali', regex: /[\u0980-\u09FF]/g },
+    { name: 'Gujarati', regex: /[\u0A80-\u0AFF]/g },
+    { name: 'Gurmukhi', regex: /[\u0A00-\u0A7F]/g },
+    { name: 'Kannada', regex: /[\u0C80-\u0CFF]/g },
+    { name: 'Malayalam', regex: /[\u0D00-\u0D7F]/g },
+    { name: 'Tamil', regex: /[\u0B80-\u0BFF]/g },
+    { name: 'Telugu', regex: /[\u0C00-\u0C7F]/g },
+    { name: 'Thai', regex: /[\u0E00-\u0E7F]/g },
+    { name: 'Lao', regex: /[\u0E80-\u0EFF]/g },
+    { name: 'Georgian', regex: /[\u10A0-\u10FF\u2D00-\u2D2F]/g },
+    { name: 'Korean', regex: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g },
+    { name: 'Japanese', regex: /[\u3040-\u309F\u30A0-\u30FF]/g },
+    { name: 'CJK', regex: /[\u4E00-\u9FFF\u3400-\u4DBF]/g },
+    { name: 'Cyrillic', regex: /[\u0400-\u04FF\u0500-\u052F]/g },
+    { name: 'Greek', regex: /[\u0370-\u03FF\u1F00-\u1FFF]/g },
+    { name: 'Hebrew', regex: /[\u0590-\u05FF]/g },
+    { name: 'Latin', regex: /[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/g },
+];
+
+const LANGUAGE_SCRIPT_MAP: Record<string, string[]> = {
+    'Afrikaans': ['Latin'], 'Albanian': ['Latin'], 'Arabic': ['Arabic'],
+    'Azerbaijani': ['Latin'], 'Bengali': ['Bengali'], 'Bulgarian': ['Cyrillic'],
+    'Catalan': ['Latin'], 'Chinese (CHN)': ['CJK'], 'Chinese (HKG)': ['CJK'],
+    'Chinese (TAI)': ['CJK'], 'Croatian': ['Latin'], 'Czech': ['Latin'],
+    'Danish': ['Latin'], 'Dutch': ['Latin'], 'English': ['Latin'],
+    'English (UK)': ['Latin'], 'English (US)': ['Latin'], 'Estonian': ['Latin'],
+    'Filipino': ['Latin'], 'Finnish': ['Latin'], 'French': ['Latin'],
+    'Georgian': ['Georgian'], 'German': ['Latin'], 'Greek': ['Greek'],
+    'Gujarati': ['Gujarati'], 'Hausa': ['Latin'], 'Hebrew': ['Hebrew'],
+    'Hindi': ['Devanagari'], 'Hungarian': ['Latin'], 'Indonesian': ['Latin'],
+    'Irish': ['Latin'], 'Italian': ['Latin'], 'Japanese': ['Japanese', 'CJK'],
+    'Kannada': ['Kannada'], 'Kazakh': ['Cyrillic'], 'Kinyarwanda': ['Latin'],
+    'Korean': ['Korean'], 'Kyrgyz': ['Cyrillic'], 'Lao': ['Lao'],
+    'Latvian': ['Latin'], 'Lithuanian': ['Latin'], 'Macedonian': ['Cyrillic'],
+    'Malay': ['Latin'], 'Malayalam': ['Malayalam'], 'Marathi': ['Devanagari'],
+    'Norwegian': ['Latin'], 'Persian': ['Arabic'], 'Polish': ['Latin'],
+    'Portuguese (BR)': ['Latin'], 'Portuguese (POR)': ['Latin'],
+    'Punjabi': ['Gurmukhi'], 'Romanian': ['Latin'], 'Russian': ['Cyrillic'],
+    'Serbian': ['Cyrillic', 'Latin'], 'Slovak': ['Latin'], 'Slovenian': ['Latin'],
+    'Spanish': ['Latin'], 'Spanish (ARG)': ['Latin'], 'Spanish (SPA)': ['Latin'],
+    'Spanish (MEX)': ['Latin'], 'Swahili': ['Latin'], 'Swedish': ['Latin'],
+    'Tamil': ['Tamil'], 'Telugu': ['Telugu'], 'Thai': ['Thai'],
+    'Turkish': ['Latin'], 'Ukrainian': ['Cyrillic'], 'Urdu': ['Arabic'],
+    'Uzbek': ['Latin'], 'Vietnamese': ['Latin'], 'Zulu': ['Latin'],
+};
+
+/**
+ * Detect the dominant script in a text string
+ */
+export function detectDominantScript(text: string): string | null {
+    if (!text || text.trim().length < 3) return null;
+
+    // Remove template variables, formatting markers, whitespace, digits, punctuation
+    const cleaned = text
+        .replace(/\{\{[\w]+\}\}/g, '')
+        .replace(/[\n\r*_~`\s\d.,!?;:'"()\-\/\\@#$%^&+=<>\[\]{}|]/g, '')
+        .trim();
+    if (!cleaned || cleaned.length < 2) return null;
+
+    let maxCount = 0;
+    let dominantScript: string | null = null;
+
+    for (const { name, regex } of SCRIPT_RANGES) {
+        const matches = cleaned.match(regex) || [];
+        if (matches.length > maxCount) {
+            maxCount = matches.length;
+            dominantScript = name;
+        }
+    }
+
+    return dominantScript;
+}
+
+/**
+ * Validate that template content matches the selected language's expected script.
+ * Returns null if valid, or an error message string if invalid.
+ */
+export function validateContentLanguageMatch(content: string, language: string): string | null {
+    if (!content || !language) return null;
+
+    const expectedScripts = LANGUAGE_SCRIPT_MAP[language];
+    if (!expectedScripts) return null; // Unknown language, skip validation
+
+    const dominantScript = detectDominantScript(content);
+    if (!dominantScript) return null; // Can't determine script, skip
+
+    const isMatch = expectedScripts.some(expected => {
+        if (expected === dominantScript) return true;
+        // CJK is also valid for Japanese/Chinese
+        if (expected === 'CJK' && dominantScript === 'Japanese') return true;
+        if (expected === 'Japanese' && dominantScript === 'CJK') return true;
+        return false;
+    });
+
+    if (!isMatch) {
+        return `Template content does not match the selected language "${language}". Please write the content in ${language} or change the language selection.`;
+    }
+
+    return null;
+}

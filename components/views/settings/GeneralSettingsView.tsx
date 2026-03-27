@@ -111,6 +111,7 @@ export const GeneralSettingsView = () => {
     const { mutate: updateAiSettings, isPending: isUpdating } = useUpdateTenantAiSettingsMutation();
     const [selectedInputModel, setSelectedInputModel] = useState<string | null>(null);
     const [selectedOutputModel, setSelectedOutputModel] = useState<string | null>(null);
+
     const hasSyncedModels = useRef(false);
 
     // Sync state ONCE on initial data load — never overwrite after that (to avoid race condition after save)
@@ -413,6 +414,8 @@ export const GeneralSettingsView = () => {
                                         </div>
                                     </div>
                                 )}
+
+
 
                                 {/* Info Footer */}
                                 <div className={cn(

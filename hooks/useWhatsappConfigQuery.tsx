@@ -16,12 +16,21 @@ export const useGetWhatsappConfigQuery = () => {
         enabled: !!token && (user?.role !== 'super_admin' && user?.role !== 'platform_admin'),
         queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
         staleTime: 2 * 60 * 1000,
+        retry: false,
     })
     useEffect(() => {
         if (data?.data) {
             dispatch(setWhatsAppApiDetails(data.data));
         }
     }, [data, dispatch]);
+
+    // Clear stale WhatsApp status from Redux when the API errors (e.g. 404 account not found)
+    useEffect(() => {
+        if (isError) {
+            dispatch(setWhatsAppApiDetails(null));
+        }
+    }, [isError, dispatch]);
+
     return { data, isLoading, isError, refetch }
 }
 

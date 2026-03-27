@@ -346,6 +346,7 @@ export const TemplateView = () => {
                 onBack={handleBack}
                 onSave={handleSave}
                 isViewMode={viewMode === 'view'}
+                isSaving={createTemplateLoading || updateTemplateLoading}
             />
         );
     }

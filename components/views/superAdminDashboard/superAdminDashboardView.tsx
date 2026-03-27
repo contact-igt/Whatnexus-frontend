@@ -19,7 +19,7 @@ import { AiPlatformUsage } from './aiPlatformUsage';
 import {
     BarChart3, Building2, Clock, Activity,
     TrendingUp, RefreshCcw, AlertCircle, WifiOff,
-    ShieldCheck, Radio, Brain, Rss, MessageSquare, Layers,
+    ShieldCheck, Radio, Brain, Rss, MessageSquare,
 } from 'lucide-react';
 import { glassCard, tx } from '../dashboard/glassStyles';
 
@@ -72,19 +72,7 @@ export const SuperAdminDashboardView = () => {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-6 relative"
                 style={{ background: isDarkMode ? '#09090b' : '#f8fafc' }}>
-                {/* Ambient glow */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-[0.04]"
-                        style={{ background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)' }} />
-                </div>
                 <div className="relative z-10 flex flex-col items-center gap-6">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                        style={{
-                            background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                            boxShadow: '0 8px 24px rgba(139,92,246,0.3)',
-                        }}>
-                        <Layers size={28} className="text-white animate-pulse" />
-                    </div>
                     <ThemedLoader
                         isDarkMode={isDarkMode}
                         text="Initializing Command Center"
