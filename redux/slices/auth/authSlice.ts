@@ -49,7 +49,7 @@ const authSlice = createSlice({
     setActiveTabData: (state, action: PayloadAction<string>) => {
       state.activeTabData = action.payload;
     },
-    setWhatsAppApiDetails: (state, action: PayloadAction<{ apiDetails: any }>) => {
+    setWhatsAppApiDetails: (state, action: PayloadAction<{ apiDetails: any } | null>) => {
       state.whatsappApiDetails = action.payload;
     },
     setActivationToken: (state, action: PayloadAction<string>) => {
