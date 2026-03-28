@@ -19,7 +19,7 @@ import {
     OptimizationGoal,
     HeaderType
 } from './templateTypes';
-import { validateTemplateName, generateId } from './templateUtils';
+import { validateTemplateName, generateId, validateContentLanguageMatch, detectDominantScript } from './templateUtils';
 import { WhatsAppPreviewPanel } from './whatsappPreviewPanel';
 import { VariableInputSection } from './variableInputSection';
 import { InteractiveActionsSection } from './interactiveActionsSection';
@@ -41,6 +41,7 @@ interface TemplateFormPageProps {
     onBack: () => void;
     onSave: (data: any) => void;
     isViewMode?: boolean;
+    isSaving?: boolean;
 }
 
 const templateSchema = z.object({
@@ -151,6 +152,23 @@ const templateSchema = z.object({
         });
     }
 
+    // Language-content script mismatch validation
+    if (data.category !== 'AUTHENTICATION') {
+        const langError = validateContentLanguageMatch(data.content, data.language);
+        if (langError) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: langError,
+                path: ['content']
+            });
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Content does not match "${data.language}". Write body text in ${data.language} or change the language.`,
+                path: ['language']
+            });
+        }
+    }
+
     // Media Header Validation
     if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(data.templateType) && !data.headerValue) {
         ctx.addIssue({
@@ -168,7 +186,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     initialData,
     onBack,
     onSave,
-    isViewMode = false
+    isViewMode = false,
+    isSaving = false
 }) => {
     const { isDarkMode } = useTheme();
     const dispatch = useDispatch();
@@ -193,16 +212,31 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const { mutateAsync: uploadMedia } = useUploadTemplateMediaMutation();
     const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
-    // Get language name from code
+    // Get language name from code (reverse of getLanguageCode)
     const getLanguageName = (code: string): string => {
-        const codeMap: Record<string, string> = {
-            'en': 'English',
-            'hi': 'Hindi',
-            'es': 'Spanish',
-            'fr': 'French',
-            'de': 'German'
+        const codeToName: Record<string, string> = {
+            'af': 'Afrikaans', 'sq': 'Albanian', 'ar': 'Arabic', 'az': 'Azerbaijani',
+            'bn': 'Bengali', 'bg': 'Bulgarian', 'ca': 'Catalan',
+            'zh_CN': 'Chinese (CHN)', 'zh_HK': 'Chinese (HKG)', 'zh_TW': 'Chinese (TAI)',
+            'hr': 'Croatian', 'cs': 'Czech', 'da': 'Danish', 'nl': 'Dutch',
+            'en': 'English', 'en_GB': 'English (UK)', 'en_US': 'English (US)',
+            'et': 'Estonian', 'fil': 'Filipino', 'fi': 'Finnish', 'fr': 'French',
+            'ka': 'Georgian', 'de': 'German', 'el': 'Greek',
+            'gu': 'Gujarati', 'ha': 'Hausa', 'he': 'Hebrew', 'hi': 'Hindi',
+            'hu': 'Hungarian', 'id': 'Indonesian', 'ga': 'Irish', 'it': 'Italian',
+            'ja': 'Japanese', 'kn': 'Kannada', 'kk': 'Kazakh', 'rw_RW': 'Kinyarwanda',
+            'ko': 'Korean', 'ky_KG': 'Kyrgyz', 'lo': 'Lao', 'lv': 'Latvian',
+            'lt': 'Lithuanian', 'mk': 'Macedonian', 'ms': 'Malay', 'ml': 'Malayalam',
+            'mr': 'Marathi', 'nb': 'Norwegian', 'fa': 'Persian', 'pl': 'Polish',
+            'pt_BR': 'Portuguese (BR)', 'pt_PT': 'Portuguese (POR)', 'pa': 'Punjabi',
+            'ro': 'Romanian', 'ru': 'Russian', 'sr': 'Serbian', 'sk': 'Slovak',
+            'sl': 'Slovenian', 'es': 'Spanish', 'es_AR': 'Spanish (ARG)',
+            'es_ES': 'Spanish (SPA)', 'es_MX': 'Spanish (MEX)',
+            'sw': 'Swahili', 'sv': 'Swedish', 'ta': 'Tamil', 'te': 'Telugu',
+            'th': 'Thai', 'tr': 'Turkish', 'uk': 'Ukrainian', 'ur': 'Urdu',
+            'uz': 'Uzbek', 'vi': 'Vietnamese', 'zu': 'Zulu'
         };
-        return codeMap[code] || code; // Return original if no match (e.g. already full name or unknown)
+        return codeToName[code] || code;
     };
 
     // Normalize variables from API (array) to Form (Record)
@@ -293,6 +327,22 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         url: initialData.headerValue,
                         type: (initialData.headerType as string).toLowerCase() as any
                     }));
+
+                    // Extract filename from URL for DOCUMENT type so it displays correctly in edit/view mode
+                    if ((initialData.headerType || '').toUpperCase() === 'DOCUMENT' && initialData.headerValue) {
+                        try {
+                            const urlPath = new URL(initialData.headerValue).pathname;
+                            const raw = decodeURIComponent(urlPath.split('/').pop() || '') || 'Document.pdf';
+                            // Strip trailing Cloudinary timestamp and ensure extension
+                            const cleaned = raw.replace(/_\d{13,}$/, '');
+                            setUploadedFileName(/\.[a-zA-Z0-9]+$/.test(cleaned) ? cleaned : cleaned + '.pdf');
+                        } catch {
+                            // headerValue may not be a full URL (e.g. just a filename)
+                            const raw = initialData.headerValue.split('/').pop() || 'Document.pdf';
+                            const cleaned = raw.replace(/_\d{13,}$/, '');
+                            setUploadedFileName(/\.[a-zA-Z0-9]+$/.test(cleaned) ? cleaned : cleaned + '.pdf');
+                        }
+                    }
                 }
 
                 lastInitialDataNameRef.current = initialData.name;
@@ -340,6 +390,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     // Watch form values for preview
     const category = watch('category');
+    const language = watch('language');
     const templateName = watch('templateName');
     const templateType = watch('templateType');
     const headerType = watch('headerType');
@@ -348,11 +399,45 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const previous_content = watch('previous_content');
     const footer = watch('footer');
     const variables = watch('variables');
+
+    // Language-content mismatch detection (real-time)
+    const languageMismatchError = validateContentLanguageMatch(content || '', language || '');
+    const isLanguageMismatch = !!languageMismatchError;
     const interactiveActions = watch('interactiveActions');
     const ctaButtons = watch('ctaButtons');
     const quickReplies = watch('quickReplies');
     const carouselCards = watch('carouselCards') || [];
     const carouselMediaType = watch('carouselMediaType');
+
+    // Clean up Cloudinary filenames: strip trailing timestamp and ensure extension
+    const cleanDocumentFileName = (rawName: string): string => {
+        if (!rawName) return 'Document.pdf';
+        // Check if the name already has a known extension
+        const hasExtension = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$/i.test(rawName);
+        // Strip trailing _<timestamp> (13-digit epoch) e.g. "OAVS_Brochure-1_1774601904643" → "OAVS_Brochure-1"
+        let cleaned = rawName.replace(/_\d{13,}$/, '');
+        // If no extension after cleanup, add .pdf
+        if (!hasExtension && !/\.[a-zA-Z0-9]+$/.test(cleaned)) {
+            cleaned += '.pdf';
+        }
+        return cleaned || 'Document.pdf';
+    };
+
+    // Derive a display-friendly filename:
+    // Priority: 1) freshly uploaded file name, 2) extracted from URL (edit/view mode), 3) null
+    const displayFileName = uploadedFileName || (() => {
+        if (headerValue && (headerType === 'DOCUMENT' || templateType === 'DOCUMENT')) {
+            try {
+                const urlPath = new URL(headerValue).pathname;
+                const raw = decodeURIComponent(urlPath.split('/').pop() || '');
+                return raw ? cleanDocumentFileName(raw) : null;
+            } catch {
+                const raw = headerValue.split('/').pop() || '';
+                return raw ? cleanDocumentFileName(raw) : null;
+            }
+        }
+        return null;
+    })();
 
     // Authentication mode — lock the form when AUTHENTICATION category is chosen
     const isAuthMode = category === 'AUTHENTICATION';
@@ -396,16 +481,32 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     const categories: TemplateCategory[] = ['UTILITY', 'MARKETING', 'AUTHENTICATION'];
     const templateTypes: TemplateType[] = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION', 'CAROUSEL'];
-    const languages = ['English', 'Hindi', 'Spanish', 'French', 'German'];
+    const languages = [
+        'Afrikaans', 'Albanian', 'Arabic', 'Azerbaijani', 'Bengali', 'Bulgarian',
+        'Catalan', 'Chinese (CHN)', 'Chinese (HKG)', 'Chinese (TAI)', 'Croatian',
+        'Czech', 'Danish', 'Dutch', 'English', 'English (UK)', 'English (US)',
+        'Estonian', 'Filipino', 'Finnish', 'French', 'Georgian', 'German',
+        'Greek', 'Gujarati', 'Hausa', 'Hebrew', 'Hindi', 'Hungarian',
+        'Indonesian', 'Irish', 'Italian', 'Japanese', 'Kannada', 'Kazakh',
+        'Kinyarwanda', 'Korean', 'Kyrgyz', 'Lao', 'Latvian', 'Lithuanian',
+        'Macedonian', 'Malay', 'Malayalam', 'Marathi', 'Norwegian', 'Persian',
+        'Polish', 'Portuguese (BR)', 'Portuguese (POR)', 'Punjabi', 'Romanian',
+        'Russian', 'Serbian', 'Slovak', 'Slovenian', 'Spanish', 'Spanish (ARG)',
+        'Spanish (SPA)', 'Spanish (MEX)', 'Swahili', 'Swedish', 'Tamil',
+        'Telugu', 'Thai', 'Turkish', 'Ukrainian', 'Urdu', 'Uzbek',
+        'Vietnamese', 'Zulu'
+    ];
 
     const { mutateAsync: generateTemplate } = useGenerateAiTemplateMutation();
     const handleAIGenerate = async (prompt: string, style: MessageStyle, goal: OptimizationGoal, aiCategory: string) => {
         try {
+            const currentLang = getValues('language') || 'English';
             const payload: any = {
                 prompt,
                 focus: aiCategory,
                 style,
                 optimization: goal,
+                language: currentLang,
                 ...(previous_content && { previous_content })
             };
             console.log("payload", payload)
@@ -457,16 +558,48 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     // Get language code from language name
     const getLanguageCode = (lang: string): string => {
         const langMap: Record<string, string> = {
-            'English': 'en',
-            'Hindi': 'hi',
-            'Spanish': 'es',
-            'French': 'fr',
-            'German': 'de'
+            'Afrikaans': 'af', 'Albanian': 'sq', 'Arabic': 'ar', 'Azerbaijani': 'az',
+            'Bengali': 'bn', 'Bulgarian': 'bg', 'Catalan': 'ca',
+            'Chinese (CHN)': 'zh_CN', 'Chinese (HKG)': 'zh_HK', 'Chinese (TAI)': 'zh_TW',
+            'Croatian': 'hr', 'Czech': 'cs', 'Danish': 'da', 'Dutch': 'nl',
+            'English': 'en', 'English (UK)': 'en_GB', 'English (US)': 'en_US',
+            'Estonian': 'et', 'Filipino': 'fil', 'Finnish': 'fi', 'French': 'fr',
+            'Georgian': 'ka', 'German': 'de', 'Greek': 'el',
+            'Gujarati': 'gu', 'Hausa': 'ha', 'Hebrew': 'he', 'Hindi': 'hi',
+            'Hungarian': 'hu', 'Indonesian': 'id', 'Irish': 'ga', 'Italian': 'it',
+            'Japanese': 'ja', 'Kannada': 'kn', 'Kazakh': 'kk', 'Kinyarwanda': 'rw_RW',
+            'Korean': 'ko', 'Kyrgyz': 'ky_KG', 'Lao': 'lo', 'Latvian': 'lv',
+            'Lithuanian': 'lt', 'Macedonian': 'mk', 'Malay': 'ms', 'Malayalam': 'ml',
+            'Marathi': 'mr', 'Norwegian': 'nb', 'Persian': 'fa', 'Polish': 'pl',
+            'Portuguese (BR)': 'pt_BR', 'Portuguese (POR)': 'pt_PT', 'Punjabi': 'pa',
+            'Romanian': 'ro', 'Russian': 'ru', 'Serbian': 'sr', 'Slovak': 'sk',
+            'Slovenian': 'sl', 'Spanish': 'es', 'Spanish (ARG)': 'es_AR',
+            'Spanish (SPA)': 'es_ES', 'Spanish (MEX)': 'es_MX',
+            'Swahili': 'sw', 'Swedish': 'sv', 'Tamil': 'ta', 'Telugu': 'te',
+            'Thai': 'th', 'Turkish': 'tr', 'Ukrainian': 'uk', 'Urdu': 'ur',
+            'Uzbek': 'uz', 'Vietnamese': 'vi', 'Zulu': 'zu'
         };
         return langMap[lang] || 'en';
     };
 
     const onSubmit = async (data: FormValues) => {
+        // ─────────────────────────────────────────
+        // Language-content validation before save
+        // ─────────────────────────────────────────
+        const langCode = getLanguageCode(data.language);
+        if (!langCode || langCode === 'en' && data.language !== 'English' && data.language !== 'English (UK)' && data.language !== 'English (US)') {
+            toast.error(`Unrecognized language "${data.language}". Please select a valid language.`);
+            return;
+        }
+
+        if (data.category !== 'AUTHENTICATION') {
+            const langValidationError = validateContentLanguageMatch(data.content, data.language);
+            if (langValidationError) {
+                toast.error(langValidationError);
+                return;
+            }
+        }
+
         // ─────────────────────────────────────────
         // AUTHENTICATION templates: fixed Meta-required structure
         // ─────────────────────────────────────────
@@ -475,7 +608,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 template_name: data.templateName,
                 template_type: 'text',
                 category: 'authentication',
-                language: getLanguageCode(data.language),
+                language: langCode,
                 components: {
                     body: { text: data.content || AUTH_BODY_TEXT },
                     footer: { text: AUTH_FOOTER_TEXT },
@@ -491,7 +624,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             template_name: data.templateName,
             template_type: data.templateType.toLowerCase(),
             category: data.category.toLowerCase(),
-            language: getLanguageCode(data.language),
+            language: langCode,
             components: {
                 body: {
                     text: data.content
@@ -551,7 +684,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 'IMAGE': 'image',
                 'VIDEO': 'video',
                 'DOCUMENT': 'document',
-                'LOCATION': 'location'
+                // 'LOCATION': 'location'
             };
 
             const typeToUse = (data.headerType as string) === 'NONE' ? data.templateType : (data.headerType as string);
@@ -664,13 +797,13 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     {!isViewMode && (
                         <button
                             onClick={handleSubmit(onSubmit as any)}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || isSaving}
                             className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isSubmitting ? (
+                            {(isSubmitting || isSaving) ? (
                                 <>
                                     <Loader2 size={16} className="animate-spin" />
-                                    <span>Saving...</span>
+                                    <span>{isSaving && 'Saving...'}</span>
                                 </>
                             ) : (
                                 <>
@@ -736,7 +869,11 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                     label="Template Language"
                                                     required
                                                     value={field.value}
-                                                    onChange={field.onChange}
+                                                    onChange={(val: string) => {
+                                                        field.onChange(val);
+                                                        // Re-validate content when language changes
+                                                        setTimeout(() => trigger('content'), 0);
+                                                    }}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
                                                     disabled={isViewMode || isExistingTemplate} // Language cannot be changed for submitted templates
@@ -744,9 +881,19 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             )
                                         }}
                                     />
-                                    <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                        You will need to specify the language in which message template is submitted
-                                    </p>
+                                    {isLanguageMismatch && !isAuthMode ? (
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border",
+                                            isDarkMode ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"
+                                        )}>
+                                            <span>⚠️</span>
+                                            <span>Content does not match <strong>&quot;{language}&quot;</strong>. Write body in {language} or change language.</span>
+                                        </div>
+                                    ) : (
+                                        <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                            You will need to specify the language in which message template is submitted
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -815,7 +962,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             { value: 'IMAGE', label: 'Image' },
                                             { value: 'VIDEO', label: 'Video' },
                                             { value: 'DOCUMENT', label: 'Document' },
-                                            // { value: 'LOCATION', label: 'Location' },
+                                            { value: 'LOCATION', label: 'Location' },
                                             // { value: 'CAROUSEL', label: 'Carousel' }
                                         ].filter(opt => {
                                             const cat = String(category).toUpperCase();
@@ -1057,7 +1204,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                     placeholder="Click to upload or drag and drop"
                                                     uploadType="document"
                                                     disabled={isViewMode}
-                                                    fileName={uploadedFileName}
+                                                    fileName={displayFileName}
                                                     compact
                                                 />
                                             )}
@@ -1111,7 +1258,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         isDarkMode={isDarkMode}
                                         label="Template Format"
                                         required
-                                        placeholder="Enter your message in here..."
+                                        placeholder={language === 'Hindi' ? 'अपना संदेश यहाँ लिखें...' : 'Enter your message in here...'}
                                         rows={6}
                                         maxLength={1024}
                                         showCharCount
@@ -1120,6 +1267,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     />
                                 )}
                             />
+                            {isLanguageMismatch && !isAuthMode && (
+                                <div className={cn(
+                                    "flex items-center gap-2 mt-1.5 px-3 py-2 rounded-lg text-xs font-medium border",
+                                    isDarkMode ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-700"
+                                )}>
+                                    <span>⚠️</span>
+                                    <span>
+                                        Content language doesn&apos;t match selected language <strong>&quot;{language}&quot;</strong>. Meta requires body text in the selected language.
+                                    </span>
+                                </div>
+                            )}
                             {isAuthMode ? (
                                 <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-violet-400/70' : 'text-violet-600')}>
                                     🔐 Body text is pre-filled with Meta's required OTP format. The <strong>{`{{1}}`}</strong> placeholder will be replaced with the generated OTP code at send time.
@@ -1210,7 +1368,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                             quickReplies={quickReplies.filter(r => r.trim() !== '')}
                             carouselCards={templateType === 'CAROUSEL' ? carouselCards : []}
                             onCarouselCardsChange={(newCards) => setValue('carouselCards', newCards)}
-                            fileName={uploadedFileName}
+                            fileName={displayFileName}
                         />
                     </div>
                 </div>

@@ -5,13 +5,13 @@ import { useState } from 'react';
 import { Brain, ShieldCheck, Sliders, Zap, Activity, Cpu } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { NEURAL_RULES } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
+import { callOpenAI } from "@/lib/openai";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 
 
 export const LogicView = () => {
-    const {isDarkMode} = useTheme();
+    const { isDarkMode } = useTheme();
     const [isUpdatingPersona, setIsUpdatingPersona] = useState(false);
     const [personaDescription, setPersonaDescription] = useState('Helpful, expert, and efficient SaaS consultant.');
     const [personaResult, setPersonaResult] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export const LogicView = () => {
         try {
             const prompt = `Create a system persona description for an AI Receptionist based on this input: "${personaDescription}". 
       Return a set of 3 bullet points defining its tone, key values, and boundary rules.`;
-            const result = await callGemini(prompt, "You are a neural architect.");
+            const result = await callOpenAI(prompt, "You are a neural architect.");
             setPersonaResult(result);
         } catch (err) {
             setPersonaResult("Error architecting persona.");
@@ -44,7 +44,7 @@ export const LogicView = () => {
       Rules:\n${activeRules}
       
       Decide: Should it respond or escalate? Why?`;
-            const result = await callGemini(prompt, "You are the WhatsNexus Logic Core.");
+            const result = await callOpenAI(prompt, "You are the WhatsNexus Logic Core.");
             setSimResult(result);
         } catch (err) {
             setSimResult("Logic loop failure. Retry simulation.");

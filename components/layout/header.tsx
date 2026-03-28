@@ -54,7 +54,8 @@ function formatQuality(quality: string | undefined | null): { label: string; dot
     if (q === 'GREEN'  || q === 'HIGH')   return { label: 'GREEN',  dot: 'bg-emerald-500', text: 'text-emerald-600' };
     if (q === 'YELLOW' || q === 'MEDIUM') return { label: 'YELLOW', dot: 'bg-amber-400',   text: 'text-amber-600'  };
     if (q === 'RED'    || q === 'LOW')    return { label: 'RED',    dot: 'bg-rose-500',    text: 'text-rose-600'   };
-    return { label: 'GREEN', dot: 'bg-emerald-500', text: 'text-emerald-600' };
+    // Unknown / not connected — return neutral grey, not misleading GREEN
+    return { label: '—', dot: 'bg-slate-400', text: 'text-slate-500' };
 }
 
 // ── WhatsApp-style circular icon badge ──────────────────────────────────────
@@ -128,9 +129,13 @@ export const Header = () => {
     const isManagement = user?.user_type === 'management';
     const wabaNumber = whatsappApiDetails?.whatsapp_number ?? whatsappApiDetails?.wabaNumber ?? null;
     const wabaStatus = whatsappApiDetails?.status ?? null;
-    const isLive     = wabaStatus === 'active';
-    const quality    = formatQuality(whatsappApiDetails?.quality_rating ?? whatsappApiDetails?.quality);
-    const tierInfo   = getTierInfo(whatsappApiDetails?.messaging_limit_tier ?? whatsappApiDetails?.tier);
+    // Consider connected only when we have a real numeric phone number AND active status
+    const isLive = wabaStatus === 'active' || wabaStatus === 'Live';
+    const isWabaConnected = !!wabaNumber &&
+        /^\d+$/.test(String(wabaNumber).replace(/[\s+]/g, '')) &&
+        isLive;
+    const quality    = formatQuality(isWabaConnected ? (whatsappApiDetails?.quality_rating ?? whatsappApiDetails?.quality) : null);
+    const tierInfo   = getTierInfo(isWabaConnected ? (whatsappApiDetails?.messaging_limit_tier ?? whatsappApiDetails?.tier) : null);
 
     // ── Shared text styles ───────────────────────────────────────────────────
     const labelCls = cn('text-[10px] font-semibold', isDarkMode ? 'text-white/40' : 'text-slate-400');
@@ -199,107 +204,132 @@ export const Header = () => {
                     /* ── Tenant WABA info pills ──────────────────────────────── */
                     <div className="flex items-center gap-3">
 
-                    {/* WABA Number */}
+                    {/* ── WABA Number ── */}
                     <div className="flex items-center gap-1.5">
-                        <IconBadge color="bg-emerald-500">
-                            {/* WhatsApp-like phone/device icon */}
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12a19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 3.04 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/>
-                            </svg>
+                        <IconBadge color={'bg-emerald-500'}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                         </IconBadge>
                         <span className={labelCls}>WABA Number:</span>
-                        <span className={valueCls}>{wabaNumber ?? '—'}</span>
-                    </div>
-
-                    <Sep isDarkMode={isDarkMode} />
-
-                    {/* Status */}
-                    <div className="flex items-center gap-1.5">
-                        <IconBadge color={isLive ? 'bg-emerald-500' : 'bg-slate-400'}>
-                            <Power size={10} color="white" strokeWidth={2.5} />
-                        </IconBadge>
-                        <span className={labelCls}>Status:</span>
-                        <span className={cn('text-[10px] font-bold flex items-center gap-1',
-                            isLive
-                                ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                                : isDarkMode ? 'text-white/40'   : 'text-slate-500'
+                        <span className={cn('text-[10px] font-bold',
+                            isWabaConnected
+                                ? isDarkMode ? 'text-white/80' : 'text-slate-700'
+                                : 'text-[#ef4444]'
                         )}>
-                            {isLive && (
-                                <span className="relative flex h-1.5 w-1.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                                </span>
-                            )}
-                            {wabaNumber
-                                ? (isLive ? 'Live' : wabaStatus ? wabaStatus.charAt(0).toUpperCase() + wabaStatus.slice(1) : 'Inactive')
-                                : '—'
-                            }
+                            {isWabaConnected ? wabaNumber : 'Not Connected'}
                         </span>
                     </div>
 
                     <Sep isDarkMode={isDarkMode} />
 
-                    {/* Quality */}
+                    {/* ── Status ── */}
                     <div className="flex items-center gap-1.5">
-                        <IconBadge color="bg-emerald-500">
+                        <IconBadge color={isWabaConnected ? 'bg-emerald-500' : 'bg-[#ef4444]'}>
+                            <Power size={10} color="white" strokeWidth={2.5} />
+                        </IconBadge>
+                        <span className={labelCls}>Status:</span>
+                        <span className={cn('text-[10px] font-bold flex items-center gap-1',
+                            isWabaConnected
+                                ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                                : 'text-[#ef4444]'
+                        )}>
+                            {isWabaConnected ? (
+                                <>
+                                    <span className="relative flex h-1.5 w-1.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                                    </span>
+                                    Live
+                                </>
+                            ) : (
+                                <>
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
+                                    Inactive
+                                </>
+                            )}
+                        </span>
+                    </div>
+
+                    <Sep isDarkMode={isDarkMode} />
+
+                    {/* ── Quality ── */}
+                    <div className="flex items-center gap-1.5">
+                        <IconBadge color={
+                            isWabaConnected
+                                ? (quality.dot === 'bg-emerald-500' ? 'bg-emerald-500'
+                                    : quality.dot === 'bg-amber-400' ? 'bg-amber-400'
+                                    : quality.dot === 'bg-rose-500' ? 'bg-rose-500'
+                                    : 'bg-slate-400')
+                                : 'bg-slate-400'
+                        }>
                             <Flag size={10} color="white" strokeWidth={2.5} />
                         </IconBadge>
                         <span className={labelCls}>Quality:</span>
                         <span className={cn('text-[10px] font-bold flex items-center gap-1',
-                            wabaNumber
+                            isWabaConnected
                                 ? isDarkMode
                                     ? quality.dot === 'bg-emerald-500' ? 'text-emerald-400' : quality.dot === 'bg-amber-400' ? 'text-amber-400' : 'text-rose-400'
                                     : quality.text
                                 : isDarkMode ? 'text-white/40' : 'text-slate-400'
                         )}>
-                            {wabaNumber && (
-                                <span className={cn('inline-block w-1.5 h-1.5 rounded-full', quality.dot)} />
-                            )}
-                            {wabaNumber ? quality.label : '—'}
+                            {isWabaConnected ? (
+                                <>
+                                    <span className={cn('inline-block w-1.5 h-1.5 rounded-full', quality.dot)} />
+                                    {quality.label}
+                                </>
+                            ) : 'N/A'}
                         </span>
                     </div>
 
                     <Sep isDarkMode={isDarkMode} />
 
-                    {/* Region */}
-                    <div className="flex items-center gap-1.5 transition-all hover:scale-105">
-                        <IconBadge color="bg-emerald-500">
+                    {/* ── Region ── */}
+                    <div className="flex items-center gap-1.5">
+                        <IconBadge color={isWabaConnected ? 'bg-emerald-500' : 'bg-slate-400'}>
                             <Globe size={10} color="white" strokeWidth={2.5} />
                         </IconBadge>
                         <span className={labelCls}>Region:</span>
-                        <span className={valueCls}>{whatsappApiDetails?.region || 'Global'}</span>
+                        <span className={cn('text-[10px] font-bold',
+                            isWabaConnected
+                                ? isDarkMode ? 'text-white/80' : 'text-slate-700'
+                                : isDarkMode ? 'text-white/40' : 'text-slate-400'
+                        )}>
+                            {isWabaConnected ? (whatsappApiDetails?.region || 'Global') : 'N/A'}
+                        </span>
                     </div>
 
                     <Sep isDarkMode={isDarkMode} />
 
-                    {/* Messaging Limit - Header Summary */}
-                    <div className="flex items-center gap-1.5 transition-all hover:scale-105">
-                        <IconBadge color="bg-emerald-500">
+                    {/* ── Messaging Limit ── */}
+                    <div className="flex items-center gap-1.5">
+                        <IconBadge color={isWabaConnected ? 'bg-emerald-500' : 'bg-slate-400'}>
                             <MessageSquare size={10} color="white" strokeWidth={2.5} />
                         </IconBadge>
                         <span className={labelCls}>Limit:</span>
                         <span className={cn('text-[10px] font-bold',
-                            wabaNumber
+                            isWabaConnected
                                 ? isDarkMode ? 'text-white/70' : 'text-slate-700'
                                 : isDarkMode ? 'text-white/40' : 'text-slate-400'
                         )}>
-                            {wabaNumber ? (tierInfo.limit === "Unlimited" ? "Unlimited" : `${tierInfo.limit.toLocaleString()} / 24h`) : '—'}
+                            {isWabaConnected
+                                ? (tierInfo.limit === 'Unlimited' ? 'Unlimited' : `${tierInfo.limit.toLocaleString()} / 24h`)
+                                : 'N/A'}
                         </span>
                     </div>
 
                     <Sep isDarkMode={isDarkMode} />
 
-                    {/* Tier */}
-                    <div className="flex items-center gap-1.5 transition-all hover:scale-105">
+                    {/* ── Tier ── */}
+                    <div className="flex items-center gap-1.5">
                         <span className={labelCls}>Tier:</span>
                         <span className={cn('text-[10px] font-bold',
-                            wabaNumber
+                            isWabaConnected
                                 ? isDarkMode ? 'text-white/70' : 'text-slate-700'
                                 : isDarkMode ? 'text-white/40' : 'text-slate-400'
                         )}>
-                            {wabaNumber ? tierInfo.name : '—'}
+                            {isWabaConnected ? tierInfo.name : 'N/A'}
                         </span>
                     </div>
+
                 </div>
                 )}
             </div>

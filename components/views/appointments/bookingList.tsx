@@ -1,13 +1,12 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Search, Plus, Eye, Edit2, Clock, Phone, Calendar as CalendarIcon, FileText, UserCircle, Trash2, AlertTriangle, Stethoscope } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, Eye, Edit2, Clock, Phone, Calendar as CalendarIcon, Trash2, AlertTriangle, Stethoscope, User, Hash } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { format, parseISO } from 'date-fns';
 import { AppointmentDrawer } from './appointmentDrawer';
 import { useGetAllAppointmentsQuery, useDeleteAppointmentMutation } from '@/hooks/useAppointmentQuery';
 import { Modal } from '@/components/ui/modal';
-import { GlassCard } from '@/components/ui/glassCard';
 
 interface BookingListProps {
     isDarkMode: boolean;
@@ -38,6 +37,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
     const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
     const [deleteConfirm, setDeleteConfirm] = useState<Appointment | null>(null);
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
     // Debounce search
     useEffect(() => {
@@ -48,7 +48,23 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
     const { data, isLoading, refetch } = useGetAllAppointmentsQuery({ search: debouncedSearch });
     const { mutate: deleteAppointment, isPending: isDeleting } = useDeleteAppointmentMutation();
 
-    const appointments: Appointment[] = data?.data || [];
+    const allAppointments: Appointment[] = data?.data || [];
+
+    // Status counts for filter pills
+    const statusCounts = useMemo(() => {
+        const counts: Record<string, number> = { all: allAppointments.length };
+        allAppointments.forEach((a) => {
+            const s = a.status?.toLowerCase() || 'unknown';
+            counts[s] = (counts[s] || 0) + 1;
+        });
+        return counts;
+    }, [allAppointments]);
+
+    // Filtered appointments
+    const appointments = useMemo(() => {
+        if (statusFilter === 'all') return allAppointments;
+        return allAppointments.filter((a) => a.status?.toLowerCase() === statusFilter);
+    }, [allAppointments, statusFilter]);
 
     const handleCreateAppointment = () => {
         setSelectedAppointment(null);
@@ -83,202 +99,263 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         refetch();
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status?.toLowerCase()) {
-            case 'confirmed': return 'text-emerald-500 bg-emerald-500/10';
-            case 'pending': return 'text-amber-500 bg-amber-500/10';
-            case 'cancelled': return 'text-red-500 bg-red-500/10';
-            case 'completed': return 'text-blue-500 bg-blue-500/10';
-            case 'noshow': return 'text-orange-500 bg-orange-500/10';
-            default: return 'text-slate-500 bg-slate-500/10';
-        }
+    const statusConfig: Record<string, { color: string; bg: string; border: string; accent: string; dot: string }> = {
+        confirmed: { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', accent: 'bg-emerald-500', dot: 'bg-emerald-500' },
+        pending:   { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', accent: 'bg-amber-500', dot: 'bg-amber-500' },
+        cancelled: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', accent: 'bg-red-500', dot: 'bg-red-500' },
+        completed: { color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', accent: 'bg-blue-500', dot: 'bg-blue-500' },
+        noshow:    { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', accent: 'bg-orange-500', dot: 'bg-orange-500' },
     };
+
+    const getStatus = (status: string) => statusConfig[status?.toLowerCase()] || statusConfig['pending'];
+
+    const statusFilters = [
+        { key: 'all', label: 'All' },
+        { key: 'pending', label: 'Pending' },
+        { key: 'confirmed', label: 'Confirmed' },
+        { key: 'completed', label: 'Completed' },
+        { key: 'cancelled', label: 'Cancelled' },
+        { key: 'noshow', label: 'No Show' },
+    ];
 
     if (isLoading) {
         return (
-            <div className="space-y-4 animate-pulse">
-                {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className={cn("h-32 rounded-xl", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+            <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className={cn(
+                        "h-20 rounded-xl animate-pulse",
+                        isDarkMode ? "bg-white/5" : "bg-slate-100"
+                    )} />
                 ))}
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            {/* Search and Create */}
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="relative flex-1 min-w-[300px]">
-                    <Search className={cn("absolute left-4 top-1/2 -translate-y-1/2 transition-colors", isDarkMode ? "text-white/20" : "text-slate-400")} size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search appointments..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={cn(
-                            "w-full pl-12 pr-4 py-3.5 rounded-2xl text-sm border transition-all focus:outline-none",
-                            isDarkMode
-                                ? 'bg-white/[0.03] border-white/5 text-white placeholder:text-white/20 focus:bg-white/[0.05] focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/10'
-                                : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/10'
-                        )}
-                    />
+        <div className="space-y-4">
+            {/* Top Bar: Search + Filters + Create */}
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[240px]">
+                        <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2", isDarkMode ? "text-white/20" : "text-slate-400")} size={16} />
+                        <input
+                            type="text"
+                            placeholder="Search by name, phone, doctor..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className={cn(
+                                "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
+                                isDarkMode
+                                    ? 'bg-white/[0.03] border-white/5 text-white placeholder:text-white/20 focus:border-emerald-500/30 focus:ring-2 focus:ring-emerald-500/10'
+                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500/30 focus:ring-2 focus:ring-emerald-500/10'
+                            )}
+                        />
+                    </div>
+                    <button
+                        onClick={handleCreateAppointment}
+                        className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 active:scale-95"
+                    >
+                        <Plus size={16} />
+                        <span>New Appointment</span>
+                    </button>
                 </div>
-                <button
-                    onClick={handleCreateAppointment}
-                    className={cn(
-                        "px-8 py-3.5 rounded-2xl text-sm font-bold text-white transition-all shadow-xl flex items-center space-x-2 group active:scale-95",
-                        isDarkMode
-                            ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 hover:shadow-emerald-500/40'
-                            : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
-                    )}
-                >
-                    <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
-                    <span>New Appointment</span>
-                </button>
+
+                {/* Status Filter Pills */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    {statusFilters.map((f) => {
+                        const count = statusCounts[f.key] || 0;
+                        const isActive = statusFilter === f.key;
+                        const sc = f.key !== 'all' ? getStatus(f.key) : null;
+                        return (
+                            <button
+                                key={f.key}
+                                onClick={() => setStatusFilter(f.key)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border",
+                                    isActive
+                                        ? f.key === 'all'
+                                            ? (isDarkMode ? "bg-white/10 text-white border-white/20" : "bg-slate-900 text-white border-slate-900")
+                                            : cn(sc?.bg, sc?.color, sc?.border)
+                                        : isDarkMode
+                                            ? "bg-transparent border-white/5 text-white/40 hover:text-white/60 hover:border-white/10"
+                                            : "bg-transparent border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
+                                )}
+                            >
+                                {f.key !== 'all' && <span className={cn("w-1.5 h-1.5 rounded-full", sc?.dot)} />}
+                                {f.label}
+                                <span className={cn(
+                                    "text-[10px] font-bold min-w-[18px] text-center rounded-full px-1",
+                                    isActive
+                                        ? (isDarkMode ? "bg-white/10" : f.key === 'all' ? "bg-white/20" : "bg-black/5")
+                                        : (isDarkMode ? "bg-white/5" : "bg-slate-100")
+                                )}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
-            {/* Appointments List */}
-            <div className="space-y-4">
-                {appointments.length === 0 ? (
+            {/* Appointments Table-style List */}
+            {appointments.length === 0 ? (
+                <div className={cn(
+                    "text-center py-16 rounded-xl border-2 border-dashed",
+                    isDarkMode ? "border-white/10 text-white/40" : "border-slate-200 text-slate-400"
+                )}>
+                    <CalendarIcon className="mx-auto mb-3 opacity-40" size={40} />
+                    <p className="text-base font-semibold">
+                        {statusFilter !== 'all' ? `No ${statusFilter} appointments` : 'No appointments found'}
+                    </p>
+                    <p className="text-xs mt-1 opacity-60">
+                        {statusFilter !== 'all' ? 'Try a different filter' : 'Create your first appointment to get started'}
+                    </p>
+                </div>
+            ) : (
+                <div className={cn(
+                    "rounded-xl border overflow-hidden",
+                    isDarkMode ? "border-white/5" : "border-slate-200"
+                )}>
+                    {/* Table Header */}
                     <div className={cn(
-                        "text-center py-12 rounded-xl border-2 border-dashed",
-                        isDarkMode ? "border-white/10 text-white/40" : "border-slate-200 text-slate-400"
+                        "grid grid-cols-[1fr_1fr_140px_100px_110px_100px] gap-3 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider",
+                        isDarkMode ? "bg-white/[0.02] text-white/30 border-b border-white/5" : "bg-slate-50 text-slate-400 border-b border-slate-200"
                     )}>
-                        <CalendarIcon className="mx-auto mb-3" size={48} />
-                        <p className="text-lg font-medium">No appointments found</p>
-                        <p className="text-sm mt-1">Create your first appointment to get started</p>
+                        <span>Patient</span>
+                        <span>Doctor</span>
+                        <span>Date</span>
+                        <span>Time</span>
+                        <span>Status</span>
+                        <span className="text-right">Actions</span>
                     </div>
-                ) : (
-                    appointments.map((appointment) => (
-                        <GlassCard
-                            key={appointment.appointment_id}
-                            isDarkMode={isDarkMode}
-                            className={cn(
-                                "p-6 border transition-all duration-500 hover:translate-x-1 group",
-                                isDarkMode
-                                    ? 'hover:border-emerald-500/30'
-                                    : 'hover:border-emerald-500/20 hover:shadow-2xl hover:shadow-emerald-500/5'
-                            )}
-                        >
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-4">
-                                            <h3 className={cn("text-xl font-bold tracking-tight capitalize", isDarkMode ? "text-white" : "text-slate-900")}>
+
+                    {/* Rows */}
+                    {appointments.map((appointment, index) => {
+                        const sc = getStatus(appointment.status);
+                        return (
+                            <div
+                                key={appointment.appointment_id}
+                                className={cn(
+                                    "grid grid-cols-[1fr_1fr_140px_100px_110px_100px] gap-3 px-4 py-3 items-center transition-colors group",
+                                    index < appointments.length - 1 && (isDarkMode ? "border-b border-white/[0.03]" : "border-b border-slate-100"),
+                                    isDarkMode ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/80"
+                                )}
+                            >
+                                {/* Patient */}
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className={cn(
+                                        "w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold uppercase",
+                                        isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                                    )}>
+                                        {appointment.patient_name?.charAt(0) || 'P'}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className={cn("text-sm font-semibold truncate capitalize", isDarkMode ? "text-white" : "text-slate-900")}>
                                                 {appointment.patient_name}
-                                            </h3>
-                                            <span className={cn("px-4 py-1.5 rounded-xl text-[0.7rem] font-black uppercase letter-spacing-wider", getStatusColor(appointment.status))}>
-                                                {appointment.status.toLowerCase()}
-                                            </span>
+                                            </p>
                                             {appointment.token_number && (
-                                                <span className={cn("px-3 py-1.5 rounded-xl text-[0.7rem] font-bold uppercase", isDarkMode ? "bg-white/5 text-white/40" : "bg-slate-100 text-slate-500")}>
-                                                    T-{appointment.token_number}
+                                                <span className={cn(
+                                                    "text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0",
+                                                    isDarkMode ? "bg-white/5 text-white/30" : "bg-slate-100 text-slate-400"
+                                                )}>
+                                                    #{appointment.token_number}
                                                 </span>
                                             )}
                                         </div>
+                                        <p className={cn("text-xs truncate", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                            {appointment.contact_number
+                                                ? (appointment.country_code ? `${appointment.country_code} ${appointment.contact_number}` : appointment.contact_number)
+                                                : 'No phone'}
+                                        </p>
                                     </div>
+                                </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        {(appointment.doctor?.name || appointment.doctor_id) && (
-                                            <div className="flex items-center space-x-2.5">
-                                                <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-emerald-500/10" : "bg-emerald-50")}>
-                                                    <Stethoscope className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-600")} size={14} />
-                                                </div>
-                                                <span className={cn("text-sm font-semibold capitalize", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>
-                                                    {appointment.doctor ? `${appointment.doctor.title || ''} ${appointment.doctor.name}`.trim() : appointment.doctor_id}
-                                                </span>
-                                            </div>
-                                        )}
-                                        <div className="flex items-center space-x-2.5">
-                                            <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-white/5" : "bg-slate-100")}>
-                                                <Phone className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
-                                            </div>
-                                            <span className={cn("text-sm font-medium", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {appointment.contact_number ? (appointment.country_code ? `${appointment.country_code}${appointment.contact_number}` : `+${appointment.contact_number}`) : '-'}
+                                {/* Doctor */}
+                                <div className="min-w-0">
+                                    {appointment.doctor?.name ? (
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <Stethoscope size={13} className={cn("shrink-0", isDarkMode ? "text-emerald-400/60" : "text-emerald-500/60")} />
+                                            <span className={cn("text-sm truncate capitalize", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                                {appointment.doctor.title ? `${appointment.doctor.title} ` : ''}{appointment.doctor.name}
                                             </span>
                                         </div>
-                                        <div className="flex items-center space-x-2.5">
-                                            <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-white/5" : "bg-slate-100")}>
-                                                <CalendarIcon className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
-                                            </div>
-                                            <span className={cn("text-sm font-medium", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {(() => {
-                                                    try {
-                                                        if (!appointment.appointment_date) return '-';
-                                                        const date = parseISO(appointment.appointment_date);
-                                                        return isNaN(date.getTime()) ? 'Invalid Date' : format(date, 'dd MMM yyyy');
-                                                    } catch (e) {
-                                                        return 'Invalid Date';
-                                                    }
-                                                })()}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center space-x-2.5">
-                                            <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-white/5" : "bg-slate-100")}>
-                                                <Clock className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
-                                            </div>
-                                            <span className={cn("text-sm font-medium", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {appointment.appointment_time}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {appointment.notes && (
-                                        <div
-                                            className={cn(
-                                                "mt-4 pt-4 border-t border-dashed",
-                                                isDarkMode ? "border-white/5" : "border-slate-100"
-                                            )}>
-                                            <p className={cn("text-sm italic leading-relaxed", isDarkMode ? "text-white/40" : "text-slate-500")}>
-                                                {appointment.notes.length > 120 ? appointment.notes.substring(0, 120) + '...' : appointment.notes}
-                                            </p>
-                                        </div>
+                                    ) : (
+                                        <span className={cn("text-xs", isDarkMode ? "text-white/20" : "text-slate-300")}>—</span>
                                     )}
                                 </div>
 
-                                <div className="flex flex-col items-center space-y-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                {/* Date */}
+                                <div className={cn("text-sm", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                    {(() => {
+                                        try {
+                                            if (!appointment.appointment_date) return '—';
+                                            const date = parseISO(appointment.appointment_date);
+                                            return isNaN(date.getTime()) ? '—' : format(date, 'dd MMM yyyy');
+                                        } catch {
+                                            return '—';
+                                        }
+                                    })()}
+                                </div>
+
+                                {/* Time */}
+                                <div className={cn("text-sm font-medium", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                    {appointment.appointment_time || '—'}
+                                </div>
+
+                                {/* Status */}
+                                <span className={cn(
+                                    "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold uppercase w-fit whitespace-nowrap",
+                                    sc.bg, sc.color
+                                )}>
+                                    <span className={cn("w-1.5 h-1.5 rounded-full", sc.dot)} />
+                                    {appointment.status || 'Pending'}
+                                </span>
+
+                                {/* Actions */}
+                                <div className="flex items-center justify-end gap-1">
                                     <button
                                         onClick={() => handleViewAppointment(appointment)}
                                         className={cn(
-                                            "p-3 rounded-xl transition-all cursor-pointer hover:scale-110 active:scale-90",
+                                            "p-2 rounded-lg transition-all",
                                             isDarkMode
-                                                ? 'hover:bg-white/10 text-white/40 hover:text-white'
-                                                : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'
+                                                ? 'text-white/20 hover:text-white hover:bg-white/5'
+                                                : 'text-slate-300 hover:text-slate-700 hover:bg-slate-100'
                                         )}
                                         title="View"
                                     >
-                                        <Eye size={18} />
+                                        <Eye size={15} />
                                     </button>
                                     <button
                                         onClick={() => handleEditAppointment(appointment)}
                                         className={cn(
-                                            "p-3 rounded-xl transition-all cursor-pointer hover:scale-110 active:scale-90",
+                                            "p-2 rounded-lg transition-all",
                                             isDarkMode
-                                                ? 'hover:bg-white/10 text-white/40 hover:text-white'
-                                                : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'
+                                                ? 'text-white/20 hover:text-white hover:bg-white/5'
+                                                : 'text-slate-300 hover:text-slate-700 hover:bg-slate-100'
                                         )}
                                         title="Edit"
                                     >
-                                        <Edit2 size={18} />
+                                        <Edit2 size={15} />
                                     </button>
                                     <button
                                         onClick={() => setDeleteConfirm(appointment)}
                                         className={cn(
-                                            "p-3 rounded-xl transition-all cursor-pointer hover:scale-110 active:scale-90",
+                                            "p-2 rounded-lg transition-all",
                                             isDarkMode
-                                                ? 'hover:bg-red-500/10 text-red-500/40 hover:text-red-400'
-                                                : 'hover:bg-red-50 text-red-400 hover:text-red-600'
+                                                ? 'text-white/20 hover:text-red-400 hover:bg-red-500/10'
+                                                : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
                                         )}
                                         title="Delete"
                                     >
-                                        <Trash2 size={18} />
+                                        <Trash2 size={15} />
                                     </button>
                                 </div>
                             </div>
-                        </GlassCard>
-                    ))
-                )}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             <AppointmentDrawer
                 isOpen={isModalOpen}

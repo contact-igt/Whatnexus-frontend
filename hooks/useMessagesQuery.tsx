@@ -139,6 +139,10 @@ export const useSendTemplateMessageMutation = () => {
             return MessagesApis.sendTemplateMessage(data);
         },
         onSuccess: (data: any, variables) => {
+            // Invalidate messages for the specific phone to refresh chat view
+            queryClient.invalidateQueries({
+                queryKey: ["messages", variables.phone],
+            });
             queryClient.invalidateQueries({
                 queryKey: ["historychats"],
             });

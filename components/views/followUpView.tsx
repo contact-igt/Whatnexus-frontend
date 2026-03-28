@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Timer, ToggleRight, MessageCircle, Phone, Mail, Sparkles, History } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { FOLLOW_UPS_MOCK } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
+import { callOpenAI } from "@/lib/openai";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 
@@ -22,7 +22,7 @@ export const FollowUpHubView = () => {
         try {
             const prompt = `Lead Profile: Name: ${lead.leadName}, Score: ${lead.score}, Status: ${lead.status}. 
       Task: Create a highly personalized, friendly WhatsApp follow-up message to re-engage this lead for WhatsNexus. Include a clear call to action. Return ONLY the message.`;
-            const result = await callGemini(prompt, "You are a personalized sales outreach expert.");
+            const result = await callOpenAI(prompt, "You are a personalized sales outreach expert.");
             setPlanResult(result);
         } catch (err) {
             setPlanResult("Neural planning interrupted. Try again.");
@@ -60,9 +60,9 @@ export const FollowUpHubView = () => {
                 )}>
                     <Timer size={40} className="text-emerald-500" />
                 </div>
-                
+
                 <span className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border mb-5", 
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border mb-5",
                     isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-emerald-50 border-emerald-200 text-emerald-600"
                 )}>
                     <Sparkles size={14} />

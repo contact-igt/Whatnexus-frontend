@@ -170,11 +170,26 @@ export const AIGeneratorSection = ({
                         </div>
                     )}
                     {currentCategory && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                            <span className="text-[10px] font-bold text-emerald-500 uppercase">Synced Category:</span>
-                            <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                {currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1).toLowerCase()}
-                            </span>
+                        <div className={cn(
+                            "flex items-center gap-2.5 px-3 py-2 rounded-lg border",
+                            isDarkMode ? "bg-white/[0.03] border-white/10" : "bg-slate-100/60 border-slate-200"
+                        )}>
+                            <div className={cn(
+                                "flex items-center justify-center w-6 h-6 rounded-md text-xs",
+                                currentCategory.toUpperCase() === 'MARKETING'
+                                    ? "bg-orange-500/15 text-orange-500"
+                                    : "bg-emerald-500/15 text-emerald-500"
+                            )}>
+                                {currentCategory.toUpperCase() === 'MARKETING' ? '📢' : '🛠️'}
+                            </div>
+                            <div className="flex flex-col">
+                                <span className={cn("text-[10px] leading-none", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                                    AI will generate for
+                                </span>
+                                <span className={cn("text-xs font-bold leading-tight", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                    {currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1).toLowerCase()} Template
+                                </span>
+                            </div>
                         </div>
                     )}
 

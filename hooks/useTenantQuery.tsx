@@ -217,3 +217,14 @@ export const useRestoreTenantMutation = () => {
     });
 };
 
+export const useValidateOpenAIKeyMutation = () => {
+    return useMutation({
+        mutationFn: (data: { openai_api_key: string }) => {
+            return TenantApis.validateOpenAIKey(data);
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to validate OpenAI key');
+        },
+    });
+};
+

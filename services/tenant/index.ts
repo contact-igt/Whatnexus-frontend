@@ -72,4 +72,8 @@ export class TenantApiData {
     updateTenantAiSettings = async (data: { ai_settings: any }) => {
         return await _axios("patch", "/tenant/settings/ai", data);
     }
+
+    validateOpenAIKey = async (data: { openai_api_key: string }) => {
+        return await _axios("post", "/tenant/validate-openai-key", data);
+    }
 }

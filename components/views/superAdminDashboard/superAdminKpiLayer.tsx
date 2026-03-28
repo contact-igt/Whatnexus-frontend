@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-    Building2, MessageCircle, Users, UserCog,
-    Users2, Smartphone, MessageSquare,
+    Building2, UserCog,
+    Users2, Smartphone,
     TrendingUp, TrendingDown,
 } from 'lucide-react';
 import { glassCard, tx } from '../dashboard/glassStyles';
@@ -122,28 +122,6 @@ export const SuperAdminKPILayer = ({ isDarkMode = true, kpisData, periodLabel = 
             status: kpisData.totalTenants?.status ?? 'good',
         },
         {
-            label: 'Platform Messages',
-            value: kpisData.totalMessages?.value?.toLocaleString() ?? '0',
-            icon: MessageCircle,
-            trend: trendText(kpisData.totalMessages?.trend),
-            up: (kpisData.totalMessages?.trend ?? 0) >= 0,
-            color: '#10b981',
-            sub: `${kpisData.totalMessages?.today?.toLocaleString() ?? 0} today · ${periodLabel}`,
-            barW: Math.min(100, (kpisData.totalMessages?.value ?? 0) / 100),
-            status: kpisData.totalMessages?.status ?? 'good',
-        },
-        {
-            label: 'Total Leads',
-            value: kpisData.totalLeads?.value?.toLocaleString() ?? '0',
-            icon: Users,
-            trend: trendText(kpisData.totalLeads?.trend),
-            up: (kpisData.totalLeads?.trend ?? 0) >= 0,
-            color: '#f59e0b',
-            sub: `${kpisData.totalLeads?.today ?? 0} today · ${kpisData.totalLeads?.total?.toLocaleString() ?? 0} all time`,
-            barW: Math.min(100, ((kpisData.totalLeads?.value ?? 0) / Math.max(1, kpisData.totalLeads?.total ?? 1)) * 100),
-            status: kpisData.totalLeads?.status ?? 'good',
-        },
-        {
             label: 'System Admins',
             value: kpisData.platformAdmins?.value?.toLocaleString() ?? '0',
             icon: UserCog,
@@ -176,37 +154,13 @@ export const SuperAdminKPILayer = ({ isDarkMode = true, kpisData, periodLabel = 
             barW: Math.min(100, ((kpisData.whatsappAccounts?.connected ?? 0) / Math.max(1, kpisData.whatsappAccounts?.total ?? 1)) * 100),
             status: kpisData.whatsappAccounts?.status ?? 'good',
         },
-        {
-            label: 'Live Chats',
-            value: kpisData.liveChats?.active?.toLocaleString() ?? '0',
-            icon: MessageSquare,
-            trend: trendText(kpisData.liveChats?.trend),
-            up: true,
-            color: '#3b82f6',
-            sub: `${kpisData.liveChats?.totalInPeriod?.toLocaleString() ?? 0} total in ${periodLabel}`,
-            barW: Math.min(100, (kpisData.liveChats?.active ?? 0) * 10),
-            status: kpisData.liveChats?.status ?? 'good',
-        },
     ];
 
-    // First row: 4 cards, second row: 3 cards centered
-    const topRow = kpiList.slice(0, 4);
-    const bottomRow = kpiList.slice(4);
-
     return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {topRow.map((kpi, i) => (
-                    <KPICard key={kpi.label} kpi={kpi} index={i} isDarkMode={isDarkMode} show={show} />
-                ))}
-            </div>
-            {bottomRow.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {bottomRow.map((kpi, i) => (
-                        <KPICard key={kpi.label} kpi={kpi} index={i + 4} isDarkMode={isDarkMode} show={show} />
-                    ))}
-                </div>
-            )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {kpiList.map((kpi, i) => (
+                <KPICard key={kpi.label} kpi={kpi} index={i} isDarkMode={isDarkMode} show={show} />
+            ))}
         </div>
     );
 };

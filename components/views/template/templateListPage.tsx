@@ -196,7 +196,7 @@ export const TemplateListPage = ({
                         isDarkMode={isDarkMode}
                         isView={true}
                         isEdit={['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
-                        isSubmitTemplate={['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
+                        isSubmitTemplate={['draft', 'paused', 'rejected'].includes(row?.status)}
                         onSubmitTemplate={() => { (row?.status === 'paused' || row?.status === 'rejected' || row?.status === 'approved') ? onResubmitTemplate(row?.template_id) : onSubmitTemplate(row?.template_id) }}
                         isSyncTemplate={row?.status === 'pending'}
                         onSyncTemplate={() => onSyncTemplate(row?.template_id)}

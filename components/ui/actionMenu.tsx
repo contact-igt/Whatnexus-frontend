@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play, Sparkles, RefreshCw, MessageSquare, RotateCcw, CheckCircle, Ban } from 'lucide-react';
+import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play, Sparkles, RefreshCw, MessageSquare, RotateCcw, CheckCircle, Ban, Lock } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 
@@ -32,6 +32,7 @@ interface ActionMenuProps {
     isAnswer?: boolean;
     onAnswer?: () => void;
     isSummary?: boolean;
+    isSummaryLocked?: boolean;
     onSummary?: () => void;
     isMessage?: boolean;
     onMessage?: () => void;
@@ -45,7 +46,7 @@ interface ActionMenuProps {
 
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, isRestore, onRestore, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute, isAnswer, onAnswer, isSummary, onSummary, isMessage, onMessage, isRefresh, onRefresh, isActivate, onActivate, isDeactivate, onDeactivate }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, isRestore, onRestore, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute, isAnswer, onAnswer, isSummary, isSummaryLocked, onSummary, isMessage, onMessage, isRefresh, onRefresh, isActivate, onActivate, isDeactivate, onDeactivate }: ActionMenuProps) => {
     const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -178,7 +179,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
 
                         {/* Group 2: Functional Actions */}
                         {[
-                            { show: !!isSummary && !!onSummary, onClick: () => onSummary?.(), icon: Sparkles, label: "Generate Summary" },
+                            { show: !!isSummary && !!onSummary, onClick: () => onSummary?.(), icon: Sparkles, label: "Generate Summary", locked: !!isSummaryLocked },
                             { show: !!isRefresh && !!onRefresh, onClick: () => onRefresh?.(), icon: RefreshCw, label: "Refresh" },
                             { show: !!isSubmitTemplate && !!onSubmitTemplate, onClick: () => onSubmitTemplate?.(), icon: Save, label: "Submit Template", iconClass: "w-4 h-4" },
                             { show: !!isSyncTemplate && !!onSyncTemplate, onClick: () => onSyncTemplate?.(), icon: Save, label: "Sync Template", iconClass: "w-4 h-4" },
@@ -186,7 +187,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                         ].filter(item => item.show).length > 0 && (
                                 <div className="px-1.5 space-y-0.5">
                                     {[
-                                        { show: !!isSummary && !!onSummary, onClick: () => onSummary?.(), icon: Sparkles, label: "Summary" },
+                                        { show: !!isSummary && !!onSummary, onClick: () => onSummary?.(), icon: Sparkles, label: "Summary", locked: !!isSummaryLocked },
                                         { show: !!isRefresh && !!onRefresh, onClick: () => onRefresh?.(), icon: RefreshCw, label: "Refresh" },
                                         { show: !!isSubmitTemplate && !!onSubmitTemplate, onClick: () => onSubmitTemplate?.(), icon: Save, label: "Submit", iconClass: "w-4 h-4" },
                                         { show: !!isSyncTemplate && !!onSyncTemplate, onClick: () => onSyncTemplate?.(), icon: Save, label: "Sync", iconClass: "w-4 h-4" },
@@ -197,16 +198,21 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                         return (
                                             <button
                                                 key={index}
-                                                onClick={(e) => { e.stopPropagation(); item.onClick(); setIsOpen(false); }}
+                                                onClick={(e) => { e.stopPropagation(); if (!item.locked) { item.onClick(); setIsOpen(false); } }}
+                                                disabled={item.locked}
+                                                title={item.locked ? "Neural Summary is disabled in settings" : undefined}
                                                 className={cn(
                                                     "w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all group",
-                                                    item.customClass || (isDarkMode
-                                                        ? 'text-white/70 hover:bg-white/5 hover:text-white'
-                                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
+                                                    item.locked
+                                                        ? (isDarkMode ? 'text-white/30 cursor-not-allowed' : 'text-slate-400 cursor-not-allowed')
+                                                        : (item.customClass || (isDarkMode
+                                                            ? 'text-white/70 hover:bg-white/5 hover:text-white'
+                                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'))
                                                 )}
                                             >
                                                 <Icon className={cn("shrink-0", item.iconClass || "w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-opacity")} />
                                                 <span className="truncate">{item.label}</span>
+                                                {item.locked && <Lock className="w-3 h-3 ml-auto shrink-0 opacity-60" />}
                                             </button>
                                         );
                                     })}

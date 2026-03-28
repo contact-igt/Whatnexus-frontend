@@ -794,20 +794,18 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 </div>
                                             )}
                                             
-                                            {/* Preview Buttons */}
-                                            {selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0 && (
-                                                <div className="mt-2 space-y-1">
-                                                    {selectedTemplate.buttonVariables.map((btn: any) => {
-                                                        const val = variableValues[btn.variable_key];
-                                                        return (
-                                                            <div key={btn.variable_key} className={cn(
-                                                                "py-1.5 px-2 rounded text-xs text-center font-medium",
-                                                                isDarkMode ? "bg-white/5 text-blue-400" : "bg-white text-blue-600"
-                                                            )}>
-                                                                {btn.text} {val ? `(${val})` : ''}
-                                                            </div>
-                                                        );
-                                                    })}
+                                            {/* Preview Buttons - Show ALL CTA buttons */}
+                                            {selectedTemplate?.allButtons && selectedTemplate.allButtons.length > 0 && (
+                                                <div className={cn("mt-2 pt-2 space-y-1 border-t", isDarkMode ? "border-white/10" : "border-black/10")}>
+                                                    {selectedTemplate.allButtons.map((btn: any, idx: number) => (
+                                                        <div key={idx} className={cn(
+                                                            "py-1.5 px-2 rounded text-xs text-center font-medium flex items-center justify-center gap-1.5",
+                                                            isDarkMode ? "bg-white/5 text-blue-400" : "bg-white text-blue-600"
+                                                        )}>
+                                                            {btn.type === 'PHONE_NUMBER' ? '📞' : btn.type === 'URL' ? '🔗' : '↩️'}
+                                                            <span>{btn.text}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
                                             
@@ -1574,11 +1572,22 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             isDarkMode={isDarkMode}
                                             templateType={selectedTemplate?.type?.toUpperCase() as any || 'MARKETING'}
                                             content={selectedTemplate?.description || ''}
-                                            footer={selectedTemplate?.originalDetails?.components?.find((c: any) => c.type === 'FOOTER')?.text || ''}
+                                            footer={selectedTemplate?.footerText || selectedTemplate?.originalDetails?.components?.find((c: any) => c.type === 'FOOTER')?.text || ''}
                                             headerType={(selectedTemplate?.type?.toUpperCase() as any) || 'NONE'}
                                             headerValue={(formData as any).header_media_url || ''}
                                             variables={variableValues}
                                             fileName={headerFileName}
+                                            ctaButtons={selectedTemplate?.allButtons
+                                                ?.filter((b: any) => b.type === 'URL' || b.type === 'PHONE_NUMBER' || b.type === 'COPY_CODE')
+                                                .map((b: any) => ({
+                                                    id: `btn-${b.index}`,
+                                                    type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type === 'COPY_CODE' ? 'COPY_CODE' : 'URL',
+                                                    label: b.text,
+                                                    value: b.url || b.phone_number || ''
+                                                })) || []}
+                                            quickReplies={selectedTemplate?.allButtons
+                                                ?.filter((b: any) => b.type === 'QUICK_REPLY')
+                                                .map((b: any) => b.text) || []}
                                             carouselCards={(() => {
                                                 if (selectedTemplate?.type !== 'carousel') return undefined;
                                                 const cards = selectedTemplate.carouselCards || [];

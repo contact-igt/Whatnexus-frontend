@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Wallet, CreditCard, Download, Plus, Calendar, Loader2, Settings, Zap } from "lucide-react";
-import { useGetWalletBalanceQuery, useGetWalletTransactionsQuery, useGetAutoRechargeSettingsQuery, useUpdateAutoRechargeSettingsMutation } from "@/hooks/useBillingQuery";
+import { Wallet, CreditCard, Download, Plus, Calendar, Loader2, Settings, Zap, FileDown } from "lucide-react";
+import { useGetWalletBalanceQuery, useGetPaymentHistoryQuery, useGetAutoRechargeSettingsQuery, useUpdateAutoRechargeSettingsMutation } from "@/hooks/useBillingQuery";
+import { toast } from "sonner";
 
 interface BillingWalletProps {
   isDarkMode: boolean;
@@ -13,19 +14,12 @@ interface BillingWalletProps {
 }
 
 export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate }: BillingWalletProps) => {
-  const sStr = startDate?.toISOString();
-  const eStr = endDate?.toISOString();
-
   const [showAutoRechargeConfig, setShowAutoRechargeConfig] = useState(false);
   const [localThreshold, setLocalThreshold] = useState<string>("");
   const [localAmount, setLocalAmount] = useState<string>("");
 
   const { data: balanceResponse, isLoading: isLoadingBalance } = useGetWalletBalanceQuery();
-  const { data: transactionsResponse, isLoading: isLoadingTransactions } = useGetWalletTransactionsQuery({
-    limit: 10,
-    startDate: sStr,
-    endDate: eStr
-  });
+  const { data: paymentHistoryResponse, isLoading: isLoadingPayments } = useGetPaymentHistoryQuery({ limit: 50 });
   const { data: autoRechargeResponse } = useGetAutoRechargeSettingsQuery();
   const updateAutoRecharge = useUpdateAutoRechargeSettingsMutation();
 
@@ -33,11 +27,93 @@ export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate }: Bi
   const currency = balanceResponse?.data?.currency || 'INR';
   const balanceStatus = balanceResponse?.data?.balanceStatus || 'healthy';
   const currencySymbol = currency === 'INR' ? '₹' : currency;
-  const transactions = transactionsResponse?.data?.transactions || [];
+  const payments = paymentHistoryResponse?.data?.payments || [];
 
   const autoRecharge = autoRechargeResponse?.data || { enabled: false, threshold: 100, amount: 500 };
 
   const balancePercent = Math.min((balance / 10000) * 100, 100);
+
+  // Download invoice for a payment
+  const handleDownloadInvoice = (payment: any) => {
+    const invoiceContent = `
+=====================================
+           WHATNEXUS INVOICE
+=====================================
+
+Invoice Number: ${payment.invoice_number || `INV-${payment.id}`}
+Date: ${new Date(payment.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+Time: ${new Date(payment.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+
+-------------------------------------
+TRANSACTION DETAILS
+-------------------------------------
+Razorpay Payment ID: ${payment.razorpay_payment_id || 'N/A'}
+Razorpay Order ID: ${payment.razorpay_order_id || 'N/A'}
+Description: ${payment.description || 'Wallet Recharge'}
+Payment Method: ${payment.payment_method || 'Online'}
+
+Amount: ${currencySymbol}${parseFloat(payment.amount).toFixed(2)}
+Balance Before: ${currencySymbol}${parseFloat(payment.balance_before || 0).toFixed(2)}
+Balance After: ${currencySymbol}${parseFloat(payment.balance_after || 0).toFixed(2)}
+
+-------------------------------------
+PAYMENT STATUS: SUCCESS
+-------------------------------------
+
+Thank you for using Whatnexus!
+For support: support@whatnexus.com
+
+=====================================
+    `;
+
+    const blob = new Blob([invoiceContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${payment.invoice_number || `Invoice-${payment.id}`}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Invoice downloaded!');
+  };
+
+  // Export all payments to CSV
+  const handleExportAll = () => {
+    if (payments.length === 0) {
+      toast.error('No payments to export');
+      return;
+    }
+
+    const headers = ['Invoice Number', 'Date', 'Time', 'Razorpay Payment ID', 'Description', 'Amount', 'Balance After', 'Status'];
+    const csvRows = [headers.join(',')];
+
+    payments.forEach((payment: any) => {
+      const row = [
+        payment.invoice_number || `INV-${payment.id}`,
+        new Date(payment.created_at).toLocaleDateString('en-IN'),
+        new Date(payment.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        payment.razorpay_payment_id || 'N/A',
+        `"${payment.description || 'Wallet Recharge'}"`,
+        parseFloat(payment.amount).toFixed(2),
+        parseFloat(payment.balance_after || 0).toFixed(2),
+        'Paid'
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Payment-History-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${payments.length} payments!`);
+  };
 
   return (
     <div>
@@ -286,39 +362,49 @@ export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate }: Bi
                 </div>
                 <h3 className={cn("font-bold text-sm uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Payment History</h3>
               </div>
-              <span className={cn(
-                "text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
-                isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-              )}>
-                {transactions.filter((tx: any) => tx.type === 'credit').length} Payments
-              </span>
+              <div className="flex items-center gap-2">
+                {payments.length > 0 && (
+                  <button
+                    onClick={handleExportAll}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all hover:scale-105",
+                      isDarkMode ? 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                    )}
+                  >
+                    <FileDown size={10} />
+                    Export CSV
+                  </button>
+                )}
+                <span className={cn(
+                  "text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
+                  isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                )}>
+                  {payments.length} Payments
+                </span>
+              </div>
             </div>
 
             <div className="space-y-3 flex-1 overflow-y-auto pr-2 no-scrollbar min-h-[250px]">
-              {isLoadingTransactions ? (
+              {isLoadingPayments ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
                 </div>
-              ) : transactions.filter((tx: any) => tx.type === 'credit').length === 0 ? (
+              ) : payments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-30">
                   <CreditCard size={32} strokeWidth={1} />
                   <p className="text-[10px] font-black uppercase tracking-[0.2em]">No Payments Yet</p>
                   <p className={cn("text-[9px] opacity-60")}>Your recharge history will appear here</p>
                 </div>
-              ) : transactions.filter((tx: any) => tx.type === 'credit').map((tx: any, i: number) => {
-                // Extract payment reference
-                const getPaymentRef = (ref: string) => {
-                  if (!ref) return `PAY-${tx.id}`;
-                  const match = ref.match(/(?:payment_|recharge_|razorpay_)?([a-zA-Z0-9]+)$/i);
-                  return match ? match[1].slice(-8).toUpperCase() : ref.slice(-8).toUpperCase();
-                };
+              ) : payments.map((payment: any, i: number) => {
                 return (
-                  <div key={i} className={cn(
+                  <div key={payment.id || i} className={cn(
                     "p-4 rounded-[20px] transition-all duration-500 group/item cursor-default border",
                     isDarkMode ? 'border-emerald-500/10 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05] hover:border-emerald-500/20' : 'border-emerald-100 bg-emerald-50/30 hover:bg-emerald-50 hover:border-emerald-200'
                   )}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className={cn("text-[9px] font-black tracking-widest transition-opacity", isDarkMode ? "text-emerald-400/50 group-hover/item:text-emerald-400/80" : "text-emerald-600/50 group-hover/item:text-emerald-600/80")}>#{getPaymentRef(tx.reference_id)}</span>
+                      <span className={cn("text-[9px] font-black tracking-widest transition-opacity", isDarkMode ? "text-emerald-400/50 group-hover/item:text-emerald-400/80" : "text-emerald-600/50 group-hover/item:text-emerald-600/80")}>
+                        {payment.invoice_number || `#INV-${payment.id}`}
+                      </span>
                       <span className={cn(
                         "px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all duration-300",
                         isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-100 text-emerald-600 border-emerald-200'
@@ -326,22 +412,25 @@ export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate }: Bi
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-0.5">
-                        <span className={cn("text-[11px] font-black tracking-tight transition-colors", isDarkMode ? "text-white/80 group-hover/item:text-white" : "text-slate-900")}>{tx.description || 'Wallet Recharge'}</span>
+                        <span className={cn("text-[11px] font-black tracking-tight transition-colors", isDarkMode ? "text-white/80 group-hover/item:text-white" : "text-slate-900")}>{payment.description || 'Wallet Recharge'}</span>
                         <span className={cn("text-[9px] font-bold uppercase tracking-widest", isDarkMode ? "text-white/20" : "text-slate-400")}>
-                          {new Date(tx.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(payment.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                       <span className={cn(
                         "text-lg font-black tabular-nums transition-transform duration-300 group-hover/item:scale-110",
                         isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
                       )}>
-                        +{currencySymbol}{parseFloat(tx.amount).toFixed(2)}
+                        +{currencySymbol}{parseFloat(payment.amount).toFixed(2)}
                       </span>
                     </div>
-                    <button className={cn(
-                      "flex items-center gap-1.5 mt-4 text-[8px] font-black uppercase tracking-widest transition-all duration-500 opacity-30 hover:opacity-100 hover:translate-x-1",
-                      isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                    )}>
+                    <button
+                      onClick={() => handleDownloadInvoice(payment)}
+                      className={cn(
+                        "flex items-center gap-1.5 mt-4 text-[8px] font-black uppercase tracking-widest transition-all duration-500 opacity-30 hover:opacity-100 hover:translate-x-1",
+                        isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                      )}
+                    >
                       <Download size={10} strokeWidth={3} />
                       Download Invoice
                     </button>

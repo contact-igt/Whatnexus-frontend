@@ -59,6 +59,13 @@ export class billingApiData {
   };
 
   /**
+   * Fetch payment history (recharge transactions only)
+   */
+  getPaymentHistory = async (params?: { page?: number; limit?: number }) => {
+    return await _axios("get", "/whatsapp/payment/history", null, undefined, params);
+  };
+
+  /**
    * Fetch all pricing table entries (SuperAdmin)
    */
   getPricingTable = async () => {
@@ -112,5 +119,12 @@ export class billingApiData {
    */
   getAvailableAiModels = async () => {
     return await _axios("get", "/whatsapp/billing/ai-models");
+  };
+
+  /**
+   * Fetch wallet status (healthy/low/grace/suspended)
+   */
+  getWalletStatus = async () => {
+    return await _axios("get", "/whatsapp/billing/wallet/status");
   };
 }

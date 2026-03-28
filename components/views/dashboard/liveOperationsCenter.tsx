@@ -167,7 +167,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                 ) : topLead ? (
                     <div className="space-y-1.5">
                         {/* Primary hot lead */}
-                        <div onClick={() => router.push(topLead.phone ? `/shared-inbox?phone=${topLead.phone}` : '/shared-inbox')}
+                        <div onClick={() => router.push(topLead.phone ? `/shared-inbox/live-chats?phone=${topLead.phone}` : '/shared-inbox/live-chats')}
                             className="p-3 rounded-lg flex items-center justify-between cursor-pointer transition-colors border"
                             style={{
                                 ...glassInner(isDarkMode),

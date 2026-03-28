@@ -31,6 +31,7 @@ export const BillingView = () => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [lowBalanceWarning, setLowBalanceWarning] = useState<{ balance: number; message: string } | null>(null);
+  const [walletSuspension, setWalletSuspension] = useState<{ balance: number; status: string; message: string } | null>(null);
   const isSuperAdmin = user?.role === 'super_admin';
   const [viewMode, setViewMode] = useState<'tenant' | 'admin'>(isSuperAdmin ? 'admin' : 'tenant');
 
@@ -61,20 +62,71 @@ export const BillingView = () => {
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
     };
 
-    const handleLowBalance = (data: { balance: number; message: string }) => {
+    const handleLowBalance = (data: any) => {
+      // Validate payload structure to prevent crashes
+      if (typeof data?.balance !== 'number' || typeof data?.message !== 'string') {
+        console.warn("[BILLING] Invalid low-balance payload:", data);
+        return;
+      }
       setLowBalanceWarning(data);
       toast.warning(data.message, { duration: 8000 });
     };
 
-    const handleAutoRechargeTrigger = (data: { balance: number; threshold: number; amount: number; message: string }) => {
+    const handleAutoRechargeTrigger = (data: any) => {
+      // Validate payload structure
+      if (typeof data?.amount !== 'number') {
+        console.warn("[BILLING] Invalid auto-recharge payload:", data);
+        return;
+      }
       toast.info(`Auto-recharge: Initiating ₹${data.amount.toFixed(0)} recharge...`, { duration: 5000 });
       setIsRechargeModalOpen(true);
+    };
+
+    const handleWalletSuspended = (data: any) => {
+      // Validate payload structure
+      if (typeof data?.message !== 'string') {
+        console.warn("[BILLING] Invalid wallet-suspended payload:", data);
+        return;
+      }
+      console.log("🚫 Wallet suspended:", data);
+      setWalletSuspension(data);
+      setLowBalanceWarning(null); // Clear low balance warning when suspended
+      toast.error("Account Suspended: " + data.message, { duration: 10000 });
+    };
+
+    const handleWalletRestored = (data: any) => {
+      // Validate payload structure
+      if (!data || typeof data !== 'object') {
+        console.warn("[BILLING] Invalid wallet-restored payload:", data);
+        return;
+      }
+      console.log("✅ Wallet restored:", data);
+      setWalletSuspension(null);
+      toast.success(data.message || "Services restored!", { duration: 5000 });
+      // Refresh all billing data
+      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-status'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-kpi'] });
+    };
+
+    const handleWalletGrace = (data: any) => {
+      // Validate payload structure
+      if (typeof data?.balance !== 'number' || typeof data?.message !== 'string') {
+        console.warn("[BILLING] Invalid wallet-grace payload:", data);
+        return;
+      }
+      console.log("⚠️ Wallet in grace period:", data);
+      setLowBalanceWarning({ balance: data.balance, message: data.message });
+      toast.warning(data.message, { duration: 8000 });
     };
 
     socket.on("billing-update", handleUpdate);
     socket.on("payment-update", handleUpdate);
     socket.on("low-balance-warning", handleLowBalance);
     socket.on("auto-recharge-trigger", handleAutoRechargeTrigger);
+    socket.on("wallet-suspended", handleWalletSuspended);
+    socket.on("wallet-restored", handleWalletRestored);
+    socket.on("wallet-grace", handleWalletGrace);
 
     return () => {
       socket.off("connect", joinAndListen);
@@ -82,6 +134,9 @@ export const BillingView = () => {
       socket.off("payment-update", handleUpdate);
       socket.off("low-balance-warning", handleLowBalance);
       socket.off("auto-recharge-trigger", handleAutoRechargeTrigger);
+      socket.off("wallet-suspended", handleWalletSuspended);
+      socket.off("wallet-restored", handleWalletRestored);
+      socket.off("wallet-grace", handleWalletGrace);
     };
   }, [user?.tenant_id, queryClient]);
 
@@ -144,8 +199,46 @@ export const BillingView = () => {
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/2" />
       </div>
 
+      {/* Wallet Suspension Banner - Cannot be dismissed */}
+      {walletSuspension && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "relative z-30 flex items-center gap-4 px-6 py-5 rounded-2xl border-2",
+            isDarkMode
+              ? "bg-red-900/30 border-red-500/50 text-red-300"
+              : "bg-red-100 border-red-400 text-red-800"
+          )}
+        >
+          <div className={cn(
+            "p-3 rounded-xl",
+            isDarkMode ? "bg-red-500/20" : "bg-red-200"
+          )}>
+            <AlertTriangle size={24} className="text-red-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-lg font-bold">Account Suspended</p>
+            <p className="text-sm opacity-80 mt-1">{walletSuspension.message}</p>
+            <p className="text-xs opacity-60 mt-2">
+              Current balance: ₹{walletSuspension.balance?.toFixed(2) || '0.00'} |
+              AI responses and outgoing messages are blocked until you recharge.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsRechargeModalOpen(true)}
+            className={cn(
+              "px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg",
+              "bg-red-500 text-white hover:bg-red-600 hover:scale-105"
+            )}
+          >
+            Recharge Now
+          </button>
+        </motion.div>
+      )}
+
       {/* Low Balance Warning Banner */}
-      {lowBalanceWarning && (
+      {lowBalanceWarning && !walletSuspension && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -172,12 +265,15 @@ export const BillingView = () => {
           >
             Recharge Now
           </button>
-          <button
-            onClick={() => setLowBalanceWarning(null)}
-            className="p-1 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <X size={14} />
-          </button>
+          {/* Only allow dismissing non-critical warnings (balance > 0) */}
+          {lowBalanceWarning.balance > 0 && (
+            <button
+              onClick={() => setLowBalanceWarning(null)}
+              className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
         </motion.div>
       )}
 

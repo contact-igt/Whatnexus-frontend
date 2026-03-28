@@ -6,11 +6,12 @@ import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Organization } from "./organizationView";
-import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope, Loader2, Cpu } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, User, Users, Calendar, Lock, Globe, Stethoscope, Loader2, Cpu, Key, CheckCircle2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCreateTenantMutation, useUpdateTenantMutation } from "@/hooks/useTenantQuery";
+import { useCreateTenantMutation, useUpdateTenantMutation, useValidateOpenAIKeyMutation } from "@/hooks/useTenantQuery";
 import { useGetAiPricingRulesQuery } from "@/hooks/useManagementQuery";
 import { Country, State, City } from 'country-state-city';
+import { toast } from 'sonner';
 
 interface OrganizationModalProps {
     isOpen: boolean;
@@ -27,7 +28,7 @@ export const OrganizationModal = ({
     mode,
     isDarkMode
 }: OrganizationModalProps) => {
-    const [formData, setFormData] = useState<Partial<Organization> & { input_model?: string; output_model?: string }>({
+    const [formData, setFormData] = useState<Partial<Organization> & { input_model?: string; output_model?: string; openai_api_key?: string }>({
         company_name: '',
         owner_name: '',
         owner_email: '',
@@ -47,7 +48,8 @@ export const OrganizationModal = ({
         owner_country_code: '+91',
         password: '',
         input_model: 'gpt-4o-mini',
-        output_model: 'gpt-4o'
+        output_model: 'gpt-4o',
+        openai_api_key: ''
     });
     // ISO codes used to drive cascading dropdowns
     const [countryIso, setCountryIso] = useState('');
@@ -56,6 +58,7 @@ export const OrganizationModal = ({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { mutate: createTenantMutate, isPending: isCreateTenantPending } = useCreateTenantMutation();
     const { mutate: updateTenantMutate, isPending: isUpdateTenantPending } = useUpdateTenantMutation();
+    const { mutateAsync: validateOpenAIKey, isPending: isValidatingKey } = useValidateOpenAIKeyMutation();
     const { data: aiPricingResponse } = useGetAiPricingRulesQuery();
 
     // AI Models options from pricing table
@@ -156,6 +159,7 @@ export const OrganizationModal = ({
                         return aiSettings?.output_model || 'gpt-4o';
                     } catch { return 'gpt-4o'; }
                 })(),
+                openai_api_key: '',
             });
         } else {
             setCountryIso('');
@@ -180,13 +184,14 @@ export const OrganizationModal = ({
                 owner_country_code: '+91',
                 password: '',
                 input_model: 'gpt-4o-mini',
-                output_model: 'gpt-4o'
+                output_model: 'gpt-4o',
+                openai_api_key: ''
             });
         }
         setErrors({});
     }, [organization, mode, isOpen]);
 
-    const handleChange = (field: keyof Organization | 'input_model' | 'output_model', value: any) => {
+    const handleChange = (field: keyof Organization | 'input_model' | 'output_model' | 'openai_api_key', value: any) => {
         const sanitizedValue = field === 'owner_mobile' ? value.replace(/\D/g, '') : value;
         setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
         if (errors[field]) {
@@ -217,37 +222,67 @@ export const OrganizationModal = ({
             newErrors.owner_mobile = "Mobile number must be 7-15 digits";
         }
 
+        if (!formData.openai_api_key?.trim()) {
+            if (mode === 'create') {
+                newErrors.openai_api_key = "OpenAI API key is required";
+            }
+        } else if (!formData.openai_api_key.trim().startsWith('sk-')) {
+            newErrors.openai_api_key = "Invalid format. OpenAI keys start with 'sk-'";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = () => {
-        if (validate()) {
-            // Resolve ISO codes to full names for storage
-            const selectedCountry = Country.getAllCountries().find(c => c.isoCode === formData.country);
-            const selectedState = countryIso
-                ? State.getStatesOfCountry(countryIso).find(s => s.isoCode === formData.state)
-                : undefined;
+    const handleSubmit = async () => {
+        if (!validate()) return;
 
-            const { address, city, country, state, pincode, maxUsers, subscriptionPlan, profile, input_model, output_model, ...rest } = formData;
-            const submitData = {
-                ...rest,
-                address,
-                city,
-                country: selectedCountry?.name || country, // store full name
-                state: selectedState?.name || state,       // store full name
-                pincode,
-                maxUsers,
-                subscriptionPlan,
-                profile: profile ? JSON.stringify(profile) : null,
-                subscription_start_date: (organization as any)?.subscription_start_date,
-                subscription_end_date: (organization as any)?.subscription_end_date,
-                // AI Model settings
-                ai_settings: {
-                    input_model: input_model || 'gpt-4o-mini',
-                    output_model: output_model || 'gpt-4o',
-                },
-            };
+        // Validate the OpenAI key with backend if a new key is provided
+        const rawKey = formData.openai_api_key?.trim();
+        if (rawKey) {
+            try {
+                await validateOpenAIKey({ openai_api_key: rawKey });
+                // No toast here — the final create/update result will show the outcome
+            } catch {
+                // Error toast is handled by useValidateOpenAIKeyMutation's onError
+                return;
+            }
+        } else if (mode === 'create') {
+            setErrors(prev => ({ ...prev, openai_api_key: 'OpenAI API key is required' }));
+            return;
+        }
+
+        // Resolve ISO codes to full names for storage
+        const selectedCountry = Country.getAllCountries().find(c => c.isoCode === formData.country);
+        const selectedState = countryIso
+            ? State.getStatesOfCountry(countryIso).find(s => s.isoCode === formData.state)
+            : undefined;
+
+        const { address, city, country, state, pincode, maxUsers, subscriptionPlan, profile, input_model, output_model, openai_api_key, ...rest } = formData;
+
+        const aiSettingsPayload: any = {
+            input_model: input_model || 'gpt-4o-mini',
+            output_model: output_model || 'gpt-4o',
+        };
+        // Only include key in payload if user entered a new one
+        if (rawKey) {
+            aiSettingsPayload.openai_api_key = rawKey;
+        }
+
+        const submitData = {
+            ...rest,
+            address,
+            city,
+            country: selectedCountry?.name || country,
+            state: selectedState?.name || state,
+            pincode,
+            maxUsers,
+            subscriptionPlan,
+            profile: profile ? JSON.stringify(profile) : null,
+            subscription_start_date: (organization as any)?.subscription_start_date,
+            subscription_end_date: (organization as any)?.subscription_end_date,
+            ai_settings: aiSettingsPayload,
+        };
 
             if (mode === 'create') {
                 createTenantMutate(submitData, {
@@ -262,7 +297,6 @@ export const OrganizationModal = ({
                     }
                 });
             }
-        }
     };
 
     const isView = mode === 'view';
@@ -292,15 +326,17 @@ export const OrganizationModal = ({
                         </button>
                         <button
                             onClick={handleSubmit}
-                            disabled={isCreateTenantPending || isUpdateTenantPending}
+                            disabled={isCreateTenantPending || isUpdateTenantPending || isValidatingKey}
                             className={cn(
                                 "px-6 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             )}
                         >
-                            {(isCreateTenantPending || isUpdateTenantPending) && <Loader2 className="w-4 h-4 animate-spin" />}
-                            {mode === 'create'
-                                ? (isCreateTenantPending ? 'Registering...' : 'Register Organization')
-                                : (isUpdateTenantPending ? 'Saving...' : 'Save Changes')}
+                            {(isCreateTenantPending || isUpdateTenantPending || isValidatingKey) && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {isValidatingKey
+                                ? 'Validating API Key...'
+                                : mode === 'create'
+                                    ? (isCreateTenantPending ? 'Registering...' : 'Register Organization')
+                                    : (isUpdateTenantPending ? 'Saving...' : 'Save Changes')}
                         </button>
                     </div>
                 )
@@ -569,6 +605,26 @@ export const OrganizationModal = ({
                         ]}
                         disabled={isView}
                     />
+
+                    <div className="col-span-full">
+                        <Input
+                            autoComplete="off"
+                            isDarkMode={isDarkMode}
+                            label="OpenAI API Key"
+                            icon={Key}
+                            placeholder={mode === 'edit' ? 'Enter new key to replace existing one' : 'sk-...'}
+                            value={formData.openai_api_key}
+                            onChange={(e) => handleChange('openai_api_key', e.target.value.trim())}
+                            error={errors.openai_api_key}
+                            disabled={isView}
+                            required={mode === 'create'}
+                        />
+                        <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                            {mode === 'edit'
+                                ? 'Leave empty to keep current key. Enter a new key to replace it. Key is validated and encrypted before storage.'
+                                : 'Required. Key will be validated with OpenAI and stored encrypted.'}
+                        </p>
+                    </div>
                 </div>
             </div>
         </Drawer>

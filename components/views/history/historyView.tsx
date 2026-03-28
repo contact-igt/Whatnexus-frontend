@@ -119,8 +119,12 @@ export const HistoryView = () => {
     const handleTemplateSelect = (template: ProcessedTemplate) => {
         const hasHeaderVars = template.headerText && /\{\{\d+\}\}/.test(template.headerText);
         const hasBodyVars = template.variables > 0 || (template.description && /\{\{\d+\}\}/.test(template.description));
+        const hasMediaHeader = template.type === 'image' || template.type === 'video' || template.type === 'document';
+        const hasLocationHeader = template.type === 'location';
+        const hasButtonVars = (template.buttonVariables?.length || 0) > 0;
 
-        if (hasHeaderVars || hasBodyVars) {
+        // Open variable modal if any customization is needed
+        if (hasHeaderVars || hasBodyVars || hasMediaHeader || hasLocationHeader || hasButtonVars) {
             setSelectedTemplateForVariables(template);
             setIsVariableModalOpen(true);
         } else {
@@ -130,7 +134,8 @@ export const HistoryView = () => {
                 template_id: template.id,
                 components: []
             });
-            setSelectedChat(null);
+            // Close template modal, keep chat open so template message appears via socket
+            setIsTemplateModalOpen(false);
         }
     };
 
@@ -143,7 +148,8 @@ export const HistoryView = () => {
             template_id: selectedTemplateForVariables.id,
             components: components
         });
-        setSelectedChat(null);
+        // Close modals, keep chat open so template message appears via socket
+        setIsTemplateModalOpen(false);
         setSelectedTemplateForVariables(null);
     };
 
@@ -258,6 +264,12 @@ export const HistoryView = () => {
     };
 
     const handleIncomingMessage = (data: any) => {
+        // Validate incoming socket data to prevent crashes
+        if (!data || typeof data !== 'object' || !data.phone) {
+            console.warn("[HISTORY] Invalid incoming message data:", data);
+            return;
+        }
+
         if (selectedChatRef.current?.phone === data.phone) {
             setNewMessage(prev => [...prev, data]);
         }
@@ -302,7 +314,7 @@ export const HistoryView = () => {
         socket.off("new-message");
         socket.on("new-message", handleIncomingMessage);
         socket.on("session-activated", (data: any) => {
-            queryClient.invalidateQueries({ queryKey: ["history-chats"] });
+            queryClient.invalidateQueries({ queryKey: ["historychats"] });
         });
 
         return () => {

@@ -5,7 +5,6 @@ import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loa
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { GlassCard } from "@/components/ui/glassCard";
 import { KNOWLEDGE_SOURCES } from "@/lib/data";
-import { callGemini } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
 import { useActivateKnowledgeMutation, useDeletedKnowledgeList, useDeleteKnowledgeById, useGetKnowledgesQuery, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useUploadKnowledgeMutation } from '@/hooks/useUploadKnowledge';
 import { useAuth } from '@/redux/selectors/auth/authSelector';

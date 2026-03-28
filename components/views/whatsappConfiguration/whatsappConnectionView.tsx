@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, MessageCircle, CheckCircle2, XCircle, Eye, EyeOff, Loader2, Shield, Phone, Key, Smartphone, Building2, Users, Hospital, Copy, Check, ExternalLink, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { MessageCircle, CheckCircle2, XCircle, Eye, EyeOff, Loader2, Shield, Phone, Key, Smartphone, Building2, Users, Hospital, Copy, Check, ExternalLink, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Organization } from "../organization/organizationView";
@@ -77,16 +77,19 @@ export const WhatsAppConnectionView = () => {
     const [isSubscribingWebhook, setIsSubscribingWebhook] = useState(false);
     const [showVerification, setShowVerification] = useState(false);
     const [webhookStatusData, setWebhookStatusData] = useState<any>(null);
+    const [testConnectionSuccess, setTestConnectionSuccess] = useState(false);
 
     const [showAccessToken, setShowAccessToken] = useState(false);
     const [copiedWebhook, setCopiedWebhook] = useState(false);
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const pathname = usePathname();
     const router = useRouter();
-    const isHideBack = pathname === '/settings/whatsapp-settings';
 
     const handleTestConnection = () => {
-        testWhatsConfigMutate(undefined)
+        testWhatsConfigMutate(undefined, {
+            onSuccess: () => setTestConnectionSuccess(true),
+            onError: () => setTestConnectionSuccess(false),
+        });
     }
     const handleDeleteClick = (id: any) => {
         // setSelectedOrgId(id);
@@ -96,9 +99,15 @@ export const WhatsAppConnectionView = () => {
     const handleToggleActive = (id: any, status: string) => {
         // If trying to activate
         if (status !== 'active') {
-            // Check if webhook is verified
+            // Must have successful test connection first
+            if (!testConnectionSuccess) {
+                toast.error('Please complete a successful Connection Test first.');
+                return;
+            }
+
+            // Must have verified webhook
             if (!user?.webhook_verified) {
-                // If not verified, show verification card and return
+                toast.error('Webhook verification required before activation.');
                 setShowVerification(true);
                 return;
             }
@@ -133,9 +142,6 @@ export const WhatsAppConnectionView = () => {
         return <XCircle size={16} />;
     };
 
-    const handleBack = () => {
-        router.push('/organizations');
-    }
 
     const onSubmit = (data: any) => {
         console.log("datafunc", data)
@@ -188,17 +194,6 @@ export const WhatsAppConnectionView = () => {
         <div className="h-full overflow-y-auto p-8 animate-in slide-in-from-bottom-8 duration-700 mx-auto no-scrollbar pb-32">
             <div className="max-w-[1200px] mx-auto space-y-8">
                 <div>
-                    {!isHideBack && <button
-                        onClick={handleBack}
-                        className={cn(
-                            "flex items-center space-x-2 text-sm font-medium transition-colors mb-4",
-                            isDarkMode ? "text-white/60 hover:text-white" : "text-slate-600 hover:text-slate-900"
-                        )}
-                    >
-                        <ArrowLeft size={16} />
-                        <span>Back to Organizations</span>
-                    </button>}
-
                     <div className="flex items-start justify-between">
                         <div className="space-y-2">
                             <h1 className={cn("text-3xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>
@@ -226,13 +221,13 @@ export const WhatsAppConnectionView = () => {
 
                             <button
                                 onClick={handleCheckWebhookStatus}
-                                disabled={isCheckingWebhook || !WhatsAppConnectionData?.data?.id}
+                                disabled={isCheckingWebhook || !testConnectionSuccess}
                                 className={cn(
                                     "flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
                                     isDarkMode
                                         ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
                                         : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100",
-                                    (isCheckingWebhook || !WhatsAppConnectionData?.data?.id) && "opacity-50 cursor-not-allowed hover:bg-transparent"
+                                    (isCheckingWebhook || !testConnectionSuccess) && "opacity-50 cursor-not-allowed hover:bg-transparent"
                                 )}
                             >
                                 {isCheckingWebhook ? (
@@ -293,6 +288,8 @@ export const WhatsAppConnectionView = () => {
                                     WhatsAppConnectionData={WhatsAppConnectionData}
                                     onTestConnection={handleTestConnection}
                                     onSaveConfiguration={handleSaveEdit}
+                                    testConnectionSuccess={testConnectionSuccess}
+                                    isWebhookVerified={!!user?.webhook_verified}
                                 />
 
                                 {/* Test MessageCard - Show if connection exists */}
@@ -306,7 +303,7 @@ export const WhatsAppConnectionView = () => {
                             </div>
                         ) : (
                             <div className={cn(
-                                "p-8 rounded-xl border backdrop-blur-xl",
+                                "p-8 rounded-xl border backdrop-blur-xl mt-5",
                                 isDarkMode
                                     ? "bg-white/[0.02] border-white/10"
                                     : "bg-white border-slate-200"
