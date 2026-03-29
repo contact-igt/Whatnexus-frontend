@@ -12,8 +12,10 @@ export class LeadIntelligenceApiData {
         if (startDate && endDate) {
             params.append('start_date', startDate);
             params.append('end_date', endDate);
+            params.append('mode', 'timeframe');
         } else if (date) {
             params.append('date', date);
+            params.append('mode', 'timeframe');
         }
 
         const queryString = params.toString();
