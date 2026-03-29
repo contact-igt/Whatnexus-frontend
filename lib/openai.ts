@@ -10,7 +10,7 @@ export const callOpenAI = async (
     systemInstruction = "You are a helpful assistant for a business automation platform."
 ) => {
     try {
-        const response = await _axios("POST", "/api/ai/completion", {
+        const response = await _axios("POST", "/whatsapp/ai/completion", {
             prompt,
             systemInstruction,
         });
