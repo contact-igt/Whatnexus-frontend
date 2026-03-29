@@ -49,7 +49,7 @@ export default function PrivacyPolicyPage() {
                             </span>
                         </div>
                         <span className={cn("text-[8.9px] font-bold tracking-widest uppercase", D ? "text-white/30" : "text-slate-400")}>
-                            Powered by Kingpin Ventures
+                            Powered by Invictus Global Tech
                         </span>
                     </div>
                 </Link>
@@ -81,7 +81,7 @@ export default function PrivacyPolicyPage() {
 
                 {/* ── Intro ─────────────────────────────────────── */}
                 <P cls={body}>
-                    This Privacy Policy explains how <B d={D}>Kingpin Ventures</B> collects, uses, stores, and shares information when you use the <B d={D}>WhatsNexus Platform</B>. WhatsNexus is an AI-powered messaging automation platform operated by <B d={D}>Kingpin Ventures</B> that helps organizations manage customer conversations, qualify leads, and automate communication workflows using the WhatsApp Business Platform (Cloud API).
+                    This Privacy Policy explains how <B d={D}>Invictus Global Tech</B> collects, uses, stores, and shares information when you use the <B d={D}>WhatsNexus Platform</B>. WhatsNexus is an AI-powered messaging automation platform operated by <B d={D}>Invictus Global Tech</B> that helps organizations manage customer conversations, qualify leads, and automate communication workflows using the WhatsApp Business Platform (Cloud API).
                 </P>
 
                 <hr className={cn("my-10", hr)} />
@@ -314,7 +314,7 @@ export default function PrivacyPolicyPage() {
                     <SecHeading d={D}>12. Contact</SecHeading>
                     <P cls={body}>For privacy questions or requests, contact:</P>
                     <P cls={body}>
-                        <B d={D}>Kingpin Ventures</B><br />
+                        <B d={D}>Invictus Global Tech</B><br />
                         Email: <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A><br />
                         Address:<br />
                         LIG 13/19, NH3<br />

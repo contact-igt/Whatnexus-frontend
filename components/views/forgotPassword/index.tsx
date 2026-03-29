@@ -270,7 +270,7 @@ export default function ForgotPassword({ userType }: ForgotPasswordProps) {
                             isDarkMode ? "text-slate-400" : "text-slate-500"
                         )}
                     >
-                        Powered by Kingpin Ventures
+                        Powered by Invictus Global Tech
                     </span>
                 </div>
 

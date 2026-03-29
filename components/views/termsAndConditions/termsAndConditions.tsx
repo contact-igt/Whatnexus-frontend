@@ -49,7 +49,7 @@ export default function TermsAndConditionsPage() {
                             </span>
                         </div>
                         <span className={cn("text-[8.9px] font-bold tracking-widest uppercase", D ? "text-white/30" : "text-slate-400")}>
-                            Powered by Kingpin Ventures
+                            Powered by Invictus Global Tech
                         </span>
                     </div>
                 </Link>
@@ -81,7 +81,7 @@ export default function TermsAndConditionsPage() {
 
                 {/* ── Intro ─────────────────────────────────────── */}
                 <P cls={body}>
-                    These Terms of Service (“Terms”) govern access to and use of the <B d={D}>WhatsNexus</B> platform, a messaging automation and customer communication platform operated by <B d={D}>Kingpin Ventures</B>. By accessing or using WhatsNexus, you agree to be bound by these Terms.
+                    These Terms of Service (“Terms”) govern access to and use of the <B d={D}>WhatsNexus</B> platform, a messaging automation and customer communication platform operated by <B d={D}>Invictus Global Tech</B>. By accessing or using WhatsNexus, you agree to be bound by these Terms.
                 </P>
 
                 <hr className={cn("my-10", hr)} />
@@ -121,7 +121,7 @@ export default function TermsAndConditionsPage() {
                         <Bullet><B d={D}>3.1</B> To use the Platform, you may need to create an account and provide accurate and complete information.</Bullet>
                         <Bullet><B d={D}>3.2</B> You are responsible for maintaining the confidentiality of your login credentials.</Bullet>
                         <Bullet><B d={D}>3.3</B> You are responsible for all activity that occurs under your account, including actions taken by authorized users.</Bullet>
-                        <Bullet><B d={D}>3.4</B> You must notify Kingpin Ventures immediately if you suspect unauthorized access to your account.</Bullet>
+                        <Bullet><B d={D}>3.4</B> You must notify Invictus Global Tech immediately if you suspect unauthorized access to your account.</Bullet>
                     </ul>
                 </section>
 
@@ -151,7 +151,7 @@ export default function TermsAndConditionsPage() {
                         <Bullet>send unlawful, harmful, threatening, abusive, harassing, defamatory, or discriminatory content</Bullet>
                         <Bullet>impersonate others or misrepresent affiliation</Bullet>
                         <Bullet>transmit malware, malicious code, or attempt to compromise platform security</Bullet>
-                        <Bullet>engage in unauthorized scraping or automated access not approved by <B d={D}>Kingpin Ventures</B></Bullet>
+                        <Bullet>engage in unauthorized scraping or automated access not approved by <B d={D}>Invictus Global Tech</B></Bullet>
                         <Bullet>use the Platform for activities that could cause WhatsApp account suspension or policy violations</Bullet>
                     </ul>
                     <P cls={body}>We may suspend or terminate access for violations of these Terms or applicable policies.</P>
@@ -176,7 +176,7 @@ export default function TermsAndConditionsPage() {
                     <SecHeading d={D}>7. Data and Privacy</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-3 text-sm leading-relaxed", body)}>
                         <Bullet><B d={D}>7.1 Customer Data Ownership.</B> Customer retains ownership of Customer Data.</Bullet>
-                        <Bullet><B d={D}>7.2 Processing.</B> <B d={D}>Kingpin Ventures</B> processes Customer Data to provide the Platform and related support.</Bullet>
+                        <Bullet><B d={D}>7.2 Processing.</B> <B d={D}>Invictus Global Tech</B> processes Customer Data to provide the Platform and related support.</Bullet>
                         <Bullet><B d={D}>7.3 Privacy Policy.</B> Your use of the Platform is also governed by our Privacy Policy available at: <A href="/privacyPolicy" d={D}>https://whatsnexus.com/privacy-policy</A>.</Bullet>
                         <Bullet><B d={D}>7.4 Data Deletion Requests.</B> Customer may request deletion as described in the Privacy Policy or via <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A>.</Bullet>
                     </ul>
@@ -189,7 +189,7 @@ export default function TermsAndConditionsPage() {
                     <SecHeading d={D}>8. Third-Party Services and Integrations</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
                         <Bullet><B d={D}>8.1</B> The Platform may connect to third-party services (e.g., WhatsApp/Meta, CRM systems).</Bullet>
-                        <Bullet><B d={D}>8.2</B> <B d={D}>Kingpin Ventures</B> is not responsible for third-party services, their availability, their acts or omissions, or their terms.</Bullet>
+                        <Bullet><B d={D}>8.2</B> <B d={D}>Invictus Global Tech</B> is not responsible for third-party services, their availability, their acts or omissions, or their terms.</Bullet>
                         <Bullet><B d={D}>8.3</B> Third-party fees, restrictions, and policies may apply, and Customer is responsible for compliance.</Bullet>
                     </ul>
                 </section>
@@ -225,8 +225,8 @@ export default function TermsAndConditionsPage() {
                 <section id="ip">
                     <SecHeading d={D}>11. Intellectual Property</SecHeading>
                     <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet><B d={D}>11.1</B> <B d={D}>Kingpin Ventures</B> and its licensors own all rights in the Platform, including software, design, and documentation, except Customer Data.</Bullet>
-                        <Bullet><B d={D}>11.2</B> Subject to these Terms, <B d={D}>Kingpin Ventures</B> grants Customer a limited, non-exclusive, non-transferable right to use the Platform for internal business purposes during the subscription term.</Bullet>
+                        <Bullet><B d={D}>11.1</B> <B d={D}>Invictus Global Tech</B> and its licensors own all rights in the Platform, including software, design, and documentation, except Customer Data.</Bullet>
+                        <Bullet><B d={D}>11.2</B> Subject to these Terms, <B d={D}>Invictus Global Tech</B> grants Customer a limited, non-exclusive, non-transferable right to use the Platform for internal business purposes during the subscription term.</Bullet>
                         <Bullet><B d={D}>11.3</B> Customer may not copy, modify, reverse engineer, or create derivative works of the Platform except as permitted by law.</Bullet>
                     </ul>
                 </section>
@@ -278,10 +278,10 @@ export default function TermsAndConditionsPage() {
                     <P cls={body}>To the maximum extent permitted by law:</P>
                     <ul className={cn("mt-2 mb-5 space-y-3 text-sm leading-relaxed", body)}>
                         <Bullet>
-                            <B d={D}>Kingpin Ventures</B> will not be liable for indirect, incidental, special, consequential, or punitive damages.
+                            <B d={D}>Invictus Global Tech</B> will not be liable for indirect, incidental, special, consequential, or punitive damages.
                         </Bullet>
                         <Bullet>
-                            Our total liability for claims related to the Platform will not exceed the amount paid by Customer to <B d={D}>Kingpin Ventures</B> for the Platform in the [3/6/12] months preceding the event giving rise to the claim (or a different cap if agreed in writing).
+                            Our total liability for claims related to the Platform will not exceed the amount paid by Customer to <B d={D}>Invictus Global Tech</B> for the Platform in the [3/6/12] months preceding the event giving rise to the claim (or a different cap if agreed in writing).
                         </Bullet>
                     </ul>
                 </section>
@@ -291,7 +291,7 @@ export default function TermsAndConditionsPage() {
                 {/* ── 16. Indemnification ────────────────────────── */}
                 <section id="indemnification">
                     <SecHeading d={D}>16. Indemnification</SecHeading>
-                    <P cls={body}>Customer agrees to indemnify and hold harmless <B d={D}>Kingpin Ventures</B>, its directors, officers, employees, and agents from claims, damages, liabilities, and expenses arising from:</P>
+                    <P cls={body}>Customer agrees to indemnify and hold harmless <B d={D}>Invictus Global Tech</B>, its directors, officers, employees, and agents from claims, damages, liabilities, and expenses arising from:</P>
                     <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
                         <Bullet>Customer Data, templates, campaigns, or messages</Bullet>
                         <Bullet>violation of laws or third-party rights</Bullet>
@@ -323,7 +323,7 @@ export default function TermsAndConditionsPage() {
                     <SecHeading d={D}>19. Contact</SecHeading>
                     <P cls={body}>For questions about these Terms, contact:</P>
                     <P cls={body}>
-                        <B d={D}>Kingpin Ventures</B><br />
+                        <B d={D}>Invictus Global Tech</B><br />
                         Email: <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A><br />
                         Address:<br />
                         LIG 13/19, NH3<br />

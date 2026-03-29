@@ -161,7 +161,7 @@ export const Header = () => {
                     </div>
                     <span className={cn("text-[7px] font-bold tracking-[0.12em] uppercase opacity-40 mt-0.5 whitespace-nowrap",
                         isDarkMode ? 'text-slate-400' : 'text-slate-500')}>
-                        Powered by Kingpin Ventures
+                        Powered by Invictus Global Tech
                     </span>
                 </div>
 
