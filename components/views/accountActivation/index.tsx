@@ -327,7 +327,7 @@ export default function AccountActivation() {
                             isDarkMode ? "text-slate-400" : "text-slate-500"
                         )}
                     >
-                        Powered by Kingpin Ventures
+                        Powered by Invictus Global Tech
                     </span>
                 </div>
                 {/* Dynamic Screen Content */}

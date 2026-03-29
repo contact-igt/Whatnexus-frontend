@@ -18,7 +18,7 @@ export const FooterSection = () => {
                             </span>
                         </div>
                         <span className="text-[8px] text-white/20 font-bold uppercase tracking-widest">
-                            Powered by Kingpin Ventures
+                            Powered by Invictus Global Tech
                         </span>
                     </div>
                 </div>

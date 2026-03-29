@@ -48,7 +48,7 @@ export default function DataDeletionPage() {
                             </span>
                         </div>
                         <span className={cn("text-[8.9px] font-bold tracking-widest uppercase", D ? "text-white/30" : "text-slate-400")}>
-                            Powered by Kingpin Ventures
+                            Powered by Invictus Global Tech
                         </span>
                     </div>
                 </Link>
@@ -84,7 +84,7 @@ export default function DataDeletionPage() {
 
                 {/* ── Intro ─────────────────────────────────────── */}
                 <P cls={body}>
-                    <B d={D}>Kingpin Ventures</B> provides <B d={D}>WhatsNexus</B>, an AI-powered messaging automation
+                    <B d={D}>Invictus Global Tech</B> provides <B d={D}>WhatsNexus</B>, an AI-powered messaging automation
                     platform built for managing customer conversations and workflows on the WhatsApp Business Platform.
                     If you would like to request deletion of data associated with your use of WhatsNexus, this page
                     explains how to submit that request and what to expect.
@@ -319,7 +319,7 @@ export default function DataDeletionPage() {
                         D ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"
                     )}>
                         <div>
-                            <p className={cn("text-base font-black mb-1", strong)}>Kingpin Ventures</p>
+                            <p className={cn("text-base font-black mb-1", strong)}>Invictus Global Tech</p>
                             <p className={cn("text-[10px] font-bold uppercase tracking-widest", muted)}>
                                 Data Controller / Platform Provider
                             </p>
