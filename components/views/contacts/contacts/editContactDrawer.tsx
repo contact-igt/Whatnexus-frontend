@@ -6,7 +6,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Upload, User, Mail, Phone, Tag, X, Shield, ShieldOff } from "lucide-react";
+import { Upload, User, Mail, Phone, Tag, X, Shield, ShieldOff, Calendar } from "lucide-react";
 import { Contact, UpdateContactDto } from "@/types/contact";
 
 interface EditContactDrawerProps {
@@ -36,6 +36,7 @@ export const EditContactDrawer = ({
             setFormData({
                 name: contact.name,
                 email: contact.email || "",
+                age: contact.age ?? null,
                 profile_pic: contact.profile_pic || "",
                 // tags: contact.tags || [],
                 is_blocked: contact.is_blocked
@@ -274,6 +275,17 @@ export const EditContactDrawer = ({
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     error={errors.email}
                     icon={Mail}
+                />
+
+                {/* Age */}
+                <Input
+                    isDarkMode={isDarkMode}
+                    label="Age"
+                    type="number"
+                    placeholder="Enter age"
+                    value={formData.age != null ? String(formData.age) : ""}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value ? parseInt(e.target.value, 10) : null })}
+                    icon={Calendar}
                 />
 
 

@@ -5,7 +5,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { User, Mail, Phone } from "lucide-react";
+import { User, Mail, Phone, Calendar } from "lucide-react";
 import { CreateContactDto } from "@/types/contact";
 
 interface AddContactDrawerProps {
@@ -27,6 +27,7 @@ export const AddContactDrawer = ({
         phone: "", // Required field
         name: "",
         email: "",
+        age: null,
         profile_pic: "",
     });
     const [countryCode, setCountryCode] = useState("+91");
@@ -52,6 +53,14 @@ export const AddContactDrawer = ({
             newErrors.email = "Invalid email format";
         }
 
+        // Age validation (optional)
+        if (formData.age != null) {
+            const ageNum = Number(formData.age);
+            if (isNaN(ageNum) || ageNum < 0 || ageNum > 150 || !Number.isInteger(ageNum)) {
+                newErrors.age = "Age must be a whole number between 0 and 150";
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -71,6 +80,7 @@ export const AddContactDrawer = ({
             phone: "",
             name: "",
             email: "",
+            age: null,
             profile_pic: "",
         });
         setCountryCode("+91");
@@ -173,6 +183,19 @@ export const AddContactDrawer = ({
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     error={errors.email}
                     icon={Mail}
+                />
+
+                {/* Age */}
+                <Input
+                    isDarkMode={isDarkMode}
+                    label="Age"
+                    type="number"
+                    placeholder="Enter age"
+                    value={formData.age != null ? String(formData.age) : ""}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value ? parseInt(e.target.value, 10) : null })}
+                    error={errors.age}
+                    icon={Calendar}
+                    maxLength={3}
                 />
             </div>
         </Drawer>
