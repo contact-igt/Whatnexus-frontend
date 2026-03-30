@@ -19,7 +19,7 @@ import {
     OptimizationGoal,
     HeaderType
 } from './templateTypes';
-import { validateTemplateName, generateId, validateContentLanguageMatch, detectDominantScript } from './templateUtils';
+import { validateTemplateName, generateId, validateContentLanguageMatch, validateLanguageMatch } from './templateUtils';
 import { WhatsAppPreviewPanel } from './whatsappPreviewPanel';
 import { VariableInputSection } from './variableInputSection';
 import { InteractiveActionsSection } from './interactiveActionsSection';
@@ -153,7 +153,7 @@ const templateSchema = z.object({
     }
 
     // Language-content script mismatch validation
-    if (data.category !== 'AUTHENTICATION') {
+    if (data.category !== 'AUTHENTICATION' && data.content?.trim()) {
         const langError = validateContentLanguageMatch(data.content, data.language);
         if (langError) {
             ctx.addIssue({
@@ -274,6 +274,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         formState: { errors, isSubmitting }
     } = useForm<FormValues>({
         resolver: zodResolver(templateSchema) as any,
+        mode: 'onTouched',
         defaultValues: {
             category: (initialData?.category?.toUpperCase() as TemplateCategory) || 'UTILITY',
             language: getLanguageName(initialData?.language || '') || 'English',
@@ -400,9 +401,41 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const footer = watch('footer');
     const variables = watch('variables');
 
-    // Language-content mismatch detection (real-time)
-    const languageMismatchError = validateContentLanguageMatch(content || '', language || '');
-    const isLanguageMismatch = !!languageMismatchError;
+    // Language-content mismatch detection (real-time, debounced)
+    // validateContentLanguageMatch handles ALL cases: script mismatch, English↔non-English Latin, etc.
+    const [debouncedMismatchError, setDebouncedMismatchError] = useState<string | null>(null);
+    useEffect(() => {
+        if (!content?.trim() || !language || category === 'AUTHENTICATION') {
+            setDebouncedMismatchError(null);
+            return;
+        }
+        const timer = setTimeout(() => {
+            const error = validateContentLanguageMatch(content, language);
+            console.log('[LanguageValidation] Debounced check:', { language, contentLength: content.length, error });
+            setDebouncedMismatchError(error);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [content, language, category]);
+    const isLanguageMismatch = !!debouncedMismatchError;
+
+    // Hard pre-check before form submission — blocks Save if language/content mismatch
+    const handleSaveClick = () => {
+        const currentContent = getValues('content');
+        const currentLanguage = getValues('language');
+        const currentCategory = getValues('category');
+
+        if (currentCategory !== 'AUTHENTICATION' && currentContent?.trim()) {
+            const mismatchError = validateContentLanguageMatch(currentContent, currentLanguage);
+            console.log('[LanguageValidation] Save click check:', { currentLanguage, contentLength: currentContent.length, mismatchError });
+            if (mismatchError) {
+                toast.error(mismatchError);
+                setDebouncedMismatchError(mismatchError);
+                return;
+            }
+        }
+        // All checks passed — proceed with form validation + submit
+        handleSubmit(onSubmit as any)();
+    };
     const interactiveActions = watch('interactiveActions');
     const ctaButtons = watch('ctaButtons');
     const quickReplies = watch('quickReplies');
@@ -513,8 +546,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             const data = await generateTemplate(payload);
 
             if (data?.data?.content) {
-                setValue('content', data.data.content);
-                toast.success('Template generated successfully!');
+                setValue('content', data.data.content, { shouldValidate: true });
+
+                // Immediately validate language match after AI generation
+                const langError = validateContentLanguageMatch(data.data.content, currentLang);
+                if (langError) {
+                    setDebouncedMismatchError(langError);
+                    toast.error(langError);
+                } else {
+                    setDebouncedMismatchError(null);
+                    toast.success('Template generated successfully!');
+                }
             } else {
                 toast.error('No content generated');
             }
@@ -587,15 +629,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         // Language-content validation before save
         // ─────────────────────────────────────────
         const langCode = getLanguageCode(data.language);
-        if (!langCode || langCode === 'en' && data.language !== 'English' && data.language !== 'English (UK)' && data.language !== 'English (US)') {
+        if (langCode === 'en' && data.language !== 'English' && data.language !== 'English (UK)' && data.language !== 'English (US)') {
             toast.error(`Unrecognized language "${data.language}". Please select a valid language.`);
             return;
         }
 
-        if (data.category !== 'AUTHENTICATION') {
+        if (data.category !== 'AUTHENTICATION' && data.content?.trim()) {
             const langValidationError = validateContentLanguageMatch(data.content, data.language);
+            console.log('[LanguageValidation] onSubmit check:', { language: data.language, contentLength: data.content.length, langValidationError });
             if (langValidationError) {
                 toast.error(langValidationError);
+                setDebouncedMismatchError(langValidationError);
                 return;
             }
         }
@@ -796,8 +840,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     </div>
                     {!isViewMode && (
                         <button
-                            onClick={handleSubmit(onSubmit as any)}
-                            disabled={isSubmitting || isSaving}
+                            onClick={handleSaveClick}
+                            disabled={isSubmitting || isSaving || isLanguageMismatch}
                             className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {(isSubmitting || isSaving) ? (
@@ -828,7 +872,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Category */}
-                                <div>
+                                <div id="field-section-category">
                                     <Controller
                                         name="category"
                                         control={control}
@@ -857,7 +901,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                 </div>
 
                                 {/* Language */}
-                                <div>
+                                <div id="field-section-language">
                                     <Controller
                                         name="language"
                                         control={control}
@@ -871,8 +915,20 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                     value={field.value}
                                                     onChange={(val: string) => {
                                                         field.onChange(val);
-                                                        // Re-validate content when language changes
-                                                        setTimeout(() => trigger('content'), 0);
+                                                        // Validate existing body text against newly selected language
+                                                        const currentContent = getValues('content');
+                                                        if (currentContent?.trim() && getValues('category') !== 'AUTHENTICATION') {
+                                                            const result = validateLanguageMatch(val, currentContent);
+                                                            console.log('[LanguageValidation] Language changed:', { newLang: val, contentLength: currentContent.length, result });
+                                                            if (!result.valid && result.message) {
+                                                                toast.error(result.message);
+                                                                setDebouncedMismatchError(result.message);
+                                                            } else {
+                                                                setDebouncedMismatchError(null);
+                                                            }
+                                                        }
+                                                        // Re-validate entire form (superRefine cross-field validation)
+                                                        setTimeout(() => trigger(), 0);
                                                     }}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
@@ -883,11 +939,11 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     />
                                     {isLanguageMismatch && !isAuthMode ? (
                                         <div className={cn(
-                                            "flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border",
+                                            "flex items-start gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border",
                                             isDarkMode ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"
                                         )}>
-                                            <span>⚠️</span>
-                                            <span>Content does not match <strong>&quot;{language}&quot;</strong>. Write body in {language} or change language.</span>
+                                            <span className="mt-0.5 shrink-0">⚠️</span>
+                                            <span>{debouncedMismatchError}</span>
                                         </div>
                                     ) : (
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
@@ -911,7 +967,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         )}
 
                         {/* Template Name */}
-                        <div>
+                        <div id="field-section-templateName">
                             <Controller
                                 name="templateName"
                                 control={control}
@@ -935,7 +991,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         </div>
 
                         {/* Template Type */}
-                        <div>
+                        <div id="field-section-templateType">
                             <Controller
                                 name="templateType"
                                 control={control}
@@ -1023,7 +1079,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
                         {/* CAROUSEL Card Editor */}
                         {templateType === 'CAROUSEL' && (
-                            <div className={cn(
+                            <div id="field-section-carouselCards" className={cn(
                                 "rounded-2xl p-5 border space-y-4",
                                 isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
                             )}>
@@ -1055,7 +1111,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         )}
 
                         {/* Template Header Section */}
-                        <div id="field-section-headerType" className="space-y-4">
+                        <div id="field-section-headerValue" className="space-y-4">
                             {templateType === 'TEXT' && (
                                 <div>
                                     <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
@@ -1248,7 +1304,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         </div>
 
                         {/* Template Content */}
-                        <div>
+                        <div id="field-section-content">
                             <Controller
                                 name="content"
                                 control={control}
@@ -1269,13 +1325,11 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                             />
                             {isLanguageMismatch && !isAuthMode && (
                                 <div className={cn(
-                                    "flex items-center gap-2 mt-1.5 px-3 py-2 rounded-lg text-xs font-medium border",
-                                    isDarkMode ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-700"
+                                    "flex items-start gap-2 mt-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold border",
+                                    isDarkMode ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-red-50 border-red-300 text-red-700"
                                 )}>
-                                    <span>⚠️</span>
-                                    <span>
-                                        Content language doesn&apos;t match selected language <strong>&quot;{language}&quot;</strong>. Meta requires body text in the selected language.
-                                    </span>
+                                    <span className="mt-0.5 shrink-0">🚫</span>
+                                    <span>{debouncedMismatchError}</span>
                                 </div>
                             )}
                             {isAuthMode ? (
@@ -1283,11 +1337,23 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     🔐 Body text is pre-filled with Meta's required OTP format. The <strong>{`{{1}}`}</strong> placeholder will be replaced with the generated OTP code at send time.
                                 </p>
                             ) : (
-                                <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                    Use text formatting: *bold*, _italic_, ~strikethrough~<br />
-                                    Your message content. Upto 1024 characters are allowed.<br />
-                                    e.g. Hello {`{{1}}`}, your code will expire in {`{{2}}`} mins.
-                                </p>
+                                <>
+                                    <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                        Use text formatting: *bold*, _italic_, ~strikethrough~<br />
+                                        Your message content. Upto 1024 characters are allowed.<br />
+                                        e.g. Hello {`{{1}}`}, your code will expire in {`{{2}}`} mins.
+                                    </p>
+                                    <div className={cn(
+                                        "flex items-start gap-1.5 mt-2 px-2.5 py-2 rounded-lg text-[10px] font-medium border",
+                                        isDarkMode ? "bg-blue-500/10 border-blue-500/20 text-blue-300" : "bg-blue-50 border-blue-200 text-blue-700"
+                                    )}>
+                                        <span className="mt-0.5 shrink-0">ℹ️</span>
+                                        <span>
+                                            Template body must be written in <strong>{language}</strong>. WhatsApp requires the message content to match the selected language.
+                                            If your content is in a different language, update the language selection above or rewrite the content in <strong>{language}</strong>.
+                                        </span>
+                                    </div>
+                                </>
                             )}
                         </div>
 
@@ -1302,7 +1368,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         />
 
                         {/* Footer */}
-                        <div>
+                        <div id="field-section-footer">
                             <Controller
                                 name="footer"
                                 control={control}

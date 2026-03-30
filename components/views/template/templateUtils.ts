@@ -214,114 +214,269 @@ export function formatDate(dateString: string): string {
 }
 
 // ─────────────────────────────────────────────────
-// Language-Script Validation for Template Content
+// Language-Script Detection & Validation
 // ─────────────────────────────────────────────────
 
-interface ScriptRange {
-    name: string;
-    regex: RegExp;
-}
-
-const SCRIPT_RANGES: ScriptRange[] = [
-    { name: 'Devanagari', regex: /[\u0900-\u097F]/g },
-    { name: 'Arabic', regex: /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g },
-    { name: 'Bengali', regex: /[\u0980-\u09FF]/g },
-    { name: 'Gujarati', regex: /[\u0A80-\u0AFF]/g },
-    { name: 'Gurmukhi', regex: /[\u0A00-\u0A7F]/g },
-    { name: 'Kannada', regex: /[\u0C80-\u0CFF]/g },
-    { name: 'Malayalam', regex: /[\u0D00-\u0D7F]/g },
-    { name: 'Tamil', regex: /[\u0B80-\u0BFF]/g },
-    { name: 'Telugu', regex: /[\u0C00-\u0C7F]/g },
-    { name: 'Thai', regex: /[\u0E00-\u0E7F]/g },
-    { name: 'Lao', regex: /[\u0E80-\u0EFF]/g },
-    { name: 'Georgian', regex: /[\u10A0-\u10FF\u2D00-\u2D2F]/g },
-    { name: 'Korean', regex: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g },
-    { name: 'Japanese', regex: /[\u3040-\u309F\u30A0-\u30FF]/g },
-    { name: 'CJK', regex: /[\u4E00-\u9FFF\u3400-\u4DBF]/g },
-    { name: 'Cyrillic', regex: /[\u0400-\u04FF\u0500-\u052F]/g },
-    { name: 'Greek', regex: /[\u0370-\u03FF\u1F00-\u1FFF]/g },
-    { name: 'Hebrew', regex: /[\u0590-\u05FF]/g },
-    { name: 'Latin', regex: /[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/g },
-];
-
-const LANGUAGE_SCRIPT_MAP: Record<string, string[]> = {
-    'Afrikaans': ['Latin'], 'Albanian': ['Latin'], 'Arabic': ['Arabic'],
-    'Azerbaijani': ['Latin'], 'Bengali': ['Bengali'], 'Bulgarian': ['Cyrillic'],
-    'Catalan': ['Latin'], 'Chinese (CHN)': ['CJK'], 'Chinese (HKG)': ['CJK'],
-    'Chinese (TAI)': ['CJK'], 'Croatian': ['Latin'], 'Czech': ['Latin'],
-    'Danish': ['Latin'], 'Dutch': ['Latin'], 'English': ['Latin'],
-    'English (UK)': ['Latin'], 'English (US)': ['Latin'], 'Estonian': ['Latin'],
-    'Filipino': ['Latin'], 'Finnish': ['Latin'], 'French': ['Latin'],
-    'Georgian': ['Georgian'], 'German': ['Latin'], 'Greek': ['Greek'],
-    'Gujarati': ['Gujarati'], 'Hausa': ['Latin'], 'Hebrew': ['Hebrew'],
-    'Hindi': ['Devanagari'], 'Hungarian': ['Latin'], 'Indonesian': ['Latin'],
-    'Irish': ['Latin'], 'Italian': ['Latin'], 'Japanese': ['Japanese', 'CJK'],
-    'Kannada': ['Kannada'], 'Kazakh': ['Cyrillic'], 'Kinyarwanda': ['Latin'],
-    'Korean': ['Korean'], 'Kyrgyz': ['Cyrillic'], 'Lao': ['Lao'],
-    'Latvian': ['Latin'], 'Lithuanian': ['Latin'], 'Macedonian': ['Cyrillic'],
-    'Malay': ['Latin'], 'Malayalam': ['Malayalam'], 'Marathi': ['Devanagari'],
-    'Norwegian': ['Latin'], 'Persian': ['Arabic'], 'Polish': ['Latin'],
-    'Portuguese (BR)': ['Latin'], 'Portuguese (POR)': ['Latin'],
-    'Punjabi': ['Gurmukhi'], 'Romanian': ['Latin'], 'Russian': ['Cyrillic'],
-    'Serbian': ['Cyrillic', 'Latin'], 'Slovak': ['Latin'], 'Slovenian': ['Latin'],
-    'Spanish': ['Latin'], 'Spanish (ARG)': ['Latin'], 'Spanish (SPA)': ['Latin'],
-    'Spanish (MEX)': ['Latin'], 'Swahili': ['Latin'], 'Swedish': ['Latin'],
-    'Tamil': ['Tamil'], 'Telugu': ['Telugu'], 'Thai': ['Thai'],
-    'Turkish': ['Latin'], 'Ukrainian': ['Cyrillic'], 'Urdu': ['Arabic'],
-    'Uzbek': ['Latin'], 'Vietnamese': ['Latin'], 'Zulu': ['Latin'],
+/**
+ * Unicode-range script detectors.
+ * Each regex matches characters belonging to that script family.
+ */
+const SCRIPT_RANGES: Record<string, RegExp> = {
+    latin:      /[\u0041-\u007A\u00C0-\u024F\u1E00-\u1EFF]/g,
+    cyrillic:   /[\u0400-\u04FF\u0500-\u052F]/g,
+    arabic:     /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g,
+    hebrew:     /[\u0590-\u05FF]/g,
+    devanagari: /[\u0900-\u097F]/g,
+    bengali:    /[\u0980-\u09FF]/g,
+    gujarati:   /[\u0A80-\u0AFF]/g,
+    gurmukhi:   /[\u0A00-\u0A7F]/g,
+    tamil:      /[\u0B80-\u0BFF]/g,
+    telugu:     /[\u0C00-\u0C7F]/g,
+    kannada:    /[\u0C80-\u0CFF]/g,
+    malayalam:  /[\u0D00-\u0D7F]/g,
+    thai:       /[\u0E00-\u0E7F]/g,
+    lao:        /[\u0E80-\u0EFF]/g,
+    georgian:   /[\u10A0-\u10FF\u2D00-\u2D2F]/g,
+    hangul:     /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g,
+    cjk:        /[\u4E00-\u9FFF\u3400-\u4DBF]/g,
+    hiragana:   /[\u3040-\u309F]/g,
+    katakana:   /[\u30A0-\u30FF]/g,
+    greek:      /[\u0370-\u03FF\u1F00-\u1FFF]/g,
 };
 
 /**
- * Detect the dominant script in a text string
+ * Maps display-language names → expected script key from SCRIPT_RANGES.
+ * This is the single source of truth for language ↔ script mapping.
  */
-export function detectDominantScript(text: string): string | null {
-    if (!text || text.trim().length < 3) return null;
+const LANGUAGE_SCRIPT_MAP: Record<string, string> = {
+    'Afrikaans': 'latin',    'Albanian': 'latin',     'Arabic': 'arabic',
+    'Azerbaijani': 'latin',  'Bengali': 'bengali',    'Bulgarian': 'cyrillic',
+    'Catalan': 'latin',      'Chinese (CHN)': 'cjk',  'Chinese (HKG)': 'cjk',
+    'Chinese (TAI)': 'cjk',  'Croatian': 'latin',     'Czech': 'latin',
+    'Danish': 'latin',       'Dutch': 'latin',        'English': 'latin',
+    'English (UK)': 'latin', 'English (US)': 'latin',  'Estonian': 'latin',
+    'Filipino': 'latin',     'Finnish': 'latin',      'French': 'latin',
+    'Georgian': 'georgian',  'German': 'latin',       'Greek': 'greek',
+    'Gujarati': 'gujarati',  'Hausa': 'latin',        'Hebrew': 'hebrew',
+    'Hindi': 'devanagari',   'Hungarian': 'latin',    'Indonesian': 'latin',
+    'Irish': 'latin',        'Italian': 'latin',      'Japanese': 'hiragana',
+    'Kannada': 'kannada',    'Kazakh': 'cyrillic',    'Kinyarwanda': 'latin',
+    'Korean': 'hangul',      'Kyrgyz': 'cyrillic',    'Lao': 'lao',
+    'Latvian': 'latin',      'Lithuanian': 'latin',   'Macedonian': 'cyrillic',
+    'Malay': 'latin',        'Malayalam': 'malayalam', 'Marathi': 'devanagari',
+    'Norwegian': 'latin',    'Persian': 'arabic',     'Polish': 'latin',
+    'Portuguese (BR)': 'latin', 'Portuguese (POR)': 'latin',
+    'Punjabi': 'gurmukhi',   'Romanian': 'latin',     'Russian': 'cyrillic',
+    'Serbian': 'cyrillic',   'Slovak': 'latin',       'Slovenian': 'latin',
+    'Spanish': 'latin',      'Spanish (ARG)': 'latin','Spanish (SPA)': 'latin',
+    'Spanish (MEX)': 'latin','Swahili': 'latin',      'Swedish': 'latin',
+    'Tamil': 'tamil',        'Telugu': 'telugu',      'Thai': 'thai',
+    'Turkish': 'latin',      'Ukrainian': 'cyrillic', 'Urdu': 'arabic',
+    'Uzbek': 'latin',        'Vietnamese': 'latin',   'Zulu': 'latin',
+};
 
-    // Remove template variables, formatting markers, whitespace, digits, punctuation
+/**
+ * Detect the dominant script of a text string.
+ * Strips template variables and punctuation, then counts Unicode-range matches.
+ */
+export function detectTemplateScript(text: string): string | null {
+    if (!text || text.trim().length < 5) return null;
+
+    // Strip {{variables}}, formatting markers, digits, punctuation, whitespace
     const cleaned = text
-        .replace(/\{\{[\w]+\}\}/g, '')
+        .replace(/\{\{[^}]+\}\}/g, '')
         .replace(/[\n\r*_~`\s\d.,!?;:'"()\-\/\\@#$%^&+=<>\[\]{}|]/g, '')
         .trim();
     if (!cleaned || cleaned.length < 2) return null;
 
-    let maxCount = 0;
-    let dominantScript: string | null = null;
-
-    for (const { name, regex } of SCRIPT_RANGES) {
-        const matches = cleaned.match(regex) || [];
-        if (matches.length > maxCount) {
-            maxCount = matches.length;
-            dominantScript = name;
-        }
+    const scores: Record<string, number> = {};
+    for (const [script, pattern] of Object.entries(SCRIPT_RANGES)) {
+        const matches = cleaned.match(new RegExp(pattern.source, 'g')) || [];
+        scores[script] = matches.length;
     }
 
-    return dominantScript;
+    // Japanese: hiragana/katakana presence is definitive over CJK
+    if ((scores.hiragana || 0) > 2 || (scores.katakana || 0) > 2) return 'hiragana';
+
+    const dominant = Object.entries(scores)
+        .filter(([, count]) => count > 0)
+        .sort(([, a], [, b]) => b - a)[0];
+
+    return dominant ? dominant[0] : null;
+}
+
+// ─────────────────────────────────────────────────
+// Intra-Latin Language Detection (English vs. others)
+// ─────────────────────────────────────────────────
+
+const ENGLISH_COMMON_WORDS = new Set([
+    'the', 'a', 'an', 'this', 'that', 'these', 'those',
+    'my', 'your', 'his', 'her', 'its', 'our', 'their',
+    'i', 'me', 'you', 'he', 'she', 'it', 'we', 'they', 'him', 'us', 'them',
+    'in', 'on', 'at', 'to', 'for', 'with', 'from', 'by', 'of', 'about',
+    'into', 'through', 'during', 'before', 'after',
+    'and', 'but', 'or', 'so', 'yet', 'if', 'as', 'than',
+    'is', 'are', 'was', 'were', 'am', 'be', 'been', 'being',
+    'has', 'have', 'had', 'do', 'does', 'did',
+    'will', 'would', 'could', 'should', 'shall', 'can', 'may', 'might', 'must',
+    'not', 'no', 'just', 'also', 'very', 'here', 'there', 'now', 'then',
+    'hello', 'hi', 'dear', 'please', 'thank', 'thanks', 'welcome',
+    'your', 'order', 'appointment', 'code', 'verification', 'confirmed',
+]);
+
+/**
+ * Non-English diacritics / special Latin chars that do NOT appear in standard English.
+ * Covers Turkish (ğ,ş,ı,İ), Azerbaijani (ə,Ə), French (ç,ê,ë), German (ß,ü,ö),
+ * Polish (ł,ń,ą,ę), Romanian (ț,ș), Scandinavian (ø,å,æ), etc.
+ */
+const NON_ENGLISH_CHARS_RE = /[\u00C0-\u00C5\u00C8-\u00CF\u00D1-\u00D6\u00D8-\u00DD\u00DF-\u00E5\u00E8-\u00EF\u00F1-\u00F6\u00F8-\u00FD\u00FF-\u024F\u0259\u018F]/g;
+
+/**
+ * Returns true when ≥25 % of words are common English function/template words.
+ */
+export function isContentLikelyEnglish(text: string): boolean {
+    if (!text || text.trim().length < 10) return false;
+
+    const cleaned = text
+        .replace(/\{\{[^}]+\}\}/g, '')
+        .replace(/[*_~`]/g, '')
+        .toLowerCase();
+
+    const words = cleaned
+        .split(/[\s.,!?;:\-\/()'"@#$%&+=\[\]{}|\\<>:]+/)
+        .filter(w => w.length > 1);
+
+    if (words.length < 3) return false;
+
+    const englishCount = words.filter(w => ENGLISH_COMMON_WORDS.has(w)).length;
+    return (englishCount / words.length) >= 0.25;
 }
 
 /**
- * Validate that template content matches the selected language's expected script.
- * Returns null if valid, or an error message string if invalid.
+ * Returns true when the text contains a significant density of
+ * non-English Latin diacritics (ə, ğ, ş, ñ, ß, ø, etc.).
  */
-export function validateContentLanguageMatch(content: string, language: string): string | null {
-    if (!content || !language) return null;
+export function hasNonEnglishLatinChars(text: string): boolean {
+    if (!text || text.trim().length < 5) return false;
 
-    const expectedScripts = LANGUAGE_SCRIPT_MAP[language];
-    if (!expectedScripts) return null; // Unknown language, skip validation
+    const cleaned = text
+        .replace(/\{\{[^}]+\}\}/g, '')
+        .replace(/[*_~`\n\r\s\d.,!?;:'"()\-\/\\@#$%^&+=<>\[\]{}|]/g, '');
 
-    const dominantScript = detectDominantScript(content);
-    if (!dominantScript) return null; // Can't determine script, skip
+    if (cleaned.length < 3) return false;
 
-    const isMatch = expectedScripts.some(expected => {
-        if (expected === dominantScript) return true;
-        // CJK is also valid for Japanese/Chinese
-        if (expected === 'CJK' && dominantScript === 'Japanese') return true;
-        if (expected === 'Japanese' && dominantScript === 'CJK') return true;
-        return false;
-    });
+    const nonEnglish = (cleaned.match(NON_ENGLISH_CHARS_RE) || []).length;
+    const english    = (cleaned.match(/[a-zA-Z]/g) || []).length;
+    const total      = nonEnglish + english;
+    if (total < 3) return false;
 
-    if (!isMatch) {
-        return `Template content does not match the selected language "${language}". Please write the content in ${language} or change the language selection.`;
+    // ≥ 5 % non-English chars AND at least 2 occurrences
+    return (nonEnglish / total) >= 0.05 && nonEnglish >= 2;
+}
+
+// ─────────────────────────────────────────────────
+// Main Validation Entry Point
+// ─────────────────────────────────────────────────
+
+export interface LanguageValidationResult {
+    valid: boolean;
+    detectedScript?: string;
+    expectedScript?: string;
+    message?: string;
+}
+
+/**
+ * Core validator — checks whether template content matches the selected language.
+ *
+ * Layer 1 — Script check (Latin vs Cyrillic vs Devanagari …).
+ * Layer 2 — Intra-Latin check (English ↔ non-English Latin languages).
+ *
+ * Returns { valid: true } when OK, or { valid: false, message: "…" } when mismatched.
+ */
+export function validateLanguageMatch(language: string, content: string): LanguageValidationResult {
+    if (!content || !language) return { valid: true };
+
+    const expectedScript = LANGUAGE_SCRIPT_MAP[language];
+    if (!expectedScript) {
+        console.log('[LanguageValidation] Unknown language, skipping:', language);
+        return { valid: true };
     }
 
-    return null;
+    const detectedScript = detectTemplateScript(content);
+    if (!detectedScript) {
+        console.log('[LanguageValidation] Could not detect script, content too short');
+        return { valid: true };
+    }
+
+    console.log('[LanguageValidation] Layer 1:', { language, expectedScript, detectedScript });
+
+    // ── Layer 1: Script family mismatch ──────────────────────────
+    // Japanese can match hiragana, katakana, OR cjk
+    const scriptMatches = (() => {
+        if (detectedScript === expectedScript) return true;
+        if (expectedScript === 'hiragana' && (detectedScript === 'katakana' || detectedScript === 'cjk')) return true;
+        if (expectedScript === 'cjk' && (detectedScript === 'hiragana' || detectedScript === 'katakana')) return true;
+        // Serbian can use both Cyrillic and Latin
+        if (language === 'Serbian' && (detectedScript === 'latin' || detectedScript === 'cyrillic')) return true;
+        return false;
+    })();
+
+    if (!scriptMatches) {
+        return {
+            valid: false,
+            detectedScript,
+            expectedScript,
+            message: `Template content uses ${detectedScript} script, but "${language}" expects ${expectedScript}. Please write the content in ${language} or change the language.`,
+        };
+    }
+
+    // ── Layer 2: Intra-Latin language check ──────────────────────
+    if (detectedScript === 'latin') {
+        const isEnglishVariant = ['English', 'English (UK)', 'English (US)'].includes(language);
+        const hasNonEng = hasNonEnglishLatinChars(content);
+        const isEng = isContentLikelyEnglish(content);
+        console.log('[LanguageValidation] Layer 2 (Latin):', { isEnglishVariant, hasNonEng, isEng });
+
+        if (isEnglishVariant) {
+            // English selected → content must actually be English
+            if (hasNonEng) {
+                return {
+                    valid: false,
+                    detectedScript: 'non-english-latin',
+                    expectedScript: 'latin (English)',
+                    message: `Template content contains non-English characters (special diacritics) and does not appear to be in English. Please write the content in English or change the language to match your content.`,
+                };
+            }
+            if (!isEng) {
+                return {
+                    valid: false,
+                    detectedScript: 'foreign-latin',
+                    expectedScript: 'latin (English)',
+                    message: `Template content does not appear to be written in English. Please write the content in English or change the language to match your content.`,
+                };
+            }
+        } else {
+            // Non-English Latin language selected → content must NOT be plain English
+            if (isEng && !hasNonEng) {
+                return {
+                    valid: false,
+                    detectedScript: 'english',
+                    expectedScript: `latin (${language})`,
+                    message: `Template content appears to be written in English, but you selected "${language}". Please write the content in ${language} or change the language to English.`,
+                };
+            }
+        }
+    }
+
+    return { valid: true };
+}
+
+/**
+ * Legacy wrapper — returns null if valid, or error message string if invalid.
+ * Used by Zod superRefine, handleSaveClick, and real-time mismatch detection.
+ */
+export function validateContentLanguageMatch(content: string, language: string): string | null {
+    const result = validateLanguageMatch(language, content);
+    console.log('[LanguageValidation] validateContentLanguageMatch:', { language, contentSnippet: content?.substring(0, 60), valid: result.valid, message: result.message });
+    return result.valid ? null : (result.message ?? null);
 }

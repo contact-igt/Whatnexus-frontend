@@ -15,6 +15,7 @@ interface WhatsAppConnectionListProps {
     onSaveConfiguration: (connection: any) => void;
     testConnectionSuccess: boolean;
     isWebhookVerified: boolean;
+    isAdmin: boolean;
 }
 
 export const WhatsappConnectionList = ({
@@ -26,7 +27,8 @@ export const WhatsappConnectionList = ({
     onTestConnection,
     onSaveConfiguration,
     testConnectionSuccess,
-    isWebhookVerified
+    isWebhookVerified,
+    isAdmin
 }: WhatsAppConnectionListProps) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showAccessToken, setShowAccessToken] = useState<Record<string, boolean>>({});
@@ -37,6 +39,7 @@ export const WhatsappConnectionList = ({
     // 1. Status is not one of the valid ones
     // 2. We're trying to activate (not currently active) BUT haven't tested successfully or verified webhook
     const isToggleDisabled = 
+        !isAdmin ||
         !["verified", "active", "inactive"].includes(WhatsAppConnectionData.data.status) ||
         (!isActive && (!testConnectionSuccess || !isWebhookVerified));
     const toggleAccessTokenVisibility = (id: string) => {
@@ -198,18 +201,20 @@ export const WhatsappConnectionList = ({
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-                    <button
-                        onClick={onTestConnection}
-                        className={cn(
-                            "flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border",
-                            isDarkMode
-                                ? "bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600/20"
-                                : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
-                        )}
-                    >
-                        <MessageCircle size={16} />
-                        <span>Test Connection</span>
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={onTestConnection}
+                            className={cn(
+                                "flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border",
+                                isDarkMode
+                                    ? "bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600/20"
+                                    : "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+                            )}
+                        >
+                            <MessageCircle size={16} />
+                            <span>Test Connection</span>
+                        </button>
+                    )}
 
                     <div className="flex items-center gap-3">
                         {isEditing ? (
@@ -251,16 +256,18 @@ export const WhatsappConnectionList = ({
                                     <Trash2 size={16} />
                                     <span>Delete</span>
                                 </button> */}
-                                <button
-                                    onClick={() => handleEditMode(WhatsAppConnectionData.data)}
-                                    className={cn(
-                                        "flex items-center space-x-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg hover:brightness-110",
-                                        isDarkMode ? "bg-emerald-600 shadow-emerald-900/20" : "bg-emerald-600 shadow-emerald-600/20"
-                                    )}
-                                >
-                                    <Edit size={16} />
-                                    <span>Edit</span>
-                                </button>
+                                {isAdmin && (
+                                    <button
+                                        onClick={() => handleEditMode(WhatsAppConnectionData.data)}
+                                        className={cn(
+                                            "flex items-center space-x-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg hover:brightness-110",
+                                            isDarkMode ? "bg-emerald-600 shadow-emerald-900/20" : "bg-emerald-600 shadow-emerald-600/20"
+                                        )}
+                                    >
+                                        <Edit size={16} />
+                                        <span>Edit</span>
+                                    </button>
+                                )}
                             </>
                         )}
                     </div>

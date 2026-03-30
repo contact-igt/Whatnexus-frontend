@@ -70,7 +70,7 @@ export const VariableInputSection = ({
     console.log("variables", variables)
     console.log("detectedVars", detectedVars)
     return (
-        <div className="space-y-4">
+        <div id="field-section-variables" className="space-y-4">
             <div className="flex items-center gap-2">
                 <Hash size={16} className="text-emerald-500" />
                 <h3 className={cn("text-sm font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>

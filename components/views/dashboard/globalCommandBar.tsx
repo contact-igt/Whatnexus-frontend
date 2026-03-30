@@ -6,6 +6,7 @@ import { Brain, Bell, Layers, Shield } from 'lucide-react';
 import { glassCard, tx } from './glassStyles';
 import { socket } from '@/utils/socket';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { META_TIER_CONFIG } from '@/components/layout/header';
 
 interface GlobalCommandBarProps { 
     isDarkMode?: boolean;
@@ -159,7 +160,11 @@ export const GlobalCommandBar = ({
                                         background: isDarkMode ? 'rgba(59,130,246,0.1)' : '#eff6ff',
                                         color: isDarkMode ? '#60a5fa' : '#2563eb'
                                     }}>
-                                        {wabaInfo.tier?.replace('TIER_', '') || wabaInfo.tier}
+                                        {(() => {
+                                        const rawTier = wabaInfo.tier ? wabaInfo.tier.toUpperCase() : 'TIER_NOT_SET';
+                                        const tierCfg = META_TIER_CONFIG[rawTier] || META_TIER_CONFIG.TIER_NOT_SET;
+                                        return `${tierCfg.name} (${tierCfg.limit}/24h)`;
+                                    })()}
                                     </span>
                                 </div>
                             </div>

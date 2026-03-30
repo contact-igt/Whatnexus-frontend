@@ -82,18 +82,20 @@ export const UserProfileDropdown = ({
                     <User size={16} />
                     <span>Profile</span>
                 </button>
-                <button
-                    onClick={() => { onClose(); router.push("/settings/general"); }}
-                    className={cn(
-                        "w-full flex items-center space-x-3 px-4 py-2.5 text-sm transition-all",
-                        isDarkMode
-                            ? "text-white/70 hover:bg-white/5 hover:text-white"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                    )}
-                >
-                    <Settings size={16} />
-                    <span>Settings</span>
-                </button>
+                {user?.user_type !== 'management' && (
+                    <button
+                        onClick={() => { onClose(); router.push("/settings/general"); }}
+                        className={cn(
+                            "w-full flex items-center space-x-3 px-4 py-2.5 text-sm transition-all",
+                            isDarkMode
+                                ? "text-white/70 hover:bg-white/5 hover:text-white"
+                                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        )}
+                    >
+                        <Settings size={16} />
+                        <span>Settings</span>
+                    </button>
+                )}
             </div>
 
             <div className={cn("border-t py-1.5", isDarkMode ? "border-white/10" : "border-slate-100")}>

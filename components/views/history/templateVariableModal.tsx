@@ -381,9 +381,6 @@ export const TemplateVariableModal = ({
                                                 <p className={cn("text-sm font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
                                                     {mediaFileName || "Media URL"}
                                                 </p>
-                                                <p className={cn("text-xs truncate max-w-[200px]", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                    {mediaUrl}
-                                                </p>
                                             </div>
                                         </div>
                                         <button
