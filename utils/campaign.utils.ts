@@ -273,9 +273,10 @@ export const canExecuteCampaign = (status: CampaignStatus): boolean => {
  */
 export const generateCSVTemplate = (variableArray: any[]): string => {
     const headers = ["country_code", "mobile_number"];
-    const variableNames = variableArray.map(v => v.variable_key || v.name || 'variable');
-    
-    headers.push(...variableNames);
+    variableArray.forEach((v, i) => {
+        const key = v.variable_key || v.name || String(i + 1);
+        headers.push(`variable_${key}`);
+    });
 
     const exampleRow = ["91", "6369441531"];
     variableArray.forEach((v, i) => {

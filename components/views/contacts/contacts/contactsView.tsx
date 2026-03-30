@@ -55,7 +55,7 @@ export const ContactsView = () => {
     const { user } = useAuth();
     useEffect(() => {
         if (!user?.tenant_id) return;
-        
+
         if (!socket.connected) {
             socket.connect();
         } else {
@@ -63,17 +63,19 @@ export const ContactsView = () => {
             socket.emit('join-tenant', user.tenant_id);
         }
 
-        socket.on('connect', () => {
+        const handleConnect = () => {
             socket.emit('join-tenant', user.tenant_id);
-        });
+        };
+        socket.on('connect', handleConnect);
 
-        socket.on('contact-created', () => {
+        const handleContactCreated = () => {
             if (activeTab === 'all') refetchContacts();
-        });
+        };
+        socket.on('contact-created', handleContactCreated);
 
         return () => {
-            socket.off('contact-created');
-            socket.off('connect');
+            socket.off('contact-created', handleContactCreated);
+            socket.off('connect', handleConnect);
         };
     }, [user?.tenant_id, activeTab]);
     const { data: deletedContactsData, isLoading: isLoadingDeleted } = useGetDeletedContactsQuery();
@@ -177,22 +179,22 @@ export const ContactsView = () => {
     };
 
     const handleExportCSV = () => {
-        // Prepare data for export
         const dataToExport = contacts.map(contact => ({
-            name: contact.name,
-            phone: contact.phone,
-            // tags: contact.tags?.join(';') || '' // Include if tags are used
+            name: contact.name || '',
+            phone: contact.phone || '',
+            email: contact.email || '',
+            age: contact.age ?? '',
         }));
         handleCSVDownloadData(dataToExport, 'contacts_export');
     };
 
     const handleDownloadSample = () => {
         const sampleData = [
-            { name: "Aarav Patel", phone: "+919876543210" },
-            { name: "Priya Sharma", phone: "+919988776655" },
-            { name: "Rahul Singh", phone: "+919123456789" },
-            { name: "Ananya Gupta", phone: "+919898989898" },
-            { name: "Vikram Kumar", phone: "+919012345678" }
+            { name: "Aarav Patel", phone: "+919876543210", email: "aarav@example.com", age: 28 },
+            { name: "Priya Sharma", phone: "+919988776655", email: "priya@example.com", age: 32 },
+            { name: "Rahul Singh", phone: "+919123456789", email: "", age: 25 },
+            { name: "Ananya Gupta", phone: "+919898989898", email: "ananya@example.com", age: "" },
+            { name: "Vikram Kumar", phone: "+919012345678", email: "", age: "" }
         ];
         handleCSVDownloadData(sampleData, 'contacts_sample');
     };

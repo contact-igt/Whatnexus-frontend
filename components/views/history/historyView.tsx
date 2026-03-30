@@ -307,21 +307,21 @@ export const HistoryView = () => {
             socket.emit("join-tenant", user.tenant_id);
         }
 
-        socket.on("connect", () => {
+        const handleConnect = () => {
             socket.emit("join-tenant", user.tenant_id);
-        });
+        };
+        socket.on("connect", handleConnect);
 
-        socket.off("new-message");
         socket.on("new-message", handleIncomingMessage);
-        socket.on("session-activated", (data: any) => {
+        const handleSessionActivated = () => {
             queryClient.invalidateQueries({ queryKey: ["historychats"] });
-        });
+        };
+        socket.on("session-activated", handleSessionActivated);
 
         return () => {
             socket.off("new-message", handleIncomingMessage);
-            socket.off("message-status-update");
-            socket.off("session-activated");
-            socket.off("connect");
+            socket.off("session-activated", handleSessionActivated);
+            socket.off("connect", handleConnect);
         };
     }, [user?.tenant_id]);
 
