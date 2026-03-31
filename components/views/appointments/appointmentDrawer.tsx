@@ -374,6 +374,14 @@ export const AppointmentDrawer = ({
             toast.error('Please select a doctor');
             return;
         }
+        if (!formData.age.trim() || isNaN(Number(formData.age)) || Number(formData.age) <= 0) {
+            toast.error('Valid age is required');
+            return;
+        }
+        if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+            toast.error('Valid email is required');
+            return;
+        }
 
         if (mode === 'create') {
             createMutation.mutate({
@@ -386,8 +394,8 @@ export const AppointmentDrawer = ({
                 doctor_id: formData.doctor_id || undefined,
                 notes: formData.notes || undefined,
                 status: formData.status,
-                age: formData.age ? Number(formData.age) : undefined,
-                email: formData.email || undefined,
+                age: Number(formData.age),
+                email: formData.email.trim(),
             }, { onSuccess: () => onSave() });
         } else if (mode === 'edit' && appointment) {
             updateMutation.mutate({
@@ -401,8 +409,8 @@ export const AppointmentDrawer = ({
                     doctor_id: formData.doctor_id || undefined,
                     notes: formData.notes || undefined,
                     status: formData.status,
-                    age: formData.age ? Number(formData.age) : undefined,
-                    email: formData.email || undefined,
+                    age: Number(formData.age),
+                    email: formData.email.trim(),
                 },
             }, { onSuccess: () => onSave() });
         }
@@ -541,6 +549,17 @@ export const AppointmentDrawer = ({
                             </div>
                         )}
 
+                        {formData.email && (
+                            <div>
+                                <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                    Email
+                                </label>
+                                <p className={cn("text-sm font-medium", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                    {formData.email}
+                                </p>
+                            </div>
+                        )}
+
                         {formData.notes && (
                             <div>
                                 <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
@@ -652,20 +671,30 @@ export const AppointmentDrawer = ({
                                                         onChange={(e) => {
                                                             if (!e.target.value) {
                                                                 setIsContactSelected(false);
-                                                                setFormData(prev => ({ ...prev, patient_name: '', country_code: '+91', contact_number: '', contact_id: '' }));
+                                                                setFormData(prev => ({ ...prev, patient_name: '', country_code: '+91', contact_number: '', contact_id: '', email: '', age: '' }));
                                                                 return;
                                                             }
                                                             const selected = contacts.find((c: any) => c.contact_id === e.target.value);
                                                             if (selected) {
                                                                 const fullPhone = selected.phone || '';
-                                                                let cc = '+91', phone = fullPhone;
-                                                                if (fullPhone.length > 10) {
+                                                                let cc = selected.country_code || '+91';
+                                                                let phone = fullPhone;
+                                                                if (!selected.country_code && fullPhone.length > 10) {
                                                                     const codeLen = fullPhone.length - 10;
                                                                     cc = '+' + fullPhone.slice(0, codeLen);
                                                                     phone = fullPhone.slice(codeLen);
                                                                 }
+                                                                if (cc && !cc.startsWith('+')) cc = '+' + cc;
                                                                 setIsContactSelected(true);
-                                                                setFormData(prev => ({ ...prev, patient_name: selected.name || '', country_code: cc, contact_number: phone, contact_id: selected.contact_id || '' }));
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    patient_name: selected.name || '',
+                                                                    country_code: cc,
+                                                                    contact_number: phone,
+                                                                    contact_id: selected.contact_id || '',
+                                                                    email: selected.email || '',
+                                                                    age: selected.age ? String(selected.age) : '',
+                                                                }));
                                                             }
                                                         }}
                                                         className={cn(
@@ -686,7 +715,7 @@ export const AppointmentDrawer = ({
                                                         type="button"
                                                         onClick={() => {
                                                             setIsContactSelected(false);
-                                                            setFormData(prev => ({ ...prev, patient_name: '', country_code: '+91', contact_number: '', contact_id: '' }));
+                                                            setFormData(prev => ({ ...prev, patient_name: '', country_code: '+91', contact_number: '', contact_id: '', email: '', age: '' }));
                                                         }}
                                                         className="flex items-center space-x-1 text-[10px] mt-2 ml-1 text-red-400 hover:text-red-300 transition-colors"
                                                     >
@@ -721,7 +750,7 @@ export const AppointmentDrawer = ({
                                             </div>
                                             <div className="col-span-1">
                                                 <label className={cn("text-[10px] font-bold uppercase mb-1.5 block ml-1 opacity-60", isDarkMode ? 'text-white' : 'text-slate-700')}>
-                                                    Age
+                                                    Age *
                                                 </label>
                                                 <div className="relative">
                                                     <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
@@ -742,7 +771,7 @@ export const AppointmentDrawer = ({
 
                                         <div>
                                             <label className={cn("text-[10px] font-bold uppercase mb-1.5 block ml-1 opacity-60", isDarkMode ? 'text-white' : 'text-slate-700')}>
-                                                Email Address
+                                                Email Address *
                                             </label>
                                             <div className="relative">
                                                 <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
