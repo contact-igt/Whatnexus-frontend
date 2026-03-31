@@ -28,7 +28,10 @@ const doctorSchema = z.object({
     consultation_duration: z.coerce.number().min(5, "Duration must be at least 5 minutes").max(240, "Duration must be at most 240 minutes"),
     bio: z.string().trim().min(10, "Bio is required (min 10 chars)").max(500, "Bio must be less than 500 characters").optional().or(z.literal('')),
     profile_pic: z.string().optional(),
-    experience_years: z.preprocess((val) => Number(val), z.number({ message: "Experience is required" }).min(0, "Experience required (0+)")),
+    experience_years: z.string()
+        .refine((val) => val !== '' && val !== undefined && val !== null, { message: "Experience is required" })
+        .refine((val) => !isNaN(Number(val)) && Number(val) >= 0, { message: "Experience must be 0 or more" })
+        .transform((val) => Number(val)),
     qualification: z.string().trim().min(2, "Qualification is required (min 2 chars)"),
     specializations: z.array(z.string()).min(1, "At least one specialization is required"),
 });

@@ -11,16 +11,34 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-const teamUserSchema = z.object({
-    username: z.string().trim().optional().or(z.literal('')),
-    email: z.string().trim().email("Invalid email address").optional().or(z.literal('')),
-    country_code: z.string().optional().or(z.literal('')),
-    mobile: z.string().optional().or(z.literal('')).refine(val => !val || /^\d+$/.test(val), "Follow phone number format"),
-    role: z.string().optional().or(z.literal('')),
+const validTLDs = ['com', 'net', 'org', 'edu', 'gov', 'io', 'co', 'in', 'uk', 'us', 'ca', 'au', 'de', 'fr', 'jp', 'cn', 'ru', 'br', 'za', 'ae', 'sg', 'mx', 'it', 'es', 'nl', 'se', 'no', 'fi', 'dk', 'ch', 'at', 'be', 'pt', 'pl', 'cz', 'hu', 'ro', 'bg', 'hr', 'sk', 'si', 'lt', 'lv', 'ee', 'ie', 'nz', 'ph', 'my', 'th', 'vn', 'id', 'kr', 'tw', 'hk', 'il', 'sa', 'qa', 'kw', 'bh', 'om', 'info', 'biz', 'me', 'tv', 'cc', 'xyz', 'app', 'dev', 'tech', 'site', 'online', 'store', 'cloud', 'ai', 'pro'];
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const isValidEmail = (email: string) => {
+    if (!emailRegex.test(email)) return false;
+    const parts = email.split('.');
+    const tld = parts[parts.length - 1].toLowerCase();
+    return validTLDs.includes(tld);
+};
+
+const createTeamUserSchema = z.object({
+    username: z.string().trim().min(2, "Name must be at least 2 characters."),
+    email: z.string().trim().min(1, "Email is required.").refine(isValidEmail, "Please enter a valid email address."),
+    country_code: z.string().min(1, "Country code is required."),
+    mobile: z.string().min(1, "Mobile number is required.").regex(/^\d{10}$/, "Phone number must be 10 digits."),
+    role: z.string().min(1, "Role is required."),
+    status: z.string().optional(),
+});
+
+const editTeamUserSchema = z.object({
+    username: z.string().trim().min(2, "Name must be at least 2 characters."),
+    email: z.string().trim().refine(val => !val || isValidEmail(val), "Please enter a valid email address."),
+    country_code: z.string().min(1, "Country code is required."),
+    mobile: z.string().min(1, "Mobile number is required.").regex(/^\d{10}$/, "Phone number must be 10 digits."),
+    role: z.string().min(1, "Role is required."),
     status: z.string().optional().or(z.literal('')),
 });
 
-type TeamUserFormValues = z.infer<typeof teamUserSchema>;
+type TeamUserFormValues = z.infer<typeof createTeamUserSchema>;
 
 interface TeamUserDrawerProps {
     isOpen: boolean;
@@ -42,8 +60,11 @@ export const TeamUserDrawer = ({
     isSaving
 }: TeamUserDrawerProps) => {
 
-    const { control, register, handleSubmit, reset, formState: { errors }, watch } = useForm<TeamUserFormValues>({
-        resolver: zodResolver(teamUserSchema) as any,
+    const { control, register, handleSubmit, reset, formState: { errors, isDirty }, watch } = useForm<TeamUserFormValues>({
+        resolver: (async (data: any, context: any, options: any) => {
+            const schema = mode === 'create' ? createTeamUserSchema : editTeamUserSchema;
+            return zodResolver(schema)(data, context, options);
+        }) as any,
         defaultValues: {
             username: '',
             email: '',
@@ -136,12 +157,12 @@ export const TeamUserDrawer = ({
                     {!isView && (
                         <button
                             onClick={handleSubmit(handleFormSubmit)}
-                            disabled={isSaving}
+                            disabled={isSaving || (isEdit && !isDirty)}
                             className={cn(
                                 "px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg flex items-center space-x-2",
                                 isDarkMode
-                                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 disabled:opacity-50'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 disabled:opacity-50'
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed'
                             )}
                         >
                             {isSaving && <Loader2 className="animate-spin" size={14} />}

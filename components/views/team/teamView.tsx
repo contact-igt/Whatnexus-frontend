@@ -16,6 +16,8 @@ import { Input } from '../../ui/input';
 import { useCreateTenantUserMutation, useTenantUserQuery, useSoftDeleteTenantUserMutation, useUpdateTenantUserMutation, usePermanentDeleteTenantUserMutation, useGetTenantUserByIdQuery, useDeletedTenantUserQuery, useRestoreTenantUserMutation } from '@/hooks/useTenantUserQuery';
 import { ActionMenu } from '@/components/ui/actionMenu';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { useDispatch } from 'react-redux';
+import { updateUserData } from '@/redux/slices/auth/authSlice';
 import { DataTable, ColumnDef } from '@/components/ui/dataTable';
 import { ConfirmationModal } from '@/components/ui/confirmationModal';
 import { Pagination } from '@/components/ui/pagination';
@@ -46,6 +48,7 @@ type EditFormData = z.infer<typeof editFormSchema>;
 
 export const TeamManagementView = () => {
     const { user } = useAuth();
+    const dispatch = useDispatch();
     const { isDarkMode } = useTheme();
     const [activeTab, setActiveTab] = useState<TabType>('active');
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -121,6 +124,10 @@ export const TeamManagementView = () => {
                 { tenantUserId: selectedUser.tenant_user_id, data },
                 {
                     onSuccess: () => {
+                        // If the edited user is the logged-in user, update Redux auth state
+                        if (selectedUser.tenant_user_id === user?.tenant_user_id) {
+                            dispatch(updateUserData({ ...user, ...data }));
+                        }
                         setIsDrawerOpen(false);
                         setSelectedUser(null);
                     }
@@ -264,7 +271,7 @@ export const TeamManagementView = () => {
                             onView={() => handleViewClick(row)}
                             isEdit={user?.role === 'tenant_admin'}
                             onEdit={() => handleEditClick(row)}
-                            isDelete={user?.role === 'tenant_admin'}
+                            isDelete={user?.role === 'tenant_admin' && row.role !== 'tenant_admin'}
                             onDelete={() => handleDeleteClick(row)}
                         />
                     ) : (

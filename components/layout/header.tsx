@@ -244,7 +244,7 @@ export const Header = () => {
                                 ) : (
                                     <>
                                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
-                                        Inactive
+                                        Disconnected
                                     </>
                                 )}
                             </span>
