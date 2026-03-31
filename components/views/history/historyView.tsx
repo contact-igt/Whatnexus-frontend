@@ -201,6 +201,8 @@ export const HistoryView = () => {
                 });
                 return;
             }
+            // Chat may have moved to live chats after template send — keep current selection
+            if (selectedChat?.phone === phoneParam) return;
         }
         setSelectedChat(null);
     }, [chatHistoryList?.data?.chats, phoneParam]);

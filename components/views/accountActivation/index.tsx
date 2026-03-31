@@ -120,7 +120,17 @@ export default function AccountActivation() {
             else if (!inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "accepted" && inviteCurrentStatus?.is_password) {
                 dispatch(setActiveStatus("already-activated"));
             }
+            else if (!inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "completed") {
+                dispatch(setActiveStatus("already-activated"));
+            }
+            else if (!inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "expired") {
+                dispatch(setActiveStatus("expired"));
+            }
             else if (!inviteCurrentStatus?.valid && inviteCurrentStatus?.status == "pending") {
+                dispatch(setActiveStatus("expired"));
+            }
+            else if (!inviteCurrentStatus?.valid) {
+                // Catch-all for any other invalid state (e.g., missing token, invalid link)
                 dispatch(setActiveStatus("expired"));
             }
         }
