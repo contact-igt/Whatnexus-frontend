@@ -127,12 +127,12 @@ export const Sidebar = () => {
                                 icon: MessageSquare,
                                 onClick: () => handleActiveTab('/settings/whatsapp-settings'),
                             },
-                            {
+                            ...(typeof window !== 'undefined' && window.location.hostname === 'localhost' ? [{
                                 label: 'WhatsApp Playground',
                                 route: '/settings/whatsapp-playground',
                                 icon: FlaskConical,
                                 onClick: () => handleActiveTab('/settings/whatsapp-playground'),
-                            }
+                            }] : [])
                         ]}
                     />
                 </RoleBasedWrapper>

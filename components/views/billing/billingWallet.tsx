@@ -41,8 +41,8 @@ export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate }: Bi
 =====================================
 
 Invoice Number: ${payment.invoice_number || `INV-${payment.id}`}
-Date: ${new Date(payment.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
-Time: ${new Date(payment.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+Date: ${new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+Time: ${new Date(payment.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
 
 -------------------------------------
 TRANSACTION DETAILS
@@ -91,8 +91,8 @@ For support: support@whatnexus.com
     payments.forEach((payment: any) => {
       const row = [
         payment.invoice_number || `INV-${payment.id}`,
-        new Date(payment.created_at).toLocaleDateString('en-IN'),
-        new Date(payment.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        new Date(payment.createdAt).toLocaleDateString('en-IN'),
+        new Date(payment.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
         payment.razorpay_payment_id || 'N/A',
         `"${payment.description || 'Wallet Recharge'}"`,
         parseFloat(payment.amount).toFixed(2),
@@ -414,7 +414,7 @@ For support: support@whatnexus.com
                       <div className="flex flex-col gap-0.5">
                         <span className={cn("text-[11px] font-black tracking-tight transition-colors", isDarkMode ? "text-white/80 group-hover/item:text-white" : "text-slate-900")}>{payment.description || 'Wallet Recharge'}</span>
                         <span className={cn("text-[9px] font-bold uppercase tracking-widest", isDarkMode ? "text-white/20" : "text-slate-400")}>
-                          {new Date(payment.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(payment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                       <span className={cn(

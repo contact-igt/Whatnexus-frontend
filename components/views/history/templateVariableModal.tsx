@@ -374,18 +374,8 @@ export const TemplateVariableModal = ({
                                     </div>
                                 ) : (
                                     /* Preview uploaded/entered media */
-                                    <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            {getMediaIcon()}
-                                            <div className="min-w-0">
-                                                <p className={cn("text-sm font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                    {mediaFileName || "Media URL"}
-                                                </p>
-                                                <p className={cn("text-xs truncate max-w-[200px]", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                    {mediaUrl}
-                                                </p>
-                                            </div>
-                                        </div>
+                                    <div className="relative rounded-lg bg-emerald-500/10 border border-emerald-500/20 overflow-hidden">
+                                        {/* Close button — top right */}
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -393,10 +383,31 @@ export const TemplateVariableModal = ({
                                                 setMediaFileName("");
                                                 if (fileInputRef.current) fileInputRef.current.value = "";
                                             }}
-                                            className="p-1 rounded hover:bg-red-500/10 text-red-500 transition-colors"
+                                            className="absolute top-2 right-2 z-10 p-1 rounded-full bg-black/50 hover:bg-red-500/80 text-white transition-colors"
                                         >
-                                            <X size={16} />
+                                            <X size={14} />
                                         </button>
+                                        {/* Image/Video preview */}
+                                        {mediaType === 'image' && (
+                                            <div className="w-full max-h-60 overflow-hidden">
+                                                <img src={mediaUrl} alt={mediaFileName || "Uploaded image"} className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        {mediaType === 'video' && (
+                                            <div className="w-full max-h-60 overflow-hidden">
+                                                <video src={mediaUrl} controls className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        {mediaType === 'document' && (
+                                            <div className="flex items-center gap-3 p-3">
+                                                {getMediaIcon()}
+                                                <div className="min-w-0">
+                                                    <p className={cn("text-sm font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                        {mediaFileName || "Media URL"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

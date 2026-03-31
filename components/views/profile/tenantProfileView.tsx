@@ -5,79 +5,173 @@ import { RootState } from '@/redux/store';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Mail, Phone, Edit2, X, Check, Building2, MapPin, ShieldCheck, Globe, Navigation, Calendar } from 'lucide-react';
+import { User, Mail, Phone, Edit2, X, Check, Building2, MapPin, Globe, Navigation, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
-import { useUpdateTenantUserMutation, useGetTenantProfileQuery } from '@/hooks/useTenantUserQuery';
+import { useGetTenantProfileQuery, useUpdateTenantProfileMutation } from '@/hooks/useTenantUserQuery';
 import { updateUserData } from '@/redux/slices/auth/authSlice';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Country, State, City } from 'country-state-city';
 
-// Form Schema - Only fields editable via backend
-const editProfileSchema = z.object({
+// Base profile schema for all roles
+const baseProfileFields = {
     username: z.string().min(2, { message: "Username must be at least 2 characters." }),
     country_code: z.string().min(2, { message: "Country code is required." }),
     mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
+};
+
+// Extended schema for tenant_admin includes organization fields
+const adminProfileSchema = z.object({
+    ...baseProfileFields,
+    company_name: z.string().min(2, { message: "Company name is required." }),
+    type: z.string().min(1, { message: "Organization type is required." }),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    pincode: z.string().optional(),
 });
 
-type EditProfileData = z.infer<typeof editProfileSchema>;
+const staffProfileSchema = z.object(baseProfileFields);
+
+type AdminProfileData = z.infer<typeof adminProfileSchema>;
+type StaffProfileData = z.infer<typeof staffProfileSchema>;
+type EditFormData = AdminProfileData;
 
 export default function TenantProfileView() {
     const { isDarkMode } = useTheme();
     const dispatch = useDispatch();
     const user = useSelector((state: RootState) => state.auth.user);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [countryIso, setCountryIso] = useState('');
+    const [stateIso, setStateIso] = useState('');
 
-    const { mutate: updateProfile, isPending: isUpdating } = useUpdateTenantUserMutation();
+    const isTenantAdmin = user?.role === 'tenant_admin';
+
+    // Cascading location dropdown options
+    const countryOptions = Country.getAllCountries().map(c => ({ label: c.name, value: c.isoCode }));
+    const stateOptions = countryIso
+        ? State.getStatesOfCountry(countryIso).map(s => ({ label: s.name, value: s.isoCode }))
+        : [];
+    const cityOptions = (countryIso && stateIso)
+        ? City.getCitiesOfState(countryIso, stateIso).map(c => ({ label: c.name, value: c.name }))
+        : [];
+
+    const { mutate: updateProfile, isPending: isUpdating } = useUpdateTenantProfileMutation();
     const { data: profileData, refetch: refetchProfile } = useGetTenantProfileQuery();
 
     // Display data: prefer fresh profile data over Redux user
     const displayUser = profileData?.data || user;
 
-    const { control, register, handleSubmit, formState: { errors }, reset } = useForm<EditProfileData>({
+    const { control, register, handleSubmit, formState: { errors }, reset } = useForm<EditFormData>({
         defaultValues: {
-            username: user?.username || user?.name || '',
-            country_code: user?.country_code?.startsWith('+') ? user?.country_code : `+${user?.country_code || '91'}`,
-            mobile: user?.mobile || '',
+            username: '',
+            country_code: '+91',
+            mobile: '',
+            company_name: '',
+            type: '',
+            address: '',
+            city: '',
+            state: '',
+            country: '',
+            pincode: '',
         },
-        resolver: zodResolver(editProfileSchema)
+        resolver: zodResolver(isTenantAdmin ? adminProfileSchema : staffProfileSchema as any)
     });
 
-    const onSubmit = (data: EditProfileData) => {
-        const tenantUserId = user?.tenant_user_id;
-        if (!tenantUserId) return;
+    const onSubmit = (data: EditFormData) => {
+        const payload: any = {
+            username: data.username,
+            country_code: data.country_code,
+            mobile: data.mobile,
+        };
 
-        updateProfile(
-            { tenantUserId, data: { username: data.username, country_code: data.country_code, mobile: data.mobile } },
-            {
-                onSuccess: async () => {
-                    setIsEditMode(false);
+        // Include organization fields only for tenant_admin
+        if (isTenantAdmin) {
+            // Resolve ISO codes to full names for storage
+            const selectedCountry = Country.getAllCountries().find(c => c.isoCode === data.country);
+            const selectedState = data.country
+                ? State.getStatesOfCountry(data.country).find(s => s.isoCode === data.state)
+                : undefined;
+
+            payload.organization = {
+                company_name: data.company_name,
+                type: data.type,
+                address: data.address || '',
+                city: data.city || '',
+                state: selectedState?.name || data.state || '',
+                country: selectedCountry?.name || data.country || '',
+                pincode: data.pincode || '',
+            };
+        }
+
+        updateProfile(payload, {
+            onSuccess: async (response: any) => {
+                setIsEditMode(false);
+                if (response?.data) {
+                    dispatch(updateUserData(response.data));
+                } else {
                     const result = await refetchProfile();
                     if (result.data?.data) {
                         dispatch(updateUserData(result.data.data));
                     }
                 }
             }
-        );
+        });
     };
 
     const handleCancel = () => {
         setIsEditMode(false);
+        syncFormValues();
     };
 
-    // Sync form values when entering edit mode or user data changes
-    useEffect(() => {
-        if (user) {
-            const rawCountryCode = user?.country_code || '+91';
-            const normalizedCountryCode = rawCountryCode.startsWith('+') ? rawCountryCode : `+${rawCountryCode}`;
+    const syncFormValues = () => {
+        const source = displayUser || user;
+        if (!source) return;
+        const rawCountryCode = source?.country_code || '+91';
+        const normalizedCountryCode = rawCountryCode.startsWith('+') ? rawCountryCode : `+${rawCountryCode}`;
+        const org = (source as any)?.organization;
 
-            reset({
-                username: user?.username || user?.name || '',
-                country_code: normalizedCountryCode,
-                mobile: user?.mobile || '',
-            });
-        }
-    }, [user, reset]);
+        // Resolve stored country/state names to ISO codes for cascading dropdowns
+        const storedCountry = org?.country || '';
+        const storedState = org?.state || '';
+
+        const matchedCountry = Country.getAllCountries().find(
+            c => c.isoCode.toUpperCase() === storedCountry.toUpperCase() ||
+                c.name.toLowerCase() === storedCountry.toLowerCase()
+        );
+        const resolvedCountryIso = matchedCountry?.isoCode || '';
+
+        const matchedState = resolvedCountryIso
+            ? State.getStatesOfCountry(resolvedCountryIso).find(
+                s => s.isoCode.toUpperCase() === storedState.toUpperCase() ||
+                    s.name.toLowerCase() === storedState.toLowerCase()
+            ) : undefined;
+        const resolvedStateIso = matchedState?.isoCode || '';
+
+        setCountryIso(resolvedCountryIso);
+        setStateIso(resolvedStateIso);
+
+        reset({
+            username: source?.username || source?.name || '',
+            country_code: normalizedCountryCode,
+            mobile: source?.mobile || '',
+            company_name: org?.company_name || '',
+            type: org?.type || '',
+            address: org?.address || '',
+            city: org?.city || '',
+            state: resolvedStateIso,
+            country: resolvedCountryIso,
+            pincode: org?.pincode || '',
+        });
+    };
+
+    // Sync form values when user data changes
+    useEffect(() => {
+        syncFormValues();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, displayUser]);
 
     // Fetch and update profile data on mount
     useEffect(() => {
@@ -143,7 +237,7 @@ export default function TenantProfileView() {
                             <button
                                 onClick={() => setIsEditMode(true)}
                                 className={cn(
-                                    "px-4 py-2 rounded-xl font-semibold text-sm transition-all flex items-center space-x-2",
+                                    "px-5 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center space-x-2",
                                     "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
                                 )}
                             >
@@ -156,56 +250,199 @@ export default function TenantProfileView() {
                     {/* Profile Content */}
                     {isEditMode ? (
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                            <Input
-                                isDarkMode={isDarkMode}
-                                label="Username"
-                                {...register('username')}
-                                icon={User}
-                                placeholder="Enter username"
-                                disabled={isUpdating}
-                                error={errors.username?.message}
-                                required
-                            />
+                            {/* Profile Details Section */}
+                            <div>
+                                <h3 className={cn(
+                                    "text-base font-bold flex items-center space-x-2 mb-4",
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                )}>
+                                    <User size={18} className="text-emerald-500" />
+                                    <span>Profile Details</span>
+                                </h3>
 
-                            <div className="grid grid-cols-3 gap-4">
-                                <Controller
-                                    name="country_code"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Select
+                                <div className="space-y-4">
+                                    <Input
+                                        isDarkMode={isDarkMode}
+                                        label="Username"
+                                        {...register('username')}
+                                        icon={User}
+                                        placeholder="Enter username"
+                                        disabled={isUpdating}
+                                        error={errors.username?.message}
+                                        required
+                                    />
+
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <Controller
+                                            name="country_code"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select
+                                                    isDarkMode={isDarkMode}
+                                                    label="Country Code"
+                                                    value={field.value || '+91'}
+                                                    onChange={field.onChange}
+                                                    options={[
+                                                        { value: '+91', label: 'India (+91)' },
+                                                        { value: '+1', label: 'USA (+1)' },
+                                                        { value: '+44', label: 'UK (+44)' },
+                                                        { value: '+971', label: 'UAE (+971)' }
+                                                    ]}
+                                                    disabled={isUpdating}
+                                                    className="col-span-1"
+                                                    error={errors.country_code?.message}
+                                                    required
+                                                />
+                                            )}
+                                        />
+
+                                        <Input
                                             isDarkMode={isDarkMode}
-                                            label="Country Code"
-                                            value={field.value || '+91'}
-                                            onChange={field.onChange}
-                                            options={[
-                                                { value: '+91', label: 'India (+91)' },
-                                                { value: '+1', label: 'USA (+1)' },
-                                                { value: '+44', label: 'UK (+44)' },
-                                                { value: '+971', label: 'UAE (+971)' }
-                                            ]}
+                                            label="Mobile Number"
+                                            {...register('mobile')}
+                                            onInput={(e) => { e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '') }}
+                                            maxLength={10}
+                                            icon={Phone}
+                                            placeholder="Enter mobile number"
                                             disabled={isUpdating}
-                                            className="col-span-1"
-                                            error={errors.country_code?.message}
+                                            error={errors.mobile?.message}
+                                            wrapperClassName="col-span-2"
                                             required
                                         />
-                                    )}
-                                />
-
-                                <Input
-                                    isDarkMode={isDarkMode}
-                                    label="Mobile Number"
-                                    {...register('mobile')}
-                                    onInput={(e) => { e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '') }}
-                                    maxLength={10}
-                                    icon={Phone}
-                                    placeholder="Enter mobile number"
-                                    disabled={isUpdating}
-                                    error={errors.mobile?.message}
-                                    wrapperClassName="col-span-2"
-                                    required
-                                />
+                                    </div>
+                                </div>
                             </div>
 
+                            {/* Organization Details Section - Only for tenant_admin */}
+                            {isTenantAdmin && (
+                                <div className={cn(
+                                    "pt-6 border-t",
+                                    isDarkMode ? 'border-white/10' : 'border-slate-200'
+                                )}>
+                                    <h3 className={cn(
+                                        "text-base font-bold flex items-center space-x-2 mb-4",
+                                        isDarkMode ? "text-white" : "text-slate-900"
+                                    )}>
+                                        <Building2 size={18} className="text-emerald-500" />
+                                        <span>Organization Details</span>
+                                    </h3>
+
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <Input
+                                                isDarkMode={isDarkMode}
+                                                label="Company Name"
+                                                {...register('company_name')}
+                                                icon={Building2}
+                                                placeholder="Enter company name"
+                                                disabled={isUpdating}
+                                                error={errors.company_name?.message}
+                                                required
+                                            />
+                                            <Controller
+                                                name="type"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select
+                                                        isDarkMode={isDarkMode}
+                                                        label="Organization Type"
+                                                        value={field.value || ''}
+                                                        onChange={field.onChange}
+                                                        options={[
+                                                            { value: 'hospital', label: 'Hospital' },
+                                                            { value: 'clinic', label: 'Clinic' },
+                                                            { value: 'organization', label: 'Organization' },
+                                                        ]}
+                                                        disabled={isUpdating}
+                                                        error={errors.type?.message}
+                                                        required
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                        <Input
+                                            isDarkMode={isDarkMode}
+                                            label="Address"
+                                            {...register('address')}
+                                            icon={MapPin}
+                                            placeholder="Enter address"
+                                            disabled={isUpdating}
+                                            error={errors.address?.message}
+                                        />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <Controller
+                                                name="country"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select
+                                                        isDarkMode={isDarkMode}
+                                                        label="Country"
+                                                        value={field.value || ''}
+                                                        onChange={(val: string) => {
+                                                            field.onChange(val);
+                                                            setCountryIso(val);
+                                                            setStateIso('');
+                                                            // Reset state and city when country changes
+                                                            reset((prev: any) => ({ ...prev, country: val, state: '', city: '' }));
+                                                        }}
+                                                        options={countryOptions}
+                                                        disabled={isUpdating}
+                                                        error={errors.country?.message}
+                                                    />
+                                                )}
+                                            />
+                                            <Controller
+                                                name="state"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select
+                                                        isDarkMode={isDarkMode}
+                                                        label="State"
+                                                        value={field.value || ''}
+                                                        onChange={(val: string) => {
+                                                            field.onChange(val);
+                                                            setStateIso(val);
+                                                            // Reset city when state changes
+                                                            reset((prev: any) => ({ ...prev, state: val, city: '' }));
+                                                        }}
+                                                        options={stateOptions}
+                                                        disabled={isUpdating || !countryIso}
+                                                        error={errors.state?.message}
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <Controller
+                                                name="city"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select
+                                                        isDarkMode={isDarkMode}
+                                                        label="City"
+                                                        value={field.value || ''}
+                                                        onChange={field.onChange}
+                                                        options={cityOptions}
+                                                        disabled={isUpdating || !stateIso}
+                                                        error={errors.city?.message}
+                                                    />
+                                                )}
+                                            />
+                                            <Input
+                                                isDarkMode={isDarkMode}
+                                                label="Pincode"
+                                                {...register('pincode')}
+                                                icon={Navigation}
+                                                placeholder="Enter pincode"
+                                                disabled={isUpdating}
+                                                error={errors.pincode?.message}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
                             <div className="flex justify-end gap-3 pt-4">
                                 <button
                                     type="button"
@@ -299,7 +536,7 @@ export default function TenantProfileView() {
                                 </div>
                             </div>
 
-                            {/* Organization Information - Added Sections */}
+                            {/* Organization Information - Read only display */}
                             {(displayUser as any)?.organization && (
                                 <div className="pt-6 mt-6 border-t border-white/10 space-y-6">
                                     <h3 className={cn(
@@ -363,7 +600,7 @@ export default function TenantProfileView() {
                                                         {(displayUser as any).organization.address || 'Address not provided'}
                                                     </p>
                                                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                                                        {[(displayUser as any).organization.city, (displayUser as any).organization.state, (displayUser as any).organization.country].filter(Boolean).map((loc, i) => (
+                                                        {[(displayUser as any).organization.city, (displayUser as any).organization.state, (displayUser as any).organization.country].filter(Boolean).map((loc: string, i: number) => (
                                                             <span key={i} className="text-xs opacity-50 flex items-center">
                                                                 <Globe size={10} className="mr-1" /> {loc}
                                                             </span>
@@ -381,7 +618,7 @@ export default function TenantProfileView() {
                                 </div>
                             )}
 
-                            {/* Account Info - Original Section */}
+                            {/* Account Info */}
                             <div className={cn(
                                 "grid grid-cols-2 gap-4 p-5 rounded-xl border mt-6",
                                 isDarkMode ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50/50 border-slate-100'

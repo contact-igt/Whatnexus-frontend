@@ -10,7 +10,7 @@ import { Appointment } from './bookingList';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { AppointmentDrawer } from './appointmentDrawer';
 import { useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Tablet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Tablet, Clock, User, Stethoscope } from 'lucide-react';
 
 import { GlassCard } from '@/components/ui/glassCard';
 
@@ -40,23 +40,35 @@ const CustomToolbar = (toolbar: any) => {
     return (
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8 mb-16 relative">
             {/* Left Nav Group */}
-            <div className="flex items-center space-x-1 bg-[#1a1c1e] p-1.5 rounded-[1.2rem] border border-white/5 shadow-2xl">
+            <div className={cn(
+                "flex items-center space-x-1 p-1.5 rounded-[1.2rem] border shadow-2xl",
+                isDarkMode ? "bg-[#1a1c1e] border-white/5" : "bg-slate-100 border-slate-200"
+            )}>
                 <button
                     onClick={goToToday}
-                    className="px-6 py-2 rounded-[0.9rem] text-[0.6rem] font-black uppercase tracking-widest transition-all bg-[#2d3035] text-white hover:bg-[#383c42] active:scale-95"
+                    className={cn(
+                        "px-6 py-2 rounded-[0.9rem] text-[0.6rem] font-black uppercase tracking-widest transition-all active:scale-95",
+                        isDarkMode ? "bg-[#2d3035] text-white hover:bg-[#383c42]" : "bg-white text-slate-700 hover:bg-slate-50 shadow-sm"
+                    )}
                 >
                     Today
                 </button>
                 <div className="flex items-center">
                     <button
                         onClick={goToBack}
-                        className="p-2.5 rounded-xl transition-all hover:bg-white/5 text-white/40 hover:text-white active:scale-90"
+                        className={cn(
+                            "p-2.5 rounded-xl transition-all active:scale-90",
+                            isDarkMode ? "hover:bg-white/5 text-white/40 hover:text-white" : "hover:bg-slate-200 text-slate-400 hover:text-slate-700"
+                        )}
                     >
                         <ChevronLeft size={16} />
                     </button>
                     <button
                         onClick={goToNext}
-                        className="p-2.5 rounded-xl transition-all hover:bg-white/5 text-white/40 hover:text-white active:scale-90"
+                        className={cn(
+                            "p-2.5 rounded-xl transition-all active:scale-90",
+                            isDarkMode ? "hover:bg-white/5 text-white/40 hover:text-white" : "hover:bg-slate-200 text-slate-400 hover:text-slate-700"
+                        )}
                     >
                         <ChevronRight size={16} />
                     </button>
@@ -65,13 +77,19 @@ const CustomToolbar = (toolbar: any) => {
 
             {/* Center Date Range */}
             <div className="lg:absolute lg:left-1/2 lg:-translate-x-1/2">
-                <h2 className="text-[1.75rem] font-[900] tracking-tighter text-white/90">
+                <h2 className={cn(
+                    "text-[1.75rem] font-[900] tracking-tighter",
+                    isDarkMode ? "text-white/90" : "text-slate-900"
+                )}>
                     {label}
                 </h2>
             </div>
 
             {/* Right View Switcher */}
-            <div className="flex items-center bg-[#1a1c1e] p-1.5 rounded-[1.2rem] border border-white/5 shadow-2xl">
+            <div className={cn(
+                "flex items-center p-1.5 rounded-[1.2rem] border shadow-2xl",
+                isDarkMode ? "bg-[#1a1c1e] border-white/5" : "bg-slate-100 border-slate-200"
+            )}>
                 {[
                     { id: 'month', label: 'Month', icon: LayoutGrid },
                     { id: 'week', label: 'Week', icon: Tablet },
@@ -85,7 +103,7 @@ const CustomToolbar = (toolbar: any) => {
                             "flex items-center space-x-2 px-5 py-2.5 rounded-[0.9rem] text-[0.6rem] font-bold uppercase tracking-widest transition-all duration-500",
                             view === item.id
                                 ? "bg-[#10b981] text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]"
-                                : "text-white/30 hover:text-white/60"
+                                : isDarkMode ? "text-white/30 hover:text-white/60" : "text-slate-400 hover:text-slate-700"
                         )}
                     >
                         <item.icon size={12} className={cn("transition-transform", view === item.id ? "scale-110" : "")} />
@@ -145,10 +163,11 @@ const CustomEvent = ({ event, isDarkMode }: any) => {
 
     return (
         <div className={cn(
-            "flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-white/5 backdrop-blur-md h-full w-full shadow-lg transition-transform",
+            "flex items-center space-x-2 px-3 py-1.5 rounded-xl border backdrop-blur-md h-full w-full shadow-lg transition-transform",
+            isDarkMode ? "border-white/5" : "border-black/5",
             bgClass
         )}>
-            <div className={cn("w-1.5 h-1.5 rounded-full", dotClass)} />
+            <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", dotClass)} />
             <span className={cn("text-[0.65rem] font-black truncate uppercase tracking-tight", colorClass)}>
                 {event.title}
             </span>
@@ -158,8 +177,153 @@ const CustomEvent = ({ event, isDarkMode }: any) => {
 
 const CustomTimeGutterHeader = () => {
     return (
-        <div className="flex items-center justify-center h-full opacity-20">
+        <div className="flex items-center justify-center h-full opacity-30">
             <span className="text-[0.5rem] font-black uppercase tracking-tighter transform -rotate-90">Time</span>
+        </div>
+    );
+};
+
+const getStatusStyle = (status: string, isDarkMode: boolean) => {
+    switch (status?.toLowerCase()) {
+        case 'confirmed':
+            return {
+                dot: 'bg-emerald-500',
+                badge: isDarkMode ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                accent: 'border-l-emerald-500',
+            };
+        case 'pending':
+            return {
+                dot: 'bg-amber-500',
+                badge: isDarkMode ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-700 border-amber-200',
+                accent: 'border-l-amber-500',
+            };
+        case 'cancelled':
+            return {
+                dot: 'bg-red-500',
+                badge: isDarkMode ? 'bg-red-500/15 text-red-400 border-red-500/20' : 'bg-red-50 text-red-700 border-red-200',
+                accent: 'border-l-red-500',
+            };
+        case 'completed':
+            return {
+                dot: 'bg-blue-500',
+                badge: isDarkMode ? 'bg-blue-500/15 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-700 border-blue-200',
+                accent: 'border-l-blue-500',
+            };
+        case 'noshow':
+            return {
+                dot: 'bg-orange-500',
+                badge: isDarkMode ? 'bg-orange-500/15 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-700 border-orange-200',
+                accent: 'border-l-orange-500',
+            };
+        default:
+            return {
+                dot: 'bg-slate-500',
+                badge: isDarkMode ? 'bg-white/10 text-white/60 border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200',
+                accent: 'border-l-slate-500',
+            };
+    }
+};
+
+const CustomAgendaDate = ({ label, day, isDarkMode }: any) => {
+    const isToday = new Date().toDateString() === day.toDateString();
+    return (
+        <div className="flex flex-col items-center min-w-[80px] py-2">
+            <span className={cn(
+                "text-[0.6rem] font-black uppercase tracking-widest mb-1",
+                isDarkMode ? "text-white/40" : "text-slate-400"
+            )}>
+                {format(day, 'EEE')}
+            </span>
+            <span className={cn(
+                "text-2xl font-black tracking-tighter leading-none",
+                isToday ? "text-emerald-500" : (isDarkMode ? "text-white" : "text-slate-900")
+            )}>
+                {format(day, 'd')}
+            </span>
+            <span className={cn(
+                "text-[0.55rem] font-bold uppercase tracking-wider mt-0.5",
+                isDarkMode ? "text-white/30" : "text-slate-400"
+            )}>
+                {format(day, 'MMM')}
+            </span>
+            {isToday && (
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] mt-1.5" />
+            )}
+        </div>
+    );
+};
+
+const CustomAgendaTime = ({ event, isDarkMode }: any) => {
+    return (
+        <div className={cn(
+            "flex items-center space-x-2 py-2 px-1 min-w-[100px]",
+        )}>
+            <Clock size={12} className={cn("flex-shrink-0", isDarkMode ? "text-white/30" : "text-slate-400")} />
+            <span className={cn(
+                "text-xs font-bold tracking-tight whitespace-nowrap",
+                isDarkMode ? "text-white/50" : "text-slate-500"
+            )}>
+                {event.resource?.appointment_time || format(event.start, 'hh:mm a')}
+            </span>
+        </div>
+    );
+};
+
+const CustomAgendaEvent = ({ event, isDarkMode }: any) => {
+    const appointment = event.resource as Appointment;
+    const style = getStatusStyle(appointment?.status, isDarkMode);
+
+    return (
+        <div className={cn(
+            "flex items-center justify-between py-3 px-4 rounded-xl border-l-[3px] transition-all cursor-pointer group",
+            isDarkMode
+                ? "bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.04] hover:border-white/[0.08]"
+                : "bg-white hover:bg-slate-50 border border-slate-100 hover:border-slate-200 shadow-sm hover:shadow-md",
+            style.accent
+        )}>
+            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                    isDarkMode ? "bg-white/5" : "bg-slate-100"
+                )}>
+                    <User size={14} className={cn(isDarkMode ? "text-white/50" : "text-slate-500")} />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className={cn(
+                        "text-sm font-bold truncate leading-tight",
+                        isDarkMode ? "text-white" : "text-slate-900"
+                    )}>
+                        {appointment?.patient_name || event.title}
+                    </p>
+                    {appointment?.doctor?.name && (
+                        <div className="flex items-center space-x-1 mt-0.5">
+                            <Stethoscope size={10} className={cn(isDarkMode ? "text-white/30" : "text-slate-400")} />
+                            <span className={cn(
+                                "text-[0.65rem] font-medium truncate",
+                                isDarkMode ? "text-white/40" : "text-slate-500"
+                            )}>
+                                {appointment?.doctor?.title} {appointment?.doctor?.name}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+            <div className="flex items-center space-x-3 flex-shrink-0 ml-3">
+                {appointment?.token_number && (
+                    <span className={cn(
+                        "text-[0.6rem] font-black px-2 py-0.5 rounded-md",
+                        isDarkMode ? "bg-white/5 text-white/40" : "bg-slate-100 text-slate-500"
+                    )}>
+                        #{appointment.token_number}
+                    </span>
+                )}
+                <span className={cn(
+                    "text-[0.6rem] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border capitalize",
+                    style.badge
+                )}>
+                    {appointment?.status || 'Pending'}
+                </span>
+            </div>
         </div>
     );
 };
@@ -324,9 +488,15 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                             ),
                         },
                         timeGutterHeader: CustomTimeGutterHeader,
+                        agenda: {
+                            date: (props: any) => <CustomAgendaDate {...props} isDarkMode={isDarkMode} />,
+                            time: (props: any) => <CustomAgendaTime {...props} isDarkMode={isDarkMode} />,
+                            event: (props: any) => <CustomAgendaEvent {...props} isDarkMode={isDarkMode} />,
+                        },
                     }}
                     views={['month', 'week', 'day', 'agenda']}
                     popup
+                    showAllEvents
                     className={isDarkMode ? 'dark-calendar' : 'light-calendar'}
                 />
             </GlassCard>
@@ -356,6 +526,29 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                 .rbc-month-row {
                     border-top: none !important;
                     position: relative;
+                    overflow: visible !important;
+                }
+
+                .rbc-row-content-scrollable {
+                    max-height: 150px !important;
+                    overflow-y: auto !important;
+                    overflow-x: hidden !important;
+                    scrollbar-width: thin;
+                    scrollbar-color: ${isDarkMode ? 'rgba(255,255,255,0.08) transparent' : 'rgba(0,0,0,0.06) transparent'};
+                }
+
+                .rbc-row-content-scrollable::-webkit-scrollbar {
+                    width: 3px;
+                }
+                .rbc-row-content-scrollable::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .rbc-row-content-scrollable::-webkit-scrollbar-thumb {
+                    background: ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+                    border-radius: 10px;
+                }
+                .rbc-row-content-scrollable:hover::-webkit-scrollbar-thumb {
+                    background: ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'};
                 }
 
                 /* Use very soft box-shadows or gradients for depth instead of lines */
@@ -440,55 +633,80 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                     border: 2px solid ${isDarkMode ? '#0f172a' : '#fff'};
                 }
 
-                /* Agenda View - Floating Cards */
+                /* ─── Agenda View - Redesigned ─── */
                 .rbc-agenda-view {
                     border: none !important;
+                    overflow: hidden !important;
+                    border-radius: 16px !important;
                 }
 
-                .rbc-agenda-table {
+                .rbc-agenda-view table.rbc-agenda-table {
                     border: none !important;
                     border-collapse: separate !important;
-                    border-spacing: 0 10px !important;
+                    border-spacing: 0 6px !important;
                     background: transparent !important;
                 }
 
-                .rbc-agenda-table tr {
-                    background: ${isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.8)'} !important;
-                    border-radius: 20px !important;
-                    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-                    border: 1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'} !important;
+                .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+                    border-bottom: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} !important;
+                    padding: 12px 16px !important;
+                    font-size: 0.6rem !important;
+                    font-weight: 800 !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.15em !important;
+                    color: ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.35)'} !important;
+                    background: transparent !important;
                 }
 
-                .rbc-agenda-table tr:hover {
-                    background: ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#fff'} !important;
-                    transform: scale(1.01) translateY(-4px);
-                    border-color: #10b98140 !important;
-                    box-shadow: 0 20px 40px -15px ${isDarkMode ? 'rgba(0,0,0,0.4)' : 'rgba(16, 185, 129, 0.1)'};
+                .rbc-agenda-view table.rbc-agenda-table tbody > tr {
+                    background: transparent !important;
+                    border: none !important;
+                    transition: none !important;
                 }
 
-                .rbc-agenda-date-cell {
-                    padding: 30px !important;
-                    color: #10b981 !important;
-                    border-radius: 24px 0 0 24px !important;
+                .rbc-agenda-view table.rbc-agenda-table tbody > tr:hover {
+                    background: transparent !important;
+                    transform: none !important;
+                    box-shadow: none !important;
                 }
 
-                .rbc-agenda-time-cell {
-                    padding: 30px !important;
-                    color: ${isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.4)'} !important;
+                .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+                    border: none !important;
+                    padding: 4px 8px !important;
+                    vertical-align: middle !important;
                 }
 
-                .rbc-agenda-event-cell {
-                    padding: 30px !important;
-                    font-size: 1.1rem !important;
-                    color: ${isDarkMode ? '#fff' : '#0f172a'} !important;
-                    border-radius: 0 24px 24px 0 !important;
+                .rbc-agenda-view table.rbc-agenda-table tbody > tr > td + td + td {
+                    width: 100% !important;
+                }
+
+                .rbc-agenda-view table.rbc-agenda-table tbody > tr > td.rbc-agenda-date-cell {
+                    white-space: nowrap !important;
+                    padding-left: 0 !important;
+                }
+
+                .rbc-agenda-view table.rbc-agenda-table tbody > tr > td.rbc-agenda-time-cell {
+                    white-space: nowrap !important;
                 }
 
                 .rbc-agenda-empty {
-                    padding: 40px 0 !important;
-                    color: ${isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0,0,0,0.5)'} !important;
-                    font-size: 1.1rem !important;
-                    font-weight: 500 !important;
+                    padding: 60px 20px !important;
+                    text-align: center !important;
+                    color: ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} !important;
+                    font-size: 0.9rem !important;
+                    font-weight: 600 !important;
+                }
+
+                /* Agenda scrollbar */
+                .rbc-agenda-view::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .rbc-agenda-view::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .rbc-agenda-view::-webkit-scrollbar-thumb {
+                    background: ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'};
+                    border-radius: 10px;
                 }
 
                 /* Events - Floating Glass Slivers */
@@ -497,6 +715,8 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                     padding: 0 4px !important;
                     margin: 2px 0 !important;
                     transition: all 0.3s ease;
+                    border: none !important;
+                    outline: none !important;
                 }
 
                 .rbc-event:hover {
@@ -509,6 +729,99 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                     font-weight: 800 !important;
                     letter-spacing: 0.02em;
                     line-height: 1.4;
+                }
+
+                /* ─── Week & Day View Specific Styles ─── */
+                .rbc-time-view {
+                    border-radius: 16px !important;
+                    overflow: hidden !important;
+                }
+
+                .rbc-time-view .rbc-time-header {
+                    border-bottom: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} !important;
+                }
+
+                .rbc-time-view .rbc-allday-cell {
+                    background: ${isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'} !important;
+                    border-top: none !important;
+                    min-height: 30px !important;
+                }
+
+                .rbc-time-view .rbc-time-content {
+                    border-top: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} !important;
+                }
+
+                .rbc-time-view .rbc-time-column {
+                    background: transparent !important;
+                }
+
+                .rbc-time-view .rbc-day-slot .rbc-time-slot {
+                    border-top: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'} !important;
+                }
+
+                /* Events inside week/day time grid */
+                .rbc-time-view .rbc-event {
+                    background: transparent !important;
+                    border: none !important;
+                    border-radius: 12px !important;
+                    padding: 0 !important;
+                    margin: 1px 2px !important;
+                    overflow: hidden !important;
+                }
+
+                .rbc-time-view .rbc-event:hover {
+                    transform: scale(1.02) !important;
+                }
+
+                .rbc-time-view .rbc-event-label {
+                    display: none !important;
+                }
+
+                .rbc-time-view .rbc-event-content {
+                    height: 100% !important;
+                    font-size: 0.65rem !important;
+                }
+
+                .rbc-time-view .rbc-event-content > div {
+                    height: 100% !important;
+                    border-radius: 12px !important;
+                }
+
+                /* Day slot events - ensure they fill the column */
+                .rbc-day-slot .rbc-events-container {
+                    margin-right: 2px !important;
+                }
+
+                /* Overlapping events in week/day */
+                .rbc-day-slot .rbc-event {
+                    border-left: 3px solid transparent !important;
+                }
+
+                /* Time header row in week view */
+                .rbc-time-header-cell {
+                    min-height: auto !important;
+                }
+
+                .rbc-time-view .rbc-row.rbc-row-resource {
+                    border-bottom: none !important;
+                }
+
+                .rbc-time-view .rbc-header {
+                    padding: 12px 0 16px 0 !important;
+                    border-bottom: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'} !important;
+                }
+
+                /* Label in time gutter for week/day */
+                .rbc-time-view .rbc-time-gutter .rbc-timeslot-group {
+                    border-bottom: none !important;
+                    min-height: 60px !important;
+                }
+
+                .rbc-time-view .rbc-label {
+                    font-size: 0.65rem !important;
+                    font-weight: 700 !important;
+                    color: ${isDarkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)'} !important;
+                    padding: 0 12px !important;
                 }
 
                 .rbc-show-more {

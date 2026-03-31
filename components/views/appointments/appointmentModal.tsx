@@ -101,13 +101,17 @@ export const AppointmentModal = ({
             toast.error('Valid age is required');
             return;
         }
+        if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+            toast.error('Valid email is required');
+            return;
+        }
 
         if (mode === 'create') {
             createMutation.mutate({
                 patient_name: formData.patient_name,
                 country_code: formData.country_code,
                 contact_number: formData.contact_number,
-                email: formData.email || undefined,
+                email: formData.email.trim(),
                 age: Number(formData.age),
                 appointment_date: formData.appointment_date,
                 appointment_time: formData.appointment_time,
@@ -123,7 +127,7 @@ export const AppointmentModal = ({
                     patient_name: formData.patient_name,
                     country_code: formData.country_code,
                     contact_number: formData.contact_number,
-                    email: formData.email || undefined,
+                    email: formData.email.trim(),
                     age: Number(formData.age),
                     appointment_date: formData.appointment_date,
                     appointment_time: formData.appointment_time,
@@ -282,10 +286,10 @@ export const AppointmentModal = ({
                     </div>
                 </div>
 
-                {/* Email (Optional) */}
+                {/* Email */}
                 <div>
                     <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                        Email
+                        Email *
                     </label>
                     <div className="relative">
                         <div className={cn("absolute left-3 top-2.5", isDarkMode ? "text-white/30" : "text-slate-400")}>

@@ -54,6 +54,11 @@ export class tenantUserApiData {
         return await _axios("get", `/tenant/user/profile`)
     }
 
+    // PUT /api/whatsapp/tenant/user/profile - Update profile (and organization for tenant_admin)
+    updateTenantProfile = async (data: any) => {
+        return await _axios("put", `/tenant/user/profile`, data)
+    }
+
     // PUT /api/whatsapp/tenant/user/organization - Update organization details for logged-in tenant admin
     updateTenantOrganization = async (data: any) => {
         return await _axios("put", `/tenant/user/organization`, data)

@@ -84,7 +84,7 @@ export const ImportContactsModal = ({
     };
 
     const downloadSampleCSV = () => {
-        const csvContent = "name,phone,email\nAarav Patel,+919876543210,aarav@example.com\nPriya Sharma,+919988776655,priya@example.com\nRahul Singh,+919123456789,rahul@example.com\nAnanya Gupta,+919898989898,ananya@example.com\nVikram Kumar,+919012345678,vikram@example.com";
+        const csvContent = "name,phone,email,age\nAarav Patel,+919876543210,aarav@example.com,28\nPriya Sharma,+919988776655,priya@example.com,32\nRahul Singh,+919123456789,,25\nAnanya Gupta,+919898989898,ananya@example.com,\nVikram Kumar,+919012345678,,";
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -262,8 +262,8 @@ export const ImportContactsModal = ({
                                 isDarkMode ? 'text-white/60' : 'text-slate-600'
                             )}>
                                 <li>• Required columns: <code className="px-1 py-0.5 rounded bg-black/10">name</code>, <code className="px-1 py-0.5 rounded bg-black/10">phone</code></li>
-                                <li>• Optional columns: <code className="px-1 py-0.5 rounded bg-black/10">email</code>, <code className="px-1 py-0.5 rounded bg-black/10">tags</code></li>
-                                <li>• For multiple tags, separate them with semicolons (;)</li>
+                                <li>• Optional columns: <code className="px-1 py-0.5 rounded bg-black/10">email</code>, <code className="px-1 py-0.5 rounded bg-black/10">age</code></li>
+                                <li>• Phone numbers should include country code (e.g. +919876543210)</li>
                                 <li>• First row should contain column headers</li>
                             </ul>
                         </div>

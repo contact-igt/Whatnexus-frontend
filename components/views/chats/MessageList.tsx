@@ -1,5 +1,5 @@
 import React from 'react';
-import { SearchX, MessageSquareText, FileText, ExternalLink, Phone, Copy, Download, User, Bot, UserCog } from 'lucide-react';
+import { SearchX, MessageSquareText, FileText, Copy, Download, User, Bot, UserCog, Link, Phone, Reply } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
 
@@ -68,12 +68,9 @@ const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMod
 // Extracts media URL from "[VIDEO: url]" / "[IMAGE: url]" / "[DOCUMENT: url]" text patterns
 const extractMediaFromText = (message: string) => {
     if (!message) return null;
-    // Match [TYPE] or [TYPE: url] at the start of message
-    // URL can be with or without protocol (http/https)
     const match = message.match(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*([^\]\n]+)?\]/i);
     if (!match) return null;
     const url = match[2]?.trim();
-    // Return null URL if it's empty or just whitespace
     return { type: match[1].toLowerCase(), url: url && url.length > 0 ? url : null };
 };
 
@@ -96,6 +93,31 @@ const stripButtonsFromText = (message: string) => {
 // Remove any remaining template variable placeholders like {{1}}, {{2}}, etc.
 const stripVariablePlaceholders = (message: string) => {
     return message.replace(/\{\{\d+\}\}/g, '').trim();
+};
+
+// Format WhatsApp text: *bold*, _italic_, ~strikethrough~
+const formatWhatsAppText = (text: string): string => {
+    let formatted = text;
+    formatted = formatted.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/_([^_]+)_/g, '<em>$1</em>');
+    formatted = formatted.replace(/~([^~]+)~/g, '<del>$1</del>');
+    return formatted;
+};
+
+// Check if a message is a template message (has embedded media pattern or buttons or message_type=template)
+const isTemplateMessage = (msg: any): boolean => {
+    if (msg.message_type === 'template') return true;
+    if (!msg.message) return false;
+    const hasEmbeddedMedia = /^\[(VIDEO|IMAGE|DOCUMENT):?\s*[^\]]*\]/i.test(msg.message);
+    const hasButtons = msg.message.includes('[Button:');
+    return hasEmbeddedMedia || hasButtons;
+};
+
+// Extract footer from template message (line starting with specific patterns)
+const extractFooterFromText = (bodyText: string): { body: string; footer: string | null } => {
+    // Footer is typically the last line if it's very short or marked
+    // For now, we don't have explicit footer markers in the stored format
+    return { body: bodyText, footer: null };
 };
 
 // MIME type lookup from filename extension
@@ -142,27 +164,26 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
 
     // Try to extract embedded media from message text (templates store media as "[VIDEO: url]\nBody text")
     const embeddedMedia = extractMediaFromText(msg.message);
-
-    // Determine effective type: use embedded media type if found, otherwise use message_type
     const effectiveType = embeddedMedia?.type || type;
-
-    // Determine effective URL: prefer embedded URL, then media_url field (filter out meta_media_id placeholders)
     const effectiveUrl = embeddedMedia?.url || (mediaUrl && !mediaUrl.startsWith("meta_media_id:") ? mediaUrl : null);
 
-    // Extract buttons from message text (templates have [Button: text] format)
+    // Extract buttons from message text
     const hasButtons = msg.message?.includes("[Button:");
     const templateButtons = hasButtons ? extractButtonsFromText(msg.message) : [];
 
     // Get body text: strip media prefix and buttons
-    let bodyText = msg.message;
+    let bodyText = msg.message || '';
     if (embeddedMedia) {
-        // Remove the [VIDEO: url] or [IMAGE: url] prefix
         bodyText = msg.message.replace(/^\[(VIDEO|IMAGE|DOCUMENT):?\s*[^\]]*\]\n?/i, "").trim();
     }
     if (hasButtons) {
         bodyText = stripButtonsFromText(bodyText);
     }
+    bodyText = stripVariablePlaceholders(bodyText);
 
+    const isTemplate = isTemplateMessage(msg);
+
+    // Highlight search text
     const renderText = (text: string) => {
         if (searchText && text?.toLowerCase().includes(searchText.toLowerCase())) {
             return text.split(new RegExp(`(${searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')).map((part: string, i: number) =>
@@ -176,6 +197,111 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
         return text;
     };
 
+    // Render formatted body text with WhatsApp markdown
+    const renderFormattedBody = (text: string) => {
+        if (!text) return null;
+        const lines = text.split('\n');
+        return lines.map((line, i) => {
+            if (!line.trim()) return <br key={i} />;
+            if (searchText && line.toLowerCase().includes(searchText.toLowerCase())) {
+                return <p key={i} className="leading-relaxed">{renderText(line)}</p>;
+            }
+            return (
+                <p
+                    key={i}
+                    className="leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: formatWhatsAppText(line) }}
+                />
+            );
+        });
+    };
+
+    // ─── Template Message Layout (WhatsApp-style) ───
+    if (isTemplate) {
+        return (
+            <div className="template-message">
+                {/* Media Header — flush to bubble edges */}
+                {effectiveType === "image" && effectiveUrl && (
+                    <div className="-mx-2 -mt-2 mb-0 overflow-hidden rounded-t-lg">
+                        <img
+                            src={effectiveUrl}
+                            alt="Template media"
+                            className="w-full max-h-[220px] object-cover"
+                        />
+                    </div>
+                )}
+                {effectiveType === "image" && !effectiveUrl && (
+                    <div className={cn(
+                        "-mx-2 -mt-2 mb-0 overflow-hidden rounded-t-lg flex items-center justify-center h-40",
+                        isDarkMode ? "bg-white/5" : "bg-black/5"
+                    )}>
+                        <span className="text-3xl opacity-40">🖼️</span>
+                    </div>
+                )}
+
+                {effectiveType === "video" && effectiveUrl && (
+                    <div className="-mx-2 -mt-2 mb-0 overflow-hidden rounded-t-lg">
+                        <video
+                            src={effectiveUrl}
+                            controls
+                            className="w-full max-h-[220px] object-cover"
+                            preload="metadata"
+                        />
+                    </div>
+                )}
+                {effectiveType === "video" && !effectiveUrl && (
+                    <div className={cn(
+                        "-mx-2 -mt-2 mb-0 overflow-hidden rounded-t-lg flex items-center justify-center h-40",
+                        isDarkMode ? "bg-white/5" : "bg-black/5"
+                    )}>
+                        <span className="text-3xl opacity-40">🎬</span>
+                    </div>
+                )}
+
+                {effectiveType === "document" && (
+                    <div className={cn(
+                        "-mx-2 -mt-2 mb-0 rounded-t-lg overflow-hidden",
+                    )}>
+                        <div
+                            onClick={() => effectiveUrl && handleDocumentDownload(effectiveUrl, msg.media_filename || "Document")}
+                            className={cn(
+                                "flex items-center gap-3 px-3 py-3 transition-colors",
+                                effectiveUrl ? "cursor-pointer" : "cursor-default",
+                                isDarkMode ? "bg-white/5 hover:bg-white/10" : "bg-black/[0.03] hover:bg-black/[0.06]"
+                            )}
+                        >
+                            <div className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                                isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
+                            )}>
+                                <FileText size={18} className={cn(isDarkMode ? "text-purple-400" : "text-purple-600")} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{msg.media_filename || "Document"}</p>
+                                <p className={cn("text-[10px] uppercase font-bold tracking-wider", isDarkMode ? "opacity-40" : "opacity-50")}>
+                                    {(msg.media_filename || "PDF").split('.').pop()?.toUpperCase() || "PDF"}
+                                </p>
+                            </div>
+                            {effectiveUrl && <Download size={16} className="shrink-0 opacity-50" />}
+                        </div>
+                    </div>
+                )}
+
+                {/* Body Text */}
+                {bodyText && (
+                    <div className={cn(
+                        "text-[13.5px] whitespace-pre-wrap break-words",
+                        (effectiveType === "image" || effectiveType === "video" || effectiveType === "document") ? "px-1 pt-2 pb-0.5" : "px-1 py-0.5"
+                    )}>
+                        {renderFormattedBody(bodyText)}
+                    </div>
+                )}
+
+            </div>
+        );
+    }
+
+    // ─── Regular Message Layout ───
     return (
         <>
             {/* Video */}
@@ -239,49 +365,14 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
 
             {/* Body text */}
             {bodyText ? (
-                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                    {renderText(stripVariablePlaceholders(bodyText))}
-                </p>
-            ) : effectiveType === "text" || (effectiveType === "template" && !embeddedMedia) ? (
-                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
-                    {renderText(stripVariablePlaceholders(stripButtonsFromText(msg.message)))}
-                </p>
-            ) : null}
-
-            {/* Template Buttons */}
-            {templateButtons.length > 0 && (
-                <div className={cn(
-                    "flex flex-wrap gap-2 mt-2 pt-2 border-t",
-                    isDarkMode ? "border-white/10" : "border-black/10"
-                )}>
-                    {templateButtons.map((btnText, index) => {
-                        // Detect button type based on text patterns
-                        const isUrl = btnText.toLowerCase().includes('http') || btnText.includes('(');
-                        const isPhone = /call|phone|\+\d/i.test(btnText);
-
-                        return (
-                            <div
-                                key={index}
-                                className={cn(
-                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default",
-                                    isDarkMode
-                                        ? "bg-white/10 text-emerald-400 hover:bg-white/15"
-                                        : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
-                                )}
-                            >
-                                {isPhone ? (
-                                    <Phone className="w-3 h-3" />
-                                ) : isUrl ? (
-                                    <ExternalLink className="w-3 h-3" />
-                                ) : (
-                                    <Copy className="w-3 h-3 opacity-50" />
-                                )}
-                                <span>{btnText}</span>
-                            </div>
-                        );
-                    })}
+                <div className="text-[15px] whitespace-pre-wrap mb-1 px-1">
+                    {renderFormattedBody(bodyText)}
                 </div>
-            )}
+            ) : effectiveType === "text" || (effectiveType === "template" && !embeddedMedia) ? (
+                <div className="text-[15px] whitespace-pre-wrap mb-1 px-1">
+                    {renderFormattedBody(stripButtonsFromText(msg.message))}
+                </div>
+            ) : null}
         </>
     );
 };
@@ -368,30 +459,73 @@ export const MessageList: React.FC<MessageListProps> = ({
                         </div>
                         {msgs.map((msg: any, msgIndex: number) => {
                             const isOutgoing = msg.sender !== 'user';
+                            const isTemplate = isTemplateMessage(msg);
+
+                            // Extract template buttons for rendering outside bubble
+                            const msgTemplateButtons = isTemplate ? extractButtonsFromText(msg.message || '') : [];
 
                             return (
                                 <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
-                                    <div className={cn(
-                                        "max-w-[85%] min-w-[60px] p-2 rounded-lg shadow-sm relative group",
-                                        isOutgoing
-                                            ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
-                                            : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
-                                    )}>
-                                        <SenderIndicator
-                                            sender={msg.sender}
-                                            senderName={msg.sender_id}
-                                            isDarkMode={isDarkMode}
-                                            isOutgoing={isOutgoing}
-                                        />
-                                        <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
-                                        <div className="flex items-center justify-end space-x-1 opacity-60">
-                                            <span className="text-[10px]">
-                                                {formattedTime(msg.created_at || msg.timestamp)}
-                                            </span>
-                                            {isOutgoing && (
-                                                <MessageStatusTicks status={msg.status} />
-                                            )}
+                                    <div className={isTemplate ? "max-w-[340px] w-[340px]" : "max-w-[85%]"}>
+                                        {/* Message Bubble */}
+                                        <div className={cn(
+                                            "min-w-[60px] rounded-lg shadow-sm relative group overflow-hidden p-2",
+                                            isOutgoing
+                                                ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
+                                                : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
+                                        )}>
+                                            <SenderIndicator
+                                                sender={msg.sender}
+                                                senderName={msg.sender_id}
+                                                isDarkMode={isDarkMode}
+                                                isOutgoing={isOutgoing}
+                                            />
+                                            <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
+                                            <div className={cn(
+                                                "flex items-center justify-end space-x-1 opacity-60",
+                                                isTemplate ? "px-1 pb-0.5 pt-1" : ""
+                                            )}>
+                                                <span className="text-[10px]">
+                                                    {formattedTime(msg.created_at || msg.timestamp)}
+                                                </span>
+                                                {isOutgoing && (
+                                                    <MessageStatusTicks status={msg.status} />
+                                                )}
+                                            </div>
                                         </div>
+
+                                        {/* Template CTA Buttons — separate cards below bubble (WhatsApp style) */}
+                                        {isTemplate && msgTemplateButtons.length > 0 && (
+                                            <div className="mt-1 space-y-1">
+                                                {msgTemplateButtons.map((btnText, btnIndex) => {
+                                                    const isUrl = btnText.toLowerCase().includes('http') || btnText.includes('(') || /visit|view|website|link|shop|buy|book/i.test(btnText);
+                                                    const isPhone = /call|phone|\+\d/i.test(btnText);
+
+                                                    return (
+                                                        <div
+                                                            key={btnIndex}
+                                                            className={cn(
+                                                                "w-full py-2.5 px-4 rounded-lg text-[13px] font-medium text-center border transition-all cursor-default",
+                                                                isDarkMode
+                                                                    ? 'bg-[#1c2c33] text-emerald-400 border-emerald-500/20'
+                                                                    : 'bg-white text-emerald-700 border-emerald-300 shadow-sm'
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                {isPhone ? (
+                                                                    <Phone size={14} />
+                                                                ) : isUrl ? (
+                                                                    <Link size={14} />
+                                                                ) : (
+                                                                    <Reply size={14} />
+                                                                )}
+                                                                <span>{btnText}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );

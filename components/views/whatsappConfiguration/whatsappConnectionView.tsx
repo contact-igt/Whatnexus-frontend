@@ -64,6 +64,7 @@ export const WhatsAppConnectionView = () => {
         }
     })
     const { user } = useAuth();
+    const isAdmin = user?.role === 'tenant_admin';
     const dispatch = useDispatch();
     const { data: WhatsAppConnectionData, isLoading: isWhatsappLoading, refetch: refetchWhatsAppConfig } = useGetWhatsappConfigQuery();
     const { mutate: saveWhatsConfigMutate, isPending: isSaveLoading } = useSaveWhatsAppConfigMutation();
@@ -219,24 +220,26 @@ export const WhatsAppConnectionView = () => {
                                 <span>{WhatsAppConnectionData?.data?.id ? 'Connected' : 'Not Connected'}</span>
                             </div>
 
-                            <button
-                                onClick={handleCheckWebhookStatus}
-                                disabled={isCheckingWebhook || !testConnectionSuccess}
-                                className={cn(
-                                    "flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
-                                    isDarkMode
-                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
-                                        : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100",
-                                    (isCheckingWebhook || !testConnectionSuccess) && "opacity-50 cursor-not-allowed hover:bg-transparent"
-                                )}
-                            >
-                                {isCheckingWebhook ? (
-                                    <Loader2 size={16} className="animate-spin" />
-                                ) : (
-                                    <RefreshCw size={16} />
-                                )}
-                                <span>{isCheckingWebhook ? 'Checking...' : 'Check Webhook Status'}</span>
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    onClick={handleCheckWebhookStatus}
+                                    disabled={isCheckingWebhook || !testConnectionSuccess}
+                                    className={cn(
+                                        "flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
+                                        isDarkMode
+                                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+                                            : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100",
+                                        (isCheckingWebhook || !testConnectionSuccess) && "opacity-50 cursor-not-allowed hover:bg-transparent"
+                                    )}
+                                >
+                                    {isCheckingWebhook ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <RefreshCw size={16} />
+                                    )}
+                                    <span>{isCheckingWebhook ? 'Checking...' : 'Check Webhook Status'}</span>
+                                </button>
+                            )}
                         </div>
 
                         {WhatsAppConnectionData?.data?.id && (
@@ -290,6 +293,7 @@ export const WhatsAppConnectionView = () => {
                                     onSaveConfiguration={handleSaveEdit}
                                     testConnectionSuccess={testConnectionSuccess}
                                     isWebhookVerified={!!user?.webhook_verified}
+                                    isAdmin={isAdmin}
                                 />
 
                                 {/* Test MessageCard - Show if connection exists */}

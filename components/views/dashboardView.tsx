@@ -15,6 +15,7 @@ import { DoctorOverview } from './dashboard/doctorOverview';
 import { KnowledgeHealth } from './dashboard/knowledgeHealth';
 import { ContactOverview } from './dashboard/contactOverview';
 import { tx } from './dashboard/glassStyles';
+import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsappConnectionPlaceholder';
 import {
     BarChart3, Inbox, MessageCircle,
     CalendarCheck, Activity, Layers3,
@@ -74,6 +75,13 @@ export const DashboardView = () => {
 
     const dashboardData = dashboardResult?.data;
 
+    // Compute WhatsApp connection status once
+    const wn = dashboardData?.wabaInfo?.number;
+    const ws = dashboardData?.wabaInfo?.status;
+    const wabaConnected = !!wn &&
+        /^\d+$/.test(String(wn).replace(/[\s+]/g, '')) &&
+        (ws === 'Live' || ws === 'active');
+
 
 
     if (isLoading) {
@@ -111,6 +119,18 @@ export const DashboardView = () => {
         );
     }
 
+    // If not management and WhatsApp not connected, show only the placeholder card
+    if (!isManagement && !wabaConnected) {
+        return (
+            <div
+                className="relative h-full overflow-y-auto"
+                style={{ background: isDarkMode ? '#09090b' : '#f8fafc' }}
+            >
+                <WhatsAppConnectionPlaceholder />
+            </div>
+        );
+    }
+
     return (
         <div
             className="relative h-full overflow-y-auto pb-32"
@@ -132,11 +152,6 @@ export const DashboardView = () => {
                 {/* 1b. WhatsApp Not Connected Banner */}
                 {(() => {
                     if (isManagement || waBannerDismissed) return null;
-                    const wn = dashboardData?.wabaInfo?.number;
-                    const ws = dashboardData?.wabaInfo?.status;
-                    const wabaConnected = !!wn &&
-                        /^\d+$/.test(String(wn).replace(/[\s+]/g, '')) &&
-                        (ws === 'Live' || ws === 'active');
                     if (wabaConnected) return null;
 
                     const steps = [
@@ -258,11 +273,6 @@ export const DashboardView = () => {
 
                 {/* 2. Messaging Limit Tracker (only when genuinely connected) */}
                 {(() => {
-                    const wn = dashboardData?.wabaInfo?.number;
-                    const ws = dashboardData?.wabaInfo?.status;
-                    const wabaConnected = !!wn &&
-                        /^\d+$/.test(String(wn).replace(/[\s+]/g, '')) &&
-                        (ws === 'Live' || ws === 'active');
                     if (!wabaConnected || isManagement) return null;
 
                     const tier = dashboardData!.wabaInfo.tier;

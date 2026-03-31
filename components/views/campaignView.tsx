@@ -62,7 +62,7 @@ export const CampaignView = memo(() => {
     const { user } = useAuth();
     useEffect(() => {
         if (!user?.tenant_id) return;
-        
+
         if (!socket.connected) {
             socket.connect();
         } else {
@@ -70,17 +70,19 @@ export const CampaignView = memo(() => {
             socket.emit('join-tenant', user.tenant_id);
         }
 
-        socket.on('connect', () => {
+        const handleConnect = () => {
             socket.emit('join-tenant', user.tenant_id);
-        });
+        };
+        socket.on('connect', handleConnect);
 
-        socket.on('campaign-status-update', () => {
+        const handleCampaignUpdate = () => {
             refetch();
-        });
+        };
+        socket.on('campaign-status-update', handleCampaignUpdate);
 
         return () => {
-            socket.off('campaign-status-update');
-            socket.off('connect');
+            socket.off('campaign-status-update', handleCampaignUpdate);
+            socket.off('connect', handleConnect);
         };
     }, [user?.tenant_id]);
 

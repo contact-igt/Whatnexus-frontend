@@ -55,11 +55,15 @@ export const BillingView = () => {
 
     const handleUpdate = (data?: any) => {
       console.log("💳 Billing/Payment update received, refreshing data...");
-      queryClient.invalidateQueries({ queryKey: ['billing-kpi'] });
-      queryClient.invalidateQueries({ queryKey: ['billing-ledger'] });
-      queryClient.invalidateQueries({ queryKey: ['billing-spend-chart'] });
-      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+      // Use refetchQueries for instant UI update (no staleTime delay)
+      queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
+      queryClient.refetchQueries({ queryKey: ['billing-ledger'] });
+      queryClient.refetchQueries({ queryKey: ['billing-spend-chart'] });
+      queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
+      queryClient.refetchQueries({ queryKey: ['wallet-transactions'] });
+      queryClient.refetchQueries({ queryKey: ['ai-token-usage'] });
+      queryClient.refetchQueries({ queryKey: ['billing-template-stats'] });
+      queryClient.refetchQueries({ queryKey: ['billing-campaign-stats'] });
     };
 
     const handleLowBalance = (data: any) => {
@@ -104,9 +108,9 @@ export const BillingView = () => {
       setWalletSuspension(null);
       toast.success(data.message || "Services restored!", { duration: 5000 });
       // Refresh all billing data
-      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['wallet-status'] });
-      queryClient.invalidateQueries({ queryKey: ['billing-kpi'] });
+      queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
+      queryClient.refetchQueries({ queryKey: ['wallet-status'] });
+      queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
     };
 
     const handleWalletGrace = (data: any) => {

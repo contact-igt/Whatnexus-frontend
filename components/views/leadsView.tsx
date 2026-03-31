@@ -54,7 +54,7 @@ export const LeadsView = () => {
     // Socket: real-time lead updates
     useEffect(() => {
         if (!user?.tenant_id) return;
-        
+
         if (!socket.connected) {
             socket.connect();
         } else {
@@ -62,17 +62,19 @@ export const LeadsView = () => {
             socket.emit('join-tenant', user.tenant_id);
         }
 
-        socket.on('connect', () => {
+        const handleConnect = () => {
             socket.emit('join-tenant', user.tenant_id);
-        });
+        };
+        socket.on('connect', handleConnect);
 
-        socket.on('lead-updated', () => {
+        const handleLeadUpdated = () => {
             refetchLeads();
-        });
+        };
+        socket.on('lead-updated', handleLeadUpdated);
 
         return () => {
-            socket.off('lead-updated');
-            socket.off('connect');
+            socket.off('lead-updated', handleLeadUpdated);
+            socket.off('connect', handleConnect);
         };
     }, [user?.tenant_id]);
     const { data: deletedLeadsData, isLoading: isLoadingDeletedLeads, refetch: refetchDeletedLeads } = useGetDeletedLeadsQuery();
@@ -113,7 +115,7 @@ export const LeadsView = () => {
 
         const matchesHeatState = filters.heatState === 'all' || lead?.heat_state?.toLowerCase() === filters.heatState.toLowerCase();
 
-        const matchesAssignment = 
+        const matchesAssignment =
             filters.assignedTo === 'all' ||
             (filters.assignedTo === 'unassigned' && !lead.assigned_to) ||
             (filters.assignedTo === 'assigned' && !!lead.assigned_to) ||
@@ -431,12 +433,12 @@ export const LeadsView = () => {
                             <PopoverTrigger asChild>
                                 <button
                                     onClick={(e) => e.stopPropagation()}
-                                            className={cn(
-                                                "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border w-fit transition-all group",
-                                                row.assigned_to 
-                                                    ? (isDarkMode ? "bg-white/5 border-white/10 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
-                                                    : (isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-600")
-                                            )}
+                                    className={cn(
+                                        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border w-fit transition-all group",
+                                        row.assigned_to
+                                            ? (isDarkMode ? "bg-white/5 border-white/10 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
+                                            : (isDarkMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-600")
+                                    )}
                                 >
                                     {row.assigned_to ? (
                                         <>
@@ -454,9 +456,9 @@ export const LeadsView = () => {
                                     <ChevronDown size={12} className="opacity-40 group-hover:opacity-100 transition-opacity" />
                                 </button>
                             </PopoverTrigger>
-                            <PopoverContent 
-                                isDarkMode={isDarkMode} 
-                                align="start" 
+                            <PopoverContent
+                                isDarkMode={isDarkMode}
+                                align="start"
                                 className="w-56 p-2 overflow-hidden rounded-xl border shadow-xl"
                             >
                                 <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar">
@@ -482,11 +484,11 @@ export const LeadsView = () => {
                                         <button
                                             key={agent.tenant_user_id}
                                             onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (row.assigned_to === agent.tenant_user_id) return;
-                                            setTargetAgentId(agent.tenant_user_id);
-                                            handleAction('assign', row.lead_id);
-                                        }}
+                                                e.stopPropagation();
+                                                if (row.assigned_to === agent.tenant_user_id) return;
+                                                setTargetAgentId(agent.tenant_user_id);
+                                                handleAction('assign', row.lead_id);
+                                            }}
                                             className={cn(
                                                 "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all group/item",
                                                 row.assigned_to === agent.tenant_user_id
@@ -653,34 +655,34 @@ export const LeadsView = () => {
                     onConfirm={confirmAction}
                     title={
                         actionType === 'delete' ? "Remove Lead" :
-                        actionType === 'permanent_delete' ? "Permanently Delete Lead" :
-                        actionType === 'restore' ? "Restore Lead" :
-                        actionType === 'claim' ? "Claim Lead" :
-                        actionType === 'assign' ? "Assign Lead" :
-                        actionType === 'unassign' ? "Unassign Lead" :
-                        actionType === 'bulk_claim' ? `Claim ${selectedLeadIds.length} Leads` :
-                        actionType === 'bulk_assign' ? `Assign ${selectedLeadIds.length} Leads` :
-                        `Unassign ${selectedLeadIds.length} Leads`
+                            actionType === 'permanent_delete' ? "Permanently Delete Lead" :
+                                actionType === 'restore' ? "Restore Lead" :
+                                    actionType === 'claim' ? "Claim Lead" :
+                                        actionType === 'assign' ? "Assign Lead" :
+                                            actionType === 'unassign' ? "Unassign Lead" :
+                                                actionType === 'bulk_claim' ? `Claim ${selectedLeadIds.length} Leads` :
+                                                    actionType === 'bulk_assign' ? `Assign ${selectedLeadIds.length} Leads` :
+                                                        `Unassign ${selectedLeadIds.length} Leads`
                     }
                     message={
                         actionType === 'delete' ? "Are you sure you want to remove this lead? It will be moved to the trash." :
-                        actionType === 'permanent_delete' ? "This action cannot be undone. Are you sure you want to permanently delete this lead?" :
-                        actionType === 'restore' ? "Are you sure you want to restore this lead?" :
-                        actionType === 'claim' ? "Are you sure you want to claim this lead?" :
-                        actionType === 'assign' ? "Are you sure you want to assign this lead to the selected agent?" :
-                        actionType === 'unassign' ? "Are you sure you want to unassign this lead?" :
-                        actionType === 'bulk_claim' ? `Are you sure you want to claim ${selectedLeadIds.length} leads?` :
-                        actionType === 'bulk_assign' ? `Are you sure you want to assign ${selectedLeadIds.length} leads to the selected agent?` :
-                        `Are you sure you want to unassign ${selectedLeadIds.length} leads?`
+                            actionType === 'permanent_delete' ? "This action cannot be undone. Are you sure you want to permanently delete this lead?" :
+                                actionType === 'restore' ? "Are you sure you want to restore this lead?" :
+                                    actionType === 'claim' ? "Are you sure you want to claim this lead?" :
+                                        actionType === 'assign' ? "Are you sure you want to assign this lead to the selected agent?" :
+                                            actionType === 'unassign' ? "Are you sure you want to unassign this lead?" :
+                                                actionType === 'bulk_claim' ? `Are you sure you want to claim ${selectedLeadIds.length} leads?` :
+                                                    actionType === 'bulk_assign' ? `Are you sure you want to assign ${selectedLeadIds.length} leads to the selected agent?` :
+                                                        `Are you sure you want to unassign ${selectedLeadIds.length} leads?`
                     }
                     isDarkMode={isDarkMode}
                     confirmText={
                         actionType === 'delete' ? "Remove" :
-                        actionType === 'permanent_delete' ? "Delete Forever" :
-                        actionType === 'restore' ? "Restore" :
-                        actionType === 'claim' || actionType === 'bulk_claim' ? "Claim" :
-                        actionType === 'assign' || actionType === 'bulk_assign' ? "Assign" :
-                        "Unassign"
+                            actionType === 'permanent_delete' ? "Delete Forever" :
+                                actionType === 'restore' ? "Restore" :
+                                    actionType === 'claim' || actionType === 'bulk_claim' ? "Claim" :
+                                        actionType === 'assign' || actionType === 'bulk_assign' ? "Assign" :
+                                            "Unassign"
                     }
                     isLoading={isSoftDeletePending || isPermanentDeletePending || isRestorePending || isBulkUpdating}
                     variant={['restore', 'claim', 'assign', 'bulk_claim', 'bulk_assign'].includes(actionType) ? 'info' : 'danger'}
@@ -745,8 +747,8 @@ export const LeadsView = () => {
                                     { value: 'all', label: 'All Assignments' },
                                     { value: 'unassigned', label: 'Unassigned Leads' },
                                     ...(isAdmin ? [{ value: 'assigned', label: 'All Assigned Leads' }] : []),
-                                    ...filteredAgents.map((agent: any) => ({ 
-                                        value: agent.tenant_user_id, 
+                                    ...filteredAgents.map((agent: any) => ({
+                                        value: agent.tenant_user_id,
                                         label: `${agent.username} (${agent.role.charAt(0).toUpperCase() + agent.role.slice(1)})`
                                     }))
                                 ]}

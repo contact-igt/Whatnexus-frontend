@@ -1,5 +1,6 @@
-import { setAuthData } from "@/redux/slices/auth/authSlice";
+import { setAuthData, setWhatsAppApiDetails } from "@/redux/slices/auth/authSlice";
 import { tenantUserApiData } from "@/services/tenantUser";
+import { whatsappConfigApiData } from "@/services/whatsappConfiguration";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 
 
 const tenantUserApis = new tenantUserApiData();
+const whatsappConfigApis = new whatsappConfigApiData();
 
 export const useTenantUserQuery = () => {
     const { data, isLoading, isError } = useQuery({
@@ -33,12 +35,28 @@ export const useTenantUserLoginMutation = () => {
         mutationFn: (data: any) => {
             return tenantUserApis.loginTenantUser(data);
         },
-        onSuccess: (response: any, variables: any) => {
+        onSuccess: async (response: any, variables: any) => {
             dispatch(setAuthData({
                 token: variables.rememberMe === true ? response?.tokens?.refreshToken : response?.tokens?.accessToken,
                 refreshToken: response?.tokens?.refreshToken,
                 user: response?.user
             }))
+
+            // Pre-fetch WhatsApp config before navigating so connected status displays immediately
+            if (response?.user?.role !== 'super_admin' && response?.user?.role !== 'platform_admin') {
+                try {
+                    const configResult = await queryClient.fetchQuery({
+                        queryKey: ['whatsapp-config'],
+                        queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
+                    });
+                    if (configResult?.data) {
+                        dispatch(setWhatsAppApiDetails(configResult.data));
+                    }
+                } catch {
+                    // Ignore - dashboard will handle
+                }
+            }
+
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
             toast.success(response?.data?.message || response?.message || 'Tenant user login successful');
             router.replace("/dashboard");
@@ -175,6 +193,22 @@ export const useUpdateTenantOrganizationMutation = () => {
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || error?.message || "Failed to update organization details")
+        }
+    })
+}
+
+export const useUpdateTenantProfileMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => tenantUserApis.updateTenantProfile(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["tenant-profile"],
+            });
+            toast.success("Profile updated successfully")
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "Failed to update profile")
         }
     })
 }

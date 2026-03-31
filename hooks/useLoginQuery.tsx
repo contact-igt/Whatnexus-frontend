@@ -1,5 +1,6 @@
-import { setAuthData } from "@/redux/slices/auth/authSlice";
+import { setAuthData, setWhatsAppApiDetails } from "@/redux/slices/auth/authSlice";
 import { authApis } from "@/services/auth";
+import { whatsappConfigApiData } from "@/services/whatsappConfiguration";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 
 
 const { login } = new authApis();
+const whatsappConfigApis = new whatsappConfigApiData();
 
 
 export const useManagementLoginMutation = () => {
@@ -15,7 +17,7 @@ export const useManagementLoginMutation = () => {
     const router = useRouter();
     return useMutation({
         mutationFn: (data: any) => login(data),
-        onSuccess: (data, variables) => {
+        onSuccess: async (data, variables) => {
             if (!data || data?.success == false) {
                 toast.error(data?.message || "Something went wrong")
                 return;
@@ -26,7 +28,22 @@ export const useManagementLoginMutation = () => {
                 refreshToken: data?.tokens?.refreshToken,
                 user: data?.user
             }))
-            queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] })
+
+            // Pre-fetch WhatsApp config before navigating so connected status displays immediately
+            if (data?.user?.role !== 'super_admin' && data?.user?.role !== 'platform_admin') {
+                try {
+                    const configResult = await queryClient.fetchQuery({
+                        queryKey: ['whatsapp-config'],
+                        queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
+                    });
+                    if (configResult?.data) {
+                        dispatch(setWhatsAppApiDetails(configResult.data));
+                    }
+                } catch {
+                    // Ignore - dashboard will handle
+                }
+            }
+
             toast.success("Login successful")
             router.replace("/dashboard");
         },
