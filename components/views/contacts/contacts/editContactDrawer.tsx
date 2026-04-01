@@ -74,6 +74,14 @@ export const EditContactDrawer = ({
             newErrors.email = "Invalid email format";
         }
 
+        // Age validation (optional)
+        if (formData.age != null) {
+            const ageNum = Number(formData.age);
+            if (isNaN(ageNum) || ageNum < 0 || ageNum > 150 || !Number.isInteger(ageNum)) {
+                newErrors.age = "Age must be a whole number between 0 and 150";
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -285,7 +293,9 @@ export const EditContactDrawer = ({
                     placeholder="Enter age"
                     value={formData.age != null ? String(formData.age) : ""}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value ? parseInt(e.target.value, 10) : null })}
+                    error={errors.age}
                     icon={Calendar}
+                    maxLength={3}
                 />
 
 

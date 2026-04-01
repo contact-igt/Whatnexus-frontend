@@ -937,7 +937,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             )
                                         }}
                                     />
-                                    {isLanguageMismatch && !isAuthMode ? (
+                                    {/* {isLanguageMismatch && !isAuthMode ? (
                                         <div className={cn(
                                             "flex items-start gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border",
                                             isDarkMode ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"
@@ -949,7 +949,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                             You will need to specify the language in which message template is submitted
                                         </p>
-                                    )}
+                                    )} */}
                                 </div>
                             </div>
                         </div>
@@ -1323,7 +1323,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     />
                                 )}
                             />
-                            {isLanguageMismatch && !isAuthMode && (
+                            {/* {isLanguageMismatch && !isAuthMode && (
                                 <div className={cn(
                                     "flex items-start gap-2 mt-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold border",
                                     isDarkMode ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-red-50 border-red-300 text-red-700"
@@ -1331,7 +1331,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     <span className="mt-0.5 shrink-0">🚫</span>
                                     <span>{debouncedMismatchError}</span>
                                 </div>
-                            )}
+                            )} */}
                             {isAuthMode ? (
                                 <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-violet-400/70' : 'text-violet-600')}>
                                     🔐 Body text is pre-filled with Meta's required OTP format. The <strong>{`{{1}}`}</strong> placeholder will be replaced with the generated OTP code at send time.

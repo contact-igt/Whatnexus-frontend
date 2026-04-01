@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useRef } from 'react';
 import { User, Phone, Mail, Clock, Loader2, Plus, Trash2, Check, MinusCircle, XCircle, CheckCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -28,8 +27,8 @@ const doctorSchema = z.object({
     consultation_duration: z.coerce.number().min(5, "Duration must be at least 5 minutes").max(240, "Duration must be at most 240 minutes"),
     bio: z.string().trim().min(10, "Bio is required (min 10 chars)").max(500, "Bio must be less than 500 characters").optional().or(z.literal('')),
     profile_pic: z.string().optional(),
-    experience_years: z.string()
-        .refine((val) => val !== '' && val !== undefined && val !== null, { message: "Experience is required" })
+    experience_years: z.preprocess((val) => String(val ?? ''), z.string())
+        .refine((val) => val !== '', { message: "Experience is required" })
         .refine((val) => !isNaN(Number(val)) && Number(val) >= 0, { message: "Experience must be 0 or more" })
         .transform((val) => Number(val)),
     qualification: z.string().trim().min(2, "Qualification is required (min 2 chars)"),
@@ -59,7 +58,7 @@ export const DoctorDrawer = ({
 }: DoctorDrawerProps) => {
     const specializationsList = specializationsData || [];
 
-    const { control, register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DoctorFormValues>({
+    const { control, register, handleSubmit, reset, setValue, setError, watch, formState: { errors } } = useForm<DoctorFormValues>({
         resolver: zodResolver(doctorSchema) as any,
         defaultValues: {
             title: 'Dr',
@@ -329,8 +328,13 @@ export const DoctorDrawer = ({
                 await updateDoctorMutation.mutateAsync({ doctorId: doctor.doctor_id, data: apiData });
             }
             onClose();
-        } catch (error) {
-            // Error is handled by the mutation
+        } catch (error: any) {
+            const msg = error?.response?.data?.message || '';
+            if (msg.toLowerCase().includes('mobile')) {
+                setError('mobile', { type: 'manual', message: msg });
+            } else if (msg.toLowerCase().includes('email')) {
+                setError('email', { type: 'manual', message: msg });
+            }
         }
     };
     const isView = mode === 'view';
@@ -695,20 +699,31 @@ export const DoctorDrawer = ({
                                     </div>
 
                                     <div>
-                                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                            Consultation Duration (min) <span className="text-red-500">*</span>
-                                        </label>
-                                        <Input
-                                            isDarkMode={isDarkMode}
-                                            icon={Clock}
-                                            type="number"
-                                            disabled={isView}
-                                            {...register("consultation_duration")}
-                                            min={5}
-                                            step={5}
-                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            error={errors.consultation_duration?.message}
-                                            variant="secondary"
+                                        <Controller
+                                            name="consultation_duration"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select
+                                                    isDarkMode={isDarkMode}
+                                                    label="Consultation Duration (min)"
+                                                    required
+                                                    value={String(field.value)}
+                                                    onChange={(val) => field.onChange(Number(val))}
+                                                    options={[
+                                                        { value: '5', label: '5 minutes' },
+                                                        { value: '10', label: '10 minutes' },
+                                                        { value: '15', label: '15 minutes' },
+                                                        { value: '20', label: '20 minutes' },
+                                                        { value: '30', label: '30 minutes' },
+                                                        { value: '45', label: '45 minutes' },
+                                                        { value: '60', label: '60 minutes' },
+                                                        { value: '90', label: '90 minutes' },
+                                                        { value: '120', label: '120 minutes' },
+                                                    ]}
+                                                    disabled={isView}
+                                                    error={errors.consultation_duration?.message}
+                                                />
+                                            )}
                                         />
                                     </div>
                                 </div>
