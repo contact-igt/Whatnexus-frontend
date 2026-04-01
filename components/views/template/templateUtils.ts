@@ -1,4 +1,5 @@
 import { TemplateStatus, TemplateHealth, TemplateCategory } from './templateTypes';
+import { franc } from 'franc-min';
 
 /**
  * Extract variables from template text in format {{1}}, {{2}}, etc.
@@ -306,72 +307,55 @@ export function detectTemplateScript(text: string): string | null {
 }
 
 // ─────────────────────────────────────────────────
-// Intra-Latin Language Detection (English vs. others)
+// Intra-Latin Language Detection (franc-min library)
 // ─────────────────────────────────────────────────
 
-const ENGLISH_COMMON_WORDS = new Set([
-    'the', 'a', 'an', 'this', 'that', 'these', 'those',
-    'my', 'your', 'his', 'her', 'its', 'our', 'their',
-    'i', 'me', 'you', 'he', 'she', 'it', 'we', 'they', 'him', 'us', 'them',
-    'in', 'on', 'at', 'to', 'for', 'with', 'from', 'by', 'of', 'about',
-    'into', 'through', 'during', 'before', 'after',
-    'and', 'but', 'or', 'so', 'yet', 'if', 'as', 'than',
-    'is', 'are', 'was', 'were', 'am', 'be', 'been', 'being',
-    'has', 'have', 'had', 'do', 'does', 'did',
-    'will', 'would', 'could', 'should', 'shall', 'can', 'may', 'might', 'must',
-    'not', 'no', 'just', 'also', 'very', 'here', 'there', 'now', 'then',
-    'hello', 'hi', 'dear', 'please', 'thank', 'thanks', 'welcome',
-    'your', 'order', 'appointment', 'code', 'verification', 'confirmed',
-]);
+/**
+ * Maps display language names → ISO 639-3 codes used by franc.
+ */
+const LANGUAGE_FRANC_MAP: Record<string, string> = {
+    'Afrikaans': 'afr',    'Albanian': 'sqi',       'Arabic': 'ara',
+    'Azerbaijani': 'aze',  'Bengali': 'ben',        'Bulgarian': 'bul',
+    'Catalan': 'cat',      'Chinese (CHN)': 'cmn',  'Chinese (HKG)': 'cmn',
+    'Chinese (TAI)': 'cmn','Croatian': 'hrv',        'Czech': 'ces',
+    'Danish': 'dan',       'Dutch': 'nld',          'English': 'eng',
+    'English (UK)': 'eng', 'English (US)': 'eng',   'Estonian': 'est',
+    'Filipino': 'fil',     'Finnish': 'fin',        'French': 'fra',
+    'Georgian': 'kat',     'German': 'deu',         'Greek': 'ell',
+    'Gujarati': 'guj',     'Hausa': 'hau',          'Hebrew': 'heb',
+    'Hindi': 'hin',        'Hungarian': 'hun',      'Indonesian': 'ind',
+    'Irish': 'gle',        'Italian': 'ita',        'Japanese': 'jpn',
+    'Kannada': 'kan',      'Kazakh': 'kaz',         'Kinyarwanda': 'kin',
+    'Korean': 'kor',       'Kyrgyz': 'kir',         'Lao': 'lao',
+    'Latvian': 'lav',      'Lithuanian': 'lit',     'Macedonian': 'mkd',
+    'Malay': 'msa',        'Malayalam': 'mal',      'Marathi': 'mar',
+    'Norwegian': 'nob',    'Persian': 'fas',        'Polish': 'pol',
+    'Portuguese (BR)': 'por', 'Portuguese (POR)': 'por',
+    'Punjabi': 'pan',      'Romanian': 'ron',       'Russian': 'rus',
+    'Serbian': 'srp',      'Slovak': 'slk',         'Slovenian': 'slv',
+    'Spanish': 'spa',      'Spanish (ARG)': 'spa',  'Spanish (SPA)': 'spa',
+    'Spanish (MEX)': 'spa','Swahili': 'swa',        'Swedish': 'swe',
+    'Tamil': 'tam',        'Telugu': 'tel',         'Thai': 'tha',
+    'Turkish': 'tur',      'Ukrainian': 'ukr',      'Urdu': 'urd',
+    'Uzbek': 'uzb',        'Vietnamese': 'vie',     'Zulu': 'zul',
+};
 
 /**
- * Non-English diacritics / special Latin chars that do NOT appear in standard English.
- * Covers Turkish (ğ,ş,ı,İ), Azerbaijani (ə,Ə), French (ç,ê,ë), German (ß,ü,ö),
- * Polish (ł,ń,ą,ę), Romanian (ț,ș), Scandinavian (ø,å,æ), etc.
+ * Detect the language of template content using the franc library.
+ * Strips template variables and formatting before detection.
+ * Returns ISO 639-3 code (e.g., 'eng', 'spa', 'fra') or 'und' if undetermined.
  */
-const NON_ENGLISH_CHARS_RE = /[\u00C0-\u00C5\u00C8-\u00CF\u00D1-\u00D6\u00D8-\u00DD\u00DF-\u00E5\u00E8-\u00EF\u00F1-\u00F6\u00F8-\u00FD\u00FF-\u024F\u0259\u018F]/g;
-
-/**
- * Returns true when ≥25 % of words are common English function/template words.
- */
-export function isContentLikelyEnglish(text: string): boolean {
-    if (!text || text.trim().length < 10) return false;
+function detectContentLanguage(text: string): string {
+    if (!text || text.trim().length < 10) return 'und';
 
     const cleaned = text
-        .replace(/\{\{[^}]+\}\}/g, '')
-        .replace(/[*_~`]/g, '')
-        .toLowerCase();
+        .replace(/\{\{[^}]+\}\}/g, '')   // Strip template variables
+        .replace(/[*_~`]/g, '')           // Strip formatting markers
+        .trim();
 
-    const words = cleaned
-        .split(/[\s.,!?;:\-\/()'"@#$%&+=\[\]{}|\\<>:]+/)
-        .filter(w => w.length > 1);
+    if (cleaned.length < 10) return 'und';
 
-    if (words.length < 3) return false;
-
-    const englishCount = words.filter(w => ENGLISH_COMMON_WORDS.has(w)).length;
-    return (englishCount / words.length) >= 0.25;
-}
-
-/**
- * Returns true when the text contains a significant density of
- * non-English Latin diacritics (ə, ğ, ş, ñ, ß, ø, etc.).
- */
-export function hasNonEnglishLatinChars(text: string): boolean {
-    if (!text || text.trim().length < 5) return false;
-
-    const cleaned = text
-        .replace(/\{\{[^}]+\}\}/g, '')
-        .replace(/[*_~`\n\r\s\d.,!?;:'"()\-\/\\@#$%^&+=<>\[\]{}|]/g, '');
-
-    if (cleaned.length < 3) return false;
-
-    const nonEnglish = (cleaned.match(NON_ENGLISH_CHARS_RE) || []).length;
-    const english    = (cleaned.match(/[a-zA-Z]/g) || []).length;
-    const total      = nonEnglish + english;
-    if (total < 3) return false;
-
-    // ≥ 5 % non-English chars AND at least 2 occurrences
-    return (nonEnglish / total) >= 0.05 && nonEnglish >= 2;
+    return franc(cleaned);
 }
 
 // ─────────────────────────────────────────────────
@@ -433,37 +417,85 @@ export function validateLanguageMatch(language: string, content: string): Langua
     // ── Layer 2: Intra-Latin language check ──────────────────────
     if (detectedScript === 'latin') {
         const isEnglishVariant = ['English', 'English (UK)', 'English (US)'].includes(language);
-        const hasNonEng = hasNonEnglishLatinChars(content);
-        const isEng = isContentLikelyEnglish(content);
-        console.log('[LanguageValidation] Layer 2 (Latin):', { isEnglishVariant, hasNonEng, isEng });
+        const detectedLang = detectContentLanguage(content);
+        const expectedIso = LANGUAGE_FRANC_MAP[language];
+        console.log('[LanguageValidation] Layer 2 (franc):', { isEnglishVariant, detectedLang, expectedIso });
+
+        // If franc can't determine the language, allow it
+        if (detectedLang === 'und') return { valid: true };
 
         if (isEnglishVariant) {
-            // English selected → content must actually be English
-            if (hasNonEng) {
+            // English selected → franc should detect English
+            if (detectedLang !== 'eng') {
                 return {
                     valid: false,
-                    detectedScript: 'non-english-latin',
-                    expectedScript: 'latin (English)',
-                    message: `Template content contains non-English characters (special diacritics) and does not appear to be in English. Please write the content in English or change the language to match your content.`,
-                };
-            }
-            if (!isEng) {
-                return {
-                    valid: false,
-                    detectedScript: 'foreign-latin',
-                    expectedScript: 'latin (English)',
+                    detectedScript: detectedLang,
+                    expectedScript: 'eng',
                     message: `Template content does not appear to be written in English. Please write the content in English or change the language to match your content.`,
                 };
             }
         } else {
-            // Non-English Latin language selected → content must NOT be plain English
-            if (isEng && !hasNonEng) {
+            // Non-English Latin language selected
+
+            // 1. Content should NOT be plain English
+            if (detectedLang === 'eng') {
                 return {
                     valid: false,
                     detectedScript: 'english',
                     expectedScript: `latin (${language})`,
                     message: `Template content appears to be written in English, but you selected "${language}". Please write the content in ${language} or change the language to English.`,
                 };
+            }
+
+            // 2. Check specific language match — if franc identifies a specific language
+            //    that does NOT match what the user selected, show a mismatch error.
+            if (expectedIso && detectedLang !== 'und') {
+                // Groups of mutually acceptable ISO codes (linguistically close / franc confuses these)
+                const LANGUAGE_GROUPS: string[][] = [
+                    ['nob', 'dan', 'swe'],              // Norwegian, Danish, Swedish
+                    ['msa', 'ind'],                      // Malay, Indonesian
+                    ['spa'],                             // All Spanish variants share 'spa'
+                    ['por'],                             // All Portuguese variants share 'por'
+                    ['afr', 'nld'],                      // Afrikaans ↔ Dutch (very similar roots)
+                    ['ces', 'slk'],                      // Czech ↔ Slovak (mutually intelligible)
+                    ['hrv', 'slv', 'srp'],               // Croatian, Slovenian, Serbian (Latin)
+                    ['cat', 'spa', 'por', 'ita', 'fra'], // Romance family (franc often confuses)
+                    ['lav', 'lit'],                      // Latvian ↔ Lithuanian (Baltic)
+                    ['est', 'fin'],                      // Estonian ↔ Finnish (Finnic family)
+                    ['ron', 'ita', 'fra', 'spa', 'por'], // Romanian with Romance family
+                ];
+
+                // Languages franc-min does not reliably identify → skip specific check
+                const FRANC_UNRELIABLE = new Set([
+                    'fil', 'hau', 'gle', 'kin', 'kir', 'uzb', 'zul', 'swa',
+                    'sqi', // Albanian — franc-min often misidentifies
+                    'aze', // Azerbaijani
+                    'hun', // Hungarian — unique language, low training data in franc-min
+                    'tur', // Turkish — franc sometimes confuses with other Turkic
+                    'vie', // Vietnamese — tone marks trip up franc-min
+                ]);
+
+                const isExpectedUnreliable = FRANC_UNRELIABLE.has(expectedIso);
+                const isDetectedUnreliable = FRANC_UNRELIABLE.has(detectedLang);
+
+                if (!isExpectedUnreliable && !isDetectedUnreliable) {
+                    const inSameGroup = LANGUAGE_GROUPS.some(
+                        group => group.includes(expectedIso) && group.includes(detectedLang)
+                    );
+
+                    if (!inSameGroup && detectedLang !== expectedIso) {
+                        // Find a human-readable name for the detected language
+                        const detectedName =
+                            Object.entries(LANGUAGE_FRANC_MAP).find(([, iso]) => iso === detectedLang)?.[0]
+                            || detectedLang;
+                        return {
+                            valid: false,
+                            detectedScript: detectedLang,
+                            expectedScript: expectedIso,
+                            message: `Template content appears to be written in ${detectedName}, but you selected "${language}". Please write the content in ${language} or change the language to match your content.`,
+                        };
+                    }
+                }
             }
         }
     }
