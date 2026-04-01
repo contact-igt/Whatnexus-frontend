@@ -68,8 +68,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
   const recentCalls = tokenData?.recentCalls || [];
   const byModel = tokenData?.byModel || [];
   const bySource = tokenData?.bySource || [];
-  // Calculate USD to INR rate from summary data
-  const usdToInrRate = summary.totalCostUsd > 0 ? summary.totalCostInr / summary.totalCostUsd : 85;
+  // INR values come directly from backend (final_cost_inr column) — no conversion on frontend
 
   // Source display config
   const sourceConfig: Record<string, { label: string; icon: any; color: string }> = {
@@ -98,7 +97,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
         ? parsedDate.toISOString()
         : 'N/A';
       const costUsd = parseFloat(row.estimated_cost) || 0;
-      const costInr = costUsd * usdToInrRate;
+      const costInr = parseFloat(row.final_cost_inr) || 0;
       return [
         formattedDate,
         row.source || '',
@@ -724,7 +723,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
                           isDarkMode ? "text-emerald-400/70" : "text-emerald-700"
                         )}
                       >
-                        ₹{((parseFloat(row.estimated_cost) || 0) * usdToInrRate).toFixed(4)}
+                        ₹{(parseFloat(row.final_cost_inr) || 0).toFixed(4)}
                       </td>
                     </tr>
                   );
@@ -827,7 +826,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
               ) : byModel.map((model: any, i: number) => {
                 const color = modelColors[i % modelColors.length];
                 const percent = totalTokens > 0 ? Math.round((model.totalTokens / totalTokens) * 100) : 0;
-                const costInr = (parseFloat(model.costUsd) || 0) * usdToInrRate;
+                const costInr = parseFloat(model.costInr) || 0;
                 return (
                   <div key={model.model} className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -917,7 +916,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
                 const config = sourceConfig[source.source] || { label: source.source, icon: Bot, color: 'slate' };
                 const Icon = config.icon;
                 const percent = totalTokens > 0 ? Math.round((source.totalTokens / totalTokens) * 100) : 0;
-                const costInr = (parseFloat(source.costUsd) || 0) * usdToInrRate;
+                const costInr = parseFloat(source.costInr) || 0;
                 return (
                   <div
                     key={source.source}
