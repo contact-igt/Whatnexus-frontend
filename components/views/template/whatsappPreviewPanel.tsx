@@ -19,6 +19,7 @@ interface WhatsAppPreviewPanelProps {
     carouselCards?: CarouselCard[];
     onCarouselCardsChange?: (cards: CarouselCard[]) => void;
     fileName?: string | null;
+    category?: string;
 }
 
 // Inline Carousel Preview Sub-Component
@@ -229,7 +230,8 @@ export const WhatsAppPreviewPanel = ({
     quickReplies = [],
     carouselCards = [],
     onCarouselCardsChange,
-    fileName = null
+    fileName = null,
+    category
 }: WhatsAppPreviewPanelProps) => {
     // Replace variables and format text
     let processedContent = content;
@@ -506,8 +508,27 @@ export const WhatsAppPreviewPanel = ({
                                 </div>
                             )}
 
-                            {/* CTA Buttons (non-carousel only) */}
-                            {!isCarousel && ctaButtons.length > 0 && (
+                            {/* Copy Code Button for Authentication templates */}
+                            {!isCarousel && category?.toUpperCase() === 'AUTHENTICATION' && (
+                                <div className="mt-2 space-y-1">
+                                    <button
+                                        className={cn(
+                                            "w-full py-2.5 px-4 rounded-lg text-[13px] font-medium text-center border transition-all hover:scale-[1.02] active:scale-95",
+                                            isDarkMode
+                                                ? 'bg-[#1c2c33] text-emerald-400 border-emerald-500/20 hover:bg-[#233239]'
+                                                : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 shadow-sm'
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Copy size={14} />
+                                            <span>Copy Code</span>
+                                        </div>
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* CTA Buttons (non-carousel, non-authentication only) */}
+                            {!isCarousel && category?.toUpperCase() !== 'AUTHENTICATION' && ctaButtons.length > 0 && (
                                 <div className="mt-2 space-y-1">
                                     {ctaButtons.map((button) => (
                                         <button

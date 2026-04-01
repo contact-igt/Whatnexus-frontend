@@ -143,6 +143,15 @@ const templateSchema = z.object({
         });
     }
 
+    // Body cannot start with a variable
+    if (data.content.trim().startsWith('{{')) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Body cannot start with a variable. Please add text before the variable.",
+            path: ['content']
+        });
+    }
+
     // Body cannot end with a variable
     if (data.content.trim().endsWith('}}')) {
         ctx.addIssue({
@@ -474,7 +483,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     // Authentication mode — lock the form when AUTHENTICATION category is chosen
     const isAuthMode = category === 'AUTHENTICATION';
-    const AUTH_BODY_TEXT = '{{1}} is your verification code. For your security, do not share this code.';
+    const AUTH_BODY_TEXT = 'Your verification code is {{1}}. For your security, do not share this code.';
     const AUTH_FOOTER_TEXT = 'This code expires in 10 minutes.';
 
     // Auto-configure form when switching to AUTHENTICATION category
@@ -1435,6 +1444,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                             carouselCards={templateType === 'CAROUSEL' ? carouselCards : []}
                             onCarouselCardsChange={(newCards) => setValue('carouselCards', newCards)}
                             fileName={displayFileName}
+                            category={category}
                         />
                     </div>
                 </div>
