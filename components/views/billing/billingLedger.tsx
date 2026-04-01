@@ -66,12 +66,12 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
         <div className="w-4 h-px bg-emerald-500/50" />
         Transaction Ledger
       </h2>
-      
+
       <div className={cn(
-          "relative group rounded-[24px] border transition-all duration-500 overflow-hidden",
-          isDarkMode 
-              ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10" 
-              : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
+        "relative group rounded-[24px] border transition-all duration-500 overflow-hidden",
+        isDarkMode
+          ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+          : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
       )}>
         {/* Subtle Background Glow */}
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
@@ -117,7 +117,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
           <table className="w-full min-w-[1000px]">
             <thead>
               <tr className={cn("text-[9px] font-black uppercase tracking-[0.2em] border-b", isDarkMode ? 'text-white/20 border-white/5 bg-white/[0.01]' : 'text-slate-400 border-slate-100 bg-slate-50/50')}>
-                {['Timestamp', 'Type', 'Recipient', 'Template', 'Campaign', 'Region', 'Base Rate', 'Service Fee', 'Total', 'Status'].map(h => (
+                {['Timestamp', 'Type', 'Recipient', 'Template', 'Campaign', 'Region', 'Rate ($)', 'Fee ($)', 'Total (₹)', 'Status'].map(h => (
                   <th key={h} className="px-6 py-5 text-left font-black">{h}</th>
                 ))}
               </tr>
@@ -169,34 +169,34 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                       {/* Type (Category) */}
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-2">
-                           <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", 
-                              formattedCategory === 'Marketing' ? 'bg-purple-500' :
+                          <div className={cn("w-1.5 h-1.5 rounded-full shrink-0",
+                            formattedCategory === 'Marketing' ? 'bg-purple-500' :
                               formattedCategory === 'Utility' ? 'bg-orange-500' :
-                              formattedCategory === 'Authentication' ? 'bg-rose-500' : 'bg-emerald-500'
-                           )} />
-                           <span className={cn("text-[10px] font-black uppercase tracking-widest", cMap[formattedCategory as keyof typeof cMap])}>
-                             {formattedCategory}
-                           </span>
+                                formattedCategory === 'Authentication' ? 'bg-rose-500' : 'bg-emerald-500'
+                          )} />
+                          <span className={cn("text-[10px] font-black uppercase tracking-widest", cMap[formattedCategory as keyof typeof cMap])}>
+                            {formattedCategory}
+                          </span>
                         </div>
                       </td>
 
                       {/* Recipient */}
                       <td className="px-6 py-5">
-                         <div className="flex items-center gap-2">
-                            <div className={cn("p-1.5 rounded-lg bg-white/5 border border-white/5", !isDarkMode && "bg-slate-100 border-slate-200")}>
-                               <User size={10} className={isDarkMode ? "text-white/40" : "text-slate-500"} />
-                            </div>
-                            <div className="flex flex-col">
-                               <span className={cn("text-[11px] font-black tabular-nums tracking-tight", isDarkMode ? "text-white/90" : "text-slate-700")}>
-                                {row.recipient}
-                               </span>
-                               {row.recipientName && (
-                                 <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-20 truncate max-w-[100px]")}>
-                                   {row.recipientName}
-                                 </span>
-                               )}
-                            </div>
-                         </div>
+                        <div className="flex items-center gap-2">
+                          <div className={cn("p-1.5 rounded-lg bg-white/5 border border-white/5", !isDarkMode && "bg-slate-100 border-slate-200")}>
+                            <User size={10} className={isDarkMode ? "text-white/40" : "text-slate-500"} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className={cn("text-[11px] font-black tabular-nums tracking-tight", isDarkMode ? "text-white/90" : "text-slate-700")}>
+                              {row.recipient}
+                            </span>
+                            {row.recipientName && (
+                              <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-20 truncate max-w-[100px]")}>
+                                {row.recipientName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Template */}
@@ -215,29 +215,29 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
 
                       {/* Region */}
                       <td className="px-6 py-5">
-                         <span className={cn("text-[10px] font-black uppercase tracking-widest opacity-40")}>
-                            {row.country || 'Global'}
-                         </span>
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest opacity-40")}>
+                          {row.country || 'Global'}
+                        </span>
                       </td>
 
                       {/* Base Rate */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tabular-nums tracking-tighter opacity-40")}>
-                           ₹{parseFloat(row.rate).toFixed(3)}
+                          ${parseFloat(row.rate).toFixed(4)}
                         </span>
                       </td>
 
                       {/* Platform Fee */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tabular-nums tracking-tighter text-emerald-500/60")}>
-                           +₹{parseFloat(row.platformFee).toFixed(3)}
+                          +${parseFloat(row.platformFee).toFixed(4)}
                         </span>
                       </td>
 
                       {/* Total */}
                       <td className="px-6 py-5">
                         <span className={cn("text-xs font-black tabular-nums tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                          ₹{parseFloat(row.total).toFixed(4)}
+                          ₹{parseFloat(row.totalInr || row.total).toFixed(4)}
                         </span>
                       </td>
 
@@ -259,12 +259,12 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
         <div className={cn("relative z-10 px-6 py-4 border-t", isDarkMode ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50/50')}>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-               <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                  <Download size={12} className="text-emerald-500" />
-               </div>
-               <button className={cn("text-[10px] font-black uppercase tracking-widest transition-all duration-300 hover:tracking-[0.2em]", isDarkMode ? 'text-white/40 hover:text-white' : 'text-slate-500 hover:text-slate-900')}>
-                 Export CSV
-               </button>
+              <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                <Download size={12} className="text-emerald-500" />
+              </div>
+              <button className={cn("text-[10px] font-black uppercase tracking-widest transition-all duration-300 hover:tracking-[0.2em]", isDarkMode ? 'text-white/40 hover:text-white' : 'text-slate-500 hover:text-slate-900')}>
+                Export CSV
+              </button>
             </div>
             <Pagination
               currentPage={page}

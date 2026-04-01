@@ -190,7 +190,7 @@ export const TeamUserDrawer = ({
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className={cn(
                                         "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                                        user?.status === 'active' 
+                                        user?.status === 'active'
                                             ? (isDarkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200")
                                             : (isDarkMode ? "bg-slate-500/10 text-slate-400 border-slate-500/20" : "bg-slate-100 text-slate-600 border-slate-200")
                                     )}>
@@ -310,7 +310,6 @@ export const TeamUserDrawer = ({
                                     options={[
                                         { value: 'staff', label: 'Staff' },
                                         { value: 'agent', label: 'Agent' },
-                                        { value: 'doctor', label: 'Doctor' },
                                         { value: 'tenant_admin', label: 'Node Controller (Admin)' }
                                     ]}
                                     disabled={isSaving}

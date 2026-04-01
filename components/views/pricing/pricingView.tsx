@@ -341,9 +341,9 @@ export const PricingView = () => {
                             <TableRow isDarkMode={isDarkMode}>
                                 <TableHead isDarkMode={isDarkMode}>Category</TableHead>
                                 <TableHead isDarkMode={isDarkMode}>Country Code</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">Base Rate</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Base Rate ($)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="right">Markup (%)</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">Final Rate</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Final Rate ($)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="center" width="100px">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -379,14 +379,14 @@ export const PricingView = () => {
                                             <span>{rule.country}</span>
                                         </TableCell>
                                         <TableCell align="right">
-                                            <span>₹{parseFloat(rule.rate).toFixed(4)}</span>
+                                            <span>${parseFloat(rule.rate).toFixed(4)}</span>
                                         </TableCell>
                                         <TableCell align="right">
                                             <span>{parseFloat(rule.markup_percent).toFixed(1)}%</span>
                                         </TableCell>
                                         <TableCell align="right">
                                             <span className="text-emerald-400 font-medium">
-                                                ₹{(parseFloat(rule.rate) * (1 + parseFloat(rule.markup_percent) / 100)).toFixed(4)}
+                                                ${(parseFloat(rule.rate) * (1 + parseFloat(rule.markup_percent) / 100)).toFixed(4)}
                                             </span>
                                         </TableCell>
                                         <TableCell align="center" width="100px">
