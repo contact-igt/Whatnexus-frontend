@@ -170,7 +170,7 @@ For support: support@whatnexus.com
               <div className="space-y-3 mb-8">
                 {[
                   { label: 'Currency', value: currency, color: '' },
-                  { label: 'Status', value: balanceStatus === 'critical' ? 'Critical' : balanceStatus === 'low' ? 'Low Balance' : 'Active', color: balanceStatus === 'critical' ? 'text-red-500' : balanceStatus === 'low' ? 'text-amber-500' : 'text-emerald-500' },
+                  { label: 'Status', value: balanceStatus === 'zero' ? 'Zero Balance' : balanceStatus === 'low' ? 'Low Balance' : 'Healthy', color: balanceStatus === 'zero' ? 'text-red-500' : balanceStatus === 'low' ? 'text-amber-500' : 'text-emerald-500' },
                 ].map((item, i) => (
                   <div key={i} className="flex justify-between items-center px-1">
                     <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30")}>{item.label}</span>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
+import { DEFAULT_USD_TO_INR } from "@/lib/billingConfig";
 import {
   Cpu,
   ArrowDownToLine,
@@ -64,7 +65,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
   );
 
   const tokenData = response?.data;
-  const summary = tokenData?.summary || { totalPromptTokens: 0, totalCompletionTokens: 0, totalTokens: 0, totalCostInr: 0, totalCostUsd: 0, totalCalls: 0 };
+  const summary = tokenData?.summary || { totalPromptTokens: 0, totalCompletionTokens: 0, totalTokens: 0, totalCostInr: 0, totalCostUsd: 0, totalBaseCostUsd: 0, totalPlatformFeeUsd: 0, totalCalls: 0, usdToInrRate: DEFAULT_USD_TO_INR };
   const recentCalls = tokenData?.recentCalls || [];
   const byModel = tokenData?.byModel || [];
   const bySource = tokenData?.bySource || [];
@@ -89,14 +90,17 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
   // Export to CSV functionality
   const exportToCSV = () => {
     if (recentCalls.length === 0) return;
-    const headers = ['Date/Time', 'Source', 'Model', 'Input Tokens', 'Output Tokens', 'Total Tokens', 'Cost (USD)', 'Cost (INR)'];
+    const headers = ['Date/Time', 'Source', 'Model', 'Input Tokens', 'Output Tokens', 'Base Cost ($)', 'Platform Fee ($)', 'Total ($)', 'Total (₹)'];
     const rows = recentCalls.map((row: any) => {
       const dateValue = row.created_at || row.createdAt;
       const parsedDate = dateValue ? new Date(dateValue) : null;
       const formattedDate = parsedDate && !isNaN(parsedDate.getTime())
         ? parsedDate.toISOString()
         : 'N/A';
-      const costUsd = parseFloat(row.estimated_cost) || 0;
+      const baseCostUsd = parseFloat(row.base_cost_usd) || 0;
+      const markupPct = parseFloat(row.markup_percent) || 0;
+      const platformFee = baseCostUsd * (markupPct / 100);
+      const finalCostUsd = parseFloat(row.final_cost_usd) || 0;
       const costInr = parseFloat(row.final_cost_inr) || 0;
       return [
         formattedDate,
@@ -104,8 +108,9 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
         cleanModelName(row.model) || '',
         row.prompt_tokens || 0,
         row.completion_tokens || 0,
-        row.total_tokens || 0,
-        costUsd.toFixed(6),
+        baseCostUsd.toFixed(6),
+        platformFee.toFixed(6),
+        finalCostUsd.toFixed(6),
         costInr.toFixed(4)
       ].join(',');
     });
@@ -235,46 +240,54 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
                 </div>
               </div>
 
-              {/* Right side — Amount badge */}
+              {/* Right side — Cost breakdown */}
               <div
                 className={cn(
-                  "flex flex-col items-center gap-2 p-6 rounded-2xl border",
+                  "flex flex-col gap-3 p-6 rounded-2xl border min-w-[200px]",
                   isDarkMode
                     ? "bg-white/[0.03] border-white/5"
                     : "bg-slate-50 border-slate-200"
                 )}
               >
-                <p
-                  className={cn(
-                    "text-[10px] font-black uppercase tracking-widest",
-                    isDarkMode ? "text-white/35" : "text-slate-400"
-                  )}
-                >
-                  Total Spent
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span
-                    className={cn(
-                      "text-3xl font-black tracking-tighter tabular-nums",
-                      isDarkMode ? "text-emerald-400" : "text-emerald-600"
-                    )}
-                  >
-                    ₹{animatedAmount.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <div className="relative">
-                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400" />
-                    <div className="absolute inset-0 w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 animate-ping" />
+                <div className="flex items-center justify-between">
+                  <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/35" : "text-slate-400")}>
+                    Cost Breakdown
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <div className="relative">
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400" />
+                      <div className="absolute inset-0 w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 animate-ping" />
+                    </div>
+                    <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDarkMode ? "text-emerald-400/70" : "text-emerald-600")}>
+                      Live
+                    </span>
                   </div>
-                  <span
-                    className={cn(
-                      "text-[9px] font-bold uppercase tracking-wider",
-                      isDarkMode ? "text-emerald-400/70" : "text-emerald-600"
-                    )}
-                  >
-                    Live tracking
-                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={cn("text-[10px] font-semibold", isDarkMode ? "text-white/40" : "text-slate-500")}>Base Cost</span>
+                    <span className={cn("text-xs font-bold tabular-nums", isDarkMode ? "text-white/60" : "text-slate-700")}>
+                      ${summary.totalBaseCostUsd.toFixed(6)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={cn("text-[10px] font-semibold", isDarkMode ? "text-amber-400/70" : "text-amber-600")}>Platform Fee</span>
+                    <span className={cn("text-xs font-bold tabular-nums", isDarkMode ? "text-amber-400/70" : "text-amber-600")}>
+                      +${summary.totalPlatformFeeUsd.toFixed(6)}
+                    </span>
+                  </div>
+                  <div className={cn("border-t pt-2", isDarkMode ? "border-white/5" : "border-slate-200")}>
+                    <div className="flex items-center justify-between">
+                      <span className={cn("text-[10px] font-black uppercase tracking-wider", isDarkMode ? "text-white/50" : "text-slate-500")}>Total (INR)</span>
+                      <span className={cn("text-xl font-black tabular-nums tracking-tighter", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>
+                        ₹{animatedAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <p className={cn("text-[9px] font-medium text-right mt-0.5", isDarkMode ? "text-white/20" : "text-slate-400")}>
+                      @₹{summary.usdToInrRate}/USD
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -614,7 +627,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
                     isDarkMode ? "border-white/5" : "border-slate-100"
                   )}
                 >
-                  {["Date / Time", "Input Tokens", "Output Tokens", "Total", "Cost (₹)"].map(
+                  {["Date / Time", "Input Tokens", "Output Tokens", "Base ($)", "Fee ($)", "Total (₹)"].map(
                     (header) => (
                       <th
                         key={header}
@@ -632,7 +645,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
               <tbody>
                 {recentCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center">
+                    <td colSpan={6} className="py-12 text-center">
                       <div className={cn("flex flex-col items-center gap-2", isDarkMode ? "text-white/20" : "text-slate-300")}>
                         <Activity size={24} />
                         <p className="text-xs font-bold uppercase tracking-wider">No AI calls recorded yet</p>
@@ -711,11 +724,19 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
                       </td>
                       <td
                         className={cn(
-                          "py-3.5 px-4 text-xs font-bold tabular-nums",
-                          isDarkMode ? "text-white/60" : "text-slate-600"
+                          "py-3.5 px-4 text-xs font-semibold tabular-nums",
+                          isDarkMode ? "text-white/50" : "text-slate-500"
                         )}
                       >
-                        {(row.total_tokens || 0).toLocaleString()}
+                        ${(parseFloat(row.base_cost_usd) || 0).toFixed(6)}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-3.5 px-4 text-xs font-semibold tabular-nums",
+                          isDarkMode ? "text-amber-400/60" : "text-amber-600"
+                        )}
+                      >
+                        +${((parseFloat(row.base_cost_usd) || 0) * (parseFloat(row.markup_percent) || 0) / 100).toFixed(6)}
                       </td>
                       <td
                         className={cn(

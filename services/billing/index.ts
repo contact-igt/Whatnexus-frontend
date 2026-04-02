@@ -122,9 +122,113 @@ export class billingApiData {
   };
 
   /**
-   * Fetch wallet status (healthy/low/grace/suspended)
+   * Fetch wallet status (healthy/low/zero)
    */
   getWalletStatus = async () => {
     return await _axios("get", "/whatsapp/billing/wallet/status");
+  };
+
+  /**
+   * Fetch billing mode + cycle + credit info
+   */
+  getBillingMode = async () => {
+    return await _axios("get", "/whatsapp/billing/mode");
+  };
+
+  /**
+   * Fetch invoices (with optional status filter)
+   */
+  getInvoices = async (params?: { status?: string; page?: number; limit?: number }) => {
+    return await _axios("get", "/whatsapp/billing/invoices", null, undefined, params);
+  };
+
+  /**
+   * Fetch single invoice detail
+   */
+  getInvoiceDetail = async (id: number) => {
+    return await _axios("get", `/whatsapp/billing/invoices/${id}`);
+  };
+
+  /**
+   * Pay a specific invoice via Razorpay
+   */
+  payInvoice = async (id: number, paymentData: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) => {
+    return await _axios("post", `/whatsapp/billing/invoices/${id}/pay`, paymentData);
+  };
+
+  // ──────────────── Super Admin APIs ────────────────
+
+  /**
+   * Force-unlock a tenant's billing access (admin)
+   */
+  adminForceUnlock = async (data: { tenant_id: string; reason: string }) => {
+    return await _axios("post", "/whatsapp/billing/admin/force-unlock", data);
+  };
+
+  /**
+   * Manually credit a tenant's wallet (admin)
+   */
+  adminManualCredit = async (data: { tenant_id: string; amount: number; reason: string }) => {
+    return await _axios("post", "/whatsapp/billing/admin/manual-credit", data);
+  };
+
+  /**
+   * Close/cancel an invoice (admin)
+   */
+  adminInvoiceClose = async (data: { invoice_id: number; reason: string }) => {
+    return await _axios("post", "/whatsapp/billing/admin/invoice-close", data);
+  };
+
+  /**
+   * Change a tenant's billing mode (admin)
+   */
+  adminChangeBillingMode = async (data: { tenant_id: string; new_mode: 'prepaid' | 'postpaid'; reason: string }) => {
+    return await _axios("post", "/whatsapp/billing/admin/change-mode", data);
+  };
+
+  /**
+   * Fetch admin audit log (admin)
+   */
+  adminGetAuditLog = async (params?: { tenant_id?: string; page?: number; limit?: number }) => {
+    return await _axios("get", "/whatsapp/billing/admin/audit-log", null, undefined, params);
+  };
+
+  /**
+   * Fetch system billing health summary (admin)
+   */
+  adminGetHealthSummary = async () => {
+    return await _axios("get", "/whatsapp/billing/admin/health");
+  };
+
+  /**
+   * Fetch tenant list for admin dropdown (admin)
+   */
+  adminGetTenants = async (params?: { search?: string }) => {
+    return await _axios("get", "/whatsapp/billing/admin/tenants", null, undefined, params);
+  };
+
+  /**
+   * Fetch tenant billing overview (admin)
+   */
+  adminGetTenantOverview = async (tenant_id: string) => {
+    return await _axios("get", "/whatsapp/billing/admin/tenant-overview", null, undefined, { tenant_id });
+  };
+
+  /**
+   * Resolve a health event (admin)
+   */
+  adminResolveHealthEvent = async (id: number) => {
+    return await _axios("post", `/whatsapp/billing/admin/health/${id}/resolve`);
+  };
+
+  /**
+   * Fetch unresolved health events (admin)
+   */
+  adminGetUnresolvedEvents = async () => {
+    return await _axios("get", "/whatsapp/billing/admin/health/unresolved");
   };
 }

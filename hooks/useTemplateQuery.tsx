@@ -173,6 +173,9 @@ export const useGenerateAiTemplateMutation = () => {
     return useMutation({
         mutationFn: (data: any) => {
             return templateApis.generateAiTemplate(data)
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to generate AI template');
         }
     })
 }

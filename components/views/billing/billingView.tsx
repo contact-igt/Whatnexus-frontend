@@ -5,21 +5,27 @@ import { useState } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { BillingHeader } from "./billingHeader";
-import { BillingKpiCards } from "./billingKpiCards";
-import { BillingLedger } from "./billingLedger";
+import { BillingDashboard } from "./billingDashboard";
 import { RechargeModal } from "./rechargeModal";
 import { BillingWallet } from "./billingWallet";
-import { BillingInsights } from "./billingInsights";
-import { AiApiTokensUsage } from "./aiApiTokenUsage";
+import { BillingInvoices } from "./billingInvoices";
+import { BillingInvoiceDetail } from "./billingInvoiceDetail";
+import { BillingUsageLimits } from "./billingUsageLimits";
+import { BillingUsageAnalytics } from "./billingUsageAnalytics";
+import { BillingPaymentHistory } from "./billingPaymentHistory";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
+import { useGetBillingModeQuery } from "@/hooks/useBillingQuery";
 import { socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { WhatsAppConnectionPlaceholder } from "../whatsappConfiguration/whatsappConnectionPlaceholder";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { CreditCard, Wallet, Cpu, AlertTriangle, X } from "lucide-react";
+import {
+  LayoutDashboard, Wallet, FileText, BarChart3,
+  CreditCard, Gauge, AlertTriangle, X, Shield
+} from "lucide-react";
 
 const billingApis = new billingApiData();
 
@@ -31,9 +37,14 @@ export const BillingView = () => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [lowBalanceWarning, setLowBalanceWarning] = useState<{ balance: number; message: string } | null>(null);
-  const [walletSuspension, setWalletSuspension] = useState<{ balance: number; status: string; message: string } | null>(null);
-  const isSuperAdmin = user?.role === 'super_admin';
-  const [viewMode, setViewMode] = useState<'tenant' | 'admin'>(isSuperAdmin ? 'admin' : 'tenant');
+  const [overdueInvoice, setOverdueInvoice] = useState<{ invoice_number: string; amount: number; days_overdue?: number } | null>(null);
+  const [creditLimitWarning, setCreditLimitWarning] = useState<{ usage: number; limit: number; percent: number } | null>(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [invoiceDetailId, setInvoiceDetailId] = useState<number | null>(null);
+  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'platform_admin';
+  const { data: billingModeRes } = useGetBillingModeQuery();
+  const billingMode = billingModeRes?.data?.billing_mode || 'prepaid';
+  const isPostpaid = billingMode === 'postpaid';
 
   useEffect(() => {
     if (!user?.tenant_id) return;
@@ -55,7 +66,6 @@ export const BillingView = () => {
 
     const handleUpdate = (data?: any) => {
       console.log("💳 Billing/Payment update received, refreshing data...");
-      // Use refetchQueries for instant UI update (no staleTime delay)
       queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
       queryClient.refetchQueries({ queryKey: ['billing-ledger'] });
       queryClient.refetchQueries({ queryKey: ['billing-spend-chart'] });
@@ -64,10 +74,10 @@ export const BillingView = () => {
       queryClient.refetchQueries({ queryKey: ['ai-token-usage'] });
       queryClient.refetchQueries({ queryKey: ['billing-template-stats'] });
       queryClient.refetchQueries({ queryKey: ['billing-campaign-stats'] });
+      queryClient.refetchQueries({ queryKey: ['billing-mode'] });
     };
 
     const handleLowBalance = (data: any) => {
-      // Validate payload structure to prevent crashes
       if (typeof data?.balance !== 'number' || typeof data?.message !== 'string') {
         console.warn("[BILLING] Invalid low-balance payload:", data);
         return;
@@ -76,8 +86,13 @@ export const BillingView = () => {
       toast.warning(data.message, { duration: 8000 });
     };
 
+    const handleZeroBalance = (data: any) => {
+      console.log("🛑 Wallet zero:", data);
+      setLowBalanceWarning({ balance: 0, message: "Wallet balance is ₹0 — all prepaid operations are blocked. Recharge now to restore services." });
+      toast.error("Wallet balance is ₹0 — services blocked", { duration: 10000 });
+    };
+
     const handleAutoRechargeTrigger = (data: any) => {
-      // Validate payload structure
       if (typeof data?.amount !== 'number') {
         console.warn("[BILLING] Invalid auto-recharge payload:", data);
         return;
@@ -86,61 +101,97 @@ export const BillingView = () => {
       setIsRechargeModalOpen(true);
     };
 
-    const handleWalletSuspended = (data: any) => {
-      // Validate payload structure
-      if (typeof data?.message !== 'string') {
-        console.warn("[BILLING] Invalid wallet-suspended payload:", data);
-        return;
-      }
-      console.log("🚫 Wallet suspended:", data);
-      setWalletSuspension(data);
-      setLowBalanceWarning(null); // Clear low balance warning when suspended
-      toast.error("Account Suspended: " + data.message, { duration: 10000 });
-    };
-
     const handleWalletRestored = (data: any) => {
-      // Validate payload structure
-      if (!data || typeof data !== 'object') {
-        console.warn("[BILLING] Invalid wallet-restored payload:", data);
-        return;
-      }
+      if (!data || typeof data !== 'object') return;
       console.log("✅ Wallet restored:", data);
-      setWalletSuspension(null);
-      toast.success(data.message || "Services restored!", { duration: 5000 });
-      // Refresh all billing data
+      setLowBalanceWarning(null);
+      toast.success("Wallet recharged — services restored!", { duration: 5000 });
       queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
       queryClient.refetchQueries({ queryKey: ['wallet-status'] });
       queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
     };
 
-    const handleWalletGrace = (data: any) => {
-      // Validate payload structure
-      if (typeof data?.balance !== 'number' || typeof data?.message !== 'string') {
-        console.warn("[BILLING] Invalid wallet-grace payload:", data);
-        return;
-      }
-      console.log("⚠️ Wallet in grace period:", data);
-      setLowBalanceWarning({ balance: data.balance, message: data.message });
-      toast.warning(data.message, { duration: 8000 });
+    const handleInvoiceGenerated = (data: any) => {
+      console.log("📄 Invoice generated:", data);
+      toast.info(`Invoice ${data?.invoice_number || ''} generated — ₹${parseFloat(data?.amount || 0).toFixed(2)}`, { duration: 8000 });
+      queryClient.refetchQueries({ queryKey: ['invoices'] });
+      queryClient.refetchQueries({ queryKey: ['billing-mode'] });
+    };
+
+    const handleInvoiceOverdue = (data: any) => {
+      console.log("⚠️ Invoice overdue:", data);
+      setOverdueInvoice(data);
+      toast.error(`Invoice ${data?.invoice_number || ''} is overdue — services may be blocked`, { duration: 10000 });
+      queryClient.refetchQueries({ queryKey: ['invoices'] });
+    };
+
+    const handleInvoicePaid = (data: any) => {
+      console.log("✅ Invoice paid:", data);
+      setOverdueInvoice(null);
+      toast.success(`Invoice ${data?.invoice_number || ''} paid successfully!`, { duration: 5000 });
+      queryClient.refetchQueries({ queryKey: ['invoices'] });
+      queryClient.refetchQueries({ queryKey: ['billing-mode'] });
+    };
+
+    const handleCreditLimitWarning = (data: any) => {
+      console.log("⚠️ Credit limit warning:", data);
+      setCreditLimitWarning(data);
+      toast.warning(`Credit usage at ${data?.percent || 80}% — approaching limit`, { duration: 8000 });
+    };
+
+    const handleCreditLimitReached = (data: any) => {
+      console.log("🛑 Credit limit reached:", data);
+      setCreditLimitWarning({ usage: data?.usage || 0, limit: data?.limit || 0, percent: 100 });
+      toast.error("Credit limit reached — new messages & AI calls blocked", { duration: 10000 });
+    };
+
+    const handleUsageLimitWarning = (data: any) => {
+      toast.warning(`Usage at ${data?.usage_type || 'unknown'}: approaching daily/monthly limit`, { duration: 6000 });
+    };
+
+    const handleUsageLimitReached = (data: any) => {
+      toast.error(`Usage limit reached: ${data?.reason || 'daily/monthly cap hit'}`, { duration: 10000 });
+    };
+
+    const handleAccessRestored = () => {
+      setOverdueInvoice(null);
+      setCreditLimitWarning(null);
+      toast.success("Account access restored!", { duration: 5000 });
+      queryClient.refetchQueries({ queryKey: ['invoices'] });
+      queryClient.refetchQueries({ queryKey: ['billing-mode'] });
     };
 
     socket.on("billing-update", handleUpdate);
     socket.on("payment-update", handleUpdate);
     socket.on("low-balance-warning", handleLowBalance);
+    socket.on("zero-balance", handleZeroBalance);
     socket.on("auto-recharge-trigger", handleAutoRechargeTrigger);
-    socket.on("wallet-suspended", handleWalletSuspended);
     socket.on("wallet-restored", handleWalletRestored);
-    socket.on("wallet-grace", handleWalletGrace);
+    socket.on("invoice-generated", handleInvoiceGenerated);
+    socket.on("invoice-overdue", handleInvoiceOverdue);
+    socket.on("invoice-paid", handleInvoicePaid);
+    socket.on("credit-limit-warning", handleCreditLimitWarning);
+    socket.on("credit-limit-reached", handleCreditLimitReached);
+    socket.on("usage-limit-warning", handleUsageLimitWarning);
+    socket.on("usage-limit-reached", handleUsageLimitReached);
+    socket.on("access-restored", handleAccessRestored);
 
     return () => {
       socket.off("connect", joinAndListen);
       socket.off("billing-update", handleUpdate);
       socket.off("payment-update", handleUpdate);
       socket.off("low-balance-warning", handleLowBalance);
+      socket.off("zero-balance", handleZeroBalance);
       socket.off("auto-recharge-trigger", handleAutoRechargeTrigger);
-      socket.off("wallet-suspended", handleWalletSuspended);
       socket.off("wallet-restored", handleWalletRestored);
-      socket.off("wallet-grace", handleWalletGrace);
+      socket.off("invoice-generated", handleInvoiceGenerated);
+      socket.off("invoice-overdue", handleInvoiceOverdue);
+      socket.off("invoice-paid", handleInvoicePaid);
+      socket.off("credit-limit-warning", handleCreditLimitWarning);
+      socket.off("credit-limit-reached", handleCreditLimitReached);
+      socket.off("usage-limit-warning", handleUsageLimitWarning);
+      socket.off("usage-limit-reached", handleUsageLimitReached);
+      socket.off("access-restored", handleAccessRestored);
     };
   }, [user?.tenant_id, queryClient]);
 
@@ -196,6 +247,11 @@ export const BillingView = () => {
     return <WhatsAppConnectionPlaceholder />;
   }
 
+  // Handle navigation from Dashboard quick links
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   return (
     <div className="h-full overflow-y-auto p-8 space-y-10 animate-in fade-in duration-700 no-scrollbar pb-32 relative">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -203,8 +259,8 @@ export const BillingView = () => {
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/2" />
       </div>
 
-      {/* Wallet Suspension Banner - Cannot be dismissed */}
-      {walletSuspension && (
+      {/* Overdue Invoice Banner (Postpaid) */}
+      {overdueInvoice && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -222,27 +278,54 @@ export const BillingView = () => {
             <AlertTriangle size={24} className="text-red-500" />
           </div>
           <div className="flex-1">
-            <p className="text-lg font-bold">Account Suspended</p>
-            <p className="text-sm opacity-80 mt-1">{walletSuspension.message}</p>
-            <p className="text-xs opacity-60 mt-2">
-              Current balance: ₹{walletSuspension.balance?.toFixed(2) || '0.00'} |
-              AI responses and outgoing messages are blocked until you recharge.
+            <p className="text-lg font-bold">Overdue Invoice</p>
+            <p className="text-sm opacity-80 mt-1">
+              Invoice {overdueInvoice.invoice_number} is overdue — ₹{parseFloat(String(overdueInvoice.amount || 0)).toFixed(2)}
+            </p>
+            <p className="text-xs opacity-60 mt-1">
+              New messages and AI calls are blocked until this invoice is paid.
             </p>
           </div>
           <button
-            onClick={() => setIsRechargeModalOpen(true)}
+            onClick={() => setActiveTab('invoices')}
             className={cn(
               "px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg",
               "bg-red-500 text-white hover:bg-red-600 hover:scale-105"
             )}
           >
-            Recharge Now
+            Pay Invoice
           </button>
         </motion.div>
       )}
 
-      {/* Low Balance Warning Banner */}
-      {lowBalanceWarning && !walletSuspension && (
+      {/* Credit Limit Warning Banner (Postpaid) */}
+      {creditLimitWarning && creditLimitWarning.percent >= 100 && !overdueInvoice && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "relative z-20 flex items-center gap-3 px-5 py-4 rounded-2xl border",
+            isDarkMode ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-red-50 border-red-200 text-red-700"
+          )}
+        >
+          <AlertTriangle size={18} className="shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">Credit limit reached — new operations blocked</p>
+            <p className="text-xs opacity-70 mt-0.5">
+              Usage: ₹{creditLimitWarning.usage?.toFixed(2)} / ₹{creditLimitWarning.limit?.toLocaleString()}
+            </p>
+          </div>
+          <button
+            onClick={() => setCreditLimitWarning(null)}
+            className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </motion.div>
+      )}
+
+      {/* Low Balance Warning Banner (Prepaid) */}
+      {lowBalanceWarning && !overdueInvoice && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -269,7 +352,6 @@ export const BillingView = () => {
           >
             Recharge Now
           </button>
-          {/* Only allow dismissing non-critical warnings (balance > 0) */}
           {lowBalanceWarning.balance > 0 && (
             <button
               onClick={() => setLowBalanceWarning(null)}
@@ -281,87 +363,146 @@ export const BillingView = () => {
         </motion.div>
       )}
 
-      {viewMode === 'tenant' ? (
-        <Tabs defaultValue="usage" className="space-y-8 relative z-10">
-          <TabsList isDarkMode={isDarkMode}>
-            <TabsTrigger value="usage"><div className="flex items-center gap-2"><CreditCard size={12} />Meta Usage</div></TabsTrigger>
-            <TabsTrigger value="ai"><div className="flex items-center gap-2"><Cpu size={12} />AI API Tokens</div></TabsTrigger>
-            <TabsTrigger value="wallet"><div className="flex items-center gap-2"><Wallet size={12} />Wallet & Payments</div></TabsTrigger>
-          </TabsList>
+      {/* Header with date picker, export, recharge, and admin link */}
+      <BillingHeader
+        isDarkMode={isDarkMode}
+        startDate={startDate}
+        endDate={endDate}
+        onDateChange={handleDateChange}
+        onExport={handleExport}
+        onRecharge={() => setIsRechargeModalOpen(true)}
+        isSuperAdmin={isSuperAdmin}
+        viewMode="tenant"
+      />
 
-          <AnimatePresence mode="wait">
-            <TabsContent key="usage" value="usage" className="space-y-12 outline-none">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="space-y-12"
-              >
-                <BillingHeader
-                  isDarkMode={isDarkMode}
-                  startDate={startDate}
-                  endDate={endDate}
-                  onDateChange={handleDateChange}
-                  onExport={handleExport}
-                  onRecharge={() => setIsRechargeModalOpen(true)}
-                  isSuperAdmin={isSuperAdmin}
-                  viewMode={viewMode}
-                />
-
-                <BillingKpiCards
-                  isDarkMode={isDarkMode}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
-
-                <BillingLedger
-                  isDarkMode={isDarkMode}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
-
-                <BillingInsights
-                  isDarkMode={isDarkMode}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent key="wallet" value="wallet" className="outline-none">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              >
-                <BillingWallet
-                  isDarkMode={isDarkMode}
-                  onRecharge={() => setIsRechargeModalOpen(true)}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent key="ai" value="ai" className="outline-none">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              >
-                <AiApiTokensUsage isDarkMode={isDarkMode} startDate={startDate} endDate={endDate} />
-              </motion.div>
-            </TabsContent>
-          </AnimatePresence>
-        </Tabs>
-      ) : (
-        <div className={cn("flex flex-col items-center justify-center py-20 gap-4", isDarkMode ? "text-white/40" : "text-slate-400")}>
-          <p className="text-sm">Use the dedicated <a href="/pricing" className="text-emerald-500 underline font-semibold">Pricing & Rates</a> page to manage pricing rules.</p>
-        </div>
+      {/* Super Admin Link */}
+      {isSuperAdmin && (
+        <a
+          href="/admin-billing"
+          className={cn(
+            "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
+            isDarkMode
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+              : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
+          )}
+        >
+          <Shield size={14} />
+          Admin Billing Panel
+        </a>
       )}
+
+      {/* Main Tabs */}
+      <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="space-y-8 relative z-10">
+        <TabsList isDarkMode={isDarkMode}>
+          <TabsTrigger value="dashboard"><div className="flex items-center gap-2"><LayoutDashboard size={12} />Dashboard</div></TabsTrigger>
+          <TabsTrigger value="wallet"><div className="flex items-center gap-2"><Wallet size={12} />Wallet</div></TabsTrigger>
+          {isPostpaid && (
+            <TabsTrigger value="invoices"><div className="flex items-center gap-2"><FileText size={12} />Invoices</div></TabsTrigger>
+          )}
+          <TabsTrigger value="usage"><div className="flex items-center gap-2"><BarChart3 size={12} />Usage Analytics</div></TabsTrigger>
+          <TabsTrigger value="payments"><div className="flex items-center gap-2"><CreditCard size={12} />Payment History</div></TabsTrigger>
+          <TabsTrigger value="limits"><div className="flex items-center gap-2"><Gauge size={12} />Usage Limits</div></TabsTrigger>
+        </TabsList>
+
+        <AnimatePresence mode="wait">
+          {/* Dashboard */}
+          <TabsContent key="dashboard" value="dashboard" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <BillingDashboard
+                isDarkMode={isDarkMode}
+                startDate={startDate}
+                endDate={endDate}
+                onNavigate={handleNavigate}
+              />
+            </motion.div>
+          </TabsContent>
+
+          {/* Wallet */}
+          <TabsContent key="wallet" value="wallet" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <BillingWallet
+                isDarkMode={isDarkMode}
+                onRecharge={() => setIsRechargeModalOpen(true)}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            </motion.div>
+          </TabsContent>
+
+          {/* Invoices (postpaid only) */}
+          {isPostpaid && (
+            <TabsContent key="invoices" value="invoices" className="outline-none">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              >
+                {invoiceDetailId ? (
+                  <BillingInvoiceDetail
+                    isDarkMode={isDarkMode}
+                    invoiceId={invoiceDetailId}
+                    onBack={() => setInvoiceDetailId(null)}
+                  />
+                ) : (
+                  <BillingInvoices isDarkMode={isDarkMode} />
+                )}
+              </motion.div>
+            </TabsContent>
+          )}
+
+          {/* Usage Analytics */}
+          <TabsContent key="usage" value="usage" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <BillingUsageAnalytics
+                isDarkMode={isDarkMode}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            </motion.div>
+          </TabsContent>
+
+          {/* Payment History */}
+          <TabsContent key="payments" value="payments" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <BillingPaymentHistory isDarkMode={isDarkMode} />
+            </motion.div>
+          </TabsContent>
+
+          {/* Usage Limits */}
+          <TabsContent key="limits" value="limits" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="space-y-12"
+            >
+              <BillingUsageLimits isDarkMode={isDarkMode} />
+            </motion.div>
+          </TabsContent>
+        </AnimatePresence>
+      </Tabs>
 
       <RechargeModal
         isOpen={isRechargeModalOpen}

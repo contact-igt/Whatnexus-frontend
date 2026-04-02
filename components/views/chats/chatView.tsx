@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
+import { toast } from 'sonner';
 // Extracted Components
 
 // Extracted Components
@@ -488,12 +489,28 @@ export const ChatView = () => {
             queryClient.invalidateQueries({ queryKey: ["livechats"] });
         };
 
+        const handleWalletSuspended = (data: any) => {
+            toast.error(data?.message || 'Insufficient balance. AI auto-reply is paused. Please recharge your wallet.', {
+                duration: 8000,
+                id: 'wallet-suspended',
+            });
+        };
+
+        const handleInsufficientBalance = (data: any) => {
+            toast.warning(`Low balance: ₹${data?.balance?.toFixed?.(2) || '0'}. Required: ₹${data?.required?.toFixed?.(2) || '0'}. Please recharge.`, {
+                duration: 6000,
+                id: 'insufficient-balance',
+            });
+        };
+
         // Register listeners first
         socket.on("connect", handleConnect);
         socket.on("new-message", handleIncomingMessage);
         socket.on("ai-typing", handleAiTyping);
         socket.on("message-status-update", handleMessageStatusUpdate);
         socket.on("chat-assignment-updated", handleChatAssignment);
+        socket.on("wallet-suspended", handleWalletSuspended);
+        socket.on("insufficient-balance", handleInsufficientBalance);
 
         // Then connect (or emit join if already connected)
         if (socket.connected) {
@@ -508,6 +525,8 @@ export const ChatView = () => {
             socket.off("ai-typing", handleAiTyping);
             socket.off("message-status-update", handleMessageStatusUpdate);
             socket.off("chat-assignment-updated", handleChatAssignment);
+            socket.off("wallet-suspended", handleWalletSuspended);
+            socket.off("insufficient-balance", handleInsufficientBalance);
         };
     }, [user?.tenant_id]);
 

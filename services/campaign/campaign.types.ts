@@ -6,7 +6,7 @@
 
 export type CampaignType = 'immediate' | 'scheduled' | 'broadcast' | 'api';
 export type RecipientSource = 'csv' | 'group' | 'manual';
-export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed';
+export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused';
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 
 // ============================================

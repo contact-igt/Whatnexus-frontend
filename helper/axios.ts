@@ -70,7 +70,11 @@ export const _axios = async (
       params: params,
     });
     return res.data;
-  } catch (err) {
+  } catch (err: any) {
+    // Normalize billing guard errors: backend sends `reason` but frontend expects `message`
+    if (err?.response?.data?.blocked && err?.response?.data?.reason && !err?.response?.data?.message) {
+      err.response.data.message = err.response.data.reason;
+    }
     console.error("Axios error:", err);
     throw err;
   }

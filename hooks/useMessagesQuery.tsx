@@ -128,6 +128,9 @@ export const useChatSuggestMutation = () => {
                 queryKey: ["messages", variables.phone],
             });
         },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to get AI suggestion');
+        },
     });
 }
 
