@@ -24,16 +24,16 @@ export const BillingModeIndicator = ({ isDarkMode }: BillingModeIndicatorProps) 
     const billingMode = modeData.billing_mode || "prepaid";
     const isPrepaid = billingMode === "prepaid";
 
-    const cycle = modeData.current_cycle || null;
-    const creditLimit = modeData.postpaid_credit_limit || 5000;
-    const creditUsed = cycle?.total_cost_inr || 0;
+    const postpaid = modeData.postpaid || null;
+    const creditLimit = postpaid?.credit_limit || 5000;
+    const creditUsed = postpaid?.current_usage || 0;
     const creditPercent = creditLimit > 0 ? Math.min((creditUsed / creditLimit) * 100, 100) : 0;
     const creditRemaining = Math.max(creditLimit - creditUsed, 0);
 
-    const cycleStart = cycle?.cycle_start ? new Date(cycle.cycle_start).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—";
-    const cycleEnd = cycle?.cycle_end ? new Date(cycle.cycle_end).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
-    const daysLeft = cycle?.cycle_end
-        ? Math.max(0, Math.ceil((new Date(cycle.cycle_end).getTime() - Date.now()) / 86400000))
+    const cycleStart = modeData.billing_cycle_start ? new Date(modeData.billing_cycle_start).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—";
+    const cycleEnd = modeData.billing_cycle_end ? new Date(modeData.billing_cycle_end).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+    const daysLeft = modeData.billing_cycle_end
+        ? Math.max(0, Math.ceil((new Date(modeData.billing_cycle_end).getTime() - Date.now()) / 86400000))
         : 0;
 
     if (isLoading) {
@@ -155,7 +155,7 @@ export const BillingModeIndicator = ({ isDarkMode }: BillingModeIndicatorProps) 
                 </div>
 
                 {/* Cycle Info (Postpaid) or Quick Stats (Prepaid) */}
-                {!isPrepaid && cycle ? (
+                {!isPrepaid && postpaid ? (
                     <>
                         {/* Current Cycle */}
                         <div
@@ -237,7 +237,7 @@ export const BillingModeIndicator = ({ isDarkMode }: BillingModeIndicatorProps) 
                                                 isDarkMode ? "text-white" : "text-slate-900"
                                             )}
                                         >
-                                            {(cycle.total_messages || 0).toLocaleString()}
+                                            —
                                         </span>
                                     </div>
 
@@ -256,7 +256,7 @@ export const BillingModeIndicator = ({ isDarkMode }: BillingModeIndicatorProps) 
                                                 isDarkMode ? "text-white" : "text-slate-900"
                                             )}
                                         >
-                                            {(cycle.total_ai_calls || 0).toLocaleString()}
+                                            —
                                         </span>
                                     </div>
                                 </div>

@@ -93,7 +93,9 @@ export const BillingInvoices = ({ isDarkMode }: BillingInvoicesProps) => {
 
     const { data: invoiceDetailRes, isLoading: isDetailLoading } =
         useGetInvoiceDetailQuery(selectedInvoiceId || 0);
-    const invoiceDetail = invoiceDetailRes?.data || null;
+    const invoiceDetailData = invoiceDetailRes?.data || null;
+    const invoiceDetail = invoiceDetailData?.invoice || null;
+    const invoiceDetailCycle = invoiceDetailData?.cycle || null;
 
     const handlePayInvoice = async (invoice: any) => {
         if (payingInvoiceId) return;
@@ -107,7 +109,7 @@ export const BillingInvoices = ({ isDarkMode }: BillingInvoicesProps) => {
                 return;
             }
 
-            const orderRes = await createOrder.mutateAsync(invoice.total_amount);
+            const orderRes = await createOrder.mutateAsync(parseFloat(invoice.amount));
             const order = orderRes?.data;
 
             if (!order?.id) {
@@ -162,6 +164,7 @@ export const BillingInvoices = ({ isDarkMode }: BillingInvoicesProps) => {
     };
 
     const handleDownloadInvoice = (invoice: any) => {
+        const breakdown = invoice.breakdown || {};
         const content = `
 =====================================
        WHATNEXUS BILLING INVOICE
@@ -173,23 +176,17 @@ Generated      : ${new Date(invoice.createdAt).toLocaleDateString("en-IN", { day
 Due Date       : ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }) : "N/A"}
 
 -------------------------------------
-BILLING PERIOD
--------------------------------------
-Cycle Start    : ${invoice.cycle_start ? new Date(invoice.cycle_start).toLocaleDateString("en-IN") : "N/A"}
-Cycle End      : ${invoice.cycle_end ? new Date(invoice.cycle_end).toLocaleDateString("en-IN") : "N/A"}
-
--------------------------------------
 COST BREAKDOWN
 -------------------------------------
-Message Cost   : ₹${parseFloat(invoice.total_message_cost_inr || 0).toFixed(2)}
-AI Usage Cost  : ₹${parseFloat(invoice.total_ai_cost_inr || 0).toFixed(2)}
+Message Cost   : ₹${parseFloat(breakdown.messages || 0).toFixed(2)}
+AI Usage Cost  : ₹${parseFloat(breakdown.ai || 0).toFixed(2)}
 ──────────────────────
-Total Amount   : ₹${parseFloat(invoice.total_amount || 0).toFixed(2)}
+Total Amount   : ₹${parseFloat(invoice.amount || 0).toFixed(2)}
 
 -------------------------------------
 PAYMENT
 -------------------------------------
-${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString("en-IN") : "N/A"}\nPayment ID: ${invoice.razorpay_payment_id || "N/A"}` : "Status: AWAITING PAYMENT"}
+${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString("en-IN") : "N/A"}\nPayment ID: ${invoice.payment_reference || "N/A"}` : "Status: AWAITING PAYMENT"}
 
 =====================================
     Thank you for using Whatnexus!
@@ -363,46 +360,26 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                             isDarkMode ? "text-white/30" : "text-slate-400"
                                                         )}
                                                     >
-                                                        <div className="flex items-center gap-1">
-                                                            <Calendar size={10} />
-                                                            <span>
-                                                                {invoice.cycle_start
-                                                                    ? new Date(
-                                                                        invoice.cycle_start
-                                                                    ).toLocaleDateString("en-IN", {
-                                                                        day: "2-digit",
-                                                                        month: "short",
-                                                                    })
-                                                                    : "—"}{" "}
-                                                                –{" "}
-                                                                {invoice.cycle_end
-                                                                    ? new Date(
-                                                                        invoice.cycle_end
+                                                        {invoice.due_date && (
+                                                            <div className="flex items-center gap-1">
+                                                                <Calendar size={10} />
+                                                                <span
+                                                                    className={cn(
+                                                                        invoice.status === "overdue"
+                                                                            ? "text-red-500 font-bold"
+                                                                            : ""
+                                                                    )}
+                                                                >
+                                                                    Due:{" "}
+                                                                    {new Date(
+                                                                        invoice.due_date
                                                                     ).toLocaleDateString("en-IN", {
                                                                         day: "2-digit",
                                                                         month: "short",
                                                                         year: "numeric",
-                                                                    })
-                                                                    : "—"}
-                                                            </span>
-                                                        </div>
-                                                        {invoice.due_date && (
-                                                            <span
-                                                                className={cn(
-                                                                    invoice.status === "overdue"
-                                                                        ? "text-red-500 font-bold"
-                                                                        : ""
-                                                                )}
-                                                            >
-                                                                Due:{" "}
-                                                                {new Date(
-                                                                    invoice.due_date
-                                                                ).toLocaleDateString("en-IN", {
-                                                                    day: "2-digit",
-                                                                    month: "short",
-                                                                    year: "numeric",
-                                                                })}
-                                                            </span>
+                                                                    })}
+                                                                </span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -418,7 +395,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                     >
                                                         ₹
                                                         {parseFloat(
-                                                            invoice.total_amount || 0
+                                                            invoice.amount || 0
                                                         ).toLocaleString(undefined, {
                                                             minimumFractionDigits: 2,
                                                             maximumFractionDigits: 2,
@@ -513,7 +490,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                     >
                                                                         ₹
                                                                         {parseFloat(
-                                                                            invoiceDetail.total_message_cost_inr || 0
+                                                                            invoiceDetailCycle?.total_message_cost_inr || invoiceDetail.breakdown?.messages || 0
                                                                         ).toFixed(2)}
                                                                     </p>
                                                                 </div>
@@ -538,7 +515,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                     >
                                                                         ₹
                                                                         {parseFloat(
-                                                                            invoiceDetail.total_ai_cost_inr || 0
+                                                                            invoiceDetailCycle?.total_ai_cost_inr || invoiceDetail.breakdown?.ai || 0
                                                                         ).toFixed(2)}
                                                                     </p>
                                                                 </div>
@@ -562,7 +539,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                         )}
                                                                     >
                                                                         {(
-                                                                            invoiceDetail.total_messages || 0
+                                                                            invoiceDetail.breakdown?.total || 0
                                                                         ).toLocaleString()}
                                                                     </p>
                                                                 </div>
@@ -575,7 +552,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-400"
                                                                         )}
                                                                     >
-                                                                        Total AI Calls
+                                                                        Total Amount
                                                                     </p>
                                                                     <p
                                                                         className={cn(
@@ -585,9 +562,9 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-800"
                                                                         )}
                                                                     >
-                                                                        {(
-                                                                            invoiceDetail.total_ai_calls || 0
-                                                                        ).toLocaleString()}
+                                                                        ₹{parseFloat(
+                                                                            invoiceDetail.amount || 0
+                                                                        ).toFixed(2)}
                                                                     </p>
                                                                 </div>
                                                                 {invoiceDetail.paid_at && (

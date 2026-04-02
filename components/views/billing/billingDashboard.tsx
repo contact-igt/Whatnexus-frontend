@@ -43,8 +43,16 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
         totalMessagesSent: 0, billableConversations: 0, freeConversations: 0, walletBalance: 0, currency: 'INR'
     };
     const billingMode = modeRes?.data?.billing_mode || 'prepaid';
-    const cycleInfo = modeRes?.data;
+    const modeData = modeRes?.data;
     const isPrepaid = billingMode === 'prepaid';
+    const postpaid = modeData?.postpaid || null;
+    const cycleStart = modeData?.billing_cycle_start;
+    const cycleEnd = modeData?.billing_cycle_end;
+    const creditLimit = postpaid?.credit_limit || 0;
+    const currentUsage = postpaid?.current_usage || 0;
+    const daysRemaining = cycleEnd
+        ? Math.max(0, Math.ceil((new Date(cycleEnd).getTime() - Date.now()) / 86400000))
+        : null;
     const balance = walletRes?.data?.balance || 0;
     const walletStatus = statusRes?.data?.status || walletRes?.data?.balanceStatus || 'healthy';
     const currency = kpi.currency || 'INR';
@@ -199,30 +207,30 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
                         ) : (
                             <>
                                 <div className={cn("text-3xl font-black tracking-tight mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                    {cycleInfo?.days_remaining != null ? `${cycleInfo.days_remaining}d left` : 'Active'}
+                                    {daysRemaining != null ? `${daysRemaining}d left` : 'Active'}
                                 </div>
                                 <p className={cn("text-xs opacity-50")}>
-                                    {cycleInfo?.cycle_start && cycleInfo?.cycle_end
-                                        ? `${new Date(cycleInfo.cycle_start).toLocaleDateString()} — ${new Date(cycleInfo.cycle_end).toLocaleDateString()}`
+                                    {cycleStart && cycleEnd
+                                        ? `${new Date(cycleStart).toLocaleDateString()} — ${new Date(cycleEnd).toLocaleDateString()}`
                                         : 'Current billing cycle'}
                                 </p>
-                                {cycleInfo?.credit_limit && (
+                                {creditLimit > 0 && (
                                     <div className={cn("mt-4 pt-4 border-t", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
                                         <div className="flex justify-between mb-2">
                                             <span className={cn("text-[8px] font-bold uppercase tracking-wider opacity-40")}>Credit Usage</span>
                                             <span className={cn("text-[9px] font-black", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {sym}{(cycleInfo.current_usage || 0).toFixed(0)} / {sym}{cycleInfo.credit_limit.toLocaleString()}
+                                                {sym}{(currentUsage || 0).toFixed(0)} / {sym}{creditLimit.toLocaleString()}
                                             </span>
                                         </div>
                                         <div className={cn("h-1.5 w-full rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-100')}>
                                             <div
                                                 className={cn(
                                                     "h-full rounded-full transition-all duration-1000",
-                                                    (cycleInfo.current_usage / cycleInfo.credit_limit) > 0.9
-                                                        ? "bg-red-500" : (cycleInfo.current_usage / cycleInfo.credit_limit) > 0.7
+                                                    (currentUsage / creditLimit) > 0.9
+                                                        ? "bg-red-500" : (currentUsage / creditLimit) > 0.7
                                                             ? "bg-amber-500" : "bg-emerald-500"
                                                 )}
-                                                style={{ width: `${Math.min((cycleInfo.current_usage / cycleInfo.credit_limit) * 100, 100)}%` }}
+                                                style={{ width: `${Math.min((currentUsage / creditLimit) * 100, 100)}%` }}
                                             />
                                         </div>
                                     </div>

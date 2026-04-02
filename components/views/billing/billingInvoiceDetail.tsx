@@ -34,7 +34,9 @@ const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; da
 export const BillingInvoiceDetail = ({ isDarkMode, invoiceId, onBack }: BillingInvoiceDetailProps) => {
     const { user } = useAuth();
     const { data: response, isLoading } = useGetInvoiceDetailQuery(invoiceId);
-    const invoice = response?.data || null;
+    const responseData = response?.data || null;
+    const invoice = responseData?.invoice || null;
+    const cycle = responseData?.cycle || null;
     const { loadScript: loadRazorpay } = useRazorpay();
     const createOrder = useCreatePaymentOrderMutation();
     const payInvoice = usePayInvoiceMutation();
@@ -47,7 +49,7 @@ export const BillingInvoiceDetail = ({ isDarkMode, invoiceId, onBack }: BillingI
             const razorpayLoaded = await loadRazorpay();
             if (!razorpayLoaded) { toast.error("Failed to load Razorpay SDK"); setIsPaying(false); return; }
 
-            const orderRes = await createOrder.mutateAsync(invoice.total_amount);
+            const orderRes = await createOrder.mutateAsync(parseFloat(invoice.amount));
             const order = orderRes?.data;
             if (!order?.id) { toast.error("Failed to create payment order"); setIsPaying(false); return; }
 
@@ -84,6 +86,7 @@ export const BillingInvoiceDetail = ({ isDarkMode, invoiceId, onBack }: BillingI
 
     const handleDownload = () => {
         if (!invoice) return;
+        const breakdown = invoice.breakdown || {};
         const content = `
 =====================================
        WHATNEXUS BILLING INVOICE
@@ -97,22 +100,22 @@ Due Date       : ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateStr
 -------------------------------------
 BILLING PERIOD
 -------------------------------------
-Cycle Start    : ${invoice.cycle_start ? new Date(invoice.cycle_start).toLocaleDateString('en-IN') : 'N/A'}
-Cycle End      : ${invoice.cycle_end ? new Date(invoice.cycle_end).toLocaleDateString('en-IN') : 'N/A'}
+Cycle Start    : ${cycle?.start_date ? new Date(cycle.start_date).toLocaleDateString('en-IN') : 'N/A'}
+Cycle End      : ${cycle?.end_date ? new Date(cycle.end_date).toLocaleDateString('en-IN') : 'N/A'}
 
 -------------------------------------
 COST BREAKDOWN
 -------------------------------------
-Message Cost   : ₹${parseFloat(invoice.total_message_cost_inr || 0).toFixed(2)}
-AI Usage Cost  : ₹${parseFloat(invoice.total_ai_cost_inr || 0).toFixed(2)}
+Message Cost   : ₹${parseFloat(breakdown.messages || 0).toFixed(2)}
+AI Usage Cost  : ₹${parseFloat(breakdown.ai || 0).toFixed(2)}
 ──────────────────────
-Total Amount   : ₹${parseFloat(invoice.total_amount || 0).toFixed(2)}
+Total Amount   : ₹${parseFloat(invoice.amount || 0).toFixed(2)}
 
 -------------------------------------
 PAYMENT
 -------------------------------------
 ${invoice.status === 'paid'
-                ? `Paid On   : ${invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString('en-IN') : 'N/A'}\nPayment ID: ${invoice.razorpay_payment_id || 'N/A'}`
+                ? `Paid On   : ${invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString('en-IN') : 'N/A'}\nPayment ID: ${invoice.payment_reference || 'N/A'}`
                 : 'Status: AWAITING PAYMENT'}
 
 =====================================
@@ -156,9 +159,10 @@ ${invoice.status === 'paid'
     const config = statusConfig[invoice.status] || statusConfig.unpaid;
     const StatusIcon = config.icon;
     const isPayable = invoice.status === 'unpaid' || invoice.status === 'overdue';
-    const msgCost = parseFloat(invoice.total_message_cost_inr || 0);
-    const aiCost = parseFloat(invoice.total_ai_cost_inr || 0);
-    const totalAmount = parseFloat(invoice.total_amount || 0);
+    const breakdown = invoice.breakdown || {};
+    const msgCost = parseFloat(breakdown.messages || 0);
+    const aiCost = parseFloat(breakdown.ai || 0);
+    const totalAmount = parseFloat(invoice.amount || 0);
 
     return (
         <div className="space-y-6">
@@ -247,13 +251,13 @@ ${invoice.status === 'paid'
                         <div className="flex justify-between">
                             <span className={cn("text-xs opacity-40")}>Cycle Start</span>
                             <span className={cn("text-sm font-bold", isDarkMode ? 'text-white/80' : 'text-slate-800')}>
-                                {invoice.cycle_start ? new Date(invoice.cycle_start).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                                {cycle?.start_date ? new Date(cycle.start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
                             </span>
                         </div>
                         <div className="flex justify-between">
                             <span className={cn("text-xs opacity-40")}>Cycle End</span>
                             <span className={cn("text-sm font-bold", isDarkMode ? 'text-white/80' : 'text-slate-800')}>
-                                {invoice.cycle_end ? new Date(invoice.cycle_end).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                                {cycle?.end_date ? new Date(cycle.end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
                             </span>
                         </div>
                         <div className="flex justify-between">
@@ -288,7 +292,7 @@ ${invoice.status === 'paid'
                                 <div className="flex justify-between">
                                     <span className={cn("text-xs opacity-40")}>Payment ID</span>
                                     <span className={cn("text-xs font-mono opacity-60 truncate max-w-[200px]")}>
-                                        {invoice.razorpay_payment_id || '—'}
+                                        {invoice.payment_reference || '—'}
                                     </span>
                                 </div>
                             </>
