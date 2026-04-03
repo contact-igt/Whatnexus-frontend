@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from "@/lib/utils";
 import { GlobalCommandBar } from './dashboard/globalCommandBar';
@@ -72,6 +72,7 @@ export const DashboardView = () => {
     const [period, setPeriod] = useState<string>("30days");
     const [waBannerDismissed, setWaBannerDismissed] = useState(false);
     const { data: dashboardResult, isLoading, isError, refetch } = useGetWhatsappDashboardQuery(period);
+    const [loaderDone, setLoaderDone] = useState(false);
 
     const dashboardData = dashboardResult?.data;
 
@@ -82,15 +83,18 @@ export const DashboardView = () => {
         /^\d+$/.test(String(wn).replace(/[\s+]/g, '')) &&
         (ws === 'Live' || ws === 'active');
 
+    const handleLoaderComplete = useCallback(() => setLoaderDone(true), []);
 
-
-    if (isLoading) {
+    // Show loader until: data has arrived AND the 100% animation finished
+    if (isLoading || (!loaderDone && !isError)) {
         return (
             <div className={cn("min-h-screen flex items-center justify-center p-6", isDarkMode ? "bg-[#09090b]" : "bg-[#f8fafc]")}>
                 <ThemedLoader 
                     isDarkMode={isDarkMode} 
                     text="Initializing Neural Hub" 
-                    subtext="Processing live data streams" 
+                    subtext="Processing live data streams"
+                    isComplete={!isLoading && !!dashboardData}
+                    onComplete={handleLoaderComplete}
                 />
             </div>
         );

@@ -1,10 +1,13 @@
 
 import { RoleBasedWrapper } from "@/components/ui/roleBasedWrapper";
 import { WhatsAppPlaygroundView } from "@/components/views/playground/whatsapp-playground-view";
+import { headers } from 'next/headers';
 
-const isLocalServer = process.env.NEXT_PUBLIC_ENV === 'local' || "ngrok";
+export default async function WhatsAppPlaygroundPage() {
+    const headersList = await headers();
+    const host = headersList.get('host') || '';
+    const isLocalServer = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('ngrok');
 
-export default function WhatsAppPlaygroundPage() {
     // Show access denied if not in local development mode
     if (!isLocalServer) {
         return (

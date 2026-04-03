@@ -29,7 +29,11 @@ export const GroupedSidebar = () => {
     const isWhatsAppActive = whatsappApiDetails?.status === 'active';
 
     // Check if we're in local development mode (for playground visibility)
-  const isLocalServer = process.env.NEXT_PUBLIC_ENV === 'local' || "ngrok";
+    const isLocalServer = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.includes('ngrok')
+    );
 
 
     // Sync Redux active tab state only — navigation is driven by <Link> in SidebarGroupItem.

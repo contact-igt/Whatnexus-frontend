@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
+import { DEFAULT_USD_TO_INR } from "@/lib/billingConfig";
 
 export const PricingView = () => {
     const { isDarkMode } = useTheme();
@@ -86,13 +87,13 @@ export const PricingView = () => {
         input_rate: "",
         output_rate: "",
         markup_percent: "0",
-        usd_to_inr_rate: "85",
+        usd_to_inr_rate: String(DEFAULT_USD_TO_INR),
         is_active: "true",
     });
 
     useEffect(() => {
         if (!isAiAddOpen) {
-            setAiFormData({ model: "gpt-4o-mini", description: "", recommended_for: "both", category: "mid-tier", input_rate: "", output_rate: "", markup_percent: "0", usd_to_inr_rate: "85", is_active: "true" });
+            setAiFormData({ model: "gpt-4o-mini", description: "", recommended_for: "both", category: "mid-tier", input_rate: "", output_rate: "", markup_percent: "0", usd_to_inr_rate: String(DEFAULT_USD_TO_INR), is_active: "true" });
             setAiErrors({});
         }
     }, [isAiAddOpen]);
@@ -163,7 +164,7 @@ export const PricingView = () => {
             input_rate: rule.input_rate?.toString() || "",
             output_rate: rule.output_rate?.toString() || "",
             markup_percent: rule.markup_percent?.toString() || "0",
-            usd_to_inr_rate: rule.usd_to_inr_rate?.toString() || "85",
+            usd_to_inr_rate: rule.usd_to_inr_rate?.toString() || String(DEFAULT_USD_TO_INR),
             is_active: rule.is_active !== false ? "true" : "false",
         });
         setAiErrors({});
@@ -179,6 +180,9 @@ export const PricingView = () => {
         if (aiDeleteRuleId !== null) {
             aiDeleteMutation.mutate(aiDeleteRuleId, {
                 onSuccess: () => { setIsAiDeleteOpen(false); setAiDeleteRuleId(null); },
+                onError: (error: any) => {
+                    toast.error(error?.response?.data?.message || "Failed to delete AI pricing rule");
+                },
             });
         }
     };
@@ -272,6 +276,9 @@ export const PricingView = () => {
                     setIsDeleteOpen(false);
                     setDeleteRuleId(null);
                 },
+                onError: (error: any) => {
+                    toast.error(error?.response?.data?.message || "Failed to delete pricing rule");
+                },
             });
         }
     };
@@ -341,9 +348,9 @@ export const PricingView = () => {
                             <TableRow isDarkMode={isDarkMode}>
                                 <TableHead isDarkMode={isDarkMode}>Category</TableHead>
                                 <TableHead isDarkMode={isDarkMode}>Country Code</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">Base Rate</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Base Rate ($)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="right">Markup (%)</TableHead>
-                                <TableHead isDarkMode={isDarkMode} align="right">Final Rate</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Final Rate ($)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="center" width="100px">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -379,14 +386,14 @@ export const PricingView = () => {
                                             <span>{rule.country}</span>
                                         </TableCell>
                                         <TableCell align="right">
-                                            <span>₹{parseFloat(rule.rate).toFixed(4)}</span>
+                                            <span>${parseFloat(rule.rate).toFixed(4)}</span>
                                         </TableCell>
                                         <TableCell align="right">
                                             <span>{parseFloat(rule.markup_percent).toFixed(1)}%</span>
                                         </TableCell>
                                         <TableCell align="right">
                                             <span className="text-emerald-400 font-medium">
-                                                ₹{(parseFloat(rule.rate) * (1 + parseFloat(rule.markup_percent) / 100)).toFixed(4)}
+                                                ${(parseFloat(rule.rate) * (1 + parseFloat(rule.markup_percent) / 100)).toFixed(4)}
                                             </span>
                                         </TableCell>
                                         <TableCell align="center" width="100px">
@@ -456,7 +463,7 @@ export const PricingView = () => {
                                 </TableRow>
                             ) : (
                                 aiPricingRules.map((rule: any, idx: number) => {
-                                    const usdToInr = parseFloat(rule.usd_to_inr_rate) || 85;
+                                    const usdToInr = parseFloat(rule.usd_to_inr_rate) || DEFAULT_USD_TO_INR;
                                     const markup = parseFloat(rule.markup_percent) || 0;
                                     const inputRateUsd = parseFloat(rule.input_rate);
                                     const outputRateUsd = parseFloat(rule.output_rate);
@@ -778,10 +785,9 @@ export const PricingView = () => {
                             { value: "o1-mini", label: "o1-mini (Reasoning Budget)" },
                             { value: "o3", label: "o3 (Advanced Reasoning)" },
                             { value: "o3-pro", label: "o3-pro (Professional Reasoning)" },
-                            { value: "gpt-5", label: "GPT-5 (Most Powerful)" },
-                            { value: "gpt-5-mini", label: "GPT-5-mini (Next-gen Budget)" },
-                            { value: "gpt-4.5-mini", label: "GPT-4.5-mini (Mid-tier)" },
-                            { value: "gpt-4.5-nano", label: "GPT-4.5-nano (Ultra Budget)" },
+                            { value: "gpt-5.4", label: "GPT-5.4 (Flagship)" },
+                            { value: "gpt-5.4-mini", label: "GPT-5.4-mini (Strong Mini)" },
+                            { value: "gpt-5.4-nano", label: "GPT-5.4-nano (Budget)" },
                         ]}
                         error={aiErrors.model}
                         required

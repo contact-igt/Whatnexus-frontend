@@ -27,25 +27,46 @@ export const CreateGroupModal = ({
         description: ""
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+    const validateField = (name: string, value: string): string => {
+        if (name === "group_name") {
+            if (!value.trim()) return "Group name is required";
+            if (value.trim().length < 3) return "Group name must be at least 3 characters";
+            if (value.length > 100) return "Group name must be less than 100 characters";
+        }
+        if (name === "description") {
+            if (value.length > 500) return "Description must be less than 500 characters";
+        }
+        return "";
+    };
 
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
-
-        if (!formData.group_name.trim()) {
-            newErrors.group_name = "Group name is required";
-        } else if (formData.group_name.length > 100) {
-            newErrors.group_name = "Group name must be less than 100 characters";
-        }
-
-        if (formData.description && formData.description.length > 500) {
-            newErrors.description = "Description must be less than 500 characters";
-        }
-
+        const nameErr = validateField("group_name", formData.group_name);
+        if (nameErr) newErrors.group_name = nameErr;
+        const descErr = validateField("description", formData.description || "");
+        if (descErr) newErrors.description = descErr;
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
+    const handleChange = (name: string, value: string) => {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (touched[name]) {
+            const err = validateField(name, value);
+            setErrors((prev) => ({ ...prev, [name]: err }));
+        }
+    };
+
+    const handleBlur = (name: string, value: string) => {
+        setTouched((prev) => ({ ...prev, [name]: true }));
+        const err = validateField(name, value);
+        setErrors((prev) => ({ ...prev, [name]: err }));
+    };
+
     const handleSubmit = () => {
+        setTouched({ group_name: true, description: true });
         if (validateForm()) {
             onSubmit(formData);
             handleReset();
@@ -53,11 +74,9 @@ export const CreateGroupModal = ({
     };
 
     const handleReset = () => {
-        setFormData({
-            group_name: "",
-            description: ""
-        });
+        setFormData({ group_name: "", description: "" });
         setErrors({});
+        setTouched({});
     };
 
     const handleClose = () => {
@@ -110,7 +129,8 @@ export const CreateGroupModal = ({
                     type="text"
                     placeholder="Enter group name"
                     value={formData.group_name}
-                    onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                    onChange={(e) => handleChange("group_name", e.target.value)}
+                    onBlur={(e) => handleBlur("group_name", e.target.value)}
                     error={errors.group_name}
                     icon={Users}
                 />
@@ -131,7 +151,8 @@ export const CreateGroupModal = ({
                         <textarea
                             placeholder="Enter group description"
                             value={formData.description || ""}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            onChange={(e) => handleChange("description", e.target.value)}
+                            onBlur={(e) => handleBlur("description", e.target.value)}
                             rows={4}
                             className={cn(
                                 "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none resize-none",
@@ -147,7 +168,9 @@ export const CreateGroupModal = ({
                     )}
                     <p className={cn(
                         "text-xs mt-1 ml-1",
-                        isDarkMode ? 'text-white/40' : 'text-slate-400'
+                        (formData.description?.length || 0) > 450
+                            ? 'text-orange-500'
+                            : isDarkMode ? 'text-white/40' : 'text-slate-400'
                     )}>
                         {formData.description?.length || 0}/500 characters
                     </p>

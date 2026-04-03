@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useCampaignDetails } from '@/hooks/useCampaignDetails';
 import { campaignService } from '@/services/campaign/campaign.service';
 import type { RecipientStatus } from '@/services/campaign/campaign.types';
+import { toast } from 'sonner';
 import {
     formatCampaignDateTime,
     calculateCampaignStatistics,
@@ -36,8 +37,9 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
             setExecuting(true);
             await campaignService.executeCampaign(campaignId);
             await refetch(); // Refresh data after execution
-        } catch (err) {
-            console.error('Error executing campaign:', err);
+        } catch (err: any) {
+            const message = err?.response?.data?.message || err?.message || 'Failed to execute campaign.';
+            toast.error(message);
         } finally {
             setExecuting(false);
         }

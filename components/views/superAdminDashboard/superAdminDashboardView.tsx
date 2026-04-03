@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { useGetSuperAdminDashboardQuery } from '@/hooks/useSuperAdminDashboardQuery';
@@ -65,10 +65,14 @@ export const SuperAdminDashboardView = () => {
     const { isDarkMode } = useTheme();
     const { data: dashboardResult, isLoading, isError, refetch, isFetching } = useGetSuperAdminDashboardQuery("30days");
     const t = tx(isDarkMode);
+    const [loaderDone, setLoaderDone] = useState(false);
 
     const dashboardData = dashboardResult?.data;
 
-    if (isLoading) {
+    const handleLoaderComplete = useCallback(() => setLoaderDone(true), []);
+
+    // Show loader until: data has arrived AND the 100% animation finished
+    if (isLoading || (!loaderDone && !isError)) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-6 relative"
                 style={{ background: isDarkMode ? '#09090b' : '#f8fafc' }}>
@@ -77,6 +81,8 @@ export const SuperAdminDashboardView = () => {
                         isDarkMode={isDarkMode}
                         text="Initializing Command Center"
                         subtext="Aggregating platform-wide data"
+                        isComplete={!isLoading && !!dashboardData}
+                        onComplete={handleLoaderComplete}
                     />
                 </div>
             </div>

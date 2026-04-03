@@ -2,16 +2,16 @@ import { _axios } from "@/helper/axios"
 
 
 export class TenantActivationApiData {
-    CheckInvitedEmailStatus = async (token: string)=>{
+    CheckInvitedEmailStatus = async (token: string) => {
         return await _axios("get", `/tenant/invite/verify?token=${token}`)
     }
-    AcceptInvitation = async (token: string)=>{
-        return await _axios("post", `/tenant/invite/accept`, token)
+    AcceptInvitation = async (data: { token: string }) => {
+        return await _axios("post", `/tenant/invite/accept`, data)
     }
-    RejectInvitation = async(token: string)=>{
-        return await _axios("post", `/tenant/invite/reject`, token)
+    RejectInvitation = async (data: { token: string }) => {
+        return await _axios("post", `/tenant/invite/reject`, data)
     }
-    SetPassword = async(data: any)=>{
+    SetPassword = async (data: any) => {
         return await _axios("post", `/tenant/invite/set-password`, data)
     }
 }

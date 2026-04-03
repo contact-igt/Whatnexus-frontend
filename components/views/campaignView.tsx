@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { toast } from 'sonner';
 import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import type { CampaignStatus } from '@/services/campaign/campaign.types';
@@ -158,10 +159,10 @@ export const CampaignView = memo(() => {
             // Optimistic update or loading state could be better, but refetch works
             await campaignService.executeCampaign(id);
             refetch();
-            // Optional: Success message
-        } catch (err) {
-            console.error("Failed to execute campaign", err);
-            alert("Failed to execute campaign.");
+            toast.success('Campaign executed successfully!');
+        } catch (err: any) {
+            const message = err?.response?.data?.message || err?.message || 'Failed to execute campaign.';
+            toast.error(message);
         }
     };
 

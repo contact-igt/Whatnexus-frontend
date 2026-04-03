@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { getHeatStateStyles } from '@/utils/leadUtils';
@@ -42,6 +42,7 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
     const isSummaryNew = lead.summary_status === 'new';
 
     const { mutate: summarizeLead, isPending } = useSummarizeLeadMutation();
+    const [copied, setCopied] = useState(false);
 
     const handleRefresh = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -55,7 +56,8 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
     const handleCopy = () => {
         if (lead.ai_summary) {
             navigator.clipboard.writeText(lead.ai_summary);
-            toast.success("Summary copied to clipboard");
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
         }
     };
 
@@ -299,13 +301,17 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                                         onClick={handleCopy}
                                         className={cn(
                                             "flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all",
-                                            isDarkMode
-                                                ? "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
-                                                : "bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm border border-slate-200"
+                                            copied
+                                                ? isDarkMode
+                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                    : "bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm"
+                                                : isDarkMode
+                                                    ? "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                                                    : "bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm border border-slate-200"
                                         )}
                                     >
-                                        <Copy size={12} />
-                                        Copy Summary
+                                        {copied ? <Check size={12} /> : <Copy size={12} />}
+                                        {copied ? "Copied!" : "Copy Summary"}
                                     </button>
                                 )}
                             </div>

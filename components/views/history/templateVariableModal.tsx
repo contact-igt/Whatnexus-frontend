@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Variable, Image, Video, FileText, Link, Upload, Loader2, MapPin } from "lucide-react";
+import { X, Send, Variable, Image, Video, FileText, Upload, Loader2, MapPin, Play, Pause, ImageIcon, Film, Phone, ExternalLink, Reply } from "lucide-react";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
@@ -34,7 +34,9 @@ export const TemplateVariableModal = ({
     const [mediaError, setMediaError] = useState<string>("");
     const [mediaFileName, setMediaFileName] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
     // Button variables state
     const [buttonValues, setButtonValues] = useState<string[]>([]);
     const [buttonErrors, setButtonErrors] = useState<string[]>([]);
@@ -277,420 +279,380 @@ export const TemplateVariableModal = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <GlassCard
                 isDarkMode={isDarkMode}
-                className="w-full max-w-lg flex flex-col overflow-hidden p-0"
+                className="w-full flex flex-col overflow-hidden p-0"
+                style={{ maxWidth: '900px', maxHeight: '90vh' } as any}
             >
-                <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
-                    <div className="flex items-center space-x-2">
-                        <Variable size={20} className="text-emerald-500" />
-                        <h2 className={cn("text-lg font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                {/* ── Header ── */}
+                <div className={cn(
+                    "px-6 py-4 border-b flex justify-between items-center shrink-0",
+                    isDarkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50/50"
+                )}>
+                    <div className="flex items-center gap-2.5">
+                        <Variable size={18} className="text-emerald-500" />
+                        <h2 className={cn("text-base font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                             Customize Template
                         </h2>
+                        <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide", isDarkMode ? "bg-white/8 text-white/50" : "bg-slate-100 text-slate-500")}>
+                            {template.name}
+                        </span>
                     </div>
-                    <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
-                        <X size={20} className={isDarkMode ? 'text-white/60' : 'text-slate-600'} />
+                    <button onClick={onClose} className={cn("p-1.5 rounded-lg transition-colors", isDarkMode ? "hover:bg-white/10 text-white/60" : "hover:bg-slate-100 text-slate-500")}>
+                        <X size={18} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                    {/* Media Header Input (Image/Video/Document) */}
-                    {hasMediaHeader && (
-                        <div className="space-y-4">
-                            <h3 className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-2", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                {getMediaIcon()}
-                                {mediaType === 'image' && 'Image Header'}
-                                {mediaType === 'video' && 'Video Header'}
-                                {mediaType === 'document' && 'Document Header'}
-                            </h3>
-                            <div className={cn(
-                                "p-4 rounded-lg border-2 border-dashed",
-                                mediaError ? "border-red-500" : isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
-                            )}>
-                                {/* File Upload Section */}
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept={getAcceptedFileTypes()}
-                                    onChange={handleFileSelect}
-                                    className="hidden"
-                                />
+                {/* ── Two-column body ── */}
+                <div className="flex flex-1 min-h-0 overflow-hidden">
 
-                                {!mediaUrl ? (
-                                    <div className="flex flex-col items-center justify-center space-y-3 py-4">
-                                        <div className={cn(
-                                            "p-3 rounded-full",
-                                            isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
-                                        )}>
-                                            {isUploading ? (
-                                                <Loader2 size={24} className="text-emerald-500 animate-spin" />
-                                            ) : (
-                                                <Upload size={24} className="text-emerald-500" />
+                    {/* LEFT: Inputs */}
+                    <div className={cn(
+                        "w-[55%] flex flex-col border-r overflow-y-auto",
+                        isDarkMode ? "border-white/10" : "border-slate-200"
+                    )}>
+                        <div className="p-5 space-y-6">
+
+                            {/* ── Media Upload ── */}
+                            {hasMediaHeader && (
+                                <div className="space-y-2.5">
+                                    <label className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-1.5", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                        {getMediaIcon()}
+                                        {mediaType === 'image' ? 'Image Header' : mediaType === 'video' ? 'Video Header' : 'Document Header'}
+                                    </label>
+
+                                    <input ref={fileInputRef} type="file" accept={getAcceptedFileTypes()} onChange={handleFileSelect} className="hidden" />
+
+                                    {!mediaUrl ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isUploading}
+                                            className={cn(
+                                                "w-full flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-8 transition-all",
+                                                mediaError ? "border-red-500 bg-red-500/5"
+                                                    : isDarkMode ? "border-white/10 bg-white/3 hover:bg-white/6 hover:border-emerald-500/40" : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-emerald-400/50",
+                                                "disabled:opacity-50 disabled:cursor-not-allowed"
                                             )}
-                                        </div>
-                                        <div className="text-center">
+                                        >
+                                            {isUploading ? (
+                                                <><Loader2 size={26} className={cn("animate-spin", isDarkMode ? "text-white/40" : "text-slate-400")} /><span className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-400")}>Uploading…</span></>
+                                            ) : (
+                                                <>
+                                                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center",
+                                                        mediaType === 'image' ? isDarkMode ? "bg-blue-500/10" : "bg-blue-50"
+                                                            : mediaType === 'video' ? isDarkMode ? "bg-purple-500/10" : "bg-purple-50"
+                                                                : isDarkMode ? "bg-orange-500/10" : "bg-orange-50"
+                                                    )}>
+                                                        {mediaType === 'image' && <ImageIcon size={22} className="text-blue-400" />}
+                                                        {mediaType === 'video' && <Film size={22} className="text-purple-400" />}
+                                                        {mediaType === 'document' && <FileText size={22} className="text-orange-400" />}
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className={cn("text-sm font-semibold", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                                            {mediaType === 'image' ? 'Upload Photo' : mediaType === 'video' ? 'Upload Video' : 'Upload Document'}
+                                                        </p>
+                                                        <p className={cn("text-[11px] mt-0.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                            {mediaType === 'image' && 'JPG, PNG · max 5 MB'}
+                                                            {mediaType === 'video' && 'MP4 · max 16 MB'}
+                                                            {mediaType === 'document' && 'PDF · max 100 MB'}
+                                                        </p>
+                                                    </div>
+                                                    <span className={cn("px-4 py-1.5 rounded-lg text-xs font-semibold", isDarkMode ? "bg-white/10 text-white/70" : "bg-white text-slate-600 shadow-sm border border-slate-200")}>
+                                                        Browse
+                                                    </span>
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <div className={cn("flex items-center gap-3 p-3 rounded-xl border", isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200")}>
+                                            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+                                                mediaType === 'image' ? "bg-blue-500/15" : mediaType === 'video' ? "bg-purple-500/15" : "bg-orange-500/15"
+                                            )}>
+                                                {mediaType === 'image' && <ImageIcon size={16} className="text-blue-400" />}
+                                                {mediaType === 'video' && <Film size={16} className="text-purple-400" />}
+                                                {mediaType === 'document' && <FileText size={16} className="text-orange-400" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={cn("text-xs font-semibold truncate", isDarkMode ? "text-white" : "text-slate-800")}>
+                                                    {mediaFileName || (mediaType === 'image' ? 'Image uploaded' : mediaType === 'video' ? 'Video uploaded' : 'Document uploaded')}
+                                                </p>
+                                                <p className={cn("text-[10px] mt-0.5 text-emerald-500 font-medium")}>✓ Ready to send</p>
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
-                                                disabled={isUploading}
-                                                className={cn(
-                                                    "px-4 py-2 rounded-lg font-medium text-sm transition-all",
-                                                    "bg-emerald-500 hover:bg-emerald-600 text-white",
-                                                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                                                )}
+                                                className={cn("text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors", isDarkMode ? "bg-white/10 text-white/60 hover:bg-white/15" : "bg-slate-100 text-slate-500 hover:bg-slate-200")}
                                             >
-                                                {isUploading ? "Uploading..." : `Upload ${mediaType?.charAt(0).toUpperCase()}${mediaType?.slice(1)}`}
+                                                Replace
                                             </button>
-                                            <p className={cn("text-[10px] mt-2", isDarkMode ? "text-white/40" : "text-slate-400")}>
-                                                {mediaType === 'image' && 'JPG, PNG (max 5MB)'}
-                                                {mediaType === 'video' && 'MP4 (max 16MB)'}
-                                                {mediaType === 'document' && 'PDF (max 100MB)'}
-                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setMediaUrl(""); setMediaFileName(""); setIsVideoPlaying(false); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                                                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                                            >
+                                                <X size={13} />
+                                            </button>
                                         </div>
+                                    )}
+                                    {mediaError && <p className="text-red-500 text-[11px]">{mediaError}</p>}
+                                </div>
+                            )}
 
-                                        {/* URL Input Alternative */}
-                                        <div className="w-full pt-3 border-t border-white/10">
-                                            <label className={cn("text-xs font-medium flex items-center gap-1 mb-2", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                                <Link size={12} />
-                                                Or paste URL
-                                            </label>
-                                            <input
-                                                type="url"
-                                                value={mediaUrl}
-                                                onChange={(e) => {
-                                                    setMediaUrl(e.target.value);
-                                                    if (mediaError) setMediaError("");
-                                                }}
-                                                placeholder={`https://...`}
-                                                className={cn(
-                                                    "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                                    isDarkMode
-                                                        ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                                )}
+                            {/* ── Location Header ── */}
+                            {hasLocationHeader && (
+                                <div className="space-y-2.5">
+                                    <label className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-1.5", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                        <MapPin size={13} className="text-rose-500" /> Location Header
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {(['latitude', 'longitude'] as const).map(field => (
+                                            <div key={field} className="flex flex-col gap-1">
+                                                <label className={cn("text-xs font-medium capitalize", isDarkMode ? "text-white/70" : "text-slate-700")}>{field} <span className="text-red-500">*</span></label>
+                                                <input type="text" value={locationParams[field]}
+                                                    onChange={(e) => { setLocationParams(p => ({ ...p, [field]: e.target.value })); if (locationErrors[field]) setLocationErrors(err => ({ ...err, [field]: "" })); }}
+                                                    placeholder={field === 'latitude' ? '37.7749' : '-122.4194'}
+                                                    className={cn("w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 transition-all",
+                                                        locationErrors[field] ? "border-red-500 focus:ring-red-500/20" : isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20" : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20")}
+                                                />
+                                                {locationErrors[field] && <p className="text-red-500 text-[10px]">{locationErrors[field]}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {(['name', 'address'] as const).map(field => (
+                                        <div key={field} className="flex flex-col gap-1">
+                                            <label className={cn("text-xs font-medium capitalize", isDarkMode ? "text-white/70" : "text-slate-700")}>{field === 'name' ? 'Location Name' : 'Address'} <span className="text-red-500">*</span></label>
+                                            <input type="text" value={locationParams[field]}
+                                                onChange={(e) => { setLocationParams(p => ({ ...p, [field]: e.target.value })); if (locationErrors[field]) setLocationErrors(err => ({ ...err, [field]: "" })); }}
+                                                placeholder={field === 'name' ? 'e.g., Our Clinic' : 'e.g., 123 Main St, City'}
+                                                className={cn("w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 transition-all",
+                                                    locationErrors[field] ? "border-red-500 focus:ring-red-500/20" : isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20" : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20")}
                                             />
+                                            {locationErrors[field] && <p className="text-red-500 text-[10px]">{locationErrors[field]}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* ── Header Text Variables ── */}
+                            {headerValues.length > 0 && (
+                                <div className="space-y-2.5">
+                                    <label className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/50" : "text-slate-500")}>Header Variables</label>
+                                    {headerValues.map((val, i) => (
+                                        <div key={`hv-${i}`} className="flex flex-col gap-1">
+                                            <label className={cn("text-xs font-medium", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                                Variable {`{{${i + 1}}}`} <span className="text-red-500">*</span>
+                                            </label>
+                                            <input type="text" value={val}
+                                                onChange={(e) => { const n = [...headerValues]; n[i] = e.target.value; setHeaderValues(n); if (headerErrors[i]) { const e2 = [...headerErrors]; e2[i] = ""; setHeaderErrors(e2); } }}
+                                                placeholder={`Value for {{${i + 1}}}`}
+                                                className={cn("w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 transition-all",
+                                                    headerErrors[i] ? "border-red-500 focus:ring-red-500/20 bg-red-500/5" : isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20" : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20")} />
+                                            {headerErrors[i] && <p className="text-red-500 text-[11px]">{headerErrors[i]}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* ── Body Variables ── */}
+                            {bodyValues.length > 0 && (
+                                <div className="space-y-2.5">
+                                    <label className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/50" : "text-slate-500")}>Body Variables</label>
+                                    {bodyValues.map((val, i) => (
+                                        <div key={`bv-${i}`} className="flex flex-col gap-1">
+                                            <label className={cn("text-xs font-medium", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                                Variable {`{{${i + 1}}}`} <span className="text-red-500">*</span>
+                                            </label>
+                                            <input type="text" value={val}
+                                                onChange={(e) => { const n = [...bodyValues]; n[i] = e.target.value; setBodyValues(n); if (bodyErrors[i]) { const e2 = [...bodyErrors]; e2[i] = ""; setBodyErrors(e2); } }}
+                                                placeholder={`Value for {{${i + 1}}}`}
+                                                className={cn("w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 transition-all",
+                                                    bodyErrors[i] ? "border-red-500 focus:ring-red-500/20 bg-red-500/5" : isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20" : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20")} />
+                                            {bodyErrors[i] && <p className="text-red-500 text-[11px]">{bodyErrors[i]}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* ── Button Variables ── */}
+                            {buttonValues.length > 0 && template.buttonVariables && (
+                                <div className="space-y-2.5">
+                                    <label className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/50" : "text-slate-500")}>Button Variables</label>
+                                    {template.buttonVariables.map((btnVar: any, i: number) => (
+                                        <div key={`btn-${i}`} className="flex flex-col gap-1">
+                                            <label className={cn("text-xs font-medium", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                                "{btnVar.text}" URL Suffix <span className="text-red-500">*</span>
+                                            </label>
+                                            <input type="text" value={buttonValues[i] || ""}
+                                                onChange={(e) => { const n = [...buttonValues]; n[i] = e.target.value; setButtonValues(n); if (buttonErrors[i]) { const e2 = [...buttonErrors]; e2[i] = ""; setButtonErrors(e2); } }}
+                                                placeholder="Enter URL suffix..."
+                                                className={cn("w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 transition-all",
+                                                    buttonErrors[i] ? "border-red-500 focus:ring-red-500/20 bg-red-500/5" : isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20" : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20")} />
+                                            {buttonErrors[i] && <p className="text-red-500 text-[11px]">{buttonErrors[i]}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* RIGHT: WhatsApp Preview */}
+                    <div className={cn(
+                        "w-[45%] flex flex-col overflow-y-auto",
+                        isDarkMode
+                            ? "bg-[#0b141a]"
+                            : "bg-[#e5ddd5]"
+                    )}
+                        style={{
+                            backgroundImage: isDarkMode
+                                ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3C/svg%3E")'
+                                : undefined,
+                        }}
+                    >
+                        <div className={cn("px-3 py-2 text-center text-[10px] font-semibold sticky top-0 z-10", isDarkMode ? "text-white/30 bg-[#0b141a]" : "text-slate-500 bg-[#e5ddd5]")}>
+                            Preview
+                        </div>
+                        <div className="flex-1 px-4 py-3 flex flex-col gap-3">
+                            {/* WhatsApp message bubble */}
+                            <div className="flex justify-end">
+                                <div
+                                    className="rounded-lg overflow-hidden shadow-md relative"
+                                    style={{
+                                        background: isDarkMode ? '#025144' : '#dcf8c6',
+                                        maxWidth: '260px',
+                                        width: '100%',
+                                        borderRadius: '8px 0px 8px 8px',
+                                    }}
+                                >
+                                    {/* ── MEDIA HEADER ── */}
+                                    {hasMediaHeader && (
+                                        <>
+                                            {mediaType === 'image' && (
+                                                mediaUrl ? (
+                                                    <img src={mediaUrl} alt="header" className="w-full object-cover block" style={{ maxHeight: '180px' }} />
+                                                ) : (
+                                                    <div className="w-full flex items-center justify-center" style={{ aspectRatio: '4/3', background: isDarkMode ? '#1a3530' : '#c8e6c9' }}>
+                                                        <ImageIcon size={28} className={isDarkMode ? "text-white/20" : "text-slate-400/50"} />
+                                                    </div>
+                                                )
+                                            )}
+                                            {mediaType === 'video' && (
+                                                mediaUrl ? (
+                                                    <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
+                                                        <video ref={videoRef} src={mediaUrl} className="w-full h-full object-contain"
+                                                            onPlay={() => setIsVideoPlaying(true)} onPause={() => setIsVideoPlaying(false)} onEnded={() => setIsVideoPlaying(false)} />
+                                                        <div className="absolute inset-0 flex items-center justify-center cursor-pointer group/pv"
+                                                            onClick={() => { if (!videoRef.current) return; isVideoPlaying ? videoRef.current.pause() : videoRef.current.play(); }}>
+                                                            <div className={cn("w-10 h-10 rounded-full bg-black/55 flex items-center justify-center transition-all",
+                                                                isVideoPlaying ? "opacity-0 group-hover/pv:opacity-100" : "opacity-100")}>
+                                                                {isVideoPlaying ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white ml-0.5" />}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-full flex items-center justify-center" style={{ aspectRatio: '16/9', background: isDarkMode ? '#0d1f1c' : '#b2dfdb' }}>
+                                                        <Play size={28} className={isDarkMode ? "text-white/20" : "text-slate-400/50"} />
+                                                    </div>
+                                                )
+                                            )}
+                                            {mediaType === 'document' && (
+                                                <div className={cn("flex items-center gap-2.5 px-3 py-2.5", isDarkMode ? "bg-[#1a2f2c]" : "bg-[#b2dfca]")}>
+                                                    <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-orange-500/20">
+                                                        <FileText size={15} className="text-orange-400" />
+                                                    </div>
+                                                    <div className="flex flex-col min-w-0 flex-1">
+                                                        <p className={cn("text-[11px] font-semibold truncate", isDarkMode ? "text-white" : "text-slate-800")}>
+                                                            {mediaFileName || 'document.pdf'}
+                                                        </p>
+                                                        <span className={cn("text-[9px]", isDarkMode ? "text-white/40" : "text-slate-400")}>PDF · {mediaUrl ? '✓ Ready' : 'Not uploaded'}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* ── BUBBLE BODY ── */}
+                                    <div className="px-2.5 pt-2 pb-2">
+                                        {/* Header text */}
+                                        {template.headerText && !hasMediaHeader && !hasLocationHeader && (
+                                            <p className={cn("text-[12px] font-bold leading-snug mb-1", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                {renderPreview(template.headerText, headerValues)}
+                                            </p>
+                                        )}
+
+                                        {/* Body text */}
+                                        {template.description && (
+                                            <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", isDarkMode ? "text-white/90" : "text-slate-800")}>
+                                                {renderPreview(template.description, bodyValues)}
+                                            </p>
+                                        )}
+
+                                        {/* Footer */}
+                                        {template.footerText && (
+                                            <p className={cn("text-[10px] mt-1", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                                                {template.footerText}
+                                            </p>
+                                        )}
+
+                                        {/* Timestamp */}
+                                        <div className="flex justify-end mt-1">
+                                            <span className={cn("text-[9px]", isDarkMode ? "text-white/35" : "text-slate-400")}>
+                                                {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                            </span>
                                         </div>
                                     </div>
-                                ) : (
-                                    /* Preview uploaded/entered media */
-                                    <div className="relative rounded-lg bg-emerald-500/10 border border-emerald-500/20 overflow-hidden">
-                                        {/* Close button — top right */}
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setMediaUrl("");
-                                                setMediaFileName("");
-                                                if (fileInputRef.current) fileInputRef.current.value = "";
-                                            }}
-                                            className="absolute top-2 right-2 z-10 p-1 rounded-full bg-black/50 hover:bg-red-500/80 text-white transition-colors"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                        {/* Image/Video preview */}
-                                        {mediaType === 'image' && (
-                                            <div className="w-full max-h-60 overflow-hidden">
-                                                <img src={mediaUrl} alt={mediaFileName || "Uploaded image"} className="w-full h-full object-cover" />
-                                            </div>
-                                        )}
-                                        {mediaType === 'video' && (
-                                            <div className="w-full max-h-60 overflow-hidden">
-                                                <video src={mediaUrl} controls className="w-full h-full object-cover" />
-                                            </div>
-                                        )}
-                                        {mediaType === 'document' && (
-                                            <div className="flex items-center gap-3 p-3">
-                                                {getMediaIcon()}
-                                                <div className="min-w-0">
-                                                    <p className={cn("text-sm font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                        {mediaFileName || "Media URL"}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
 
-                                {mediaError && (
-                                    <p className="text-red-500 text-[11px] mt-2 animate-in slide-in-from-top-1">
-                                        {mediaError}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Location Header Input */}
-                    {hasLocationHeader && (
-                        <div className="space-y-4">
-                            <h3 className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-2", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                <MapPin size={16} className="text-rose-500" />
-                                Location Header
-                            </h3>
-                            <div className={cn(
-                                "p-4 rounded-lg border",
-                                isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200"
-                            )}>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="flex flex-col space-y-1">
-                                        <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                            Latitude <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={locationParams.latitude}
-                                            onChange={(e) => {
-                                                setLocationParams(p => ({ ...p, latitude: e.target.value }));
-                                                if (locationErrors.latitude) setLocationErrors(err => ({ ...err, latitude: "" }));
-                                            }}
-                                            placeholder="e.g., 37.7749"
-                                            className={cn(
-                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                                locationErrors.latitude ? "border-red-500 focus:ring-red-500/20" :
-                                                    isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                            )}
-                                        />
-                                        {locationErrors.latitude && <p className="text-red-500 text-[10px]">{locationErrors.latitude}</p>}
-                                    </div>
-                                    <div className="flex flex-col space-y-1">
-                                        <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                            Longitude <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={locationParams.longitude}
-                                            onChange={(e) => {
-                                                setLocationParams(p => ({ ...p, longitude: e.target.value }));
-                                                if (locationErrors.longitude) setLocationErrors(err => ({ ...err, longitude: "" }));
-                                            }}
-                                            placeholder="e.g., -122.4194"
-                                            className={cn(
-                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                                locationErrors.longitude ? "border-red-500 focus:ring-red-500/20" :
-                                                    isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                            )}
-                                        />
-                                        {locationErrors.longitude && <p className="text-red-500 text-[10px]">{locationErrors.longitude}</p>}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col space-y-1 mt-3">
-                                    <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                        Location Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={locationParams.name}
-                                        onChange={(e) => {
-                                            setLocationParams(p => ({ ...p, name: e.target.value }));
-                                            if (locationErrors.name) setLocationErrors(err => ({ ...err, name: "" }));
-                                        }}
-                                        placeholder="e.g., Our Clinic"
-                                        className={cn(
-                                            "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                            locationErrors.name ? "border-red-500 focus:ring-red-500/20" :
-                                                isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                    : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                        )}
-                                    />
-                                    {locationErrors.name && <p className="text-red-500 text-[10px]">{locationErrors.name}</p>}
-                                </div>
-                                <div className="flex flex-col space-y-1 mt-3">
-                                    <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                        Address <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={locationParams.address}
-                                        onChange={(e) => {
-                                            setLocationParams(p => ({ ...p, address: e.target.value }));
-                                            if (locationErrors.address) setLocationErrors(err => ({ ...err, address: "" }));
-                                        }}
-                                        placeholder="e.g., 123 Main St, City"
-                                        className={cn(
-                                            "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                            locationErrors.address ? "border-red-500 focus:ring-red-500/20" :
-                                                isDarkMode ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                    : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                        )}
-                                    />
-                                    {locationErrors.address && <p className="text-red-500 text-[10px]">{locationErrors.address}</p>}
+                                    {/* ── BUTTONS ── */}
+                                    {template.allButtons && template.allButtons.length > 0 && (
+                                        <div className={cn("border-t", isDarkMode ? "border-white/10" : "border-black/10")}>
+                                            {template.allButtons.map((btn: any, i: number) => {
+                                                const isQuickReply = btn.type?.toUpperCase() === 'QUICK_REPLY';
+                                                const isPhone = btn.type?.toUpperCase() === 'PHONE_NUMBER';
+                                                const isUrl = btn.type?.toUpperCase() === 'URL';
+                                                return (
+                                                    <div key={i} className={cn(
+                                                        "flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold",
+                                                        i > 0 && (isDarkMode ? "border-t border-white/10" : "border-t border-black/10"),
+                                                        isQuickReply
+                                                            ? isDarkMode ? "text-emerald-400" : "text-emerald-600"
+                                                            : isPhone
+                                                                ? isDarkMode ? "text-blue-400" : "text-blue-600"
+                                                                : isDarkMode ? "text-sky-400" : "text-sky-600"
+                                                    )}>
+                                                        {isQuickReply && <Reply size={11} />}
+                                                        {isPhone && <Phone size={11} />}
+                                                        {isUrl && <ExternalLink size={11} />}
+                                                        {btn.text}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                    )}
-
-                    {/* Header Text Variables */}
-                    {headerValues.length > 0 && (
-                        <div className="space-y-4">
-                            <h3 className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                Header Variables
-                            </h3>
-                            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono mb-2">
-                                {template.headerText}
-                            </div>
-                            <div className="grid gap-3">
-                                {headerValues.map((val, i) => (
-                                    <div key={`header-${i}`} className="flex flex-col space-y-1">
-                                        <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                            Variable {'{{'}{i + 1}{'}}'}
-                                            <span className="text-red-500 ml-0.5">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={val}
-                                            onChange={(e) => {
-                                                const newValues = [...headerValues];
-                                                newValues[i] = e.target.value;
-                                                setHeaderValues(newValues);
-                                                if (headerErrors[i]) {
-                                                    const newErrs = [...headerErrors];
-                                                    newErrs[i] = "";
-                                                    setHeaderErrors(newErrs);
-                                                }
-                                            }}
-                                            placeholder={`Enter value for {{${i + 1}}}...`}
-                                            className={cn(
-                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                                headerErrors[i]
-                                                    ? "border-red-500 focus:ring-red-500/20 bg-red-500/5"
-                                                    : isDarkMode
-                                                        ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                            )}
-                                        />
-                                        {headerErrors[i] && (
-                                            <p className="text-red-500 text-[11px] ml-0.5 animate-in slide-in-from-top-1">
-                                                {headerErrors[i]}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Body Variables */}
-                    {bodyValues.length > 0 && (
-                        <div className="space-y-4">
-                            <h3 className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                Body Variables
-                            </h3>
-                            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono mb-2 whitespace-pre-wrap">
-                                {renderPreview(template.description, bodyValues)}
-                            </div>
-                            <div className="grid gap-3">
-                                {bodyValues.map((val, i) => (
-                                    <div key={`body-${i}`} className="flex flex-col space-y-1">
-                                        <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                            Variable {'{{'}{i + 1}{'}}'}
-                                            <span className="text-red-500 ml-0.5">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={val}
-                                            onChange={(e) => {
-                                                const newValues = [...bodyValues];
-                                                newValues[i] = e.target.value;
-                                                setBodyValues(newValues);
-                                                if (bodyErrors[i]) {
-                                                    const newErrs = [...bodyErrors];
-                                                    newErrs[i] = "";
-                                                    setBodyErrors(newErrs);
-                                                }
-                                            }}
-                                            placeholder={`Enter value for {{${i + 1}}}...`}
-                                            className={cn(
-                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                                bodyErrors[i]
-                                                    ? "border-red-500 focus:ring-red-500/20 bg-red-500/5"
-                                                    : isDarkMode
-                                                        ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                            )}
-                                        />
-                                        {bodyErrors[i] && (
-                                            <p className="text-red-500 text-[11px] ml-0.5 animate-in slide-in-from-top-1">
-                                                {bodyErrors[i]}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Button Variables (URL suffix) */}
-                    {buttonValues.length > 0 && template.buttonVariables && (
-                        <div className="space-y-4">
-                            <h3 className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                Button Variables
-                            </h3>
-                            <div className="grid gap-3">
-                                {template.buttonVariables.map((btnVar: any, i: number) => (
-                                    <div key={`button-${i}`} className="flex flex-col space-y-1">
-                                        <label className={cn("text-xs font-medium", isDarkMode ? "text-white/80" : "text-slate-700")}>
-                                            Button "{btnVar.text}" - URL Suffix
-                                            <span className="text-red-500 ml-0.5">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={buttonValues[i] || ""}
-                                            onChange={(e) => {
-                                                const newValues = [...buttonValues];
-                                                newValues[i] = e.target.value;
-                                                setButtonValues(newValues);
-                                                if (buttonErrors[i]) {
-                                                    const newErrs = [...buttonErrors];
-                                                    newErrs[i] = "";
-                                                    setButtonErrors(newErrs);
-                                                }
-                                            }}
-                                            placeholder={`Enter URL suffix value...`}
-                                            className={cn(
-                                                "w-full px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 outline-none",
-                                                buttonErrors[i]
-                                                    ? "border-red-500 focus:ring-red-500/20 bg-red-500/5"
-                                                    : isDarkMode
-                                                        ? "bg-black/20 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500/20"
-                                                        : "bg-white border-slate-200 text-slate-900 focus:ring-emerald-500/20"
-                                            )}
-                                        />
-                                        {buttonErrors[i] && (
-                                            <p className="text-red-500 text-[11px] ml-0.5 animate-in slide-in-from-top-1">
-                                                {buttonErrors[i]}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </div>
 
-                {/* Actions */}
-                <div className="p-5 border-t border-white/10 flex justify-end gap-3 bg-white/5">
+                {/* ── Footer Actions ── */}
+                <div className={cn(
+                    "px-6 py-3.5 border-t flex justify-end gap-3 shrink-0",
+                    isDarkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50/50"
+                )}>
                     <button
                         onClick={onClose}
-                        className={cn(
-                            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                            isDarkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                        )}
+                        className={cn("px-4 py-2 rounded-lg text-sm font-medium transition-colors", isDarkMode ? "bg-white/10 hover:bg-white/15 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700")}
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isPending}
-                        className={cn(
-                            "px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2",
-                            "bg-emerald-500 hover:bg-emerald-600 text-white",
-                            "disabled:opacity-50 disabled:cursor-not-allowed"
-                        )}
+                        className="px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-emerald-500/20"
                     >
                         <Send size={14} />
-                        {isPending ? "Sending..." : "Send Template"}
+                        {isPending ? "Sending…" : "Send Template"}
                     </button>
                 </div>
             </GlassCard>

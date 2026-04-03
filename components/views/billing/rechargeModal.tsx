@@ -87,6 +87,8 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
             onClose();
           } catch (err) {
             toast.error("Payment verification failed");
+          } finally {
+            setIsProcessing(false);
           }
         },
         prefill: {
@@ -107,9 +109,8 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
       });
       rzp.open();
     } catch (err: any) {
-      toast.error(`Initiation failed: ${err.message || "Error"}`);
-    } finally {
       setIsProcessing(false);
+      toast.error(`Initiation failed: ${err.message || "Error"}`);
     }
   };
 

@@ -163,7 +163,10 @@ export const GlobalCommandBar = ({
                                         {(() => {
                                         const rawTier = wabaInfo.tier ? wabaInfo.tier.toUpperCase() : 'TIER_NOT_SET';
                                         const tierCfg = META_TIER_CONFIG[rawTier] || META_TIER_CONFIG.TIER_NOT_SET;
-                                        return `${tierCfg.name} (${tierCfg.limit}/24h)`;
+                                        const limitLabel = typeof tierCfg.limit === 'number'
+                                            ? `${tierCfg.limit.toLocaleString()} users/24h`
+                                            : `${tierCfg.limit}/24h`;
+                                        return `${tierCfg.name} · ${limitLabel}`;
                                     })()}
                                     </span>
                                 </div>

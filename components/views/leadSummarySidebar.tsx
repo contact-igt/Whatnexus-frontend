@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { format, subDays, subMonths, subYears, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isWithinInterval, addMonths, compareAsc } from "date-fns";
-import { ChevronLeft, ChevronRight, Brain, Calendar, Loader2, ClipboardList, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Brain, Calendar, Loader2, ClipboardList, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSummarizeLeadMutation } from '@/hooks/useLeadIntelligenceQuery';
 
@@ -22,6 +22,7 @@ export const LeadSummarySidebar = ({ isOpen, onClose, lead, isDarkMode }: LeadSu
     const summarizeLeadMutation = useSummarizeLeadMutation();
     const [summary, setSummary] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // Date Picker State
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -281,16 +282,24 @@ export const LeadSummarySidebar = ({ isOpen, onClose, lead, isDarkMode }: LeadSu
                             </div>
 
                             <button
-                                onClick={() => { navigator.clipboard.writeText(summary); }}
+                                onClick={() => {
+                                    navigator.clipboard.writeText(summary);
+                                    setCopied(true);
+                                    setTimeout(() => setCopied(false), 2000);
+                                }}
                                 className={cn(
                                     "w-full py-2 flex items-center justify-center space-x-2 rounded-lg border transition-all text-xs font-medium",
-                                    isDarkMode
-                                        ? "border-white/10 hover:bg-white/5 text-white/70 hover:text-white"
-                                        : "border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900"
+                                    copied
+                                        ? isDarkMode
+                                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                            : "border-emerald-200 bg-emerald-50 text-emerald-600"
+                                        : isDarkMode
+                                            ? "border-white/10 hover:bg-white/5 text-white/70 hover:text-white"
+                                            : "border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900"
                                 )}
                             >
-                                <ClipboardList size={14} />
-                                <span>Copy Summary</span>
+                                {copied ? <Check size={14} /> : <ClipboardList size={14} />}
+                                <span>{copied ? "Copied!" : "Copy Summary"}</span>
                             </button>
                         </div>
                     ) : (

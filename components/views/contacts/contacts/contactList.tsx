@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Contact } from "@/types/contact";
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { User, Phone } from "lucide-react";
+import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { DataTable, ColumnDef } from "@/components/ui/dataTable";
 import { Pagination } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,6 +37,8 @@ export const ContactList = ({
     onPermanentDelete,
     isTrash = false
 }: ContactListProps) => {
+    const { user } = useAuth();
+    const isRestrictedRole = ['staff', 'agent', 'doctor'].includes(user?.role || '');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 7;
 
@@ -125,13 +128,13 @@ export const ContactList = ({
             align: 'center',
             headerAlign: 'center',
             renderCell: ({ row }) => (
-                <ActionMenu
+<ActionMenu
                     isDarkMode={isDarkMode}
                     isView={false}
-                    isEdit={!isTrash}
-                    isDelete={!isTrash}
-                    isRestore={isTrash}
-                    isPermanentDelete={isTrash}
+                    isEdit={!isTrash && !isRestrictedRole}
+                    isDelete={!isTrash && !isRestrictedRole}
+                    isRestore={isTrash && !isRestrictedRole}
+                    isPermanentDelete={false}
                     onEdit={() => onEdit(row)}
                     onDelete={() => onDelete(row)}
                     onRestore={() => onRestore?.(row)}

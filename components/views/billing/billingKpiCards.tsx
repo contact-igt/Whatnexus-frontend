@@ -3,7 +3,7 @@ import { GlassCard } from "@/components/ui/glassCard";
 import { PulseMetric } from "@/components/ui/pulseMetric";
 import { cn } from "@/lib/utils";
 import { Wallet, TrendingUp, Megaphone, Zap, ShieldCheck, MessageCircle, Send, CheckCircle, BarChart3, Loader2 } from "lucide-react";
-import { useGetBillingKpiQuery } from "@/hooks/useBillingQuery";
+import { useGetBillingKpiQuery, useGetBillingModeQuery } from "@/hooks/useBillingQuery";
 
 interface BillingKpiCardsProps {
   isDarkMode: boolean;
@@ -16,7 +16,10 @@ export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCa
     startDate?.toISOString(),
     endDate?.toISOString()
   );
-  
+  const { data: modeResponse } = useGetBillingModeQuery();
+  const billingMode = modeResponse?.data?.billing_mode || 'prepaid';
+  const isPrepaid = billingMode === 'prepaid';
+
   // Unwrap the API response
   const kpiData = responseData?.data || {
     totalSpentEstimated: 0,
@@ -32,9 +35,9 @@ export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCa
 
   // Convert raw values into the UI format
   const total = kpiData.totalSpentEstimated || 1; // Avoid div by 0
-  
+
   const currencySymbol = kpiData.currency === 'INR' ? '₹' : kpiData.currency;
-  
+
   const kpis = [
     { label: 'Wallet Balance', value: `${currencySymbol}${kpiData.walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, trend: '—', color: 'emerald', icon: Wallet },
     { label: 'Total Estimated Spend', value: `${currencySymbol}${kpiData.totalSpentEstimated.toFixed(2)}`, trend: '—', color: 'blue', icon: TrendingUp },
@@ -57,13 +60,13 @@ export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCa
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {kpis.map((kpi, i) => (
-        <PulseMetric 
+        <PulseMetric
           key={i}
-          label={kpi.label} 
-          value={kpi.value} 
-          trend={kpi.trend} 
-          color={kpi.color} 
-          isDarkMode={isDarkMode} 
+          label={kpi.label}
+          value={kpi.value}
+          trend={kpi.trend}
+          color={kpi.color}
+          isDarkMode={isDarkMode}
           percent={kpi.percent}
           icon={kpi.icon}
         />
@@ -72,32 +75,42 @@ export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCa
       {/* Enhanced Billing Status Card */}
       <div className={cn(
         "relative group p-6 cursor-default h-full flex flex-col justify-between min-h-[160px] rounded-[24px] border transition-all duration-500",
-        isDarkMode 
-            ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10" 
-            : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
+        isDarkMode
+          ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+          : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
       )}>
         <div className={cn(
-            "absolute inset-0 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 bg-emerald-500 bg-opacity-5"
+          "absolute inset-0 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 bg-emerald-500 bg-opacity-5"
         )} />
-        
+
         <div className="relative z-10 transition-transform duration-500 group-hover:translate-x-1 h-full flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-start mb-2">
               <p className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Billing Status</p>
-              <div className={cn(
-                "p-2 rounded-xl transition-all duration-500 border relative overflow-hidden", 
-                isDarkMode 
-                    ? 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/20' 
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border",
+                  isPrepaid
+                    ? isDarkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-200"
+                    : isDarkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-600 border-blue-200"
+                )}>
+                  {billingMode}
+                </span>
+                <div className={cn(
+                  "p-2 rounded-xl transition-all duration-500 border relative overflow-hidden",
+                  isDarkMode
+                    ? 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/20'
                     : 'bg-white border-slate-100 group-hover:bg-emerald-50 group-hover:border-emerald-100'
-              )}>
-                <CheckCircle size={14} className="text-emerald-500" />
+                )}>
+                  <CheckCircle size={14} className="text-emerald-500" />
+                </div>
               </div>
             </div>
-            
+
             <div className="flex items-baseline gap-2 mt-2">
               <h3 className={cn("text-3xl font-black tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>Active</h3>
             </div>
-            
+
             <div className="flex items-center gap-2 mt-3">
               <div className="relative">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />

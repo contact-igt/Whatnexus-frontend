@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { format, subDays, subMonths, subYears, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isWithinInterval, addMonths, compareAsc } from "date-fns";
-import { ChevronLeft, ChevronRight, Brain, Calendar, Loader2, ClipboardList } from "lucide-react";
+import { ChevronLeft, ChevronRight, Brain, Calendar, Loader2, ClipboardList, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSummarizeLeadMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { Drawer } from "@/components/ui/drawer";
@@ -23,6 +23,7 @@ export const LeadSummaryDrawer = ({ isOpen, onClose, lead, isDarkMode }: LeadSum
     const summarizeLeadMutation = useSummarizeLeadMutation();
     const [summary, setSummary] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // Date Picker State
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -265,11 +266,20 @@ export const LeadSummaryDrawer = ({ isOpen, onClose, lead, isDarkMode }: LeadSum
                             </p>
                             <div className="mt-6 pt-4 border-t border-white/5 flex justify-end">
                                 <button
-                                    onClick={() => { navigator.clipboard.writeText(summary); }}
-                                    className={cn("text-xs font-medium flex items-center space-x-1.5 transition-colors font-sans", isDarkMode ? "text-emerald-400 hover:text-emerald-300" : "text-emerald-600 hover:text-emerald-700")}
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(summary);
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                    className={cn(
+                                        "text-xs font-medium flex items-center space-x-1.5 transition-colors font-sans",
+                                        copied
+                                            ? isDarkMode ? "text-emerald-300" : "text-emerald-500"
+                                            : isDarkMode ? "text-emerald-400 hover:text-emerald-300" : "text-emerald-600 hover:text-emerald-700"
+                                    )}
                                 >
-                                    <ClipboardList size={14} />
-                                    <span>Copy to Clipboard</span>
+                                    {copied ? <Check size={14} /> : <ClipboardList size={14} />}
+                                    <span>{copied ? "Copied!" : "Copy to Clipboard"}</span>
                                 </button>
                             </div>
                         </div>

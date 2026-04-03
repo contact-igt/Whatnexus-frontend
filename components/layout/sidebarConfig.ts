@@ -27,7 +27,8 @@ import {
     Terminal,
     FlaskConical,
     Landmark,
-    UserPlus
+    UserPlus,
+    DollarSign
 
 } from 'lucide-react';
 
@@ -254,10 +255,17 @@ export const managementSidebarConfig: SidebarGroup[] = [
             },
             {
                 label: "Admin Billing",
-                route: "/billing",
+                route: "/admin-billing",
                 icon: CreditCard,
                 requiresWhatsApp: false,
                 roles: ['super_admin']
+            },
+            {
+                label: "Pricing & Rates",
+                route: "/pricing",
+                icon: DollarSign,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
             }
         ]
     }

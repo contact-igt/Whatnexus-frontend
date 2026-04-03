@@ -61,8 +61,14 @@ export const GroupsView = () => {
 
     const isLoading = activeTab === 'all' ? isLoadingGroups : isLoadingDeleted;
 
-    // Use groups directly (server-side search)
-    const filteredGroups = groups;
+    // Client-side fallback filter (in case backend doesn't filter yet for the current query)
+    const filteredGroups = useMemo(() => {
+        if (!debouncedSearchQuery.trim()) return groups;
+        return groups.filter((g) =>
+            g.group_name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+            g.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        );
+    }, [groups, debouncedSearchQuery]);
 
 
 

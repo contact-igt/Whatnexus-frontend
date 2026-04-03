@@ -138,3 +138,155 @@ export const useGetWalletStatusQuery = () => {
         refetchInterval: 60000, // Refetch every minute to stay updated
     });
 };
+
+export const useGetBillingModeQuery = () => {
+    return useQuery({
+        queryKey: ['billing-mode'],
+        queryFn: () => billingApis.getBillingMode(),
+        staleTime: 5 * 60 * 1000,
+    });
+};
+
+export const useGetInvoicesQuery = (params?: { status?: string; page?: number; limit?: number }) => {
+    return useQuery({
+        queryKey: ['invoices', params],
+        queryFn: () => billingApis.getInvoices(params),
+        placeholderData: (previousData: unknown) => previousData,
+    });
+};
+
+export const useGetInvoiceDetailQuery = (id: number) => {
+    return useQuery({
+        queryKey: ['invoice-detail', id],
+        queryFn: () => billingApis.getInvoiceDetail(id),
+        enabled: !!id,
+    });
+};
+
+export const usePayInvoiceMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, paymentData }: { id: number; paymentData: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string } }) =>
+            billingApis.payInvoice(id, paymentData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['billing-mode'] });
+            queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+            queryClient.invalidateQueries({ queryKey: ['wallet-status'] });
+        },
+    });
+};
+
+// ──────────────── Super Admin Hooks ────────────────
+
+export const useAdminForceUnlockMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { tenant_id: string; reason: string }) =>
+            billingApis.adminForceUnlock(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+        },
+    });
+};
+
+export const useAdminManualCreditMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { tenant_id: string; amount: number; reason: string }) =>
+            billingApis.adminManualCredit(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+        },
+    });
+};
+
+export const useAdminInvoiceCloseMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { invoice_id: number; reason: string }) =>
+            billingApis.adminInvoiceClose(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+        },
+    });
+};
+
+export const useAdminChangeBillingModeMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { tenant_id: string; new_mode: 'prepaid' | 'postpaid'; reason: string }) =>
+            billingApis.adminChangeBillingMode(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['billing-mode'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-tenant-overview'] });
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        },
+    });
+};
+
+export const useAdminUpdateUsageLimitsMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { tenant_id: string; max_daily_messages?: number; max_monthly_messages?: number; max_daily_ai_calls?: number; max_monthly_ai_calls?: number; reason?: string }) =>
+            billingApis.adminUpdateUsageLimits(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['billing-mode'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-tenant-overview'] });
+        },
+    });
+};
+
+export const useAdminGetAuditLogQuery = (params?: { tenant_id?: string; page?: number; limit?: number }) => {
+    return useQuery({
+        queryKey: ['admin-audit-log', params],
+        queryFn: () => billingApis.adminGetAuditLog(params),
+        placeholderData: (previousData: unknown) => previousData,
+    });
+};
+
+export const useAdminGetHealthSummaryQuery = () => {
+    return useQuery({
+        queryKey: ['admin-health-summary'],
+        queryFn: () => billingApis.adminGetHealthSummary(),
+        refetchInterval: 60000,
+    });
+};
+
+export const useAdminGetTenantsQuery = (search?: string, enabled = true) => {
+    return useQuery({
+        queryKey: ['admin-tenants', search],
+        queryFn: () => billingApis.adminGetTenants({ search }),
+        enabled,
+    });
+};
+
+export const useAdminGetTenantOverviewQuery = (tenant_id?: string) => {
+    return useQuery({
+        queryKey: ['admin-tenant-overview', tenant_id],
+        queryFn: () => billingApis.adminGetTenantOverview(tenant_id!),
+        enabled: !!tenant_id,
+    });
+};
+
+export const useAdminResolveHealthEventMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) => billingApis.adminResolveHealthEvent(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-health-summary'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-unresolved-events'] });
+        },
+    });
+};
+
+export const useAdminGetUnresolvedEventsQuery = () => {
+    return useQuery({
+        queryKey: ['admin-unresolved-events'],
+        queryFn: () => billingApis.adminGetUnresolvedEvents(),
+        refetchInterval: 60000,
+    });
+};

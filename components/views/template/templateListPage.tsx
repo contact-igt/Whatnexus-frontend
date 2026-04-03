@@ -202,7 +202,7 @@ export const TemplateListPage = ({
                         onSyncTemplate={() => onSyncTemplate(row?.template_id)}
                         onView={() => onView(row)}
                         onEdit={() => onEdit(row)}
-                        isDelete={['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
+                        isDelete={['draft', 'paused', 'rejected', 'approved'].includes(row?.status) && row?.name !== 'hello_world'}
                         onDelete={() => handleActionClick(row.template_id, 'soft')}
                         isPermanentDelete={activeTab === 'trash' && user?.role === 'tenant_admin'}
                         onPermanentDelete={() => handleActionClick(row.template_id, 'permanent')}

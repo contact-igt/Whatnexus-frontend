@@ -25,7 +25,7 @@ export const useGetAllChatsQuery = () => {
 
 export const useGetAllLiveChatsQuery = () => {
 
-    const { data, isLoading, isError } = useQuery({
+    const { data, isLoading, isError, refetch } = useQuery({
         queryKey: ['livechats'],
         queryFn: () => MessagesApis.getAllLiveChats(),
         staleTime: 2 * 60 * 1000,
@@ -35,7 +35,7 @@ export const useGetAllLiveChatsQuery = () => {
         toast.error('Failed to load messages');
     }
 
-    return { data, isLoading, isError };
+    return { data, isLoading, isError, refetch };
 };
 
 export const useGetAllHistoryChatsQuery = () => {
@@ -54,7 +54,7 @@ export const useGetAllHistoryChatsQuery = () => {
 };
 
 export const useMessagesByPhoneQuery = (phone_number: string) => {
-    const { data, isLoading, isError } = useQuery({
+    const { data, isLoading, isError, refetch } = useQuery({
         queryKey: ['messages', phone_number],
         queryFn: () => MessagesApis.getMessagesByPhone(phone_number),
         enabled: !!phone_number,
@@ -62,7 +62,7 @@ export const useMessagesByPhoneQuery = (phone_number: string) => {
         refetchOnWindowFocus: false,
     });
 
-    return { data, isLoading, isError };
+    return { data, isLoading, isError, refetch };
 };
 
 export const useAddMessageMutation = () => {
@@ -127,6 +127,9 @@ export const useChatSuggestMutation = () => {
             queryClient.invalidateQueries({
                 queryKey: ["messages", variables.phone],
             });
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to get AI suggestion');
         },
     });
 }

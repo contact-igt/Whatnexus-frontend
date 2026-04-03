@@ -189,6 +189,8 @@ export const getCampaignStatusColor = (status: CampaignStatus): string => {
             return "bg-yellow-500/10 text-yellow-500";
         case "failed":
             return "bg-red-500/10 text-red-500";
+        case "paused":
+            return "bg-amber-500/10 text-amber-500";
         case "draft":
             return "bg-slate-500/10 text-slate-500";
         default:
@@ -263,7 +265,7 @@ export const isCampaignActive = (status: CampaignStatus): boolean => {
  * @returns true if campaign can be executed
  */
 export const canExecuteCampaign = (status: CampaignStatus): boolean => {
-    return status === "draft" || status === "scheduled";
+    return status === "draft" || status === "scheduled" || status === "paused";
 };
 
 /**

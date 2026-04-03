@@ -34,8 +34,8 @@ export const useUploadKnowledgeMutation = () => {
             queryClient.invalidateQueries({ queryKey: ['knowledges'] });
             toast.success('Knowledge updated successfully!');
         },
-        onError: (error: Error) => {
-            toast.error(error.message || 'Failed to update knowledge');
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to update knowledge');
         },
     });
 };

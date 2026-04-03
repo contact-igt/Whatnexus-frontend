@@ -100,6 +100,12 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
 
     // Recalculate position if we can (optional, but closing on scroll is safer)
 
+    const hasAnyAction = isView || isEdit || isDelete || isWhatsAppConfig || isPermanentDelete ||
+        isRestore || isSubmitTemplate || isSyncTemplate || isExecute || isAnswer ||
+        isSummary || isMessage || isRefresh || isActivate || isDeactivate;
+
+    if (!hasAnyAction) return null;
+
     return (
         <>
             <button
