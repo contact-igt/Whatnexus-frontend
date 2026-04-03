@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Globe, Bell, Sun, Moon, Power, Flag, MessageSquare, Bell as BellIcon, Shield, Zap } from 'lucide-react';
+import { Globe, Bell, Sun, Moon, Power, Flag, MessageSquare, Bell as BellIcon, Shield, Zap, RefreshCw } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState, useEffect, useRef } from 'react';
@@ -11,6 +11,7 @@ import { clearAuthData } from '@/redux/slices/auth/authSlice';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { socket } from '@/utils/socket';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const META_TIER_CONFIG: Record<string, { name: string, limit: string | number }> = {
     TIER_NOT_SET: {
@@ -75,6 +76,8 @@ export const Header = () => {
     const { setTheme, isDarkMode } = useTheme();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const queryClient = useQueryClient();
     const dispatch = useDispatch();
     const router = useRouter();
     const pathname = usePathname();
@@ -357,6 +360,24 @@ export const Header = () => {
                         )}
                     </button>
                 )}
+
+                {/* Refresh */}
+                <button
+                    onClick={async () => {
+                        if (isRefreshing) return;
+                        setIsRefreshing(true);
+                        await queryClient.invalidateQueries();
+                        setTimeout(() => setIsRefreshing(false), 800);
+                    }}
+                    disabled={isRefreshing}
+                    className={cn(
+                        "p-2.5 rounded-xl transition-all",
+                        isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+                    )}
+                    title="Refresh data"
+                >
+                    <RefreshCw size={17} className={cn(isRefreshing && 'animate-spin')} />
+                </button>
 
                 {/* Theme toggle */}
                 <button

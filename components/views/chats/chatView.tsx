@@ -44,6 +44,7 @@ export const ChatView = () => {
     const {
         data: chatList,
         isLoading: isChatsLoading,
+        refetch: refetchChats,
     } = useGetAllLiveChatsQuery();
 
     const [filteredChats, setFilteredChats] = useState<any[]>([]);
@@ -61,6 +62,7 @@ export const ChatView = () => {
     const {
         data: messagesData,
         isLoading: isMessagesLoading,
+        refetch: refetchMessages,
     } = useMessagesByPhoneQuery(selectedChat?.phone);
     const { mutateAsync: chatSuggestMutate, isPending: isSuggesting } = useChatSuggestMutation();
     const [chatSummary, setChatSummary] = useState<string | null>(null);
@@ -656,6 +658,9 @@ export const ChatView = () => {
                                 selectedChat={selectedChat}
                                 messageSearchText={messageSearchText}
                                 setMessageSearchText={setMessageSearchText}
+                                onRefresh={async () => {
+                                    await Promise.all([refetchChats(), refetchMessages()]);
+                                }}
                             />
 
                             <div className="flex-1 min-h-0 relative flex flex-col">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, User, Plus, X } from 'lucide-react';
+import { Search, User, Plus, X, RefreshCw } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 interface ChatHeaderProps {
@@ -7,6 +7,7 @@ interface ChatHeaderProps {
     selectedChat: any;
     messageSearchText: string;
     setMessageSearchText: (text: string) => void;
+    onRefresh?: () => Promise<void>;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -14,8 +15,20 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     selectedChat,
     messageSearchText,
     setMessageSearchText,
+    onRefresh,
 }) => {
     const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+    const handleRefresh = async () => {
+        if (!onRefresh || isRefreshing) return;
+        setIsRefreshing(true);
+        try {
+            await onRefresh();
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     // Close search if text is cleared and it loses focus? 
     // Actually just keep it simple: toggle with icon and X button.
@@ -92,9 +105,22 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </div>
 
                 {!isSearchOpen && (
-                    <button className={cn("p-2 rounded-full transition-all hover:scale-110 active:scale-90", isDarkMode ? "hover:bg-[#3b4a54] text-slate-400" : "hover:bg-gray-200 text-slate-500")}>
-                        <Plus size={20} />
-                    </button>
+                    <>
+                        <button
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
+                            className={cn(
+                                "p-2 rounded-full transition-all hover:scale-110 active:scale-90 disabled:opacity-50",
+                                isDarkMode ? "hover:bg-[#3b4a54] text-slate-400" : "hover:bg-gray-200 text-slate-500"
+                            )}
+                            title="Refresh messages"
+                        >
+                            <RefreshCw size={18} className={cn(isRefreshing && "animate-spin")} />
+                        </button>
+                        <button className={cn("p-2 rounded-full transition-all hover:scale-110 active:scale-90", isDarkMode ? "hover:bg-[#3b4a54] text-slate-400" : "hover:bg-gray-200 text-slate-500")}>
+                            <Plus size={20} />
+                        </button>
+                    </>
                 )}
             </div>
         </div>

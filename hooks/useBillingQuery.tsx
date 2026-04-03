@@ -241,10 +241,11 @@ export const useAdminGetHealthSummaryQuery = () => {
     });
 };
 
-export const useAdminGetTenantsQuery = (search?: string) => {
+export const useAdminGetTenantsQuery = (search?: string, enabled = true) => {
     return useQuery({
         queryKey: ['admin-tenants', search],
         queryFn: () => billingApis.adminGetTenants({ search }),
+        enabled,
     });
 };
 

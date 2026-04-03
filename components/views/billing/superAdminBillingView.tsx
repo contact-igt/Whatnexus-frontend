@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
     Shield, Users, Wallet, FileText, ScrollText, Activity,
@@ -26,6 +26,9 @@ import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useTheme } from "@/hooks/useTheme";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { jwtDecode } from "jwt-decode";
+import { clearAuthData } from "@/redux/slices/auth/authSlice";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -74,16 +77,22 @@ const ConfirmDialog = ({ open, onConfirm, onCancel, title, message, isDarkMode, 
 // ────────────── Tenant Selector Dropdown ──────────────
 const TenantSelector = ({ value, onChange, isDarkMode, accentColor = "emerald" }: {
     value: string;
-    onChange: (tenantId: string) => void;
+    onChange: (tenantId: string, companyName?: string) => void;
     isDarkMode: boolean;
     accentColor?: string;
 }) => {
     const [search, setSearch] = useState("");
     const [open, setOpen] = useState(false);
+    const [selectedName, setSelectedName] = useState("");
     const ref = useRef<HTMLDivElement>(null);
     const debouncedSearch = useDebounce(search, 300);
-    const { data: res, isLoading } = useAdminGetTenantsQuery(debouncedSearch || undefined);
-    const tenants = res?.data?.tenants || [];
+    const { data: res, isLoading, error } = useAdminGetTenantsQuery(debouncedSearch || undefined, open);
+    const tenants = res?.tenants || [];
+
+    // Clear selected name when value is reset externally
+    useEffect(() => {
+        if (!value) setSelectedName("");
+    }, [value]);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -102,8 +111,8 @@ const TenantSelector = ({ value, onChange, isDarkMode, accentColor = "emerald" }
             >
                 {value ? (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className={cn("text-sm font-bold truncate", isDarkMode ? "text-white" : "text-slate-900")}>{value}</span>
-                        <button onClick={(e) => { e.stopPropagation(); onChange(""); setSearch(""); }} className="opacity-40 hover:opacity-80">
+                        <span className={cn("text-sm font-bold truncate", isDarkMode ? "text-white" : "text-slate-900")}>{selectedName || value}</span>
+                        <button onClick={(e) => { e.stopPropagation(); onChange(""); setSearch(""); setSelectedName(""); }} className="opacity-40 hover:opacity-80">
                             <X size={12} />
                         </button>
                     </div>
@@ -127,13 +136,18 @@ const TenantSelector = ({ value, onChange, isDarkMode, accentColor = "emerald" }
                     <div className="max-h-48 overflow-y-auto">
                         {isLoading ? (
                             <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin opacity-40" /></div>
+                        ) : error ? (
+                            <div className="px-3 py-4 text-center">
+                                <p className="text-xs text-red-400 font-bold mb-1">Access denied (403)</p>
+                                <p className="text-[10px] opacity-40">Please re-login as Super Admin</p>
+                            </div>
                         ) : tenants.length === 0 ? (
                             <p className="text-center py-4 text-xs opacity-40">No tenants found</p>
                         ) : (
                             tenants.map((t: any) => (
                                 <button
                                     key={t.tenant_id}
-                                    onClick={() => { onChange(t.tenant_id); setOpen(false); setSearch(""); }}
+                                    onClick={() => { onChange(t.tenant_id, t.company_name); setSelectedName(t.company_name); setOpen(false); setSearch(""); }}
                                     className={cn("w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors", isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50", value === t.tenant_id && (isDarkMode ? "bg-white/5" : "bg-slate-50"))}
                                 >
                                     <Building2 size={14} className="opacity-30 shrink-0" />
@@ -158,7 +172,7 @@ const TenantSelector = ({ value, onChange, isDarkMode, accentColor = "emerald" }
 // ────────────── Tenant Overview Card ──────────────
 const TenantOverviewCard = ({ tenantId, isDarkMode }: { tenantId: string; isDarkMode: boolean }) => {
     const { data: res, isLoading } = useAdminGetTenantOverviewQuery(tenantId || undefined);
-    const ov = res?.data?.overview;
+    const ov = res?.overview;
 
     if (!tenantId) return null;
     if (isLoading) return (
@@ -222,7 +236,8 @@ const TenantBillingManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
     const [confirmUnlock, setConfirmUnlock] = useState(false);
 
     const handleChangeMode = () => {
-        if (!tenantId.trim() || !reason.trim()) { toast.error("Tenant ID and reason are required"); return; }
+        if (!tenantId.trim()) { toast.error("Please select a tenant first"); return; }
+        if (!reason.trim()) { toast.error("Please provide a reason for the mode change"); return; }
         setConfirmMode(true);
     };
 
@@ -238,7 +253,8 @@ const TenantBillingManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
     };
 
     const handleForceUnlock = () => {
-        if (!unlockTenantId.trim() || !unlockReason.trim()) { toast.error("Tenant ID and reason are required"); return; }
+        if (!unlockTenantId.trim()) { toast.error("Please select a tenant first"); return; }
+        if (!unlockReason.trim()) { toast.error("Please provide a reason to unlock access"); return; }
         setConfirmUnlock(true);
     };
 
@@ -370,16 +386,32 @@ const TenantBillingManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
 // ────────────── Manual Wallet Credit ──────────────
 const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
     const [tenantId, setTenantId] = useState("");
+    const [tenantName, setTenantName] = useState("");
     const [amount, setAmount] = useState("");
     const [reason, setReason] = useState("");
     const [confirmOpen, setConfirmOpen] = useState(false);
     const manualCreditM = useAdminManualCreditMutation();
 
+    const { data: overviewRes } = useAdminGetTenantOverviewQuery(tenantId || undefined);
+    const ov = overviewRes?.overview;
+
     const handleCredit = () => {
+        if (!tenantId.trim()) { toast.error("Please select a tenant first"); return; }
         const parsedAmount = parseFloat(amount);
-        if (!tenantId.trim() || !reason.trim()) { toast.error("All fields are required"); return; }
         if (isNaN(parsedAmount) || parsedAmount <= 0) { toast.error("Amount must be greater than 0"); return; }
         if (parsedAmount > 100000) { toast.error("Amount cannot exceed ₹1,00,000"); return; }
+        if (!reason.trim()) { toast.error("Please provide a reason for the credit"); return; }
+        
+        if (ov && ov.billing_mode === 'postpaid') {
+            const currentBalance = parseFloat(ov.wallet_balance) || 0;
+            const limit = parseFloat(ov.credit_limit) || 0;
+            if (currentBalance + parsedAmount > limit) {
+                const maxAllowed = Math.max(0, limit - currentBalance);
+                toast.error(`Exceeds limit! Maximum you can add is ₹${maxAllowed.toFixed(2)}`);
+                return;
+            }
+        }
+
         setConfirmOpen(true);
     };
 
@@ -388,8 +420,8 @@ const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
         manualCreditM.mutate({ tenant_id: tenantId.trim(), amount: parsedAmount, reason: reason.trim() }, {
             onSuccess: (res: any) => {
                 const d = res?.data;
-                toast.success(`₹${parsedAmount.toFixed(2)} credited to ${tenantId}. Balance: ₹${d?.oldBalance?.toFixed(2) || '?'} → ₹${d?.newBalance?.toFixed(2) || '?'}`);
-                setTenantId(""); setAmount(""); setReason(""); setConfirmOpen(false);
+                toast.success(`₹${parsedAmount.toFixed(2)} credited to ${tenantName || tenantId}. Balance: ₹${d?.oldBalance?.toFixed(2) || '?'} → ₹${d?.newBalance?.toFixed(2) || '?'}`);
+                setTenantId(""); setTenantName(""); setAmount(""); setReason(""); setConfirmOpen(false);
             },
             onError: (err: any) => { toast.error(err?.response?.data?.message || "Failed to credit wallet"); setConfirmOpen(false); },
         });
@@ -402,7 +434,7 @@ const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
                 onConfirm={executeCredit}
                 onCancel={() => setConfirmOpen(false)}
                 title="Confirm Manual Credit"
-                message={`Credit ₹${parseFloat(amount || "0").toFixed(2)} to tenant ${tenantId}? This cannot be undone.`}
+                message={`Credit ₹${parseFloat(amount || "0").toFixed(2)} to ${tenantName || tenantId}? This cannot be undone.`}
                 isDarkMode={isDarkMode}
                 isPending={manualCreditM.isPending}
             />
@@ -417,7 +449,12 @@ const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <TenantSelector value={tenantId} onChange={setTenantId} isDarkMode={isDarkMode} accentColor="emerald" />
+                <TenantSelector 
+                    value={tenantId} 
+                    onChange={(id, name) => { setTenantId(id); setTenantName(name || ""); }} 
+                    isDarkMode={isDarkMode} 
+                    accentColor="emerald" 
+                />
                 <div>
                     <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Amount (₹)</label>
                     <input
@@ -447,7 +484,7 @@ const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
                 <div className={cn("mt-4 p-3 rounded-xl border flex items-center gap-3", isDarkMode ? "bg-emerald-500/5 border-emerald-500/10" : "bg-emerald-50 border-emerald-200")}>
                     <CheckCircle size={14} className="text-emerald-500" />
                     <span className={cn("text-xs", isDarkMode ? "text-emerald-400" : "text-emerald-700")}>
-                        Will credit <strong>₹{parseFloat(amount).toFixed(2)}</strong> to wallet of <strong>{tenantId || '...'}</strong>
+                        Will credit <strong>₹{parseFloat(amount).toFixed(2)}</strong> to wallet of <strong>{tenantName || tenantId || '...'}</strong>
                     </span>
                 </div>
             )}
@@ -471,11 +508,12 @@ const InvoiceManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
     const [confirmClose, setConfirmClose] = useState(false);
     const invoiceCloseM = useAdminInvoiceCloseMutation();
     const { data: invoicesRes, isLoading } = useGetInvoicesQuery({ limit: 20 });
-    const invoices = invoicesRes?.data?.invoices || [];
+    const invoices = invoicesRes?.data?.invoices || invoicesRes?.invoices || [];
 
     const handleClose = () => {
         const id = parseInt(invoiceId);
-        if (isNaN(id) || !closeReason.trim()) { toast.error("Invoice ID and reason are required"); return; }
+        if (isNaN(id)) { toast.error("Please provide a valid Invoice ID"); return; }
+        if (!closeReason.trim()) { toast.error("Please provide a reason to cancel the invoice"); return; }
         setConfirmClose(true);
     };
 
@@ -612,16 +650,18 @@ const AuditLog = ({ isDarkMode }: { isDarkMode: boolean }) => {
         page,
         limit: 20,
     });
-    const logs = response?.data?.logs || [];
-    const totalPages = response?.data?.pagination?.totalPages || 1;
+    const logs = response?.logs || [];
+    const totalPages = response?.pagination?.totalPages || 1;
 
     const exportCsv = useCallback(() => {
         if (!logs.length) return;
-        const headers = ["Timestamp", "Admin", "Action", "Tenant", "Reason", "Before", "After"];
+        const headers = ["Timestamp", "Admin Name", "Admin ID", "Action", "Tenant Name", "Tenant ID", "Reason", "Before", "After"];
         const rows = logs.map((log: any) => [
             new Date(log.createdAt || log.timestamp).toISOString(),
+            log.admin_name || "",
             log.admin_id || log.performed_by || "",
             log.action_type || log.action || "",
+            log.tenant_name || "",
             log.tenant_id || "",
             (log.reason || "").replace(/,/g, ";"),
             log.before_state ? JSON.stringify(log.before_state).replace(/,/g, ";") : "",
@@ -702,9 +742,13 @@ const AuditLog = ({ isDarkMode }: { isDarkMode: boolean }) => {
                                                     </p>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3"><span className={cn("text-xs font-mono", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{log.admin_id || log.performed_by || '—'}</span></td>
+                                            <td className="px-4 py-3">
+                                                <span className={cn("text-xs font-bold block", isDarkMode ? 'text-white/80' : 'text-slate-700')}>{log.admin_name || log.admin_id || log.performed_by || '—'}</span>
+                                            </td>
                                             <td className="px-4 py-3"><span className={cn("text-xs font-bold", actionColor(log.action_type || log.action))}>{log.action_type || log.action || '—'}</span></td>
-                                            <td className="px-4 py-3"><span className={cn("text-xs font-mono", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{log.tenant_id || '—'}</span></td>
+                                            <td className="px-4 py-3">
+                                                <span className={cn("text-xs font-bold block", isDarkMode ? 'text-white/80' : 'text-slate-700')}>{log.tenant_name || log.tenant_id || '—'}</span>
+                                            </td>
                                             <td className="px-4 py-3"><span className={cn("text-xs opacity-60 max-w-[200px] truncate block")}>{log.reason || log.details || '—'}</span></td>
                                             <td className="px-4 py-3">
                                                 {(log.before_state || log.after_state) ? (
@@ -740,10 +784,10 @@ const SystemHealthDashboard = ({ isDarkMode }: { isDarkMode: boolean }) => {
     const { data: response, isLoading } = useAdminGetHealthSummaryQuery();
     const { data: unresolvedRes } = useAdminGetUnresolvedEventsQuery();
     const resolveM = useAdminResolveHealthEventMutation();
-    const health = response?.data || {};
+    const health = response || {};
     const events = health.events || {};
     const totalUnresolved = health.total_unresolved || 0;
-    const unresolvedEvents = unresolvedRes?.data?.events || [];
+    const unresolvedEvents = unresolvedRes?.events || [];
 
     const eventTypes = Object.entries(events).map(([type, count]) => ({ type, count: count as number }));
     const totalEvents = eventTypes.reduce((s, e) => s + e.count, 0);
@@ -877,31 +921,51 @@ const SystemHealthDashboard = ({ isDarkMode }: { isDarkMode: boolean }) => {
 // ────────────── Main Super Admin View ──────────────
 export const SuperAdminBillingView = () => {
     const { isDarkMode } = useTheme();
-    const { user } = useAuth();
+    const { token, user } = useAuth();
     const router = useRouter();
+    const dispatch = useDispatch();
 
-    // Role guard: only management users
-    const isManagement = user?.user_type === "management";
-    useEffect(() => {
-        if (user && !isManagement) {
-            router.replace("/dashboard");
+    // Synchronously validate the JWT token is a management token.
+    // This runs before any child components mount, preventing 403 queries from firing.
+    const tokenIsManagement = useMemo(() => {
+        if (!token) return false;
+        try {
+            const decoded: any = jwtDecode(token);
+            return decoded.user_type === "management";
+        } catch {
+            return false;
         }
-    }, [user, isManagement, router]);
+    }, [token]);
 
-    if (!user || !isManagement) {
+    const handleRelogin = () => {
+        dispatch(clearAuthData());
+        router.replace("/management/login");
+    };
+
+    // If token is not a management token, show re-login screen immediately
+    // (before any sub-components mount and fire 403 API calls)
+    if (!token || !tokenIsManagement || !user || user?.user_type !== "management") {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center space-y-3">
+                <div className="text-center space-y-4">
                     <Shield size={32} className="mx-auto opacity-20" />
-                    <p className={cn("text-sm font-bold", isDarkMode ? "text-white/40" : "text-slate-400")}>Access Restricted</p>
-                    <p className="text-xs opacity-30">This page is only available to management users.</p>
+                    <p className={cn("text-sm font-bold", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                        {!token ? "Not logged in" : "Session mismatch — management token required"}
+                    </p>
+                    <p className="text-xs opacity-30">Your current session does not have Super Admin privileges.</p>
+                    <button
+                        onClick={handleRelogin}
+                        className="mt-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                    >
+                        Re-login as Super Admin
+                    </button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-8">
+        <div className="h-full overflow-y-auto no-scrollbar p-8 pb-32 space-y-8">
             <div className="flex items-center gap-3">
                 <div className={cn("p-2.5 rounded-xl", isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50')}>
                     <Shield size={20} className="text-emerald-500" />
@@ -934,7 +998,7 @@ export const SuperAdminBillingView = () => {
                     </div>
                     <ExternalLink size={14} className="opacity-0 group-hover:opacity-40 transition-opacity" />
                 </a>
-                <a
+                {/* <a
                     href="/billing"
                     className={cn(
                         "group flex items-center gap-4 p-5 rounded-[20px] border transition-all duration-300",
@@ -951,7 +1015,7 @@ export const SuperAdminBillingView = () => {
                         <p className={cn("text-[10px] opacity-40 mt-0.5")}>View billing dashboard as it appears to tenants</p>
                     </div>
                     <ExternalLink size={14} className="opacity-0 group-hover:opacity-40 transition-opacity" />
-                </a>
+                </a> */}
             </div>
 
             <Tabs defaultValue="tenants" className="space-y-6">
