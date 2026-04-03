@@ -161,6 +161,16 @@ export const BillingView = () => {
       queryClient.refetchQueries({ queryKey: ['billing-mode'] });
     };
 
+    const handleBillingModeChanged = (data: any) => {
+      console.log("🔄 Billing mode changed:", data);
+      toast.info(`Billing mode changed to ${data?.new_mode || 'unknown'}`, { duration: 8000 });
+      queryClient.refetchQueries({ queryKey: ['billing-mode'] });
+      queryClient.refetchQueries({ queryKey: ['invoices'] });
+      queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
+      queryClient.refetchQueries({ queryKey: ['wallet-status'] });
+      queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
+    };
+
     socket.on("billing-update", handleUpdate);
     socket.on("payment-update", handleUpdate);
     socket.on("low-balance-warning", handleLowBalance);
@@ -175,6 +185,7 @@ export const BillingView = () => {
     socket.on("usage-limit-warning", handleUsageLimitWarning);
     socket.on("usage-limit-reached", handleUsageLimitReached);
     socket.on("access-restored", handleAccessRestored);
+    socket.on("billing-mode-changed", handleBillingModeChanged);
 
     return () => {
       socket.off("connect", joinAndListen);
@@ -192,6 +203,7 @@ export const BillingView = () => {
       socket.off("usage-limit-warning", handleUsageLimitWarning);
       socket.off("usage-limit-reached", handleUsageLimitReached);
       socket.off("access-restored", handleAccessRestored);
+      socket.off("billing-mode-changed", handleBillingModeChanged);
     };
   }, [user?.tenant_id, queryClient]);
 
@@ -396,9 +408,7 @@ export const BillingView = () => {
         <TabsList isDarkMode={isDarkMode}>
           <TabsTrigger value="dashboard"><div className="flex items-center gap-2"><LayoutDashboard size={12} />Dashboard</div></TabsTrigger>
           <TabsTrigger value="wallet"><div className="flex items-center gap-2"><Wallet size={12} />Wallet</div></TabsTrigger>
-          {isPostpaid && (
-            <TabsTrigger value="invoices"><div className="flex items-center gap-2"><FileText size={12} />Invoices</div></TabsTrigger>
-          )}
+          <TabsTrigger value="invoices"><div className="flex items-center gap-2"><FileText size={12} />Invoices</div></TabsTrigger>
           <TabsTrigger value="usage"><div className="flex items-center gap-2"><BarChart3 size={12} />Usage Analytics</div></TabsTrigger>
           <TabsTrigger value="payments"><div className="flex items-center gap-2"><CreditCard size={12} />Payment History</div></TabsTrigger>
           <TabsTrigger value="limits"><div className="flex items-center gap-2"><Gauge size={12} />Usage Limits</div></TabsTrigger>
@@ -435,31 +445,30 @@ export const BillingView = () => {
                 onRecharge={() => setIsRechargeModalOpen(true)}
                 startDate={startDate}
                 endDate={endDate}
+                billingMode={billingMode as 'prepaid' | 'postpaid'}
               />
             </motion.div>
           </TabsContent>
 
-          {/* Invoices (postpaid only) */}
-          {isPostpaid && (
-            <TabsContent key="invoices" value="invoices" className="outline-none">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              >
-                {invoiceDetailId ? (
-                  <BillingInvoiceDetail
-                    isDarkMode={isDarkMode}
-                    invoiceId={invoiceDetailId}
-                    onBack={() => setInvoiceDetailId(null)}
-                  />
-                ) : (
-                  <BillingInvoices isDarkMode={isDarkMode} />
-                )}
-              </motion.div>
-            </TabsContent>
-          )}
+          {/* Invoices (always visible — tenants may have old postpaid invoices) */}
+          <TabsContent key="invoices" value="invoices" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              {invoiceDetailId ? (
+                <BillingInvoiceDetail
+                  isDarkMode={isDarkMode}
+                  invoiceId={invoiceDetailId}
+                  onBack={() => setInvoiceDetailId(null)}
+                />
+              ) : (
+                <BillingInvoices isDarkMode={isDarkMode} />
+              )}
+            </motion.div>
+          </TabsContent>
 
           {/* Usage Analytics */}
           <TabsContent key="usage" value="usage" className="outline-none">

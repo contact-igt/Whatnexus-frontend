@@ -68,7 +68,10 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
     const trendPercent = prevTotal > 0 ? Math.round(((recentTotal - prevTotal) / prevTotal) * 100) : 0;
 
     const kpis = [
-        { label: 'Wallet Balance', value: `${sym}${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, trend: '—', color: walletStatus === 'zero' ? 'red' : walletStatus === 'low' ? 'amber' : 'emerald', icon: Wallet },
+        ...(isPrepaid
+            ? [{ label: 'Wallet Balance', value: `${sym}${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, trend: '—', color: walletStatus === 'zero' ? 'red' : walletStatus === 'low' ? 'amber' : 'emerald', icon: Wallet }]
+            : [{ label: 'Credit Usage', value: `${sym}${(currentUsage || 0).toFixed(2)} / ${sym}${creditLimit.toLocaleString()}`, trend: creditLimit > 0 ? `${Math.round((currentUsage / creditLimit) * 100)}%` : '—', color: creditLimit > 0 && (currentUsage / creditLimit) > 0.9 ? 'red' : creditLimit > 0 && (currentUsage / creditLimit) > 0.7 ? 'amber' : 'emerald', icon: Gauge }]
+        ),
         { label: 'Total Spend', value: `${sym}${kpi.totalSpentEstimated.toFixed(2)}`, trend: trendPercent !== 0 ? `${trendPercent > 0 ? '+' : ''}${trendPercent}%` : '—', color: 'blue', icon: TrendingUp },
         { label: 'Marketing', value: `${sym}${kpi.marketingSpent.toFixed(2)}`, trend: '—', color: 'purple', icon: Megaphone },
         { label: 'Utility', value: `${sym}${kpi.utilitySpent.toFixed(2)}`, trend: '—', color: 'orange', icon: Zap },

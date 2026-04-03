@@ -11,9 +11,10 @@ interface BillingWalletProps {
   onRecharge?: () => void;
   startDate?: Date | null;
   endDate?: Date | null;
+  billingMode?: 'prepaid' | 'postpaid';
 }
 
-export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate }: BillingWalletProps) => {
+export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate, billingMode = 'prepaid' }: BillingWalletProps) => {
   const [showAutoRechargeConfig, setShowAutoRechargeConfig] = useState(false);
   const [localThreshold, setLocalThreshold] = useState<string>("");
   const [localAmount, setLocalAmount] = useState<string>("");
@@ -273,6 +274,7 @@ For support: support@whatnexus.com
             <button
               onClick={onRecharge}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98]"
+              style={billingMode === 'postpaid' ? { display: 'none' } : undefined}
             >
               <Plus size={14} strokeWidth={3} />
               Add Credits

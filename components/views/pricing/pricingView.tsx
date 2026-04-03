@@ -180,6 +180,9 @@ export const PricingView = () => {
         if (aiDeleteRuleId !== null) {
             aiDeleteMutation.mutate(aiDeleteRuleId, {
                 onSuccess: () => { setIsAiDeleteOpen(false); setAiDeleteRuleId(null); },
+                onError: (error: any) => {
+                    toast.error(error?.response?.data?.message || "Failed to delete AI pricing rule");
+                },
             });
         }
     };
@@ -272,6 +275,9 @@ export const PricingView = () => {
                 onSuccess: () => {
                     setIsDeleteOpen(false);
                     setDeleteRuleId(null);
+                },
+                onError: (error: any) => {
+                    toast.error(error?.response?.data?.message || "Failed to delete pricing rule");
                 },
             });
         }

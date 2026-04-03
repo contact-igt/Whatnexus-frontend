@@ -221,6 +221,8 @@ export const useAdminChangeBillingModeMutation = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['billing-mode'] });
             queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-tenant-overview'] });
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
         },
     });
 };
