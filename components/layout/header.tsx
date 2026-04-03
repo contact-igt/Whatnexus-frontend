@@ -13,35 +13,32 @@ import { useTheme } from '@/hooks/useTheme';
 import { socket } from '@/utils/socket';
 import { useQueryClient } from '@tanstack/react-query';
 
-export const META_TIER_CONFIG: Record<string, { name: string, limit: string | number }> = {
+export const META_TIER_CONFIG: Record<string, { name: string, limit: string | number, upgradeHint: string | null }> = {
     TIER_NOT_SET: {
         name: "Trial",
         limit: 250,
+        upgradeHint: "Send 2,000 unique users in 30 days OR verify your business",
     },
-    TIER_50: {
-        name: "Starter",
-        limit: 50,
-    },
-    TIER_250: {
-        name: "Basic",
-        limit: 250,
-    },
-    TIER_1K: {
-        name: "Tier 1K",
-        limit: 1000,
+    TIER_2K: {
+        name: "Standard",
+        limit: 2000,
+        upgradeHint: "Reach 1,000 unique users in last 7 days & maintain GREEN quality",
     },
     TIER_10K: {
-        name: "Tier 10K",
+        name: "Growth",
         limit: 10000,
+        upgradeHint: "Reach 5,000 unique users in last 7 days & maintain GREEN quality",
     },
     TIER_100K: {
-        name: "Tier 100K",
+        name: "Scale",
         limit: 100000,
+        upgradeHint: "Reach 50,000 unique users in last 7 days & maintain GREEN quality",
     },
     TIER_UNLIMITED: {
         name: "Unlimited",
-        limit: "Unlimited"
-    }
+        limit: "Unlimited",
+        upgradeHint: null,
+    },
 };
 
 function getTierInfo(tier: string | undefined | null) {

@@ -8,6 +8,18 @@ import { useEffect } from "react";
 
 const whatsappConfigApis = new whatsappConfigApiData();
 
+export const useGetTierLimitQuery = () => {
+    const { token, user } = useAuth();
+    return useQuery({
+        queryKey: ['whatsapp-tier-limit'],
+        enabled: !!token && (user?.role !== 'super_admin' && user?.role !== 'platform_admin'),
+        queryFn: () => whatsappConfigApis.getTierLimit(),
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+        select: (res) => res?.data?.data,
+    });
+};
+
 export const useGetWhatsappConfigQuery = () => {
     const dispatch = useDispatch();
     const { token, user } = useAuth();

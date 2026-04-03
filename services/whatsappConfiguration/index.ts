@@ -33,4 +33,8 @@ export class whatsappConfigApiData {
     subscribeToWebhooks = async () => {
         return await _axios("post", `/whatsapp/whatsapp-account/subscribe-webhooks`);
     }
+
+    getTierLimit = async () => {
+        return await _axios("get", `/whatsapp/whatsapp-account/tier-limit`);
+    }
 }

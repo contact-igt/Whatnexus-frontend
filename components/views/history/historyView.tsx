@@ -126,6 +126,7 @@ export const HistoryView = () => {
         // Open variable modal if any customization is needed
         if (hasHeaderVars || hasBodyVars || hasMediaHeader || hasLocationHeader || hasButtonVars) {
             setSelectedTemplateForVariables(template);
+            setIsTemplateModalOpen(false);
             setIsVariableModalOpen(true);
         } else {
             sendTemplateMutate({
@@ -149,10 +150,12 @@ export const HistoryView = () => {
             components: components
         });
         // Close modals, keep chat open so template message appears via socket
+        setIsVariableModalOpen(false);
         setIsTemplateModalOpen(false);
         setSelectedTemplateForVariables(null);
+        setSelectedChat(null);
     };
-
+    console.log("selectedTemplateForVariables", selectedTemplateForVariables)
     useEffect(() => {
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();
@@ -285,7 +288,7 @@ export const HistoryView = () => {
                 const updated = [...prev];
                 updated[index] = {
                     ...updated[index],
-                    name: data.name,
+                    name: data.name || updated[index].name,
                     message: data.message,
                     last_message_time: data.created_at,
                     seen: isUser ? "false" : updated[index].seen,
