@@ -157,15 +157,16 @@ export const BillingUsageLimits = ({
     const modeData = modeResponse?.data || {};
     const kpiData = kpiResponse?.data || {};
 
-    // Usage limits from tenant settings (defaults from config)
+    // Usage limits from tenant settings (nested under limits object)
+    const tenantLimits = modeData.limits || {};
     const limits = {
-        maxDailyMessages: modeData.max_daily_messages || 10000,
-        maxMonthlyMessages: modeData.max_monthly_messages || 200000,
-        maxDailyAiCalls: modeData.max_daily_ai_calls || 5000,
-        maxMonthlyAiCalls: modeData.max_monthly_ai_calls || 100000,
+        maxDailyMessages: tenantLimits.max_daily_messages || 10000,
+        maxMonthlyMessages: tenantLimits.max_monthly_messages || 200000,
+        maxDailyAiCalls: tenantLimits.max_daily_ai_calls || 5000,
+        maxMonthlyAiCalls: tenantLimits.max_monthly_ai_calls || 100000,
     };
 
-    // Current usage from KPI data (approximate)
+    // Current usage from KPI data
     const usage = {
         dailyMessages: kpiData.todayMessagesSent || 0,
         monthlyMessages: kpiData.totalMessagesSent || 0,

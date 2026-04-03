@@ -14,6 +14,7 @@ import {
     useAdminManualCreditMutation,
     useAdminInvoiceCloseMutation,
     useAdminChangeBillingModeMutation,
+    useAdminUpdateUsageLimitsMutation,
     useAdminGetAuditLogQuery,
     useAdminGetHealthSummaryQuery,
     useAdminGetTenantsQuery,
@@ -401,7 +402,7 @@ const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
         if (isNaN(parsedAmount) || parsedAmount <= 0) { toast.error("Amount must be greater than 0"); return; }
         if (parsedAmount > 100000) { toast.error("Amount cannot exceed ₹1,00,000"); return; }
         if (!reason.trim()) { toast.error("Please provide a reason for the credit"); return; }
-        
+
         if (ov && ov.billing_mode === 'postpaid') {
             const currentBalance = parseFloat(ov.wallet_balance) || 0;
             const limit = parseFloat(ov.credit_limit) || 0;
@@ -449,11 +450,11 @@ const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <TenantSelector 
-                    value={tenantId} 
-                    onChange={(id, name) => { setTenantId(id); setTenantName(name || ""); }} 
-                    isDarkMode={isDarkMode} 
-                    accentColor="emerald" 
+                <TenantSelector
+                    value={tenantId}
+                    onChange={(id, name) => { setTenantId(id); setTenantName(name || ""); }}
+                    isDarkMode={isDarkMode}
+                    accentColor="emerald"
                 />
                 <div>
                     <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Amount (₹)</label>
@@ -496,6 +497,156 @@ const ManualWalletCredit = ({ isDarkMode }: { isDarkMode: boolean }) => {
             >
                 {manualCreditM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Wallet size={14} />}
                 Credit Wallet
+            </button>
+        </div>
+    );
+};
+
+// ────────────── Usage Limits Management ──────────────
+const UsageLimitsManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
+    const [tenantId, setTenantId] = useState("");
+    const [tenantName, setTenantName] = useState("");
+    const [maxDailyMessages, setMaxDailyMessages] = useState("");
+    const [maxMonthlyMessages, setMaxMonthlyMessages] = useState("");
+    const [maxDailyAiCalls, setMaxDailyAiCalls] = useState("");
+    const [maxMonthlyAiCalls, setMaxMonthlyAiCalls] = useState("");
+    const [reason, setReason] = useState("");
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const updateLimitsM = useAdminUpdateUsageLimitsMutation();
+
+    const { data: overviewRes } = useAdminGetTenantOverviewQuery(tenantId || undefined);
+    const ov = overviewRes?.overview;
+
+    // Pre-fill current limits when tenant is selected
+    useEffect(() => {
+        if (ov) {
+            setMaxDailyMessages(ov.max_daily_messages?.toString() || "");
+            setMaxMonthlyMessages(ov.max_monthly_messages?.toString() || "");
+            setMaxDailyAiCalls(ov.max_daily_ai_calls?.toString() || "");
+            setMaxMonthlyAiCalls(ov.max_monthly_ai_calls?.toString() || "");
+        }
+    }, [ov]);
+
+    const handleUpdate = () => {
+        if (!tenantId.trim()) { toast.error("Please select a tenant first"); return; }
+        const fields = [
+            { key: "max_daily_messages", val: maxDailyMessages },
+            { key: "max_monthly_messages", val: maxMonthlyMessages },
+            { key: "max_daily_ai_calls", val: maxDailyAiCalls },
+            { key: "max_monthly_ai_calls", val: maxMonthlyAiCalls },
+        ];
+        const hasValue = fields.some(f => f.val.trim() !== "");
+        if (!hasValue) { toast.error("Please set at least one limit"); return; }
+        for (const f of fields) {
+            if (f.val.trim() !== "") {
+                const n = parseInt(f.val);
+                if (isNaN(n) || n < 0) { toast.error(`${f.key.replace(/_/g, ' ')} must be a non-negative number`); return; }
+            }
+        }
+        setConfirmOpen(true);
+    };
+
+    const executeUpdate = () => {
+        const payload: any = { tenant_id: tenantId.trim() };
+        if (maxDailyMessages.trim()) payload.max_daily_messages = parseInt(maxDailyMessages);
+        if (maxMonthlyMessages.trim()) payload.max_monthly_messages = parseInt(maxMonthlyMessages);
+        if (maxDailyAiCalls.trim()) payload.max_daily_ai_calls = parseInt(maxDailyAiCalls);
+        if (maxMonthlyAiCalls.trim()) payload.max_monthly_ai_calls = parseInt(maxMonthlyAiCalls);
+        if (reason.trim()) payload.reason = reason.trim();
+
+        updateLimitsM.mutate(payload, {
+            onSuccess: () => {
+                toast.success(`Usage limits updated for ${tenantName || tenantId}`);
+                setConfirmOpen(false);
+                setReason("");
+            },
+            onError: (err: any) => { toast.error(err?.response?.data?.message || "Failed to update usage limits"); setConfirmOpen(false); },
+        });
+    };
+
+    const inputCls = cn("w-full px-4 py-2.5 rounded-xl text-sm font-bold border outline-none transition-all", isDarkMode ? "bg-white/5 border-white/10 text-white focus:border-violet-500/50 placeholder:text-white/20" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-violet-500 placeholder:text-slate-400");
+
+    return (
+        <div className={cn("p-6 rounded-[24px] border", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-white border-slate-200")}>
+            <ConfirmDialog
+                open={confirmOpen}
+                onConfirm={executeUpdate}
+                onCancel={() => setConfirmOpen(false)}
+                title="Confirm Usage Limits Update"
+                message={`Update usage limits for ${tenantName || tenantId}? Tenants will see the new limits immediately.`}
+                isDarkMode={isDarkMode}
+                isPending={updateLimitsM.isPending}
+            />
+            <div className="flex items-center gap-3 mb-6">
+                <div className={cn("p-2 rounded-xl", isDarkMode ? 'bg-violet-500/10' : 'bg-violet-50')}>
+                    <Activity size={16} className="text-violet-500" />
+                </div>
+                <div>
+                    <h3 className={cn("text-sm font-bold", isDarkMode ? 'text-white' : 'text-slate-800')}>Usage Limits</h3>
+                    <p className={cn("text-[10px] opacity-40 mt-0.5")}>Set daily &amp; monthly message and AI call limits per tenant</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <TenantSelector
+                    value={tenantId}
+                    onChange={(id, name) => { setTenantId(id); setTenantName(name || ""); }}
+                    isDarkMode={isDarkMode}
+                    accentColor="violet"
+                />
+                <div>
+                    <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Max Daily Messages</label>
+                    <input type="number" min="0" value={maxDailyMessages} onChange={(e) => setMaxDailyMessages(e.target.value)} placeholder="1000" className={inputCls} />
+                </div>
+                <div>
+                    <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Max Monthly Messages</label>
+                    <input type="number" min="0" value={maxMonthlyMessages} onChange={(e) => setMaxMonthlyMessages(e.target.value)} placeholder="30000" className={inputCls} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                    <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Max Daily AI Calls</label>
+                    <input type="number" min="0" value={maxDailyAiCalls} onChange={(e) => setMaxDailyAiCalls(e.target.value)} placeholder="500" className={inputCls} />
+                </div>
+                <div>
+                    <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Max Monthly AI Calls</label>
+                    <input type="number" min="0" value={maxMonthlyAiCalls} onChange={(e) => setMaxMonthlyAiCalls(e.target.value)} placeholder="15000" className={inputCls} />
+                </div>
+                <div>
+                    <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Reason (optional)</label>
+                    <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Upgrade plan, promotional..." className={inputCls} />
+                </div>
+            </div>
+
+            <TenantOverviewCard tenantId={tenantId} isDarkMode={isDarkMode} />
+
+            {tenantId && ov && (
+                <div className={cn("mt-4 p-3 rounded-xl border", isDarkMode ? "bg-violet-500/5 border-violet-500/10" : "bg-violet-50 border-violet-200")}>
+                    <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", isDarkMode ? "text-violet-400" : "text-violet-600")}>Current Limits</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                            { label: "Daily Msgs", val: ov.max_daily_messages },
+                            { label: "Monthly Msgs", val: ov.max_monthly_messages },
+                            { label: "Daily AI", val: ov.max_daily_ai_calls },
+                            { label: "Monthly AI", val: ov.max_monthly_ai_calls },
+                        ].map((item) => (
+                            <div key={item.label} className={cn("text-center p-2 rounded-lg", isDarkMode ? "bg-white/5" : "bg-white")}>
+                                <p className={cn("text-[9px] font-bold uppercase opacity-40")}>{item.label}</p>
+                                <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-slate-900")}>{item.val ?? "∞"}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <button
+                onClick={handleUpdate}
+                disabled={updateLimitsM.isPending}
+                className="mt-4 flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-violet-600 to-purple-600 text-white transition-all hover:shadow-lg hover:shadow-violet-500/20 disabled:opacity-50"
+            >
+                {updateLimitsM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
+                Update Limits
             </button>
         </div>
     );
@@ -1024,6 +1175,7 @@ export const SuperAdminBillingView = () => {
                     <TabsTrigger value="credit"><div className="flex items-center gap-2"><Wallet size={12} />Manual Credit</div></TabsTrigger>
                     <TabsTrigger value="invoices"><div className="flex items-center gap-2"><FileText size={12} />Invoice Mgmt</div></TabsTrigger>
                     <TabsTrigger value="audit"><div className="flex items-center gap-2"><ScrollText size={12} />Audit Log</div></TabsTrigger>
+                    <TabsTrigger value="limits"><div className="flex items-center gap-2"><Activity size={12} />Usage Limits</div></TabsTrigger>
                     <TabsTrigger value="health"><div className="flex items-center gap-2"><Activity size={12} />System Health</div></TabsTrigger>
                 </TabsList>
 
@@ -1049,6 +1201,12 @@ export const SuperAdminBillingView = () => {
                     <TabsContent key="audit" value="audit" className="outline-none">
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
                             <AuditLog isDarkMode={isDarkMode} />
+                        </motion.div>
+                    </TabsContent>
+
+                    <TabsContent key="limits" value="limits" className="outline-none">
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
+                            <UsageLimitsManagement isDarkMode={isDarkMode} />
                         </motion.div>
                     </TabsContent>
 

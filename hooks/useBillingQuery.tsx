@@ -227,6 +227,19 @@ export const useAdminChangeBillingModeMutation = () => {
     });
 };
 
+export const useAdminUpdateUsageLimitsMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { tenant_id: string; max_daily_messages?: number; max_monthly_messages?: number; max_daily_ai_calls?: number; max_monthly_ai_calls?: number; reason?: string }) =>
+            billingApis.adminUpdateUsageLimits(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['billing-mode'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-tenant-overview'] });
+        },
+    });
+};
+
 export const useAdminGetAuditLogQuery = (params?: { tenant_id?: string; page?: number; limit?: number }) => {
     return useQuery({
         queryKey: ['admin-audit-log', params],

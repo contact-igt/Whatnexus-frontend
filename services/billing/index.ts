@@ -191,6 +191,13 @@ export class billingApiData {
   };
 
   /**
+   * Update tenant usage limits (admin)
+   */
+  adminUpdateUsageLimits = async (data: { tenant_id: string; max_daily_messages?: number; max_monthly_messages?: number; max_daily_ai_calls?: number; max_monthly_ai_calls?: number; reason?: string }) => {
+    return await _axios("put", "/whatsapp/billing/admin/usage-limits", data);
+  };
+
+  /**
    * Fetch admin audit log (admin)
    */
   adminGetAuditLog = async (params?: { tenant_id?: string; page?: number; limit?: number }) => {

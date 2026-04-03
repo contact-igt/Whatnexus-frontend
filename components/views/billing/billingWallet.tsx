@@ -179,40 +179,42 @@ For support: support@whatnexus.com
                   </div>
                 ))}
 
-                {/* Auto-Recharge Toggle */}
-                <div className="flex justify-between items-center px-1">
-                  <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30")}>Auto-Recharge</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setShowAutoRechargeConfig(!showAutoRechargeConfig);
-                        setLocalThreshold(String(autoRecharge.threshold));
-                        setLocalAmount(String(autoRecharge.amount));
-                      }}
-                      className={cn("p-1 rounded-lg transition-all", isDarkMode ? "hover:bg-white/10" : "hover:bg-slate-100")}
-                    >
-                      <Settings size={12} className={cn("transition-colors", autoRecharge.enabled ? "text-emerald-500" : "opacity-30")} />
-                    </button>
-                    <button
-                      onClick={() => updateAutoRecharge.mutate({ enabled: !autoRecharge.enabled })}
-                      disabled={updateAutoRecharge.isPending}
-                      className={cn(
-                        "relative w-9 h-5 rounded-full transition-all duration-300 border",
-                        autoRecharge.enabled
-                          ? "bg-emerald-500 border-emerald-600"
-                          : isDarkMode ? "bg-white/10 border-white/20" : "bg-slate-200 border-slate-300"
-                      )}
-                    >
-                      <div className={cn(
-                        "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300",
-                        autoRecharge.enabled ? "translate-x-4" : "translate-x-0.5"
-                      )} />
-                    </button>
+                {/* Auto-Recharge Toggle - only for prepaid */}
+                {billingMode !== 'postpaid' && (
+                  <div className="flex justify-between items-center px-1">
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30")}>Auto-Recharge</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setShowAutoRechargeConfig(!showAutoRechargeConfig);
+                          setLocalThreshold(String(autoRecharge.threshold));
+                          setLocalAmount(String(autoRecharge.amount));
+                        }}
+                        className={cn("p-1 rounded-lg transition-all", isDarkMode ? "hover:bg-white/10" : "hover:bg-slate-100")}
+                      >
+                        <Settings size={12} className={cn("transition-colors", autoRecharge.enabled ? "text-emerald-500" : "opacity-30")} />
+                      </button>
+                      <button
+                        onClick={() => updateAutoRecharge.mutate({ enabled: !autoRecharge.enabled })}
+                        disabled={updateAutoRecharge.isPending}
+                        className={cn(
+                          "relative w-9 h-5 rounded-full transition-all duration-300 border",
+                          autoRecharge.enabled
+                            ? "bg-emerald-500 border-emerald-600"
+                            : isDarkMode ? "bg-white/10 border-white/20" : "bg-slate-200 border-slate-300"
+                        )}
+                      >
+                        <div className={cn(
+                          "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300",
+                          autoRecharge.enabled ? "translate-x-4" : "translate-x-0.5"
+                        )} />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Auto-Recharge Config Panel */}
-                {showAutoRechargeConfig && (
+                {/* Auto-Recharge Config Panel - only for prepaid */}
+                {billingMode !== 'postpaid' && showAutoRechargeConfig && (
                   <div className={cn(
                     "mt-2 p-4 rounded-2xl border space-y-3 transition-all",
                     isDarkMode ? "bg-white/[0.03] border-white/10" : "bg-white border-slate-200"
@@ -271,14 +273,15 @@ For support: support@whatnexus.com
               </div>
             </div>
 
-            <button
-              onClick={onRecharge}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98]"
-              style={billingMode === 'postpaid' ? { display: 'none' } : undefined}
-            >
-              <Plus size={14} strokeWidth={3} />
-              Add Credits
-            </button>
+            {billingMode !== 'postpaid' && (
+              <button
+                onClick={onRecharge}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Plus size={14} strokeWidth={3} />
+                Add Credits
+              </button>
+            )}
           </div>
         </div>
 
@@ -330,15 +333,17 @@ For support: support@whatnexus.com
               </div>
             </div>
 
-            <button
-              onClick={onRecharge}
-              className={cn(
-                "w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300",
-                isDarkMode ? 'border-white/10 text-white/50 hover:bg-white/10 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-900 hover:text-white'
-              )}>
-              <Plus size={14} className="group-hover:rotate-90 transition-transform duration-300" />
-              Quick Recharge
-            </button>
+            {billingMode !== 'postpaid' && (
+              <button
+                onClick={onRecharge}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300",
+                  isDarkMode ? 'border-white/10 text-white/50 hover:bg-white/10 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-900 hover:text-white'
+                )}>
+                <Plus size={14} className="group-hover:rotate-90 transition-transform duration-300" />
+                Quick Recharge
+              </button>
+            )}
           </div>
         </div>
 
