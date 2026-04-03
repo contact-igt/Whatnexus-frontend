@@ -1,7 +1,7 @@
 "use client";
 
 import { billingApiData } from "@/services/billing";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { BillingHeader } from "./billingHeader";
@@ -18,7 +18,7 @@ import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useGetBillingModeQuery } from "@/hooks/useBillingQuery";
 import { socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { WhatsAppConnectionPlaceholder } from "../whatsappConfiguration/whatsappConnectionPlaceholder";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -64,17 +64,22 @@ export const BillingView = () => {
       joinAndListen();
     }
 
-    const handleUpdate = (data?: any) => {
-      console.log("💳 Billing/Payment update received, refreshing data...");
-      queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
-      queryClient.refetchQueries({ queryKey: ['billing-ledger'] });
-      queryClient.refetchQueries({ queryKey: ['billing-spend-chart'] });
-      queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
-      queryClient.refetchQueries({ queryKey: ['wallet-transactions'] });
-      queryClient.refetchQueries({ queryKey: ['ai-token-usage'] });
-      queryClient.refetchQueries({ queryKey: ['billing-template-stats'] });
-      queryClient.refetchQueries({ queryKey: ['billing-campaign-stats'] });
-      queryClient.refetchQueries({ queryKey: ['billing-mode'] });
+    // Debounced billing update — prevents 900 API calls/min during high msg throughput
+    let updateTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleUpdate = () => {
+      if (updateTimer) return; // Already scheduled
+      updateTimer = setTimeout(() => {
+        updateTimer = null;
+        queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
+        queryClient.refetchQueries({ queryKey: ['billing-ledger'] });
+        queryClient.refetchQueries({ queryKey: ['billing-spend-chart'] });
+        queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
+        queryClient.refetchQueries({ queryKey: ['wallet-transactions'] });
+        queryClient.refetchQueries({ queryKey: ['ai-token-usage'] });
+        queryClient.refetchQueries({ queryKey: ['billing-template-stats'] });
+        queryClient.refetchQueries({ queryKey: ['billing-campaign-stats'] });
+        queryClient.refetchQueries({ queryKey: ['billing-mode'] });
+      }, 3000);
     };
 
     const handleLowBalance = (data: any) => {
@@ -171,12 +176,20 @@ export const BillingView = () => {
       queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
     };
 
+    const handleInsufficientBalance = (data: any) => {
+      setLowBalanceWarning({ balance: data?.balance || 0, message: `Insufficient balance — ₹${(data?.required || 0).toFixed(2)} needed, ₹${(data?.balance || 0).toFixed(2)} available. Recharge now.` });
+      toast.error(`Insufficient balance for billing. Please recharge.`, { duration: 8000 });
+      queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
+      queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
+    };
+
     socket.on("billing-update", handleUpdate);
     socket.on("payment-update", handleUpdate);
     socket.on("low-balance-warning", handleLowBalance);
     socket.on("zero-balance", handleZeroBalance);
     socket.on("auto-recharge-trigger", handleAutoRechargeTrigger);
     socket.on("wallet-restored", handleWalletRestored);
+    socket.on("insufficient-balance", handleInsufficientBalance);
     socket.on("invoice-generated", handleInvoiceGenerated);
     socket.on("invoice-overdue", handleInvoiceOverdue);
     socket.on("invoice-paid", handleInvoicePaid);
@@ -188,6 +201,7 @@ export const BillingView = () => {
     socket.on("billing-mode-changed", handleBillingModeChanged);
 
     return () => {
+      if (updateTimer) clearTimeout(updateTimer);
       socket.off("connect", joinAndListen);
       socket.off("billing-update", handleUpdate);
       socket.off("payment-update", handleUpdate);
@@ -195,6 +209,7 @@ export const BillingView = () => {
       socket.off("zero-balance", handleZeroBalance);
       socket.off("auto-recharge-trigger", handleAutoRechargeTrigger);
       socket.off("wallet-restored", handleWalletRestored);
+      socket.off("insufficient-balance", handleInsufficientBalance);
       socket.off("invoice-generated", handleInvoiceGenerated);
       socket.off("invoice-overdue", handleInvoiceOverdue);
       socket.off("invoice-paid", handleInvoicePaid);

@@ -32,7 +32,9 @@ export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate, bill
 
   const autoRecharge = autoRechargeResponse?.data || { enabled: false, threshold: 100, amount: 500 };
 
-  const balancePercent = Math.min((balance / 10000) * 100, 100);
+  // Dynamic balance bar — scale based on actual balance (min ₹1,000 scale)
+  const balanceScale = Math.max(balance, 1000);
+  const balancePercent = Math.min((balance / balanceScale) * 100, 100);
 
   // Download invoice for a payment
   const handleDownloadInvoice = (payment: any) => {
