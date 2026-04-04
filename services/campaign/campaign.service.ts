@@ -202,6 +202,38 @@ export class CampaignService {
             throw error;
         }
     };
+
+    /**
+     * Estimate cost for a campaign
+     * @param template_id Template ID
+     * @param recipient_count Number of recipients
+     * @returns Cost estimate details
+     */
+    estimateCost = async (
+        template_id: string,
+        recipient_count: number
+    ): Promise<{
+        success: boolean;
+        category: string;
+        recipient_count: number;
+        per_message_cost_inr: number;
+        total_cost_inr: number;
+        wallet_balance: number;
+        is_sufficient: boolean;
+        shortfall: number;
+    }> => {
+        try {
+            const response = await _axios(
+                "post",
+                "/whatsapp/whatsapp-campaign/estimate-cost",
+                { template_id, recipient_count }
+            );
+            return response;
+        } catch (error) {
+            console.error("Error estimating campaign cost:", error);
+            throw error;
+        }
+    };
 }
 
 // Export singleton instance

@@ -179,7 +179,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-xs relative"
                                     style={{ background: topLead.heatState === 'hot' ? '#f97316' : '#f59e0b' }}>
-                                    {topLead.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                    {topLead.name.split(' ').filter(n => n).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
                                     <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 flex items-center justify-center"
                                         style={{ borderColor: isDarkMode ? '#09090b' : '#ffffff', background: topLead.heatState === 'hot' ? '#ef4444' : '#f59e0b' }}>
                                         <Zap size={7} className="text-white fill-white" />
@@ -200,7 +200,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                         {/* Secondary leads */}
                         {remainingLeads.map((lead, i) => (
                             <div key={i}
-                                onClick={() => router.push(lead.phone ? `/shared-inbox?phone=${lead.phone}` : '/shared-inbox')}
+                                onClick={() => router.push(lead.phone ? `/shared-inbox/live-chats?phone=${lead.phone}` : '/shared-inbox/live-chats')}
                                 className="px-3 py-2.5 rounded-lg flex items-center justify-between cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
                                 style={{
                                     opacity: show ? 1 : 0,
@@ -209,7 +209,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                                 <div className="flex items-center gap-2.5">
                                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-medium"
                                         style={{ fontSize: '10px', background: lead.heatState === 'hot' ? '#f97316' : '#f59e0b' }}>
-                                        {lead.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                        {lead.name.split(' ').filter(n => n).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
                                     </div>
                                     <span className="truncate" style={{ fontSize: '12px', fontWeight: 500, color: t.primary, maxWidth: 120 }}>{lead.name}</span>
                                     <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
@@ -260,7 +260,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                                     <div className="flex items-center gap-2">
                                         <div className="w-6 h-6 rounded-full flex items-center justify-center text-white font-semibold"
                                             style={{ fontSize: '9px', background: c.from }}>
-                                            {a.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                            {a.name.split(' ').filter(n => n).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
                                         </div>
                                         <span style={{ fontSize: '13px', fontWeight: 500, color: t.primary }}>{a.name}</span>
                                     </div>

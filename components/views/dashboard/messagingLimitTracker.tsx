@@ -47,8 +47,19 @@ export const MessagingLimitTracker = ({ isDarkMode = true, limitData }: Messagin
         alertColor = '#10b981';
     }
 
-    const upgradeThreshold = data.limit === Infinity ? 100000 : data.limit; 
-    const upgradePct = Math.min((data.sevenDayUnique / upgradeThreshold) * 100, 100);
+    // Upgrade guidance: target unique-users needed for the NEXT tier
+    // and how many days the window is (30 days for Trial, 7 days for all others)
+    const upgradeConfig: Record<number, { target: number; days: number; hint: string } | null> = {
+        250:       { target: 2000,  days: 30, hint: 'Send 2,000 unique users in 30 days OR verify your business' },
+        2000:      { target: 1000,  days: 7,  hint: 'Reach 1,000 unique users in last 7 days & maintain GREEN quality' },
+        10000:     { target: 5000,  days: 7,  hint: 'Reach 5,000 unique users in last 7 days & maintain GREEN quality' },
+        100000:    { target: 50000, days: 7,  hint: 'Reach 50,000 unique users in last 7 days & maintain GREEN quality' },
+    };
+    const upgradeCfg = data.limit === Infinity ? null : (upgradeConfig[data.limit] ?? upgradeConfig[250]);
+    const upgradeTarget  = upgradeCfg?.target  ?? data.limit;
+    const upgradeDays    = upgradeCfg?.days    ?? 7;
+    const upgradeHint    = upgradeCfg?.hint    ?? null;
+    const upgradePct = Math.min((data.sevenDayUnique / upgradeTarget) * 100, 100);
 
     const qualityHex = {
         GREEN: '#10b981',
@@ -79,7 +90,7 @@ export const MessagingLimitTracker = ({ isDarkMode = true, limitData }: Messagin
                         )}
                     </div>
                     <p style={{ fontSize: '13px', fontWeight: 500, color: t.primary }}>
-                        {data.limit === Infinity ? 'Unlimited' : data.limit.toLocaleString()} <span style={{ color: t.secondary }}>conversations / 24h</span>
+                        {data.limit === Infinity ? 'Unlimited' : data.limit.toLocaleString()} <span style={{ color: t.secondary }}>unique users / 24h</span>
                     </p>
                     <p style={{ fontSize: '11px', fontWeight: 500, color: t.secondary, marginTop: '2px' }}>
                         Rolling 24-hour window (does not reset at midnight)
@@ -123,19 +134,25 @@ export const MessagingLimitTracker = ({ isDarkMode = true, limitData }: Messagin
                     <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary, marginBottom: '2px' }}>
                         Upgrade Progress
                     </h3>
-                    <p style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>
-                        Reach {upgradeThreshold.toLocaleString()} unique users in 7 days to unlock next tier.
-                    </p>
+                    {data.limit === Infinity ? (
+                        <p style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>
+                            You&apos;re on the Unlimited tier. No upgrade needed.
+                        </p>
+                    ) : upgradeHint ? (
+                        <p style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>
+                            {upgradeHint}
+                        </p>
+                    ) : null}
                 </div>
 
                 <div className="flex flex-col gap-3">
                     <div className="p-3 rounded-lg border flex flex-col gap-2" style={{ background: isDarkMode ? '#18181b' : '#fafafa', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                         <div className="flex items-center justify-between">
-                            <span style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>7-day unique users</span>
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: t.primary }}>
-                                {data.sevenDayUnique.toLocaleString()} <span style={{ color: t.secondary }}>/ {upgradeThreshold.toLocaleString()}</span>
-                            </span>
-                        </div>
+                                <span style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>{upgradeDays}-day unique users</span>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: t.primary }}>
+                                    {data.sevenDayUnique.toLocaleString()} <span style={{ color: t.secondary }}>/ {upgradeTarget.toLocaleString()}</span>
+                                </span>
+                            </div>
                         <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                             <div className="h-full rounded-full bg-blue-500 transition-all duration-1000"
                                 style={{ width: `${upgradePct}%` }} 

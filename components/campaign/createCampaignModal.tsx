@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin, Video } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
@@ -92,6 +92,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [headerFileName, setHeaderFileName] = useState<string | null>(null);
     const [cardFileNames, setCardFileNames] = useState<Record<number, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const errorRef = useRef<HTMLDivElement>(null);
     // { [contactId]: { [varKey]: value } }
     const [groupMemberVariables, setGroupMemberVariables] = useState<Record<string, Record<string, string>>>({});
     const [selectedGroupMembers, setSelectedGroupMembers] = useState<any[]>([]);
@@ -172,8 +173,52 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         { number: 4, title: 'Review', icon: Check },
     ];
 
-    const handleNext = () => {
+    const [costEstimate, setCostEstimate] = useState<any>(null);
+    const [isEstimatingCost, setIsEstimatingCost] = useState(false);
+
+    useEffect(() => {
+        if (error) {
+            setTimeout(() => {
+                if (errorRef.current) {
+                    errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+    }, [error]);
+
+    const handleNext = async () => {
         if (currentStep < 4 && isStepValid(currentStep)) {
+            // When moving to Review step, fetch cost estimate
+            if (currentStep === 3) {
+                try {
+                    setIsEstimatingCost(true);
+                    setError(null);
+                    
+                    // Calculate recipient count
+                    let recipientCount = 1;
+                    if (formData.recipient_source === 'csv') {
+                        recipientCount = formData.csv_data?.length || 0;
+                    } else if (formData.recipient_source === 'group') {
+                        const group = groups.find(g => (g as any).group_id === formData.group_id);
+                        recipientCount = group ? ((group as any).member_count || selectedGroupMembers.length || 0) : 0;
+                    } else if (formData.recipient_source === 'manual') {
+                        recipientCount = formData.manual_recipients?.length || 0;
+                    }
+
+                    if (recipientCount > 0 && formData.template_id) {
+                        const estimate = await campaignService.estimateCost(formData.template_id, recipientCount);
+                        setCostEstimate(estimate);
+                        
+                        // If balance is insufficient, we still allow them to view the review step, 
+                        // but we can pre-emptively show the error there (or wait til submit).
+                    }
+                } catch (err: any) {
+                    console.error("Failed to estimate cost:", err);
+                    // Don't block progression, just log it. The submit will catch the actual billing error.
+                } finally {
+                    setIsEstimatingCost(false);
+                }
+            }
             setCurrentStep((prev) => (prev + 1) as Step);
             setError(null); // Clear any previous errors
         }
@@ -197,6 +242,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 if (formData.campaign_type === 'scheduled' && !formData.scheduled_at) {
                     setError('Schedule date and time is required for scheduled campaigns');
                     return false;
+                }
+                if (formData.campaign_type === 'scheduled' && formData.scheduled_at) {
+                    const scheduledTime = new Date(formData.scheduled_at).getTime();
+                    if (scheduledTime <= Date.now() + 60_000) {
+                        setError('Scheduled time must be at least 1 minute in the future');
+                        return false;
+                    }
                 }
                 if (!formData.recipient_source) {
                     setError('Please select a recipient source');
@@ -446,7 +498,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 template_id: formData.template_id,
                 audience_type: formData.recipient_source,
                 audience_data: audienceData,
-                scheduled_at: formData.scheduled_at,
+                scheduled_at: formData.campaign_type === 'scheduled' && formData.scheduled_at
+                    ? new Date(formData.scheduled_at).toISOString()
+                    : null,
                 variable_values: variableValues, // Kept for reference, though backend uses audience_data
                 header_media_url: formData.header_media_url || null,
                 header_file_name: headerFileName || null,
@@ -474,6 +528,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             }
         } catch (err: any) {
             console.error("Submit Error:", err);
+            // The new endpoint sends the billing reason in err.response.data.message
             const errorMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || 'Failed to create campaign';
             setError(errorMsg);
         } finally {
@@ -622,6 +677,11 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     <input
                                         type="datetime-local"
                                         value={formData.scheduled_at || ''}
+                                        min={(() => {
+                                            const d = new Date(Date.now() + 2 * 60 * 1000);
+                                            d.setSeconds(0, 0);
+                                            return d.toLocaleDateString('sv-SE') + 'T' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+                                        })()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, scheduled_at: e.target.value }))}
                                         className={cn(
                                             "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
@@ -630,13 +690,6 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 : 'bg-white border-slate-200 text-slate-900'
                                         )}
                                     />
-                                </div>
-                            )}
-
-                            {/* Error Display */}
-                            {error && currentStep === 1 && (
-                                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                                    <p className="text-red-500 text-sm">{error}</p>
                                 </div>
                             )}
                         </div>
@@ -1495,14 +1548,6 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     )}
                                 </div>
                             )}
-
-
-                            {/* Error Display */}
-                            {error && currentStep === 3 && (
-                                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                                    <p className="text-red-500 text-sm">{error}</p>
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -1615,9 +1660,51 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Cost Estimate Panel */}
+                            {costEstimate && (
+                                <div className={cn(
+                                    "p-4 rounded-xl border flex flex-col gap-2",
+                                    !costEstimate.is_sufficient 
+                                        ? 'bg-red-500/10 border-red-500/20' 
+                                        : isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'
+                                )}>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h4 className={cn("text-sm font-bold flex items-center gap-2", 
+                                            !costEstimate.is_sufficient ? 'text-red-500' : isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
+                                        )}>
+                                            {!costEstimate.is_sufficient && <AlertTriangle size={16} />}
+                                            Estimated Cost
+                                        </h4>
+                                        {isEstimatingCost && <span className="text-xs opacity-60">Calculating...</span>}
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>
+                                            {costEstimate.recipient_count} recipients × ₹{costEstimate.per_message_cost_inr.toFixed(2)}
+                                        </span>
+                                        <span className="font-semibold text-emerald-500">
+                                            ₹{costEstimate.total_cost_inr.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center text-sm pt-2 border-t border-current/10">
+                                        <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>Wallet Balance</span>
+                                        <span className={cn("font-semibold", !costEstimate.is_sufficient ? 'text-red-500' : isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            ₹{costEstimate.wallet_balance.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    
+                                    {!costEstimate.is_sufficient && (
+                                        <div className="text-xs text-red-500 mt-2 font-medium">
+                                            Insufficient balance. You need ₹{costEstimate.shortfall.toFixed(2)} more to send this campaign.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {error && (
-                                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                                <div ref={errorRef} className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
                                     <p className="text-red-500 text-sm">{error}</p>
                                 </div>
                             )}
