@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, Trash2, ListFilter, Filter } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, Trash2, ListFilter, Filter, AlertTriangle, Wallet } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -152,6 +152,36 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                     )}
                 </div>
             </div>
+
+            {/* Statistics Dashboard */}
+            {campaign.status === 'paused' && (
+                <div className={cn(
+                    "flex items-center gap-4 px-5 py-4 rounded-2xl border",
+                    isDarkMode
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                        : "bg-amber-50 border-amber-200 text-amber-700"
+                )}>
+                    <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        isDarkMode ? "bg-amber-500/15" : "bg-amber-100"
+                    )}>
+                        <AlertTriangle size={18} className="text-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold">Campaign paused — Insufficient wallet balance</p>
+                        <p className={cn("text-xs mt-0.5", isDarkMode ? "text-amber-400/70" : "text-amber-600")}>
+                            The campaign was paused because your wallet balance was too low to send messages. Recharge your wallet and click <span className="font-bold">Execute Now</span> to resume.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => window.location.href = '/billing'}
+                        className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                    >
+                        <Wallet size={13} />
+                        Recharge Wallet
+                    </button>
+                </div>
+            )}
 
             {/* Statistics Dashboard */}
             {statistics && (

@@ -81,6 +81,40 @@ export const useCampaignDetails = (
         return () => clearInterval(intervalId);
     }, [autoRefresh, campaign, refreshInterval, fetchCampaignDetails]);
 
+    // Smart auto-refresh for scheduled campaigns: fire exactly when scheduled_at arrives
+    useEffect(() => {
+        if (!autoRefresh || !campaign) return;
+        if (campaign.status !== "scheduled" || !campaign.scheduled_at) return;
+
+        const scheduledMs = new Date(campaign.scheduled_at).getTime();
+        const delayMs = scheduledMs - Date.now();
+
+        let timeoutId: ReturnType<typeof setTimeout>;
+        let intervalId: ReturnType<typeof setInterval>;
+
+        const startPolling = () => {
+            // Immediately fetch once, then poll every refreshInterval until no longer scheduled
+            fetchCampaignDetails();
+            intervalId = setInterval(() => {
+                fetchCampaignDetails();
+            }, refreshInterval);
+        };
+
+        if (delayMs <= 0) {
+            // Scheduled time already passed (e.g. page opened after due time) — poll now
+            startPolling();
+        } else {
+            // Set a one-shot timer to fire exactly when the scheduled time arrives
+            timeoutId = setTimeout(startPolling, delayMs);
+        }
+
+        return () => {
+            clearTimeout(timeoutId);
+            clearInterval(intervalId);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoRefresh, campaign?.status, campaign?.scheduled_at]);
+
     const setRecipientStatus = useCallback(
         (status: RecipientStatus | undefined) => {
             setRecipientStatusFilter(status);
