@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -178,10 +178,10 @@ Due Date       : ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateStr
 -------------------------------------
 COST BREAKDOWN
 -------------------------------------
-Message Cost   : ₹${parseFloat(breakdown.messages || 0).toFixed(2)}
-AI Usage Cost  : ₹${parseFloat(breakdown.ai || 0).toFixed(2)}
-──────────────────────
-Total Amount   : ₹${parseFloat(invoice.amount || 0).toFixed(2)}
+Message Cost   : â‚¹${parseFloat(breakdown.messages || 0).toFixed(2)}
+AI Usage Cost  : â‚¹${parseFloat(breakdown.ai || 0).toFixed(2)}
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Total Amount   : â‚¹${parseFloat(invoice.amount || 0).toFixed(2)}
 
 -------------------------------------
 PAYMENT
@@ -248,7 +248,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                             >
                                 Monthly Invoices
                             </h3>
-                            <p className="text-[10px] font-medium opacity-30 mt-0.5">
+                            <p className={cn("text-[10px] font-medium mt-0.5", isDarkMode ? "opacity-30 text-white" : "text-slate-500")}>
                                 Billing cycle invoices for postpaid usage
                             </p>
                         </div>
@@ -296,7 +296,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                     ) : invoices.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3 opacity-20">
                             <FileText size={40} strokeWidth={1} />
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+                            <p className={cn("text-[10px] font-black uppercase tracking-[0.3em]", isDarkMode ? "text-white" : "text-slate-400")}>
                                 No Invoices Found
                             </p>
                         </div>
@@ -393,7 +393,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                             isDarkMode ? "text-white" : "text-slate-900"
                                                         )}
                                                     >
-                                                        ₹
+                                                        â‚¹
                                                         {parseFloat(
                                                             invoice.amount || 0
                                                         ).toLocaleString(undefined, {
@@ -488,7 +488,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-800"
                                                                         )}
                                                                     >
-                                                                        ₹
+                                                                        â‚¹
                                                                         {parseFloat(
                                                                             invoiceDetailCycle?.total_message_cost_inr || invoiceDetail.breakdown?.messages || 0
                                                                         ).toFixed(2)}
@@ -513,7 +513,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-800"
                                                                         )}
                                                                     >
-                                                                        ₹
+                                                                        â‚¹
                                                                         {parseFloat(
                                                                             invoiceDetailCycle?.total_ai_cost_inr || invoiceDetail.breakdown?.ai || 0
                                                                         ).toFixed(2)}
@@ -562,7 +562,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-800"
                                                                         )}
                                                                     >
-                                                                        ₹{parseFloat(
+                                                                        â‚¹{parseFloat(
                                                                             invoiceDetail.amount || 0
                                                                         ).toFixed(2)}
                                                                     </p>

@@ -15,7 +15,7 @@ import { BillingUsageAnalytics } from "./billingUsageAnalytics";
 import { BillingPaymentHistory } from "./billingPaymentHistory";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
-import { useGetBillingModeQuery } from "@/hooks/useBillingQuery";
+import { useGetBillingModeQuery, useGetWalletBalanceQuery } from "@/hooks/useBillingQuery";
 import { socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
@@ -45,6 +45,19 @@ export const BillingView = () => {
   const { data: billingModeRes } = useGetBillingModeQuery();
   const billingMode = billingModeRes?.data?.billing_mode || 'prepaid';
   const isPostpaid = billingMode === 'postpaid';
+  const { data: walletBalanceRes } = useGetWalletBalanceQuery();
+
+  // On page load: show banner immediately if wallet is already zero or low
+  useEffect(() => {
+    if (isPostpaid) return;
+    const balance = walletBalanceRes?.data?.balance;
+    if (typeof balance !== 'number') return;
+    if (balance <= 0) {
+      setLowBalanceWarning({ balance: 0, message: "Wallet balance is ₹0 — all prepaid operations are blocked. Recharge now to restore services." });
+    } else if (balance < 10) {
+      setLowBalanceWarning({ balance, message: `Low wallet balance (₹${balance.toFixed(2)}) — recharge soon to avoid service interruption.` });
+    }
+  }, [walletBalanceRes?.data?.balance, isPostpaid]);
 
   useEffect(() => {
     if (!user?.tenant_id) return;

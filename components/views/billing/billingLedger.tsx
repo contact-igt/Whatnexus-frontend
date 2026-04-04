@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -84,7 +84,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
             </div>
             <div>
               <h3 className={cn("font-bold text-sm uppercase tracking-[0.2em]", isDarkMode ? 'text-white' : 'text-slate-800')}>Ledger</h3>
-              <p className={cn("text-[10px] font-medium opacity-30 mt-0.5")}>Detailed conversation-level logs</p>
+              <p className={cn("text-[10px] font-medium mt-0.5", isDarkMode ? "opacity-30 text-white" : "text-slate-500")}>Detailed conversation-level logs</p>
             </div>
           </div>
 
@@ -117,7 +117,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
           <table className="w-full min-w-[1000px]">
             <thead>
               <tr className={cn("text-[9px] font-black uppercase tracking-[0.2em] border-b", isDarkMode ? 'text-white/20 border-white/5 bg-white/[0.01]' : 'text-slate-400 border-slate-100 bg-slate-50/50')}>
-                {['Timestamp', 'Type', 'Recipient', 'Template', 'Campaign', 'Region', 'Rate ($)', 'Fee ($)', 'Total (₹)', 'Status'].map(h => (
+                {['Timestamp', 'Type', 'Recipient', 'Template', 'Campaign', 'Region', 'Rate ($)', 'Fee ($)', 'Total (â‚¹)', 'Status'].map(h => (
                   <th key={h} className="px-6 py-5 text-left font-black">{h}</th>
                 ))}
               </tr>
@@ -134,7 +134,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                   <td colSpan={10} className="py-24 text-center">
                     <div className="flex flex-col items-center justify-center gap-4 opacity-20">
                       <Receipt size={40} strokeWidth={1} />
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Records Found</p>
+                      <p className={cn("text-[10px] font-black uppercase tracking-[0.3em]", isDarkMode ? "text-white" : "text-slate-400")}>No Records Found</p>
                     </div>
                   </td>
                 </tr>
@@ -160,7 +160,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                           <span className={cn("text-[11px] font-black tabular-nums tracking-tight", isDarkMode ? 'text-white/80' : 'text-slate-900')}>
                             {new Date(row.date).toLocaleDateString()}
                           </span>
-                          <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-20")}>
+                          <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-20", isDarkMode ? "text-white" : "text-slate-500")}>
                             {new Date(row.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -191,7 +191,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                               {row.recipient}
                             </span>
                             {row.recipientName && (
-                              <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-20 truncate max-w-[100px]")}>
+                              <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-20 truncate max-w-[100px]", isDarkMode ? "text-white" : "text-slate-500")}>
                                 {row.recipientName}
                               </span>
                             )}
@@ -202,27 +202,27 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                       {/* Template */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tracking-tight truncate max-w-[120px] block", isDarkMode ? 'text-white/90' : 'text-slate-700')}>
-                          {row.template || '—'}
+                          {row.template || 'â€”'}
                         </span>
                       </td>
 
                       {/* Campaign */}
                       <td className="px-6 py-5">
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest opacity-30 truncate max-w-[100px] block")}>
-                          {row.campaign || '—'}
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest opacity-30 truncate max-w-[100px] block", isDarkMode ? "text-white" : "text-slate-500")}>
+                          {row.campaign || 'â€”'}
                         </span>
                       </td>
 
                       {/* Region */}
                       <td className="px-6 py-5">
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest opacity-40")}>
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>
                           {row.country || 'Global'}
                         </span>
                       </td>
 
                       {/* Base Rate */}
                       <td className="px-6 py-5">
-                        <span className={cn("text-[11px] font-black tabular-nums tracking-tighter opacity-40")}>
+                        <span className={cn("text-[11px] font-black tabular-nums tracking-tighter opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>
                           ${parseFloat(row.rate).toFixed(4)}
                         </span>
                       </td>
@@ -237,7 +237,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                       {/* Total */}
                       <td className="px-6 py-5">
                         <span className={cn("text-xs font-black tabular-nums tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                          ₹{parseFloat(row.totalInr || row.total).toFixed(4)}
+                          â‚¹{parseFloat(row.totalInr || row.total).toFixed(4)}
                         </span>
                       </td>
 

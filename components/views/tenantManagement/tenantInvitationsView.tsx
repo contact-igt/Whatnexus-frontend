@@ -33,7 +33,10 @@ export const TenantInvitationsView = () => {
 
     const pendingInvites = useMemo(() => {
         if (!invitationsData?.data) return [];
-        return invitationsData.data;
+        // Exclude completed, revoked — those tenants have finished onboarding
+        return invitationsData.data.filter((inv: any) =>
+            inv.invitation_status !== 'completed' && inv.invitation_status !== 'revoked'
+        );
     }, [invitationsData]);
 
     const deletedInvites = useMemo(() => {
@@ -108,6 +111,7 @@ export const TenantInvitationsView = () => {
         switch (status) {
             case 'completed': return <CheckCircle size={14} className="text-emerald-500" />;
             case 'pending': return <Clock size={14} className="text-amber-500" />;
+            case 'accepted': return <CheckCircle size={14} className="text-blue-400" />;
             case 'expired': return <XCircle size={14} className="text-red-500" />;
             default: return <Clock size={14} className="text-slate-400" />;
         }
