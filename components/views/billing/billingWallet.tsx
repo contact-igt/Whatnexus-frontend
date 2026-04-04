@@ -27,12 +27,12 @@ export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate, bill
   const balance = balanceResponse?.data?.balance || 0;
   const currency = balanceResponse?.data?.currency || 'INR';
   const balanceStatus = balanceResponse?.data?.balanceStatus || 'healthy';
-  const currencySymbol = currency === 'INR' ? 'â‚¹' : currency;
+  const currencySymbol = currency === 'INR' ? '₹' : currency;
   const payments = paymentHistoryResponse?.data?.payments || [];
 
   const autoRecharge = autoRechargeResponse?.data || { enabled: false, threshold: 100, amount: 500 };
 
-  // Dynamic balance bar â€” scale based on actual balance (min â‚¹1,000 scale)
+  // Dynamic balance bar â€” scale based on actual balance (min ₹1,000 scale)
   const balanceScale = Math.max(balance, 1000);
   const balancePercent = Math.min((balance / balanceScale) * 100, 100);
 
@@ -255,7 +255,7 @@ For support: support@whatnexus.com
                           isDarkMode ? "bg-white/5 border-white/10 text-white focus:border-emerald-500/50" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500"
                         )}
                       />
-                      <p className={cn("text-[8px] mt-1 opacity-40", isDarkMode ? 'text-white' : 'text-slate-500')}>Min â‚¹100</p>
+                      <p className={cn("text-[8px] mt-1 opacity-40", isDarkMode ? 'text-white' : 'text-slate-500')}>Min ₹100</p>
                     </div>
                     <button
                       onClick={() => {

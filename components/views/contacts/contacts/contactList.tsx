@@ -204,7 +204,7 @@ export const ContactList = ({
                 />
             </div>
 
-            {totalPages > 1 && (
+            {contacts.length > 0 && (
                 <div className="mt-4">
                     <Pagination
                         currentPage={currentPage}

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Eye, Edit2, Trash2, UserCircle, Clock, Briefcase, Phone, Mail, CheckCircle, XCircle, MinusCircle, RefreshCw, RotateCcw } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { DoctorDrawer } from './doctorDrawer';
@@ -16,6 +16,7 @@ import {
 } from "@/hooks/useDoctorQuery";
 import { useGetAllSpecializationsQuery } from '@/hooks/useSpecializationsQuery';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
+import { Pagination } from '@/components/ui/pagination';
 import { Doctor } from '@/services/doctor';
 interface DoctorManagementProps {
     isDarkMode: boolean;
@@ -81,6 +82,18 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
             return name === filterSpecialization;
         });
     });
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 9;
+    const totalDoctorPages = Math.ceil(filteredDoctors.length / itemsPerPage);
+    const currentDoctors = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredDoctors.slice(start, start + itemsPerPage);
+    }, [filteredDoctors, currentPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, searchQuery, filterSpecialization]);
 
 
 
@@ -283,7 +296,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                             </p>
                         </div>
                     ) : (
-                        filteredDoctors.map((doctor: Doctor) => (
+                        currentDoctors.map((doctor: Doctor) => (
                             <div
                                 key={doctor.doctor_id}
                                 className={cn(
@@ -448,6 +461,19 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                             </div>
                         ))
                     )}
+                </div>
+            )}
+
+            {filteredDoctors.length > 0 && (
+                <div className="mt-4">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.max(1, totalDoctorPages)}
+                        onPageChange={setCurrentPage}
+                        totalItems={filteredDoctors.length}
+                        itemsPerPage={itemsPerPage}
+                        isDarkMode={isDarkMode}
+                    />
                 </div>
             )}
 

@@ -41,13 +41,13 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount < 100) {
-      toast.error("Minimum recharge amount is â‚¹100");
+      toast.error("Minimum recharge amount is ₹100");
       return;
     }
 
     // Add maximum amount validation
     if (numAmount > 500000) {
-      toast.error("Maximum recharge amount is â‚¹5,00,000");
+      toast.error("Maximum recharge amount is ₹5,00,000");
       return;
     }
 
@@ -161,13 +161,13 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
                   )}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  â‚¹{amt.toLocaleString()}
+                  ₹{amt.toLocaleString()}
                 </button>
               ))}
             </div>
 
             <div className="relative group">
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors">â‚¹</div>
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors">₹</div>
               <Input
                 isDarkMode={isDarkMode}
                 type="number"
@@ -207,7 +207,7 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                <span className="text-xs font-black uppercase tracking-[0.2em]">Authorize â‚¹{amount || "0"}</span>
+                <span className="text-xs font-black uppercase tracking-[0.2em]">Authorize ₹{amount || "0"}</span>
                 <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </>
             )}

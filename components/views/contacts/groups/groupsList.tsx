@@ -174,7 +174,7 @@ export const GroupsList = ({
                 />
             </div>
 
-            {totalPages > 1 && (
+            {groups.length > 0 && (
                 <div className="mt-4">
                     <Pagination
                         currentPage={currentPage}

@@ -7,6 +7,7 @@ import { format, parseISO } from 'date-fns';
 import { AppointmentDrawer } from './appointmentDrawer';
 import { useGetAllAppointmentsQuery, useDeleteAppointmentMutation } from '@/hooks/useAppointmentQuery';
 import { Modal } from '@/components/ui/modal';
+import { Pagination } from '@/components/ui/pagination';
 
 interface BookingListProps {
     isDarkMode: boolean;
@@ -65,6 +66,18 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         if (statusFilter === 'all') return allAppointments;
         return allAppointments.filter((a) => a.status?.toLowerCase() === statusFilter);
     }, [allAppointments, statusFilter]);
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(appointments.length / itemsPerPage);
+    const currentAppointments = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return appointments.slice(start, start + itemsPerPage);
+    }, [appointments, currentPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [statusFilter, debouncedSearch]);
 
     const handleCreateAppointment = () => {
         setSelectedAppointment(null);
@@ -230,14 +243,14 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                     </div>
 
                     {/* Rows */}
-                    {appointments.map((appointment, index) => {
+                    {currentAppointments.map((appointment, index) => {
                         const sc = getStatus(appointment.status);
                         return (
                             <div
                                 key={appointment.appointment_id}
                                 className={cn(
                                     "grid grid-cols-[1fr_1fr_140px_100px_110px_100px] gap-3 px-4 py-3 items-center transition-colors group",
-                                    index < appointments.length - 1 && (isDarkMode ? "border-b border-white/[0.03]" : "border-b border-slate-100"),
+                                    index < currentAppointments.length - 1 && (isDarkMode ? "border-b border-white/[0.03]" : "border-b border-slate-100"),
                                     isDarkMode ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/80"
                                 )}
                             >
@@ -354,6 +367,19 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {appointments.length > 0 && (
+                <div className="mt-2">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.max(1, totalPages)}
+                        onPageChange={setCurrentPage}
+                        totalItems={appointments.length}
+                        itemsPerPage={itemsPerPage}
+                        isDarkMode={isDarkMode}
+                    />
                 </div>
             )}
 
