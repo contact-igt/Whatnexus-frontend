@@ -60,25 +60,6 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         ]
     },
     {
-        groupLabel: "Team Management",
-        items: [
-            {
-                label: "Agent Matrix",
-                route: "/team",
-                icon: Users2,
-                requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
-            },
-            {
-                label: "Doctors",
-                route: "/doctors",
-                icon: Stethoscope,
-                requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
-            }
-        ]
-    },
-    {
         groupLabel: "Communication",
         items: [
             {
@@ -154,6 +135,25 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 route: "/campaign",
                 icon: Megaphone,
                 requiresWhatsApp: true,
+            }
+        ]
+    },
+        {
+        groupLabel: "Team Management",
+        items: [
+            {
+                label: "Agent Matrix",
+                route: "/team",
+                icon: Users2,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Doctors",
+                route: "/doctors",
+                icon: Stethoscope,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }
         ]
     },
@@ -270,4 +270,3 @@ export const managementSidebarConfig: SidebarGroup[] = [
         ]
     }
 ];
-

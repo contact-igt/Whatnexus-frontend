@@ -172,8 +172,42 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         { number: 4, title: 'Review', icon: Check },
     ];
 
-    const handleNext = () => {
+    const [costEstimate, setCostEstimate] = useState<any>(null);
+    const [isEstimatingCost, setIsEstimatingCost] = useState(false);
+
+    const handleNext = async () => {
         if (currentStep < 4 && isStepValid(currentStep)) {
+            // When moving to Review step, fetch cost estimate
+            if (currentStep === 3) {
+                try {
+                    setIsEstimatingCost(true);
+                    setError(null);
+                    
+                    // Calculate recipient count
+                    let recipientCount = 1;
+                    if (formData.recipient_source === 'csv') {
+                        recipientCount = formData.csv_data?.length || 0;
+                    } else if (formData.recipient_source === 'group') {
+                        const group = groups.find(g => (g as any).group_id === formData.group_id);
+                        recipientCount = group ? ((group as any).member_count || selectedGroupMembers.length || 0) : 0;
+                    } else if (formData.recipient_source === 'manual') {
+                        recipientCount = formData.manual_recipients?.length || 0;
+                    }
+
+                    if (recipientCount > 0 && formData.template_id) {
+                        const estimate = await campaignService.estimateCost(formData.template_id, recipientCount);
+                        setCostEstimate(estimate);
+                        
+                        // If balance is insufficient, we still allow them to view the review step, 
+                        // but we can pre-emptively show the error there (or wait til submit).
+                    }
+                } catch (err: any) {
+                    console.error("Failed to estimate cost:", err);
+                    // Don't block progression, just log it. The submit will catch the actual billing error.
+                } finally {
+                    setIsEstimatingCost(false);
+                }
+            }
             setCurrentStep((prev) => (prev + 1) as Step);
             setError(null); // Clear any previous errors
         }
@@ -474,6 +508,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             }
         } catch (err: any) {
             console.error("Submit Error:", err);
+            // The new endpoint sends the billing reason in err.response.data.message
             const errorMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || 'Failed to create campaign';
             setError(errorMsg);
         } finally {
@@ -1615,6 +1650,48 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Cost Estimate Panel */}
+                            {costEstimate && (
+                                <div className={cn(
+                                    "p-4 rounded-xl border flex flex-col gap-2",
+                                    !costEstimate.is_sufficient 
+                                        ? 'bg-red-500/10 border-red-500/20' 
+                                        : isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'
+                                )}>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h4 className={cn("text-sm font-bold flex items-center gap-2", 
+                                            !costEstimate.is_sufficient ? 'text-red-500' : isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
+                                        )}>
+                                            {!costEstimate.is_sufficient && <AlertTriangle size={16} />}
+                                            Estimated Cost
+                                        </h4>
+                                        {isEstimatingCost && <span className="text-xs opacity-60">Calculating...</span>}
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>
+                                            {costEstimate.recipient_count} recipients × ₹{costEstimate.per_message_cost_inr.toFixed(2)}
+                                        </span>
+                                        <span className="font-semibold text-emerald-500">
+                                            ₹{costEstimate.total_cost_inr.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center text-sm pt-2 border-t border-current/10">
+                                        <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>Wallet Balance</span>
+                                        <span className={cn("font-semibold", !costEstimate.is_sufficient ? 'text-red-500' : isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            ₹{costEstimate.wallet_balance.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    
+                                    {!costEstimate.is_sufficient && (
+                                        <div className="text-xs text-red-500 mt-2 font-medium">
+                                            Insufficient balance. You need ₹{costEstimate.shortfall.toFixed(2)} more to send this campaign.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {error && (
                                 <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">

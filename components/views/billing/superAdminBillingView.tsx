@@ -188,7 +188,7 @@ const TenantOverviewCard = ({ tenantId, isDarkMode }: { tenantId: string; isDark
         : (isDarkMode ? "text-amber-400" : "text-amber-600");
 
     return (
-        <div className={cn("mt-4 p-4 rounded-xl border grid grid-cols-2 sm:grid-cols-4 gap-3", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-200")}>
+        <div className={cn("mt-4 p-4 rounded-xl border grid gap-3", ov.billing_mode === 'postpaid' ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-200")}>
             <div>
                 <p className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-0.5">Company</p>
                 <p className={cn("text-xs font-bold truncate", isDarkMode ? "text-white/80" : "text-slate-800")}>{ov.company_name}</p>
@@ -201,10 +201,12 @@ const TenantOverviewCard = ({ tenantId, isDarkMode }: { tenantId: string; isDark
                 <p className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-0.5">Wallet</p>
                 <p className={cn("text-xs font-black tabular-nums", isDarkMode ? "text-white" : "text-slate-900")}>₹{ov.wallet_balance.toFixed(2)}</p>
             </div>
-            <div>
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-0.5">Credit Limit</p>
-                <p className={cn("text-xs font-bold tabular-nums", isDarkMode ? "text-white/60" : "text-slate-600")}>₹{ov.credit_limit.toFixed(0)}</p>
-            </div>
+            {ov.billing_mode === 'postpaid' && (
+                <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-0.5">Credit Limit</p>
+                    <p className={cn("text-xs font-bold tabular-nums", isDarkMode ? "text-white/60" : "text-slate-600")}>₹{ov.credit_limit.toFixed(0)}</p>
+                </div>
+            )}
             {ov.active_cycle && (
                 <div className="col-span-2">
                     <p className="text-[9px] font-black uppercase tracking-widest opacity-30 mb-0.5">Active Cycle</p>

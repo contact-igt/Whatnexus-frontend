@@ -280,7 +280,15 @@ export const DashboardView = () => {
                     if (!wabaConnected || isManagement) return null;
 
                     const tier = dashboardData!.wabaInfo.tier;
-                    const limit = tier === 'TIER_10K' ? 10000 : tier === 'TIER_100K' ? 100000 : tier === 'TIER_UNLIMITED' ? Infinity : 1000;
+                    // WABA-level (portfolio) daily unique-user limits per Meta's current tier model
+                    const tierLimits: Record<string, number> = {
+                        TIER_NOT_SET: 250,
+                        TIER_2K:      2000,
+                        TIER_10K:     10000,
+                        TIER_100K:    100000,
+                        TIER_UNLIMITED: Infinity,
+                    };
+                    const limit = tierLimits[tier?.toUpperCase?.()] ?? 250;
                     return (
                         <section>
                             <SectionHeader
