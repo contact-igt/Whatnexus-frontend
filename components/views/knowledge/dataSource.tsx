@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Link2, File, Database } from 'lucide-react';
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { GlassCard } from "@/components/ui/glassCard";
@@ -8,6 +8,7 @@ import { KNOWLEDGE_SOURCES } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useActivateKnowledgeMutation, useDeletedKnowledgeList, useDeleteKnowledgeById, useGetKnowledgesQuery, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useUploadKnowledgeMutation } from '@/hooks/useUploadKnowledge';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { Pagination } from '@/components/ui/pagination';
 
 interface DataSourceProps {
     isDarkMode: boolean;
@@ -275,6 +276,31 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
     console.log("knowledgeData", knowledgeData)
     const activeKnowledgeData = knowledgeData?.data?.sources?.filter((source: any) => source.status === "active");
     const inactiveKnowledgeData = knowledgeData?.data?.sources?.filter((source: any) => source.status === "inactive");
+    const deletedSources = deletedKnowledgesData?.data?.sources || [];
+
+    const knowledgeItemsPerPage = 5;
+
+    const [activeKnowledgePage, setActiveKnowledgePage] = useState(1);
+    const activeTotalPages = Math.ceil((activeKnowledgeData?.length || 0) / knowledgeItemsPerPage);
+    const currentActiveKnowledge = useMemo(() => {
+        const start = (activeKnowledgePage - 1) * knowledgeItemsPerPage;
+        return (activeKnowledgeData || []).slice(start, start + knowledgeItemsPerPage);
+    }, [activeKnowledgeData, activeKnowledgePage]);
+
+    const [inactiveKnowledgePage, setInactiveKnowledgePage] = useState(1);
+    const inactiveTotalPages = Math.ceil((inactiveKnowledgeData?.length || 0) / knowledgeItemsPerPage);
+    const currentInactiveKnowledge = useMemo(() => {
+        const start = (inactiveKnowledgePage - 1) * knowledgeItemsPerPage;
+        return (inactiveKnowledgeData || []).slice(start, start + knowledgeItemsPerPage);
+    }, [inactiveKnowledgeData, inactiveKnowledgePage]);
+
+    const [deletedKnowledgePage, setDeletedKnowledgePage] = useState(1);
+    const deletedTotalPages = Math.ceil(deletedSources.length / knowledgeItemsPerPage);
+    const currentDeletedKnowledge = useMemo(() => {
+        const start = (deletedKnowledgePage - 1) * knowledgeItemsPerPage;
+        return deletedSources.slice(start, start + knowledgeItemsPerPage);
+    }, [deletedSources, deletedKnowledgePage]);
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -601,7 +627,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                             </div>
                         ))
                     ) : activeKnowledgeData?.length > 0 ? (
-                        activeKnowledgeData?.map((source: any, index: number) => {
+                        currentActiveKnowledge.map((source: any, index: number) => {
                             const createdAt = new Date(source?.created_at).getTime();
                             const now = currentTime;
                             const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
@@ -709,6 +735,18 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                         </div>
                     )}
                 </div>
+                {(activeKnowledgeData?.length || 0) > 0 && (
+                    <div className="mt-4">
+                        <Pagination
+                            currentPage={activeKnowledgePage}
+                            totalPages={Math.max(1, activeTotalPages)}
+                            onPageChange={setActiveKnowledgePage}
+                            totalItems={activeKnowledgeData?.length || 0}
+                            itemsPerPage={knowledgeItemsPerPage}
+                            isDarkMode={isDarkMode}
+                        />
+                    </div>
+                )}
             </GlassCard>
             {inactiveKnowledgeData?.length > 0 && <GlassCard isDarkMode={isDarkMode} className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -753,7 +791,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                 </div>
                             </div>
                         ))
-                    ) : inactiveKnowledgeData?.map((source: any, index: number) => {
+                    ) : currentInactiveKnowledge.map((source: any, index: number) => {
                         const createdAt = new Date(source?.created_at).getTime();
                         const now = currentTime;
                         const isProcessing = now - createdAt < (source?.type === 'url' ? 30000 : 5000);
@@ -850,6 +888,18 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                         )
                     })}
                 </div>
+                {(inactiveKnowledgeData?.length || 0) > 0 && (
+                    <div className="mt-4">
+                        <Pagination
+                            currentPage={inactiveKnowledgePage}
+                            totalPages={Math.max(1, inactiveTotalPages)}
+                            onPageChange={setInactiveKnowledgePage}
+                            totalItems={inactiveKnowledgeData?.length || 0}
+                            itemsPerPage={knowledgeItemsPerPage}
+                            isDarkMode={isDarkMode}
+                        />
+                    </div>
+                )}
             </GlassCard>}
 
             <GlassCard isDarkMode={isDarkMode} className="p-6">
@@ -896,7 +946,7 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                             </div>
                         ))
                     ) : deletedKnowledgesData?.data?.sources?.length > 0 ? (
-                        deletedKnowledgesData?.data?.sources?.map((source: any, index: number) => {
+                        currentDeletedKnowledge.map((source: any, index: number) => {
                             const createdAt = new Date(source?.created_at).getTime();
                             const now = currentTime;
                             const isProcessing = now - createdAt < 5 * 60 * 1000;
@@ -983,6 +1033,18 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                         </div>
                     )}
                 </div>
+                {deletedSources.length > 0 && (
+                    <div className="mt-4">
+                        <Pagination
+                            currentPage={deletedKnowledgePage}
+                            totalPages={Math.max(1, deletedTotalPages)}
+                            onPageChange={setDeletedKnowledgePage}
+                            totalItems={deletedSources.length}
+                            itemsPerPage={knowledgeItemsPerPage}
+                            isDarkMode={isDarkMode}
+                        />
+                    </div>
+                )}
             </GlassCard>
         </div>
     )

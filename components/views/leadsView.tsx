@@ -1080,7 +1080,7 @@ export const LeadsView = () => {
                     />
 
                     {/* Pagination Controls */}
-                    {totalPages > 1 && (
+                    {filteredLeads.length > 0 && (
                         <div className={cn(
                             "p-4 border-t border-white/5 mt-auto sticky bottom-0 z-10 backdrop-blur-md",
                             isDarkMode ? "bg-[#151518]/90" : "bg-white/90"

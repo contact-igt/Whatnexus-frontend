@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { Upload, FileText, FileUp, Loader2, Trash2 } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { useGetPromptConfigurationQuery, useActivatePromptMutation, useCreatePro
 import { toast } from "sonner";
 import { extractTextFromFile } from '@/utils/ocr';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { Pagination } from '@/components/ui/pagination';
 
 interface PromptConfigurationProps {
     isDarkMode: boolean;
@@ -201,6 +202,18 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
     const handleToggleActive = (id: string, isActive: boolean) => {
         activatePromptMutate({ id, data: { is_active: isActive ? 0 : 1 } });
     };
+
+    const promptItemsPerPage = 5;
+
+    const activePrompts = promptsData?.data?.prompts?.filter((p: any) => p.status !== 'deleted') || [];
+
+    const deletedPrompts = promptsDeletedData?.data?.prompts || [];
+    const [deletedPromptPage, setDeletedPromptPage] = useState(1);
+    const deletedPromptTotalPages = Math.ceil(deletedPrompts.length / promptItemsPerPage);
+    const currentDeletedPrompts = useMemo(() => {
+        const start = (deletedPromptPage - 1) * promptItemsPerPage;
+        return deletedPrompts.slice(start, start + promptItemsPerPage);
+    }, [deletedPrompts, deletedPromptPage]);
 
     const handleLocalDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -413,7 +426,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                         </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-[420px] overflow-y-auto no-scrollbar pr-1">
                         {isPromptsLoading ? (
                             Array.from({ length: 3 }).map((_, index) => (
                                 <div
@@ -441,8 +454,8 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                     </div>
                                 </div>
                             ))
-                        ) : promptsData?.data?.prompts?.filter((p: any) => p.status !== 'deleted')?.length > 0 ? (
-                            promptsData.data?.prompts?.filter((p: any) => p.status !== 'deleted').map((prompt: any) => (
+                        ) : activePrompts.length > 0 ? (
+                            activePrompts.map((prompt: any) => (
                                 <div
                                     key={prompt.id}
                                     className={cn(
@@ -558,8 +571,8 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                 </div>
                             </div>
                         ))
-                    ) : promptsDeletedData?.data?.prompts?.length > 0 ? (
-                        promptsDeletedData.data?.prompts?.map((prompt: any) => (
+                    ) : deletedPrompts.length > 0 ? (
+                        currentDeletedPrompts.map((prompt: any) => (
                             <div
                                 key={prompt.id}
                                 className={cn(
@@ -606,6 +619,18 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                         </div>
                     )}
                 </div>
+                {deletedPrompts.length > 0 && (
+                    <div className="mt-4">
+                        <Pagination
+                            currentPage={deletedPromptPage}
+                            totalPages={Math.max(1, deletedPromptTotalPages)}
+                            onPageChange={setDeletedPromptPage}
+                            totalItems={deletedPrompts.length}
+                            itemsPerPage={promptItemsPerPage}
+                            isDarkMode={isDarkMode}
+                        />
+                    </div>
+                )}
             </GlassCard>
         </div>
     );

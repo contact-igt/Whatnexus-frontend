@@ -117,7 +117,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
           <table className="w-full min-w-[1000px]">
             <thead>
               <tr className={cn("text-[9px] font-black uppercase tracking-[0.2em] border-b", isDarkMode ? 'text-white/20 border-white/5 bg-white/[0.01]' : 'text-slate-400 border-slate-100 bg-slate-50/50')}>
-                {['Timestamp', 'Type', 'Recipient', 'Template', 'Campaign', 'Region', 'Rate ($)', 'Fee ($)', 'Total (â‚¹)', 'Status'].map(h => (
+                {['Timestamp', 'Type', 'Recipient', 'Template', 'Campaign', 'Region', 'Rate ($)', 'Fee ($)', 'Total (₹)', 'Status'].map(h => (
                   <th key={h} className="px-6 py-5 text-left font-black">{h}</th>
                 ))}
               </tr>
@@ -237,7 +237,7 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                       {/* Total */}
                       <td className="px-6 py-5">
                         <span className={cn("text-xs font-black tabular-nums tracking-tighter", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                          â‚¹{parseFloat(row.totalInr || row.total).toFixed(4)}
+                          ₹{parseFloat(row.totalInr || row.total).toFixed(4)}
                         </span>
                       </td>
 

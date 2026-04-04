@@ -178,10 +178,10 @@ Due Date       : ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateStr
 -------------------------------------
 COST BREAKDOWN
 -------------------------------------
-Message Cost   : â‚¹${parseFloat(breakdown.messages || 0).toFixed(2)}
-AI Usage Cost  : â‚¹${parseFloat(breakdown.ai || 0).toFixed(2)}
+Message Cost   : ₹${parseFloat(breakdown.messages || 0).toFixed(2)}
+AI Usage Cost  : ₹${parseFloat(breakdown.ai || 0).toFixed(2)}
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-Total Amount   : â‚¹${parseFloat(invoice.amount || 0).toFixed(2)}
+Total Amount   : ₹${parseFloat(invoice.amount || 0).toFixed(2)}
 
 -------------------------------------
 PAYMENT
@@ -393,7 +393,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                             isDarkMode ? "text-white" : "text-slate-900"
                                                         )}
                                                     >
-                                                        â‚¹
+                                                        ₹
                                                         {parseFloat(
                                                             invoice.amount || 0
                                                         ).toLocaleString(undefined, {
@@ -488,7 +488,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-800"
                                                                         )}
                                                                     >
-                                                                        â‚¹
+                                                                        ₹
                                                                         {parseFloat(
                                                                             invoiceDetailCycle?.total_message_cost_inr || invoiceDetail.breakdown?.messages || 0
                                                                         ).toFixed(2)}
@@ -513,7 +513,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-800"
                                                                         )}
                                                                     >
-                                                                        â‚¹
+                                                                        ₹
                                                                         {parseFloat(
                                                                             invoiceDetailCycle?.total_ai_cost_inr || invoiceDetail.breakdown?.ai || 0
                                                                         ).toFixed(2)}
@@ -562,7 +562,7 @@ ${invoice.status === "paid" ? `Paid On   : ${invoice.paid_at ? new Date(invoice.
                                                                                 : "text-slate-800"
                                                                         )}
                                                                     >
-                                                                        â‚¹{parseFloat(
+                                                                        ₹{parseFloat(
                                                                             invoiceDetail.amount || 0
                                                                         ).toFixed(2)}
                                                                     </p>
