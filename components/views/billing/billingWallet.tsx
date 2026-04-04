@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -27,12 +27,12 @@ export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate, bill
   const balance = balanceResponse?.data?.balance || 0;
   const currency = balanceResponse?.data?.currency || 'INR';
   const balanceStatus = balanceResponse?.data?.balanceStatus || 'healthy';
-  const currencySymbol = currency === 'INR' ? '₹' : currency;
+  const currencySymbol = currency === 'INR' ? 'â‚¹' : currency;
   const payments = paymentHistoryResponse?.data?.payments || [];
 
   const autoRecharge = autoRechargeResponse?.data || { enabled: false, threshold: 100, amount: 500 };
 
-  // Dynamic balance bar — scale based on actual balance (min ₹1,000 scale)
+  // Dynamic balance bar â€” scale based on actual balance (min â‚¹1,000 scale)
   const balanceScale = Math.max(balance, 1000);
   const balancePercent = Math.min((balance / balanceScale) * 100, 100);
 
@@ -158,7 +158,7 @@ For support: support@whatnexus.com
                   `${currencySymbol}${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                 )}
               </div>
-              <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 opacity-40")}>Available credits</p>
+              <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 opacity-40", isDarkMode ? 'text-white' : 'text-slate-900')}>Available credits</p>
 
               {/* Balance bar */}
               <div className={cn("h-1 w-full rounded-full overflow-hidden mb-6", isDarkMode ? 'bg-white/5' : 'bg-slate-100')}>
@@ -176,7 +176,7 @@ For support: support@whatnexus.com
                   { label: 'Status', value: balanceStatus === 'zero' ? 'Zero Balance' : balanceStatus === 'low' ? 'Low Balance' : 'Healthy', color: balanceStatus === 'zero' ? 'text-red-500' : balanceStatus === 'low' ? 'text-amber-500' : 'text-emerald-500' },
                 ].map((item, i) => (
                   <div key={i} className="flex justify-between items-center px-1">
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30")}>{item.label}</span>
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30", isDarkMode ? 'text-white' : 'text-slate-500')}>{item.label}</span>
                     <span className={cn("text-[11px] font-black tracking-tight", item.color || (isDarkMode ? 'text-white/80' : 'text-slate-700'))}>{item.value}</span>
                   </div>
                 ))}
@@ -184,7 +184,7 @@ For support: support@whatnexus.com
                 {/* Auto-Recharge Toggle - only for prepaid */}
                 {billingMode !== 'postpaid' && (
                   <div className="flex justify-between items-center px-1">
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30")}>Auto-Recharge</span>
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-30", isDarkMode ? 'text-white' : 'text-slate-500')}>Auto-Recharge</span>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -239,7 +239,7 @@ For support: support@whatnexus.com
                           isDarkMode ? "bg-white/5 border-white/10 text-white focus:border-emerald-500/50" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500"
                         )}
                       />
-                      <p className={cn("text-[8px] mt-1 opacity-40")}>Recharge when balance drops below this</p>
+                      <p className={cn("text-[8px] mt-1 opacity-40", isDarkMode ? 'text-white' : 'text-slate-500')}>Recharge when balance drops below this</p>
                     </div>
                     <div>
                       <label className={cn("text-[9px] font-black uppercase tracking-widest block mb-1", isDarkMode ? "text-white/30" : "text-slate-400")}>
@@ -255,7 +255,7 @@ For support: support@whatnexus.com
                           isDarkMode ? "bg-white/5 border-white/10 text-white focus:border-emerald-500/50" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-emerald-500"
                         )}
                       />
-                      <p className={cn("text-[8px] mt-1 opacity-40")}>Min ₹100</p>
+                      <p className={cn("text-[8px] mt-1 opacity-40", isDarkMode ? 'text-white' : 'text-slate-500')}>Min â‚¹100</p>
                     </div>
                     <button
                       onClick={() => {
@@ -401,8 +401,8 @@ For support: support@whatnexus.com
               ) : payments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-30">
                   <CreditCard size={32} strokeWidth={1} />
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em]">No Payments Yet</p>
-                  <p className={cn("text-[9px] opacity-60")}>Your recharge history will appear here</p>
+                  <p className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDarkMode ? "text-white" : "text-slate-400")}>No Payments Yet</p>
+                  <p className={cn("text-[9px] opacity-60", isDarkMode ? "text-white" : "text-slate-500")}>Your recharge history will appear here</p>
                 </div>
               ) : payments.map((payment: any, i: number) => {
                 return (
@@ -423,7 +423,7 @@ For support: support@whatnexus.com
                       <div className="flex flex-col gap-0.5">
                         <span className={cn("text-[11px] font-black tracking-tight transition-colors", isDarkMode ? "text-white/80 group-hover/item:text-white" : "text-slate-900")}>{payment.description || 'Wallet Recharge'}</span>
                         <span className={cn("text-[9px] font-bold uppercase tracking-widest", isDarkMode ? "text-white/20" : "text-slate-400")}>
-                          {new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(payment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} â€¢ {new Date(payment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                       <span className={cn(

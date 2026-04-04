@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { cn } from "@/lib/utils";
 import { useGetBillingModeQuery, useGetBillingKpiQuery } from "@/hooks/useBillingQuery";
@@ -218,7 +218,7 @@ export const BillingUsageLimits = ({
                             >
                                 Rate Limits
                             </h3>
-                            <p className="text-[10px] font-medium opacity-30 mt-0.5">
+                            <p className={cn("text-[10px] font-medium mt-0.5", isDarkMode ? "opacity-30 text-white" : "text-slate-500")}>
                                 Daily and monthly usage caps to prevent runaway costs
                             </p>
                         </div>

@@ -52,7 +52,7 @@ export const useSetPasswordQuery = ()=>{
         onSuccess: (data)=>{
             toast.success("Password set successfully")
                         dispatch(setAuthData({
-                            token: data?.tokens?.refreshToken,
+                            token: data?.tokens?.accessToken,
                             refreshToken: data?.tokens?.refreshToken,
                             user: data?.user
                         }))

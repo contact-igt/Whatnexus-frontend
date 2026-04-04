@@ -41,13 +41,13 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount < 100) {
-      toast.error("Minimum recharge amount is ₹100");
+      toast.error("Minimum recharge amount is â‚¹100");
       return;
     }
 
     // Add maximum amount validation
     if (numAmount > 500000) {
-      toast.error("Maximum recharge amount is ₹5,00,000");
+      toast.error("Maximum recharge amount is â‚¹5,00,000");
       return;
     }
 
@@ -137,10 +137,10 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
               <Wallet className="w-7 h-7 text-emerald-500 relative z-10" />
             </motion.div>
 
-            <DialogTitle className="text-2xl font-black tracking-tight text-center uppercase tracking-[0.05em]">
+            <DialogTitle className={cn("text-2xl font-black tracking-tight text-center uppercase tracking-[0.05em]", isDarkMode ? "text-white" : "text-slate-900")}>
               Elite Top-Up
             </DialogTitle>
-            <DialogDescription className={cn("text-center text-[11px] font-black uppercase tracking-[0.2em] mt-2 opacity-30")}>
+            <DialogDescription className={cn("text-center text-[11px] font-black uppercase tracking-[0.2em] mt-2", isDarkMode ? "opacity-30 text-white" : "text-slate-500")}>
               Secured Financial Channel
             </DialogDescription>
           </div>
@@ -161,13 +161,13 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
                   )}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  ₹{amt.toLocaleString()}
+                  â‚¹{amt.toLocaleString()}
                 </button>
               ))}
             </div>
 
             <div className="relative group">
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors">₹</div>
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors">â‚¹</div>
               <Input
                 isDarkMode={isDarkMode}
                 type="number"
@@ -186,11 +186,11 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
           <div className="grid grid-cols-2 gap-3">
             <div className={cn("p-4 rounded-[20px] border flex flex-col gap-2 transition-all duration-500", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100")}>
               <ShieldCheck size={14} className="text-emerald-500" />
-              <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Verified Channel</span>
+              <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>Verified Channel</span>
             </div>
             <div className={cn("p-4 rounded-[20px] border flex flex-col gap-2 transition-all duration-500", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100")}>
               <Sparkles size={14} className="text-blue-500" />
-              <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Instant Credit</span>
+              <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>Instant Credit</span>
             </div>
           </div>
 
@@ -207,13 +207,13 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                <span className="text-xs font-black uppercase tracking-[0.2em]">Authorize ₹{amount || "0"}</span>
+                <span className="text-xs font-black uppercase tracking-[0.2em]">Authorize â‚¹{amount || "0"}</span>
                 <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </>
             )}
           </button>
 
-          <p className="text-center text-[8px] font-black uppercase tracking-[0.2em] opacity-20">
+          <p className={cn("text-center text-[8px] font-black uppercase tracking-[0.2em] opacity-20", isDarkMode ? "text-white" : "text-slate-500")}>
             Powered by Razorpay Secure Encryption
           </p>
         </div>
