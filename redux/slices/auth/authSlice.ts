@@ -21,6 +21,7 @@ interface AuthState {
   activeTabData: string;
   activeStatus: any;
   currentStatusDataState: any;
+  accountErrorMessage: string | null;
 }
 
 const initialState: AuthState = {
@@ -32,6 +33,7 @@ const initialState: AuthState = {
   activeTabData: 'dashboard',
   activeStatus: 'pending',
   currentStatusDataState: null,
+  accountErrorMessage: null,
 };
 
 const authSlice = createSlice({
@@ -82,9 +84,16 @@ const authSlice = createSlice({
       state.activeTabData = 'dashboard';
       state.activeStatus = 'pending';
       state.currentStatusDataState = null;
+      state.accountErrorMessage = null;
+    },
+    setAccountError: (state, action: PayloadAction<string>) => {
+      state.accountErrorMessage = action.payload;
+    },
+    clearAccountError: (state) => {
+      state.accountErrorMessage = null;
     },
   },
 });
 
-export const { setAuthData, clearAuthData, setWhatsAppApiDetails, setActiveTabData, setActivationToken, setCurrentStatusData, setActiveStatus, resetActiveStatus, updateUserData, updateWebhookStatus } = authSlice.actions;
+export const { setAuthData, clearAuthData, setWhatsAppApiDetails, setActiveTabData, setActivationToken, setCurrentStatusData, setActiveStatus, resetActiveStatus, updateUserData, updateWebhookStatus, setAccountError, clearAccountError } = authSlice.actions;
 export default authSlice.reducer;

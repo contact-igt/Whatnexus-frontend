@@ -7,6 +7,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getDateLabel } from './ChatUtils';
+import { LeadSummarySidebar } from '../leadSummarySidebar';
 
 interface ChatDetailsProps {
     isDarkMode: boolean;
@@ -27,6 +28,7 @@ interface ChatDetailsProps {
     toggleSilenceAiMutate: (params: any) => void;
     isTogglingSilence: boolean;
     isNeuralSummaryEnabled?: boolean;
+    openNeuralSummarySidebar: () => void;
 }
 
 export const ChatDetails: React.FC<ChatDetailsProps> = ({
@@ -48,6 +50,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
     toggleSilenceAiMutate,
     isTogglingSilence,
     isNeuralSummaryEnabled = true,
+    openNeuralSummarySidebar,
 }) => {
     const queryClient = useQueryClient();
     const [isEditingName, setIsEditingName] = useState(false);
@@ -330,7 +333,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                 <div className="pt-4 border-t border-gray-100 dark:border-white/5">
                     <div className="space-y-3">
                         <button
-                            onClick={isNeuralSummaryEnabled ? summarizeChat : undefined}
+                            onClick={isNeuralSummaryEnabled ? openNeuralSummarySidebar : undefined}
                             disabled={isSummarizing || !isNeuralSummaryEnabled}
                             title={!isNeuralSummaryEnabled ? "Neural Summary is disabled in settings" : undefined}
                             className={cn(

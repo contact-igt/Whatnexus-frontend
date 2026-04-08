@@ -31,9 +31,9 @@ export const BillingUsageAnalytics = ({ isDarkMode, startDate, endDate }: Billin
                     <TabsTrigger value="ledger">
                         <div className="flex items-center gap-2"><Receipt size={12} />Transaction Ledger</div>
                     </TabsTrigger>
-                    <TabsTrigger value="spend">
+                    {/* <TabsTrigger value="spend">
                         <div className="flex items-center gap-2"><BarChart3 size={12} />Spend Charts</div>
-                    </TabsTrigger>
+                    </TabsTrigger> */}
                     <TabsTrigger value="ai">
                         <div className="flex items-center gap-2"><Cpu size={12} />AI Token Usage</div>
                     </TabsTrigger>

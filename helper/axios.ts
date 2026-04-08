@@ -3,7 +3,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { store } from "../redux/store";
 import type { RootState } from "../redux/store";
-import { clearAuthData } from "@/redux/slices/auth/authSlice";
+import { clearAuthData, setAccountError } from "@/redux/slices/auth/authSlice";
 
 interface JwtPayload {
   exp: number;
@@ -74,6 +74,11 @@ export const _axios = async (
     // Normalize billing guard errors: backend sends `reason` but frontend expects `message`
     if (err?.response?.data?.blocked && err?.response?.data?.reason && !err?.response?.data?.message) {
       err.response.data.message = err.response.data.reason;
+    }
+    // Detect account-level errors (deactivated / suspended / blocked) and store globally
+    const errMsg: string = err?.response?.data?.message || '';
+    if (/deactivat|suspend|block|disabled|contact your admin/i.test(errMsg)) {
+      store.dispatch(setAccountError(errMsg));
     }
     console.error("Axios error:", err);
     throw err;

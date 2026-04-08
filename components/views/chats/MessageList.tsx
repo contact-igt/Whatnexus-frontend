@@ -480,6 +480,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                                                 isDarkMode={isDarkMode}
                                                 isOutgoing={isOutgoing}
                                             />
+                                            {isTemplate && msg.sender !== 'user' && <div className="mb-3" />}
                                             <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
                                             <div className={cn(
                                                 "flex items-center justify-end space-x-1 opacity-60",

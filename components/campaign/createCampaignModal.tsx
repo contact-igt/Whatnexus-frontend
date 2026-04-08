@@ -20,6 +20,8 @@ import type { ContactGroup } from "@/types/contactGroup";
 import { WhatsAppPreviewPanel } from '@/components/views/template/whatsappPreviewPanel';
 import { CarouselCard } from '@/components/views/template/templateTypes';
 import { FileUpload } from '@/components/ui/fileUpload';
+import { GalleryPicker } from '@/components/gallery/GalleryPicker';
+import { MediaAsset } from '@/services/gallery/galleryApi';
 
 interface CreateCampaignModalProps {
     isOpen: boolean;
@@ -93,6 +95,23 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [cardFileNames, setCardFileNames] = useState<Record<number, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
     const errorRef = useRef<HTMLDivElement>(null);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [galleryUploadType, setGalleryUploadType] = useState<'header' | 'card_media'>('header');
+    const [galleryCardIdx, setGalleryCardIdx] = useState<number | null>(null);
+
+    const handleGallerySelect = (asset: MediaAsset) => {
+        if (galleryUploadType === 'header') {
+            setFormData(prev => ({ ...prev, header_media_url: asset.media_handle || asset.media_url }));
+            setHeaderFileName(asset.file_name);
+        } else if (galleryUploadType === 'card_media' && galleryCardIdx !== null) {
+            setFormData(prev => ({
+                ...prev,
+                card_media_urls: { ...(prev.card_media_urls || {}), [galleryCardIdx]: asset.media_handle || asset.media_url }
+            }));
+            setCardFileNames(prev => ({ ...prev, [galleryCardIdx]: asset.file_name }));
+        }
+        setIsGalleryOpen(false);
+    };
     // { [contactId]: { [varKey]: value } }
     const [groupMemberVariables, setGroupMemberVariables] = useState<Record<string, Record<string, string>>>({});
     const [selectedGroupMembers, setSelectedGroupMembers] = useState<any[]>([]);
@@ -1013,6 +1032,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 isUploading={isUploading}
                                                 fileName={headerFileName}
                                                 compact
+                                                onPickFromGallery={() => {
+                                                    setGalleryUploadType('header');
+                                                    setIsGalleryOpen(true);
+                                                }}
                                             />
                                             <p className={cn("text-[10px] mt-2 opacity-60", isDarkMode ? 'text-white' : 'text-slate-500')}>
                                                 Upload your {getUploadType(selectedTemplate.type)} file (max 20MB) to be sent as the message header
@@ -1157,6 +1180,11 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                             isUploading={isCardUploading}
                                                             fileName={cardFileNames[idx]}
                                                             compact
+                                                            onPickFromGallery={() => {
+                                                                setGalleryUploadType('card_media');
+                                                                setGalleryCardIdx(idx);
+                                                                setIsGalleryOpen(true);
+                                                            }}
                                                         />
                                                     </div>
                                                 );
@@ -1770,6 +1798,19 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 csvData={csvRawData}
                 fileName={csvFile?.name || ''}
                 validation={csvValidation || { isValid: false, validRows: [], errors: [] }}
+            />
+
+            {/* Gallery Picker Modal */}
+            <GalleryPicker
+                isOpen={isGalleryOpen}
+                onClose={() => setIsGalleryOpen(false)}
+                onSelect={handleGallerySelect}
+                approvedOnly={false}
+                fileType={
+                    galleryUploadType === 'header'
+                        ? (selectedTemplate?.type === 'image' ? 'image' : selectedTemplate?.type === 'video' ? 'video' : selectedTemplate?.type === 'document' ? 'document' : 'all')
+                        : 'all'
+                }
             />
         </div>
     );

@@ -1086,7 +1086,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             { value: 'IMAGE', label: 'Image' },
                                             { value: 'VIDEO', label: 'Video' },
                                             { value: 'DOCUMENT', label: 'Document' },
-                                            { value: 'LOCATION', label: 'Location' },
+                                            // { value: 'LOCATION', label: 'Location' },
                                             // { value: 'CAROUSEL', label: 'Carousel' }
                                         ].filter(opt => {
                                             const cat = String(category).toUpperCase();
@@ -1248,6 +1248,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                             disabled={isViewMode}
                                                             fileName={uploadedFileName}
                                                             compact
+                                                            onPickFromGallery={() => setIsGalleryOpen(true)}
                                                         />
                                                     ) : (
                                                         <div className={cn(
@@ -1276,10 +1277,10 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                             </div>
                                                         </div>
                                                     )}
-                                                    <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("w-full px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-2", isDarkMode ? 'border-white/10 bg-white/5 text-white hover:bg-white/10' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100')}>
+                                                    {/* <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("w-full px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-2", isDarkMode ? 'border-white/10 bg-white/5 text-white hover:bg-white/10' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100')}>
                                                         <ImagePlus size={14} />
                                                         Pick image from gallery
-                                                    </button>
+                                                    </button> */}
                                                 </div>
                                             )}
                                         />
@@ -1324,6 +1325,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                             disabled={isViewMode}
                                                             fileName={uploadedFileName}
                                                             compact
+                                                            onPickFromGallery={() => setIsGalleryOpen(true)}
                                                         />
                                                     ) : (
                                                         <div className={cn(
@@ -1352,10 +1354,6 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                             </div>
                                                         </div>
                                                     )}
-                                                    <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("w-full px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-2", isDarkMode ? 'border-white/10 bg-white/5 text-white hover:bg-white/10' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100')}>
-                                                        <ImagePlus size={14} />
-                                                        Pick video from gallery
-                                                    </button>
                                                 </div>
                                             )}
                                         />
@@ -1400,6 +1398,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                             disabled={isViewMode}
                                                             fileName={displayFileName}
                                                             compact
+                                                            onPickFromGallery={() => setIsGalleryOpen(true)}
                                                         />
                                                     ) : (
                                                         <div className={cn(
@@ -1428,10 +1427,6 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                             </div>
                                                         </div>
                                                     )}
-                                                    <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("w-full px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-2", isDarkMode ? 'border-white/10 bg-white/5 text-white hover:bg-white/10' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100')}>
-                                                        <ImagePlus size={14} />
-                                                        Pick document from gallery
-                                                    </button>
                                                 </div>
                                             )}
                                         />
@@ -1445,7 +1440,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                 </div>
                             )}
 
-                            {templateType === 'LOCATION' && (
+                            {/* {templateType === 'LOCATION' && (
                                 <div className="w-full">
                                     <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
                                         Location Header
@@ -1468,7 +1463,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     </div>
                                     <input type="hidden" value="LOCATION" {...register('headerValue')} />
                                 </div>
-                            )}
+                            )} */}
 
 
                         </div>
