@@ -1619,7 +1619,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             content={selectedTemplate?.description || ''}
                                             footer={selectedTemplate?.footerText || selectedTemplate?.originalDetails?.components?.find((c: any) => c.type === 'FOOTER')?.text || ''}
                                             headerType={(selectedTemplate?.type?.toUpperCase() as any) || 'NONE'}
-                                            headerValue={(formData as any).header_media_url || ''}
+                                            headerValue={(formData as any).header_media_url || (formData as any).media_handle || ''}
                                             variables={variableValues}
                                             fileName={headerFileName}
                                             ctaButtons={selectedTemplate?.allButtons

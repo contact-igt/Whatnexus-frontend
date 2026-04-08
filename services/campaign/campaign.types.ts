@@ -42,6 +42,8 @@ export interface CreateCampaignRequest {
         address: string;
     } | null;
     card_media_urls?: Record<number, string> | null;
+    media_asset_id?: string | null;
+    media_handle?: string | null;
 }
 
 export interface CampaignListParams {

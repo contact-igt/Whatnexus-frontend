@@ -1,7 +1,7 @@
 "use client";
 
 import { billingApiData } from "@/services/billing";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { BillingHeader } from "./billingHeader";
@@ -18,7 +18,7 @@ import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useGetBillingModeQuery, useGetWalletBalanceQuery } from "@/hooks/useBillingQuery";
 import { socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { WhatsAppConnectionPlaceholder } from "../whatsappConfiguration/whatsappConnectionPlaceholder";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,13 +49,18 @@ export const BillingView = () => {
 
   // On page load: show banner immediately if wallet is already zero or low
   useEffect(() => {
-    if (isPostpaid) return;
+    if (isPostpaid) {
+      setLowBalanceWarning(null);
+      return;
+    }
     const balance = walletBalanceRes?.data?.balance;
     if (typeof balance !== 'number') return;
     if (balance <= 0) {
       setLowBalanceWarning({ balance: 0, message: "Wallet balance is ₹0 — all prepaid operations are blocked. Recharge now to restore services." });
     } else if (balance < 10) {
       setLowBalanceWarning({ balance, message: `Low wallet balance (₹${balance.toFixed(2)}) — recharge soon to avoid service interruption.` });
+    } else {
+      setLowBalanceWarning(null);
     }
   }, [walletBalanceRes?.data?.balance, isPostpaid]);
 
@@ -274,6 +279,7 @@ export const BillingView = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       toast.success("Billing report exported successfully");
     } catch (err) {
@@ -471,8 +477,6 @@ export const BillingView = () => {
               <BillingWallet
                 isDarkMode={isDarkMode}
                 onRecharge={() => setIsRechargeModalOpen(true)}
-                startDate={startDate}
-                endDate={endDate}
                 billingMode={billingMode as 'prepaid' | 'postpaid'}
               />
             </motion.div>

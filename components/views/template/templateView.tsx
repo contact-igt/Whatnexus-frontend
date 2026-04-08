@@ -247,6 +247,8 @@ export const TemplateView = () => {
             status: selectedTemplateData.status,
             headerType: derivedHeaderType as HeaderType,
             headerValue: derivedHeaderValue,
+            headerMediaAssetId: selectedTemplateData.media_asset_id || undefined,
+            headerMediaHandle: selectedTemplateData.media_handle || undefined,
 
             // Handle Content (Body)
             content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),

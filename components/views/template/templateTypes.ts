@@ -57,6 +57,8 @@ export interface Template {
     ctaButtons?: CTAButton[];
     quickReplies?: string[];
     components?: any[];
+    media_asset_id?: string;
+    media_handle?: string;
     created_at: string;
     updated_at?: string;
 }
@@ -77,6 +79,9 @@ export interface TemplateFormData {
     quickReplies: string[];
     carouselCards?: CarouselCard[];
     carouselMediaType?: 'IMAGE' | 'VIDEO';
+    headerMediaAssetId?: string;
+    headerMediaHandle?: string;
+    headerMediaFileName?: string;
     status?: TemplateStatus; // Passed in edit mode to enforce Meta edit limitations
 }
 

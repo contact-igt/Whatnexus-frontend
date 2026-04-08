@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Eye, EyeOff, Loader2, CheckCircle2, Shield, Phone, MessageCircle, Key, Edit, XCircle, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, CheckCircle2, Shield, Phone, MessageCircle, Key, Edit, XCircle, Trash2, Building2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
@@ -33,6 +33,7 @@ export const WhatsappConnectionList = ({
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showAccessToken, setShowAccessToken] = useState<Record<string, boolean>>({});
     const [editedTokens, setEditedTokens] = useState<Record<string, string>>({});
+    const [editedAppIds, setEditedAppIds] = useState<Record<string, string>>({});
     const isEditing = editingId === WhatsAppConnectionData.data.id;
     const isActive = WhatsAppConnectionData.data.status === "active";
     // Toggle is disabled if:
@@ -49,6 +50,7 @@ export const WhatsappConnectionList = ({
     const handleEditMode = (connection: any) => {
         setEditingId(connection.id);
         setEditedTokens(prev => ({ ...prev, [connection.id]: connection.access_token }));
+        setEditedAppIds(prev => ({ ...prev, [connection.id]: connection.app_id || '' }));
     };
 
     const handleCancelEdit = (id: string) => {
@@ -58,12 +60,18 @@ export const WhatsappConnectionList = ({
             delete newTokens[id];
             return newTokens;
         });
+        setEditedAppIds(prev => {
+            const newAppIds = { ...prev };
+            delete newAppIds[id];
+            return newAppIds;
+        });
     };
 
     const handleSave = (connection: any) => {
         const updatedConnection = {
             ...connection,
-            access_token: editedTokens[connection.id] || connection.access_token
+            access_token: editedTokens[connection.id] || connection.access_token,
+            app_id: editedAppIds[connection.id] !== undefined ? editedAppIds[connection.id] : connection.app_id
         };
         onSaveConfiguration(updatedConnection);
         setEditingId(null);
@@ -167,6 +175,22 @@ export const WhatsappConnectionList = ({
                             value={WhatsAppConnectionData.data.whatsapp_number || ''}
                             disabled
                             placeholder="WhatsApp Number"
+                        />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <Input
+                            isDarkMode={isDarkMode}
+                            label="Meta App ID"
+                            icon={Building2}
+                            value={isEditing ? (editedAppIds[WhatsAppConnectionData.data.id] || '') : (WhatsAppConnectionData.data.app_id || '')}
+                            onChange={(e) => {
+                                if (isEditing) {
+                                    setEditedAppIds(prev => ({ ...prev, [WhatsAppConnectionData.data.id]: e.target.value }));
+                                }
+                            }}
+                            disabled={!isEditing}
+                            placeholder="Meta App ID (Optional)"
                         />
                     </div>
 
