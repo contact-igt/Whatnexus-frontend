@@ -7,6 +7,7 @@ import type {
     CampaignDetailsParams,
     CampaignDetailsResponse,
     ExecuteCampaignResponse,
+    CampaignStatsResponse,
 } from "./campaign.types";
 
 /**
@@ -42,7 +43,7 @@ export class CampaignService {
         try {
             const response = await _axios(
                 "get",
-                "/whatsapp/whatsapp-campaign/list",
+                "/whatsapp/whatsapp-campaign",
                 undefined,
                 "application/json",
                 params
@@ -77,6 +78,14 @@ export class CampaignService {
             console.error("Error fetching campaign details:", error);
             throw error;
         }
+    };
+
+    getCampaignStats = async (campaignId: string): Promise<CampaignStatsResponse> => {
+        const response = await _axios(
+            "get",
+            `/whatsapp/whatsapp-campaign/${campaignId}/stats`,
+        );
+        return response;
     };
 
     /**

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin, Video } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin, Video, Eye } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -22,6 +22,7 @@ import { CarouselCard } from '@/components/views/template/templateTypes';
 import { FileUpload } from '@/components/ui/fileUpload';
 import { GalleryPicker } from '@/components/gallery/GalleryPicker';
 import { MediaAsset } from '@/services/gallery/galleryApi';
+import { MediaAssetPreviewModal } from '@/components/gallery/MediaAssetPreviewModal';
 
 interface CreateCampaignModalProps {
     isOpen: boolean;
@@ -47,6 +48,8 @@ interface FormData {
         address: string;
     } | null;
     header_media_url?: string | null;
+    media_asset_id?: string | null;
+    media_handle?: string | null;
     card_media_urls?: Record<number, string> | null;
 }
 
@@ -71,6 +74,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             name: '',
             address: ''
         },
+        media_asset_id: null,
+        media_handle: null,
         card_media_urls: {}
     });
 
@@ -98,15 +103,26 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const [galleryUploadType, setGalleryUploadType] = useState<'header' | 'card_media'>('header');
     const [galleryCardIdx, setGalleryCardIdx] = useState<number | null>(null);
+    const [selectedGalleryHeaderAsset, setSelectedGalleryHeaderAsset] = useState<MediaAsset | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     const handleGallerySelect = (asset: MediaAsset) => {
         if (galleryUploadType === 'header') {
-            setFormData(prev => ({ ...prev, header_media_url: asset.media_handle || asset.media_url }));
+            setFormData(prev => ({
+                ...prev,
+                header_media_url: asset.preview_url || asset.media_url || asset.url || null,
+                media_handle: asset.media_handle || null,
+                media_asset_id: asset.media_asset_id || String(asset.id)
+            }));
+            setSelectedGalleryHeaderAsset(asset);
             setHeaderFileName(asset.file_name);
         } else if (galleryUploadType === 'card_media' && galleryCardIdx !== null) {
             setFormData(prev => ({
                 ...prev,
-                card_media_urls: { ...(prev.card_media_urls || {}), [galleryCardIdx]: asset.media_handle || asset.media_url }
+                card_media_urls: {
+                    ...(prev.card_media_urls || {}),
+                    [galleryCardIdx]: asset.preview_url || asset.media_url || asset.url || ''
+                }
             }));
             setCardFileNames(prev => ({ ...prev, [galleryCardIdx]: asset.file_name }));
         }
@@ -136,7 +152,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
         try {
             const result = await campaignService.uploadMedia(file, headerFormat as any);
-            setFormData(prev => ({ ...prev, header_media_url: result.url }));
+            setFormData(prev => ({
+                ...prev,
+                header_media_url: result.url,
+                media_handle: null,
+                media_asset_id: null
+            }));
+            setSelectedGalleryHeaderAsset(null);
         } catch (err: any) {
             const errorMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || 'Failed to upload media';
             setError(errorMsg);
@@ -299,7 +321,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 }
 
                 // Validate Media Header
-                if (isMediaType(selectedTemplate?.type) && !(formData as any).header_media_url) {
+                if (isMediaType(selectedTemplate?.type) && !(formData as any).header_media_url && !(formData as any).media_handle) {
                     setError(`Please provide or upload a ${isDocType(selectedTemplate?.type) ? 'document' : selectedTemplate?.type} for the header`);
                     return false;
                 }
@@ -407,7 +429,15 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     };
 
     const handleTemplateSelect = (template: ProcessedTemplate) => {
-        setFormData(prev => ({ ...prev, template_id: template.id }));
+        setFormData(prev => ({
+            ...prev,
+            template_id: template.id,
+            header_media_url: null,
+            media_handle: null,
+            media_asset_id: null,
+            card_media_urls: {}
+        }));
+        setSelectedGalleryHeaderAsset(null);
         setTemplateVariableCount(template.variables);
         setSelectedTemplate(template);
 
@@ -522,6 +552,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     : null,
                 variable_values: variableValues, // Kept for reference, though backend uses audience_data
                 header_media_url: formData.header_media_url || null,
+                media_handle: formData.media_handle || null,
+                media_asset_id: formData.media_asset_id || null,
                 header_file_name: headerFileName || null,
                 location_params: selectedTemplate?.type === 'location' ? formData.location_params : null,
                 card_media_urls: selectedTemplate?.type === 'carousel' ? formData.card_media_urls : null,
@@ -1025,8 +1057,15 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 uploadedUrl={formData.header_media_url || ''}
                                                 onFileSelected={handleHeaderFileUpload}
                                                 onRemove={() => {
-                                                    setFormData(prev => ({ ...prev, header_media_url: '' }));
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        header_media_url: '',
+                                                        media_handle: null,
+                                                        media_asset_id: null
+                                                    }));
                                                     setHeaderFileName(null);
+                                                    setSelectedGalleryHeaderAsset(null);
+                                                    setIsPreviewOpen(false);
                                                 }}
                                                 uploadType={getUploadType(selectedTemplate.type)}
                                                 isUploading={isUploading}
@@ -1038,8 +1077,23 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 }}
                                             />
                                             <p className={cn("text-[10px] mt-2 opacity-60", isDarkMode ? 'text-white' : 'text-slate-500')}>
-                                                Upload your {getUploadType(selectedTemplate.type)} file (max 20MB) to be sent as the message header
+                                                Select a {getUploadType(selectedTemplate.type)} from Gallery or upload a new file (max 20MB) for the message header
                                             </p>
+                                            {selectedGalleryHeaderAsset && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsPreviewOpen(true)}
+                                                    className={cn(
+                                                        "mt-2 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2",
+                                                        isDarkMode
+                                                            ? 'bg-white/10 text-white hover:bg-white/15'
+                                                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                                    )}
+                                                >
+                                                    <Eye size={14} />
+                                                    Preview Selected Media
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1623,7 +1677,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             </span>
                                         </div>
                                     )}
-                                    {formData.header_media_url && isMediaType(selectedTemplate?.type) && (
+                                    {(formData.header_media_url || formData.media_handle) && isMediaType(selectedTemplate?.type) && (
                                         <div className="flex justify-between">
                                             <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Media:</span>
                                             <span className={cn("text-sm font-semibold text-emerald-500")}>
@@ -1805,12 +1859,17 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 isOpen={isGalleryOpen}
                 onClose={() => setIsGalleryOpen(false)}
                 onSelect={handleGallerySelect}
-                approvedOnly={false}
+                approvedOnly={true}
                 fileType={
                     galleryUploadType === 'header'
                         ? (selectedTemplate?.type === 'image' ? 'image' : selectedTemplate?.type === 'video' ? 'video' : selectedTemplate?.type === 'document' ? 'document' : 'all')
                         : 'all'
                 }
+            />
+            <MediaAssetPreviewModal
+                isOpen={isPreviewOpen && !!selectedGalleryHeaderAsset}
+                asset={selectedGalleryHeaderAsset}
+                onClose={() => setIsPreviewOpen(false)}
             />
         </div>
     );

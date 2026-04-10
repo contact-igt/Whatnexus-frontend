@@ -130,8 +130,7 @@ export const TemplateView = () => {
     };
 
     const handleView = (template: any) => {
-        setEditTemplateById(template?.template_id);
-        setViewMode('view');
+        setPreviewTemplate(template);
     };
 
     const handleClosePreview = () => {
@@ -340,7 +339,6 @@ export const TemplateView = () => {
     // Render based on view mode
     if (viewMode === 'create' || viewMode === 'edit' || viewMode === 'view') {
 
-        console.log("initialData1", initialData)
         return (
             <TemplateFormPage
                 templateId={selectedTemplateData?.template_id}

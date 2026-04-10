@@ -9,9 +9,11 @@ export interface MediaAsset {
   mime_type: string;
   file_size: number;
   media_handle: string;
+  preview_url: string | null;
   tags: string[];
   folder: string;
   is_approved: boolean;
+  is_deleted: boolean;
   templates_used: string[];
   campaigns_used: string[];
   uploaded_by: string;
@@ -36,6 +38,7 @@ export interface UploadMediaResponse {
   data: {
     asset_id: string;
     media_handle: string;
+    preview_url: string | null;
     file_name: string;
     file_type: string;
     file_size: number;
@@ -73,7 +76,8 @@ export const uploadMedia = async (
   metadata?: {
     tags?: string[];
     folder?: string;
-  }
+  },
+  onProgress?: (percent: number) => void,
 ): Promise<UploadMediaResponse> => {
   const formData = new FormData();
   formData.append("file", file);
@@ -87,7 +91,20 @@ export const uploadMedia = async (
     formData.append("folder", metadata.folder);
   }
 
-  return await _axios("post", "/whatsapp/gallery/upload", formData, "multipart/form-data");
+  return await _axios(
+    "post",
+    "/whatsapp/gallery/upload",
+    formData,
+    "multipart/form-data",
+    undefined,
+    {
+      onUploadProgress: (event: ProgressEvent) => {
+        if (!event.total || !onProgress) return;
+        const percent = Math.round((event.loaded * 100) / event.total);
+        onProgress(percent);
+      },
+    },
+  );
 };
 
 /**
@@ -108,6 +125,22 @@ export const deleteMediaAsset = async (
   tenantId: string
 ): Promise<{ success: boolean; message: string }> => {
   return await _axios("delete", `/whatsapp/gallery/${assetId}`, null, "application/json", { tenant_id: tenantId });
+};
+
+/**
+ * Restore a soft-deleted media asset
+ */
+export const restoreMediaAsset = async (
+  assetId: string,
+  tenantId: string,
+): Promise<{ success: boolean; asset_id: string; file_name: string; preview_url: string | null; media_handle: string; message: string }> => {
+  return await _axios(
+    "post",
+    `/whatsapp/gallery/${assetId}/restore`,
+    null,
+    "application/json",
+    { tenant_id: tenantId },
+  );
 };
 
 /**

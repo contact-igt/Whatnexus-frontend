@@ -15,7 +15,8 @@ export const _axios = async (
   url?: string,
   body?: any,
   contentType: string = "application/json",
-  params?: any
+  params?: any,
+  requestConfig: any = {}
 ) => {
   const env = process.env.NEXT_PUBLIC_ENV;
   const APIURL =
@@ -68,6 +69,7 @@ export const _axios = async (
       url: endpoint,
       data: body,
       params: params,
+      ...requestConfig,
     });
     return res.data;
   } catch (err: any) {

@@ -6,7 +6,7 @@
 
 export type CampaignType = 'immediate' | 'scheduled' | 'broadcast' | 'api';
 export type RecipientSource = 'csv' | 'group' | 'manual';
-export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused';
+export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused' | 'cancelled';
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 
 // ============================================
@@ -50,6 +50,7 @@ export interface CampaignListParams {
     page?: number;
     limit?: number;
     status?: CampaignStatus;
+    search?: string;
 }
 
 export interface CampaignDetailsParams {
@@ -137,6 +138,19 @@ export interface CampaignDetails {
 export interface CampaignDetailsResponse {
     message: string;
     data: CampaignDetails;
+}
+
+export interface CampaignStatsResponse {
+    success: boolean;
+    message: string;
+    data: {
+        total_sent: number;
+        total_delivered: number;
+        total_opened: number;
+        total_clicked: number;
+        open_rate: number;
+        click_rate: number;
+    };
 }
 
 export interface ExecuteCampaignResponse {

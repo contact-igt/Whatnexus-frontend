@@ -25,7 +25,7 @@ interface CampaignDetailsViewProps {
 export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) => {
     const { isDarkMode } = useTheme();
     const router = useRouter();
-    const { campaign, recipients, loading, error, refetch, filters } = useCampaignDetails(campaignId);
+    const { campaign, recipients, loading, error, refetch, filters, stats } = useCampaignDetails(campaignId);
     const [executing, setExecuting] = useState(false);
 
     const statistics = campaign ? calculateCampaignStatistics(campaign) : null;
@@ -185,7 +185,7 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
 
             {/* Statistics Dashboard */}
             {statistics && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                     {/* Total Audience */}
                     <GlassCard isDarkMode={isDarkMode} className="p-6">
                         <div className="flex items-center justify-between mb-3">
@@ -263,6 +263,38 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                                 style={{ width: `${statistics.replied_percentage}%` }}
                             />
                         </div>
+                    </GlassCard>
+
+                    {/* Open Rate */}
+                    <GlassCard isDarkMode={isDarkMode} className="p-6 bg-cyan-500/5 border-cyan-500/20">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-cyan-500">
+                                Open Rate
+                            </span>
+                            <Eye size={16} className="text-cyan-500" />
+                        </div>
+                        <p className="text-3xl font-bold text-cyan-500">
+                            {stats?.open_rate ?? 0}%
+                        </p>
+                        <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                            {stats?.total_opened ?? 0} opened
+                        </p>
+                    </GlassCard>
+
+                    {/* Click Rate */}
+                    <GlassCard isDarkMode={isDarkMode} className="p-6 bg-amber-500/5 border-amber-500/20">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-amber-500">
+                                Click Rate
+                            </span>
+                            <MessageCircle size={16} className="text-amber-500" />
+                        </div>
+                        <p className="text-3xl font-bold text-amber-500">
+                            {stats?.click_rate ?? 0}%
+                        </p>
+                        <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                            {stats?.total_clicked ?? 0} clicked
+                        </p>
                     </GlassCard>
                 </div>
             )}
