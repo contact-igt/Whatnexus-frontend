@@ -32,7 +32,7 @@ export const WalletAnnouncementBar = () => {
             {/* ── Full-width announcement bar ─────────────────────────────── */}
             <div
                 className={cn(
-                    "relative w-full flex items-center justify-center gap-4 px-6 py-2.5 border-b shrink-0 overflow-hidden",
+                    "relative z-100     w-full flex items-center justify-center gap-4 px-6 py-2.5 border-b shrink-0 overflow-hidden",
                     isDarkMode
                         ? isZero
                             ? "bg-red-500/10 border-red-500/20"

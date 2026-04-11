@@ -1,7 +1,10 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { ImageIcon, Plus, Search, RefreshCw, X, HardDrive, CheckCircle, Clock, Upload, Trash2, Eye, Grid3X3, List } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  ImageIcon, Search, RefreshCw, X, HardDrive, CheckCircle,
+  Clock, Upload, Grid3X3, List, FileText, Image as ImgIcon, Video,
+} from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -11,608 +14,565 @@ import { fetchMediaAssets, deleteMediaAsset, MediaAsset, uploadMedia } from '@/s
 import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
-import { MediaAssetPreviewModal } from '@/components/gallery/MediaAssetPreviewModal';
+import { MediaPreviewDrawer } from '@/components/gallery/MediaPreviewDrawer';
+import { GalleryGridCard } from '@/components/gallery/GalleryGridCard';
+import { GalleryListRow, GalleryListHeader } from '@/components/gallery/GalleryListRow';
+import { GridSkeletons, ListSkeletons } from '@/components/gallery/GallerySkeletons';
+import { formatFileSize } from '@/components/gallery/types';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type TabType = 'all' | 'image' | 'video' | 'document' | 'approved' | 'pending';
+type ViewMode = 'grid' | 'list';
+
+const TABS: { id: TabType; label: string }[] = [
+  { id: 'all',      label: 'All' },
+  { id: 'image',    label: 'Images' },
+  { id: 'video',    label: 'Videos' },
+  { id: 'document', label: 'Documents' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'pending',  label: 'Pending' },
+];
 
 const ACCEPTED_TYPES = [
-    "image/jpeg", "image/png", "image/webp",
-    "video/mp4", "video/3gpp",
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg", "image/png", "image/webp",
+  "video/mp4", "video/3gpp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ].join(",");
 
-const formatDate = (d: string) => {
-    if (!d || isNaN(new Date(d).getTime())) return 'Just now';
-    return new Date(d).toLocaleDateString('en-IN');
-};
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 
-const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-};
-// Single media card for the grid
-function MediaCard({
-    asset,
-    isDarkMode,
-    onDelete,
-    onPreview,
+function StatCard({
+  label, value, sub, icon, isDarkMode, onClick,
+  colorStyles,
 }: {
-    asset: MediaAsset;
-    isDarkMode: boolean;
-    onDelete: (asset: MediaAsset) => void;
-    onPreview: (asset: MediaAsset) => void;
+  label: string; value: string | number; sub: string;
+  icon: React.ReactNode; isDarkMode: boolean;
+  onClick?: () => void;
+  colorStyles?: { bg: string; border: string; text: string; fill?: string; progress?: number; };
 }) {
-    const typeEmoji: Record<string, string> = {
-        image: 'ðŸ–¼ï¸',
-        video: 'ðŸŽ¬',
-        document: 'ðŸ“„',
-    };
-
-    return (
-        <div className={cn(
-            "rounded-2xl border overflow-hidden flex flex-col cursor-pointer transition-all hover:border-white/20",
-            isDarkMode ? "border-white/10 bg-white/[0.03]" : "border-slate-200 bg-white"
+  return (
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
+      className={cn(onClick && "cursor-pointer")}
+    >
+      <GlassCard
+        isDarkMode={isDarkMode}
+        className={cn(
+          "p-6 transition-all",
+          onClick && "hover:scale-[1.02] active:scale-[0.99]",
+          colorStyles && isDarkMode ? cn(colorStyles.bg, colorStyles.border) : ""
         )}
-            onClick={() => onPreview(asset)}
-        >
-            {/* Thumbnail */}
-            <div
-                className={cn(
-                    "flex items-center justify-center text-4xl select-none",
-                    isDarkMode ? "bg-white/5" : "bg-slate-50"
-                )}
-                style={{ aspectRatio: '4/3', overflow: 'hidden' }}
-            >
-                {asset.file_type === 'image' && asset.preview_url ? (
-                    <img
-                        src={asset.preview_url}
-                        alt={asset.file_name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        onError={(e) => {
-                            const parent = e.currentTarget.parentElement as HTMLElement;
-                            e.currentTarget.style.display = 'none';
-                            parent.textContent = 'ðŸ–¼ï¸';
-                        }}
-                    />
-                ) : (
-                    typeEmoji[asset.file_type] || 'ðŸ“Ž'
-                )}
-            </div>
-
-            {/* Info */}
-            <div className="p-3 flex flex-col gap-1.5 flex-1">
-                <p
-                    className={cn("text-xs font-semibold truncate", isDarkMode ? "text-white" : "text-slate-900")}
-                    title={asset.file_name}
-                >
-                    {asset.file_name}
-                </p>
-                <div className="flex items-center justify-between gap-1">
-                    <span className={cn("text-[10px]", isDarkMode ? "text-white/40" : "text-slate-500")}>
-                        {formatFileSize(asset.file_size)}
-                    </span>
-                    <span className={cn(
-                        "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide",
-                        asset.is_approved
-                            ? 'bg-emerald-500/10 text-emerald-500'
-                            : 'bg-yellow-500/10 text-yellow-500'
-                    )}>
-                        {asset.is_approved ? 'Approved' : 'Pending'}
-                    </span>
-                </div>
-                <div className="flex items-center justify-between">
-                    <span className={cn("text-[10px]", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                        {formatDate(asset.created_at)}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onPreview(asset); }}
-                            title="View"
-                            style={{
-                                background: "transparent",
-                                border: "1px solid #333",
-                                borderRadius: 5,
-                                padding: "4px 8px",
-                                fontSize: 11,
-                                color: "#666",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.color = "#fff";
-                                e.currentTarget.style.borderColor = "#555";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.color = "#666";
-                                e.currentTarget.style.borderColor = "#333";
-                            }}
-                        >
-                            <Eye size={12} />
-                        </button>
-                        {!asset.is_approved && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(asset);
-                                }}
-                                className={cn(
-                                    "p-1.5 rounded-lg transition-all",
-                                    isDarkMode ? "text-red-400 hover:bg-red-500/10" : "text-red-500 hover:bg-red-50"
-                                )}
-                                title="Delete"
-                            >
-                                <Trash2 size={12} />
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
+      >
+        <div className="flex items-center justify-between mb-3">
+          <span className={cn(
+            "text-xs font-semibold uppercase tracking-wide",
+            colorStyles && isDarkMode ? colorStyles.text : (isDarkMode ? "text-white/40" : "text-slate-500")
+          )}>
+            {label}
+          </span>
+          <span className={cn(
+             colorStyles && isDarkMode ? colorStyles.text : (isDarkMode ? "text-white/40" : "text-slate-400")
+          )}>
+            {icon}
+          </span>
         </div>
-    );
+        <p className={cn(
+          "text-3xl font-bold",
+          colorStyles && isDarkMode ? colorStyles.text : (isDarkMode ? "text-white" : "text-slate-900")
+        )}>
+          {value}
+        </p>
+        <p className={cn("text-xs mt-1", isDarkMode ? "text-white/40" : "text-slate-500")}>
+          {sub}
+        </p>
+        {/* {colorStyles?.progress !== undefined && colorStyles?.fill && (
+          <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className={cn("h-full transition-all duration-500", colorStyles.fill)}
+              style={{ width: `${colorStyles.progress}%` }}
+            />
+          </div>
+        )} */}
+      </GlassCard>
+    </div>
+  );
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function GalleryPage() {
-    const { isDarkMode } = useTheme();
-    const [activeTab, setActiveTab] = useState<TabType>('all');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalAssets, setTotalAssets] = useState(0);
-    const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
-    const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
-    const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [isDragOver, setIsDragOver] = useState(false);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const { isDarkMode } = useTheme();
+  const tenantId       = useSelector((state: any) => state.auth?.user?.tenant_id);
 
-    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [activeTab,     setActiveTab]     = useState<TabType>('all');
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [debouncedQ,    setDebouncedQ]    = useState('');
+  const [mediaAssets,   setMediaAssets]   = useState<MediaAsset[]>([]);
+  const [loading,       setLoading]       = useState(false);
+  const [uploading,     setUploading]     = useState(false);
+  const [uploadProgress,setUploadProgress]= useState(0);
+  const [isDragOver,    setIsDragOver]    = useState(false);
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const [totalPages,    setTotalPages]    = useState(1);
+  const [totalAssets,   setTotalAssets]   = useState(0);
+  const [viewMode,      setViewMode]      = useState<ViewMode>('grid');
+  const [previewAsset,  setPreviewAsset]  = useState<MediaAsset | null>(null);
+  const [drawerOpen,    setDrawerOpen]    = useState(false);
+  const [confirmId,     setConfirmId]     = useState<string | null>(null);
 
-    const loadMediaAssets = async () => {
-        if (!tenantId) return;
+  const [globalStats,   setGlobalStats]   = useState({
+    totalAssets: 0,
+    images: 0,
+    videos: 0,
+    docs: 0,
+    approved: 0,
+    pending: 0,
+    totalSize: 0,
+  });
 
-        setLoading(true);
-        try {
-            const response = await fetchMediaAssets({
-                tenant_id: tenantId,
-                type: activeTab === 'all' || activeTab === 'approved' || activeTab === 'pending' ? undefined : activeTab,
-                search: searchQuery || undefined,
-                approved_only: activeTab === 'approved' ? true : undefined,
-                pending_only: activeTab === 'pending' ? true : undefined,
-                page: currentPage,
-                limit: 20,
-            });
+  // Debounce search
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQ(searchQuery), 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery]);
 
-            setMediaAssets(response.data);
-            setTotalPages(response.totalPages);
-            setTotalAssets(response.total);
-        } catch (error) {
-            console.error("Error loading media assets:", error);
-            toast.error("Failed to load media assets");
-        } finally {
-            setLoading(false);
-        }
-    };
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+  const loadAssets = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    try {
+      const res = await fetchMediaAssets({
+        tenant_id:    tenantId,
+        type:         ['all', 'approved', 'pending'].includes(activeTab) ? undefined : activeTab,
+        search:       debouncedQ || undefined,
+        approved_only: activeTab === 'approved' ? true : undefined,
+        pending_only:  activeTab === 'pending'  ? true : undefined,
+        page:         currentPage,
+        limit:        20,
+      });
+      setMediaAssets(res.data);
+      setTotalPages(res.totalPages);
+      setTotalAssets(res.total);
+    } catch {
+      toast.error("Failed to load media assets.");
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId, activeTab, debouncedQ, currentPage]);
 
-    useEffect(() => {
-        loadMediaAssets();
-    }, [activeTab, searchQuery, currentPage, tenantId]);
+  const loadGlobalStats = useCallback(async () => {
+    if (!tenantId) return;
+    try {
+      const res = await fetchMediaAssets({ tenant_id: tenantId, limit: 10000 });
+      const assets = res.data || [];
+      setGlobalStats({
+        totalAssets: res.total || assets.length,
+        images: assets.filter((a: any) => a.file_type === 'image').length,
+        videos: assets.filter((a: any) => a.file_type === 'video').length,
+        docs: assets.filter((a: any) => a.file_type === 'document').length,
+        approved: assets.filter((a: any) => a.is_approved).length,
+        pending: assets.filter((a: any) => !a.is_approved).length,
+        totalSize: assets.reduce((acc: number, a: any) => acc + (a.file_size || 0), 0)
+      });
+    } catch {
+      console.error("Failed to load global media stats");
+    }
+  }, [tenantId]);
 
-    const stats = useMemo(() => {
-        const total = totalAssets;
-        const approved = mediaAssets.filter(a => a.is_approved).length;
-        const pending = mediaAssets.filter(a => !a.is_approved).length;
-        const totalSize = mediaAssets.reduce((sum, a) => sum + a.file_size, 0);
+  useEffect(() => { loadAssets(); }, [loadAssets]);
+  useEffect(() => { loadGlobalStats(); }, [loadGlobalStats]);
 
-        const fmtSize = (bytes: number) => {
-            if (bytes < 1024) return bytes + " B";
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
-        };
+  // ── Upload ─────────────────────────────────────────────────────────────────
+  const uploadFile = async (file: File) => {
+    if (!file || !tenantId) return;
+    const mb = file.size / 1024 / 1024;
+    const kb = file.size / 1024;
+    if (file.type.startsWith('image/')) {
+      if (kb < 5)  { toast.error('Image too small. Min 5 KB.');  return; }
+      if (mb > 2)  { toast.error('Image too large. Max 2 MB.');  return; }
+    } else if (file.type.startsWith('video/')) {
+      if (kb < 10) { toast.error('Video too small. Min 10 KB.'); return; }
+      if (mb > 10) { toast.error('Video too large. Max 10 MB.'); return; }
+    } else {
+      if (kb < 1)  { toast.error('Doc too small. Min 1 KB.');    return; }
+      if (mb > 10) { toast.error('Doc too large. Max 10 MB.');   return; }
+    }
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      await uploadMedia(file, tenantId, { folder: 'root', tags: [] }, setUploadProgress);
+      toast.success('Upload successful!');
+      await loadAssets();
+      await loadGlobalStats();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Upload failed.');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
 
-        return { total, approved, pending, totalSize: fmtSize(totalSize) };
-    }, [mediaAssets, totalAssets]);
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  const deleteAsset = async (assetId: string) => {
+    if (!tenantId) return;
+    try {
+      await deleteMediaAsset(assetId, tenantId);
+      toast.success('Deleted successfully.');
+      await loadAssets();
+      await loadGlobalStats();
+      if (previewAsset?.media_asset_id === assetId || previewAsset?.id === assetId) {
+        setDrawerOpen(false);
+        setTimeout(() => setPreviewAsset(null), 300);
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Delete failed.';
+      const code = e?.response?.data?.error_code;
+      if (code === 'ASSET_IN_USE') {
+        toast.error(`Cannot delete: ${msg}`);
+      } else if (code === 'NOT_FOUND') {
+        toast.error('Asset not found. It may have already been deleted.');
+      } else {
+        toast.error(msg);
+      }
+    }
+  };
 
-    const tabs: { id: TabType; label: string }[] = [
-        { id: 'all',      label: 'All' },
-        { id: 'image',    label: 'Images' },
-        { id: 'video',    label: 'Videos' },
-        { id: 'document', label: 'Documents' },
-        { id: 'approved', label: 'Approved' },
-        { id: 'pending',  label: 'Pending' },
-    ];
+  const handleDeleteFromCard = async (assetId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmId(assetId);
+  };
 
-    const uploadSelectedFile = async (file: File, clearInput?: () => void) => {
-        if (!file || !tenantId) return;
+  const confirmDelete = async () => {
+    if (!confirmId) return;
+    await deleteAsset(confirmId);
+    setConfirmId(null);
+  };
 
-        const mb = file.size / 1024 / 1024;
-        const kb = file.size / 1024;
+  // ── Drawer ─────────────────────────────────────────────────────────────────
+  const openDrawer = (asset: MediaAsset) => {
+    setPreviewAsset(asset);
+    setDrawerOpen(true);
+  };
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setTimeout(() => setPreviewAsset(null), 300);
+  };
 
-        // Client-side validation before sending to server
-        if (file.type.startsWith('image/')) {
-            if (kb < 5)  { toast.error('Image too small. Minimum 5KB');  event.target.value = ''; return; }
-            if (mb > 2)  { toast.error('Image too large. Maximum 2MB');  event.target.value = ''; return; }
-        } else if (file.type.startsWith('video/')) {
-            if (kb < 10) { toast.error('Video too small. Minimum 10KB'); event.target.value = ''; return; }
-            if (mb > 10) { toast.error('Video too large. Maximum 10MB'); event.target.value = ''; return; }
-        } else {
-            if (kb < 1)  { toast.error('Document too small. Minimum 1KB');  event.target.value = ''; return; }
-            if (mb > 10) { toast.error('Document too large. Maximum 10MB'); event.target.value = ''; return; }
-        }
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <PageTransition>
+      <div className="h-full overflow-y-auto px-6 md:px-10 py-8 space-y-7 max-w-[1600px] mx-auto pb-32 no-scrollbar">
 
-        setUploading(true);
-        setUploadProgress(0);
-        try {
-            await uploadMedia(file, tenantId, { folder: "root", tags: [] }, setUploadProgress);
-            toast.success("Media uploaded successfully");
-            await loadMediaAssets();
-        } catch (error: any) {
-            console.error("Error uploading file:", error);
-            toast.error(error.response?.data?.message || "Failed to upload file");
-        } finally {
-            setUploading(false);
-            setUploadProgress(0);
-            clearInput?.();
-        }
-    };
-
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        await uploadSelectedFile(file as File, () => {
-            event.target.value = '';
-        });
-    };
-
-    const deleteAssetById = async (assetId: string) => {
-        if (!tenantId) return;
-        try {
-            await deleteMediaAsset(assetId, tenantId);
-            toast.success("Media deleted successfully");
-            await loadMediaAssets();
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to delete media");
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!selectedAssetId) return;
-        await deleteAssetById(selectedAssetId);
-        setIsConfirmationModalOpen(false);
-        setSelectedAssetId(null);
-    };
-
-    const openDeleteConfirmation = (id: string) => {
-        setSelectedAssetId(id);
-        setIsConfirmationModalOpen(true);
-    };
-
-    const handleDeleteClick = (asset: MediaAsset) => {
-        openDeleteConfirmation(asset.media_asset_id || String(asset.id));
-    };
-
-    return (
-        <PageTransition>
-            <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
-
-                {/* Header */}
-                <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                        <div className="flex items-center space-x-2 text-emerald-500">
-                            <ImageIcon size={16} className="animate-pulse" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Media Management</span>
-                        </div>
-                        <h1 className={cn("text-4xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                            Media Gallery
-                        </h1>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                        <label
-                            className={cn(
-                                "h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wide bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2 cursor-pointer border-2 border-dashed",
-                                isDragOver ? "border-emerald-300" : "border-transparent",
-                            )}
-                            onDragOver={(e) => {
-                                e.preventDefault();
-                                setIsDragOver(true);
-                            }}
-                            onDragLeave={() => setIsDragOver(false)}
-                            onDrop={async (e) => {
-                                e.preventDefault();
-                                setIsDragOver(false);
-                                const droppedFile = e.dataTransfer.files?.[0];
-                                await uploadSelectedFile(droppedFile as File);
-                            }}
-                        >
-                            <Upload size={16} />
-                            <span>{uploading ? 'Uploading...' : 'Upload Media'}</span>
-                            <input
-                                type="file"
-                                onChange={handleFileUpload}
-                                className="hidden"
-                                disabled={uploading}
-                                accept={ACCEPTED_TYPES}
-                            />
-                        </label>
-                        {uploading && (
-                            <div className="w-full max-w-xs">
-                                <div className={cn("h-1.5 rounded-full overflow-hidden", isDarkMode ? "bg-white/10" : "bg-slate-200")}>
-                                    <div
-                                        className="h-full bg-emerald-500 transition-all duration-300"
-                                        style={{ width: `${uploadProgress}%` }}
-                                    />
-                                </div>
-                                <p className={cn("text-[10px] mt-1 text-right", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                    {uploadProgress}%
-                                </p>
-                            </div>
-                        )}
-                        <p className={cn("text-[10px]", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                            ðŸ–¼ Images: JPEG/PNG/WebP Â· 5KBâ€“2MB &nbsp;|&nbsp; â–¶ Videos: MP4/3GP Â· 10KBâ€“10MB &nbsp;|&nbsp; ðŸ“„ Documents: PDF/Word Â· 1KBâ€“10MB
-                        </p>
-                    </div>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <GlassCard isDarkMode={isDarkMode} className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className={cn("p-3 rounded-xl", isDarkMode ? "bg-blue-500/10" : "bg-blue-100")}>
-                                <HardDrive className={cn("w-6 h-6", isDarkMode ? "text-blue-400" : "text-blue-600")} />
-                            </div>
-                            <div>
-                                <p className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-500")}>Total Assets</p>
-                                <p className={cn("text-[10px]", isDarkMode ? "text-white/25" : "text-slate-400")}>all pages</p>
-                                <p className={cn("text-2xl font-bold", isDarkMode ? "text-white" : "text-slate-900")}>{stats.total}</p>
-                            </div>
-                        </div>
-                    </GlassCard>
-
-                    <GlassCard isDarkMode={isDarkMode} className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className={cn("p-3 rounded-xl", isDarkMode ? "bg-emerald-500/10" : "bg-emerald-100")}>
-                                <CheckCircle className={cn("w-6 h-6", isDarkMode ? "text-emerald-400" : "text-emerald-600")} />
-                            </div>
-                            <div>
-                                <p className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-500")}>Approved</p>
-                                <p className={cn("text-[10px]", isDarkMode ? "text-white/25" : "text-slate-400")}>this page</p>
-                                <p className={cn("text-2xl font-bold", isDarkMode ? "text-white" : "text-slate-900")}>{stats.approved}</p>
-                            </div>
-                        </div>
-                    </GlassCard>
-
-                    <GlassCard isDarkMode={isDarkMode} className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className={cn("p-3 rounded-xl", isDarkMode ? "bg-yellow-500/10" : "bg-yellow-100")}>
-                                <Clock className={cn("w-6 h-6", isDarkMode ? "text-yellow-400" : "text-yellow-600")} />
-                            </div>
-                            <div>
-                                <p className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-500")}>Pending</p>
-                                <p className={cn("text-[10px]", isDarkMode ? "text-white/25" : "text-slate-400")}>this page</p>
-                                <p className={cn("text-2xl font-bold", isDarkMode ? "text-white" : "text-slate-900")}>{stats.pending}</p>
-                            </div>
-                        </div>
-                    </GlassCard>
-
-                    <GlassCard isDarkMode={isDarkMode} className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className={cn("p-3 rounded-xl", isDarkMode ? "bg-purple-500/10" : "bg-purple-100")}>
-                                <HardDrive className={cn("w-6 h-6", isDarkMode ? "text-purple-400" : "text-purple-600")} />
-                            </div>
-                            <div>
-                                <p className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-500")}>Total Size</p>
-                                <p className={cn("text-[10px]", isDarkMode ? "text-white/25" : "text-slate-400")}>this page</p>
-                                <p className={cn("text-2xl font-bold", isDarkMode ? "text-white" : "text-slate-900")}>{stats.totalSize}</p>
-                            </div>
-                        </div>
-                    </GlassCard>
-                </div>
-
-                {/* Search Bar */}
-                <div className="flex gap-4">
-                    <div className="flex-1 relative">
-                        <Search size={18} className={cn("absolute left-4 top-1/2 -translate-y-1/2", isDarkMode ? 'text-white/30' : 'text-slate-400')} />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by filename or tags"
-                            className={cn(
-                                "w-full pl-12 pr-12 py-3 rounded-xl border text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all",
-                                isDarkMode
-                                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
-                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
-                            )}
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className={cn(
-                                    "absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all hover:bg-white/10",
-                                    isDarkMode ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-700'
-                                )}
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
-                    </div>
-                    <button
-                        onClick={() => loadMediaAssets()}
-                        disabled={loading}
-                        className={cn(
-                            "px-6 py-3 rounded-xl border text-sm font-semibold transition-all duration-200 flex items-center gap-2",
-                            isDarkMode
-                                ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50',
-                            loading && 'opacity-50 cursor-not-allowed'
-                        )}
-                    >
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                        Refresh
-                    </button>
-                    <div className={cn("flex items-center rounded-xl border px-2", isDarkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white")}>
-                        <button
-                            type="button"
-                            onClick={() => setViewMode('grid')}
-                            className={cn("p-2 rounded-lg", viewMode === 'grid' ? "text-emerald-500" : (isDarkMode ? "text-white/50" : "text-slate-500"))}
-                            title="Grid view"
-                        >
-                            <Grid3X3 size={16} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setViewMode('list')}
-                            className={cn("p-2 rounded-lg", viewMode === 'list' ? "text-emerald-500" : (isDarkMode ? "text-white/50" : "text-slate-500"))}
-                            title="List view"
-                        >
-                            <List size={16} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex gap-2 border-b border-white/5 overflow-x-auto no-scrollbar">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
-                            className={cn(
-                                "px-4 py-3 text-sm font-semibold transition-all duration-200 border-b-2 whitespace-nowrap",
-                                activeTab === tab.id
-                                    ? 'border-emerald-500 text-emerald-500'
-                                    : isDarkMode
-                                        ? 'border-transparent text-white/50 hover:text-white/80'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                            )}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Media Grid */}
-                <GlassCard isDarkMode={isDarkMode} className="p-6">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-20">
-                            <RefreshCw size={24} className={cn("animate-spin", isDarkMode ? "text-white/30" : "text-slate-400")} />
-                        </div>
-                    ) : mediaAssets.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className={cn("w-16 h-16 rounded-full flex items-center justify-center", isDarkMode ? 'bg-white/5' : 'bg-slate-100')}>
-                                <ImageIcon size={28} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
-                            </div>
-                            <div className="space-y-2 mt-4">
-                                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                    {searchQuery ? 'No media found matching your search' : 'No media assets yet'}
-                                </p>
-                                <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                    {searchQuery ? 'Try adjusting your search terms' : 'Upload your first media file to get started'}
-                                </p>
-                            </div>
-                            {!searchQuery && (
-                                <label className="mt-4 px-4 py-2 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-all flex items-center gap-2 cursor-pointer">
-                                    <Plus size={14} />
-                                    Upload Media
-                                    <input
-                                        type="file"
-                                        onChange={handleFileUpload}
-                                        className="hidden"
-                                        accept={ACCEPTED_TYPES}
-                                    />
-                                </label>
-                            )}
-                        </div>
-                    ) : viewMode === 'grid' ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-                            {mediaAssets.map((asset) => (
-                                <MediaCard
-                                    key={asset.id}
-                                    asset={asset}
-                                    isDarkMode={isDarkMode}
-                                    onDelete={handleDeleteClick}
-                                    onPreview={setPreviewAsset}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {mediaAssets.map((asset) => (
-                                <div
-                                    key={asset.id}
-                                    className={cn(
-                                        "rounded-xl border p-3 flex items-center justify-between gap-3",
-                                        isDarkMode ? "border-white/10 bg-white/[0.03]" : "border-slate-200 bg-white",
-                                    )}
-                                >
-                                    <div className="min-w-0">
-                                        <p className={cn("text-sm font-semibold truncate", isDarkMode ? "text-white" : "text-slate-900")}>{asset.file_name}</p>
-                                        <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                            {asset.file_type.toUpperCase()} • {formatFileSize(asset.file_size)} • {formatDate(asset.created_at)}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setPreviewAsset(asset)}
-                                            className={cn("text-xs px-2 py-1 rounded border", isDarkMode ? "border-white/20 text-white/70" : "border-slate-300 text-slate-700")}
-                                        >
-                                            View
-                                        </button>
-                                        {!asset.is_approved && (
-                                            <button
-                                                onClick={() => handleDeleteClick(asset)}
-                                                className={cn("text-xs px-2 py-1 rounded border border-red-400 text-red-500")}
-                                            >
-                                                Delete
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {!loading && totalPages > 1 && (
-                        <div className="mt-6 pt-4 border-t border-white/5">
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={setCurrentPage}
-                                totalItems={totalAssets}
-                                isDarkMode={isDarkMode}
-                            />
-                        </div>
-                    )}
-                </GlassCard>
-
-                {/* Delete Confirmation Modal */}
-                <ConfirmationModal
-                    isOpen={isConfirmationModalOpen}
-                    onClose={() => setIsConfirmationModalOpen(false)}
-                    onConfirm={handleDelete}
-                    title="Delete Media Asset"
-                    message="Are you sure you want to delete this media asset? This action cannot be undone."
-                    confirmText="Delete"
-                    variant="danger"
-                    isDarkMode={isDarkMode}
-                />
-
-                <MediaAssetPreviewModal
-                    isOpen={!!previewAsset}
-                    asset={previewAsset}
-                    onClose={() => setPreviewAsset(null)}
-                    onDelete={deleteAssetById}
-                />
+        {/* ── Page Header ──────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4 justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-emerald-500">
+              <ImageIcon size={15} className="animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Media Management</span>
             </div>
-        </PageTransition>
-    );
+            <h1 className={cn("text-3xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>
+              Media Library
+            </h1>
+            <p className={cn("text-sm", isDarkMode ? 'text-white/35' : 'text-slate-500')}>
+              {totalAssets > 0 ? `${totalAssets.toLocaleString()} assets` : 'No assets yet'} · Manage and organize your media files
+            </p>
+          </div>
+
+          {/* Upload CTA */}
+          <label
+            className={cn(
+              "inline-flex h-11 items-center gap-2 px-5 rounded-xl font-bold text-xs uppercase tracking-wide",
+              "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 cursor-pointer transition-all",
+              "hover:bg-emerald-500 active:scale-95 border-2 border-dashed",
+              isDragOver ? "border-emerald-300 scale-[1.02]" : "border-transparent",
+              uploading && "opacity-60 pointer-events-none"
+            )}
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={async (e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) await uploadFile(f);
+            }}
+          >
+            <Upload size={14} />
+            <span>{uploading ? `Uploading ${uploadProgress}%…` : 'Upload Media'}</span>
+            <input
+              type="file"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }}
+              className="hidden"
+              disabled={uploading}
+              accept={ACCEPTED_TYPES}
+            />
+          </label>
+        </div>
+
+        {/* ── Upload Progress ────────────────────────────────────────────────── */}
+        {uploading && (
+          <div className={cn("h-1.5 rounded-full overflow-hidden", isDarkMode ? "bg-white/10" : "bg-slate-200")}>
+            <div className="h-full bg-emerald-500 transition-all duration-300 rounded-full" style={{ width: `${uploadProgress}%` }} />
+          </div>
+        )}
+
+        {/* ── Stats Cards ───────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatCard
+            label="Total" value={globalStats.totalAssets} sub="library"
+            icon={<HardDrive className="w-5 h-5" />}
+            isDarkMode={isDarkMode}
+            onClick={() => { setActiveTab('all'); setCurrentPage(1); }}
+          />
+
+          <StatCard
+            label="Images" value={globalStats.images} sub="library"
+            icon={<ImgIcon className="w-5 h-5" />}
+            isDarkMode={isDarkMode}
+            colorStyles={{ bg: "bg-sky-500/5", border: "border-sky-500/20", text: "text-sky-500" }}
+            onClick={() => { setActiveTab('image'); setCurrentPage(1); }}
+          />
+
+          <StatCard
+            label="Videos" value={globalStats.videos} sub="library"
+            icon={<Video className="w-5 h-5" />}
+            isDarkMode={isDarkMode}
+            colorStyles={{ bg: "bg-violet-500/5", border: "border-violet-500/20", text: "text-violet-500" }}
+            onClick={() => { setActiveTab('video'); setCurrentPage(1); }}
+          />
+
+          <StatCard
+            label="Documents" value={globalStats.docs} sub="library"
+            icon={<FileText className="w-5 h-5" />}
+            isDarkMode={isDarkMode}
+            colorStyles={{ bg: "bg-amber-500/5", border: "border-amber-500/20", text: "text-amber-500" }}
+            onClick={() => { setActiveTab('document'); setCurrentPage(1); }}
+          />
+
+          <StatCard
+            label="Approved" value={globalStats.approved} sub="library"
+            icon={<CheckCircle className="w-5 h-5" />}
+            isDarkMode={isDarkMode}
+            colorStyles={{ bg: "bg-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-500", fill: "bg-emerald-500", progress: globalStats.totalAssets ? Math.round((globalStats.approved / globalStats.totalAssets) * 100) : 0 }}
+            onClick={() => { setActiveTab('approved'); setCurrentPage(1); }}
+          />
+
+          <StatCard
+            label="Storage" value={formatFileSize(globalStats.totalSize)} sub="library"
+            icon={<HardDrive className="w-5 h-5" />}
+            isDarkMode={isDarkMode}
+            colorStyles={{ bg: "bg-purple-500/5", border: "border-purple-500/20", text: "text-purple-500" }}
+          />
+        </div>
+
+        {/* ── Search + Refresh + View Toggle ────────────────────────────────── */}
+        <div className="flex gap-2.5 items-center">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search size={15} className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none", isDarkMode ? 'text-white/25' : 'text-slate-400')} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by filename or tags…"
+              className={cn(
+                "w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm outline-none transition-all duration-200",
+                isDarkMode
+                  ? 'bg-white/4 border-white/8 text-white placeholder:text-white/25 focus:border-emerald-500/50 focus:bg-white/6 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.08)]'
+                  : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-emerald-400/60 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.08)]'
+              )}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className={cn("absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center transition-all", isDarkMode ? 'text-white/30 hover:text-white/70 hover:bg-white/10' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100')}
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+
+          {/* Refresh */}
+          <button
+            onClick={loadAssets}
+            disabled={loading}
+            className={cn(
+              "h-[42px] px-4 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2",
+              isDarkMode
+                ? 'bg-white/4 border-white/8 text-white/60 hover:bg-white/8 hover:text-white/90'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+              loading && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline text-xs font-bold tracking-wide">Refresh</span>
+          </button>
+
+          {/* View mode pill toggle */}
+          <div className={cn(
+            "flex items-center rounded-xl border p-1 gap-0.5",
+            isDarkMode ? "border-white/8 bg-white/[0.03]" : "border-slate-200 bg-slate-50"
+          )}>
+            {(['grid', 'list'] as ViewMode[]).map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setViewMode(v)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg transition-all duration-150 flex items-center gap-1.5 text-xs font-bold",
+                  viewMode === v
+                    ? isDarkMode
+                      ? "bg-emerald-500/20 text-emerald-400 shadow-sm"
+                      : "bg-white text-emerald-600 shadow-sm border border-slate-200"
+                    : isDarkMode
+                      ? "text-white/35 hover:text-white/65"
+                      : "text-slate-400 hover:text-slate-600"
+                )}
+                title={v === 'grid' ? 'Grid view' : 'List view'}
+              >
+                {v === 'grid' ? <Grid3X3 size={13} /> : <List size={13} />}
+                <span className="hidden sm:inline capitalize">{v}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Tabs ──────────────────────────────────────────────────────────── */}
+        <div className={cn("flex gap-1 border-b overflow-x-auto no-scrollbar", isDarkMode ? "border-white/[0.07]" : "border-slate-200")}>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
+              className={cn(
+                "px-4 py-2.5 text-sm font-semibold transition-all whitespace-nowrap border-b-2 -mb-px",
+                activeTab === tab.id
+                  ? 'border-emerald-500 text-emerald-500'
+                  : isDarkMode
+                    ? 'border-transparent text-white/45 hover:text-white/80'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+              )}
+            >
+              {tab.label}
+              {tab.id === 'approved' && globalStats.approved > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500/15 text-emerald-500 font-bold">{globalStats.approved}</span>
+              )}
+              {tab.id === 'pending' && globalStats.pending > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-amber-500/15 text-amber-500 font-bold">{globalStats.pending}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Gallery Grid / List ────────────────────────────────────────────── */}
+        <GlassCard isDarkMode={isDarkMode} className="p-5">
+          {/* Loading */}
+          {loading && (viewMode === 'grid'
+            ? <GridSkeletons isDarkMode={isDarkMode} count={8} />
+            : <ListSkeletons isDarkMode={isDarkMode} count={6} />
+          )}
+
+          {/* Empty */}
+          {!loading && mediaAssets.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+              <div className={cn("w-20 h-20 rounded-2xl flex items-center justify-center", isDarkMode ? "bg-white/[0.04] border border-white/[0.07]" : "bg-slate-100 border border-slate-200")}>
+                <ImageIcon className={cn("w-9 h-9", isDarkMode ? "text-white/15" : "text-slate-300")} strokeWidth={1} />
+              </div>
+              <div className="space-y-1">
+                <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white/60' : 'text-slate-700')}>
+                  {searchQuery ? 'No results found' : 'No assets yet'}
+                </p>
+                <p className={cn("text-xs", isDarkMode ? 'text-white/35' : 'text-slate-500')}>
+                  {searchQuery ? 'Try a different search term.' : 'Upload your first media file to get started.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Grid */}
+          {!loading && mediaAssets.length > 0 && viewMode === 'grid' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {mediaAssets.map(asset => (
+                <GalleryGridCard
+                  key={asset.id}
+                  asset={asset}
+                  isSelected={false}
+                  isDisabled={!asset.is_approved}
+                  isDarkMode={isDarkMode}
+                  onSelect={openDrawer}
+                  onPreview={openDrawer}
+                  onDelete={handleDeleteFromCard}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* List */}
+          {!loading && mediaAssets.length > 0 && viewMode === 'list' && (
+            <div>
+              <GalleryListHeader isDarkMode={isDarkMode} showCheckbox={false} />
+              <div className="space-y-1">
+                {mediaAssets.map(asset => (
+                  <GalleryListRow
+                    key={asset.id}
+                    asset={asset}
+                    isSelected={false}
+                    isDisabled={!asset.is_approved}
+                    isDarkMode={isDarkMode}
+                    showCheckbox={false}
+                    onSelect={openDrawer}
+                    onPreview={openDrawer}
+                    onDelete={handleDeleteFromCard}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <div className={cn("mt-5 pt-4 border-t", isDarkMode ? "border-white/[0.07]" : "border-slate-200")}>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={totalAssets}
+                itemsPerPage={20}
+                isDarkMode={isDarkMode}
+              />
+            </div>
+          )}
+        </GlassCard>
+
+        {/* ── Confirmation Modal ─────────────────────────────────────────────── */}
+        <ConfirmationModal
+          isOpen={!!confirmId}
+          onClose={() => setConfirmId(null)}
+          onConfirm={confirmDelete}
+          title="Delete Media Asset"
+          message="Are you sure you want to delete this asset? This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+          isDarkMode={isDarkMode}
+        />
+
+        {/* ── Preview Drawer ─────────────────────────────────────────────────── */}
+        <MediaPreviewDrawer
+          asset={previewAsset}
+          isOpen={drawerOpen}
+          isDarkMode={isDarkMode}
+          fromPicker={false}
+          onClose={closeDrawer}
+          onDelete={deleteAsset}
+        />
+      </div>
+    </PageTransition>
+  );
 }
-
-
-

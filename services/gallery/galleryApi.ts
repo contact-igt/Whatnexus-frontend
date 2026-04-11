@@ -16,9 +16,10 @@ export interface MediaAsset {
   is_deleted: boolean;
   templates_used: string[];
   campaigns_used: string[];
-  uploaded_by: string;
   created_at: string;
+  createdAt?: string;
   updated_at: string;
+  updatedAt?: string;
   media_url?: string;
   url?: string;
 }
@@ -124,7 +125,7 @@ export const deleteMediaAsset = async (
   assetId: string,
   tenantId: string
 ): Promise<{ success: boolean; message: string }> => {
-  return await _axios("delete", `/whatsapp/gallery/${assetId}`, null, "application/json", { tenant_id: tenantId });
+  return await _axios("delete", `/whatsapp/gallery/${assetId}`, { tenant_id: tenantId });
 };
 
 /**

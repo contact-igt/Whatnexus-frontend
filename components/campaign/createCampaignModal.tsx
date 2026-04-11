@@ -226,6 +226,17 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             }, 100);
         }
     }, [error]);
+    
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
 
     const handleNext = async () => {
         if (currentStep < 4 && isStepValid(currentStep)) {
@@ -1800,7 +1811,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                         onClick={handleBack}
                         disabled={currentStep === 1}
                         className={cn(
-                            "px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2",
+                            "px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5",
                             currentStep === 1
                                 ? 'opacity-50 cursor-not-allowed'
                                 : isDarkMode
@@ -1808,7 +1819,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     : 'text-slate-700 hover:bg-slate-100'
                         )}
                     >
-                        <ChevronLeft size={16} />
+                        <ChevronLeft size={15} />
                         Back
                     </button>
 
@@ -1863,7 +1874,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 fileType={
                     galleryUploadType === 'header'
                         ? (selectedTemplate?.type === 'image' ? 'image' : selectedTemplate?.type === 'video' ? 'video' : selectedTemplate?.type === 'document' ? 'document' : 'all')
-                        : 'all'
+                        : (galleryUploadType === 'card_media' && galleryCardIdx !== null 
+                            ? (selectedTemplate?.carouselCards?.[galleryCardIdx]?.components?.find((c: any) => c.type === 'HEADER')?.format?.toLowerCase() as any || 'all')
+                            : 'all')
                 }
             />
             <MediaAssetPreviewModal

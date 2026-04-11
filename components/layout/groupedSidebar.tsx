@@ -73,7 +73,7 @@ export const GroupedSidebar = () => {
             onMouseEnter={() => setIsExpanded(true)}
             onMouseLeave={() => setIsExpanded(false)}
             className={cn(
-                "shrink-0 flex flex-col z-[100] transition-all duration-500 ease-out relative group/sidebar",
+                "shrink-0 h-full flex flex-col z-[100] transition-all duration-500 ease-out relative group/sidebar",
                 isExpanded ? "w-72" : "w-20",
                 isDarkMode
                     ? 'bg-[#09090b]'

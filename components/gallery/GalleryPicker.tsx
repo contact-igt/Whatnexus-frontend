@@ -1,667 +1,468 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import { Check, Eye, Grid3X3, ImageIcon, List, Search, Trash2, Upload, X } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ImageIcon, X, FileText, Video, File } from "lucide-react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
-import { fetchMediaAssets, uploadMedia, deleteMediaAsset, MediaAsset } from "../../services/gallery/galleryApi";
+
+import { fetchMediaAssets, uploadMedia, deleteMediaAsset, MediaAsset } from "@/services/gallery/galleryApi";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/glassCard";
 import { Pagination } from "@/components/ui/pagination";
-import { MediaAssetPreviewModal } from "@/components/gallery/MediaAssetPreviewModal";
+import { ConfirmationModal } from "@/components/ui/confirmationModal";
 
-// ─── Props (unchanged) ───────────────────────────────────────────────────────
+import { FilterType, ViewMode, GalleryFilters, ACCEPT_MAP } from "./types";
+import { GalleryToolbar }    from "./GalleryToolbar";
+import { GalleryGridCard }   from "./GalleryGridCard";
+import { GalleryListRow, GalleryListHeader } from "./GalleryListRow";
+import { GalleryEmptyState } from "./GalleryEmptyState";
+import { GridSkeletons, ListSkeletons } from "./GallerySkeletons";
+import { MediaPreviewDrawer } from "./MediaPreviewDrawer";
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface GalleryPickerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelect: (asset: MediaAsset) => void;
+  isOpen:       boolean;
+  onClose:      () => void;
+  onSelect:     (asset: MediaAsset) => void;
   approvedOnly?: boolean;
-  fileType?: "image" | "video" | "document" | "all";
+  fileType?:    "image" | "video" | "document" | "all";
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── File validation ──────────────────────────────────────────────────────────
 
-type FilterType = "all" | "image" | "video" | "document";
+function validateFile(file: File, filterType: FilterType): string | null {
+  const mb = file.size / 1024 / 1024;
+  const kb = file.size / 1024;
+  const allowed = ACCEPT_MAP[filterType].split(",");
 
-const FILTER_TABS: { id: FilterType; label: string }[] = [
-  { id: "all",      label: "All" },
-  { id: "image",    label: "Images" },
-  { id: "video",    label: "Videos" },
-  { id: "document", label: "Documents" },
-];
-
-const ACCEPTED_TYPES =
-  "image/jpeg,image/png,image/webp,video/mp4,video/3gpp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-// Thumbnail background when no image preview
-const THUMB_BG: Record<string, string> = {
-  image:    "#2a1a1a",
-  video:    "#1a1a2e",
-  document: "#1a2a1a",
-};
-
-// Emoji icon per file type
-const TYPE_EMOJI: Record<string, string> = {
-  image:    "🖼️",
-  video:    "🎬",
-  document: "📄",
-};
-
-// Top-left badge on thumbnail
-const TYPE_BADGE: Record<string, { label: string; bg: string }> = {
-  image:    { label: "IMG",   bg: "#1a5fa8" },
-  video:    { label: "VIDEO", bg: "#7c3aed" },
-  document: { label: "DOC",   bg: "#c47c1a" },
-};
-
-// Color of the type label in card info row
-const TYPE_LABEL_COLOR: Record<string, string> = {
-  image:    "#4f8ef7",
-  video:    "#a78bfa",
-  document: "#f5a623",
-};
-
-// Per-filter empty state subtitle
-const EMPTY_SUBTITLE: Record<FilterType, string> = {
-  all:      "Upload your first file using the button above",
-  image:    "No images uploaded yet",
-  video:    "No videos uploaded yet",
-  document: "No documents uploaded yet",
-};
-
-// ─── Skeleton card ────────────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <div
-      style={{
-        borderRadius: 10,
-        overflow: "hidden",
-        background: "#1a1a1a",
-        border: "1px solid rgba(255,255,255,0.06)",
-        animation: "gallerypulse 1.5s ease-in-out infinite",
-      }}
-    >
-      <div style={{ aspectRatio: "1/1", background: "#222" }} />
-      <div style={{ padding: "8px 10px" }}>
-        <div style={{ height: 10, width: "70%", background: "#2a2a2a", borderRadius: 4, marginBottom: 6 }} />
-        <div style={{ height: 8,  width: "45%", background: "#2a2a2a", borderRadius: 4 }} />
-      </div>
-    </div>
-  );
+  if (filterType !== "all" && !allowed.includes(file.type)) {
+    return `Invalid file type. Please select a ${filterType} file.`;
+  }
+  if (file.type.startsWith("image/")) {
+    if (kb < 5)  return "Image too small. Minimum 5 KB.";
+    if (mb > 2)  return "Image too large. Maximum 2 MB.";
+  } else if (file.type.startsWith("video/")) {
+    if (kb < 10) return "Video too small. Minimum 10 KB.";
+    if (mb > 10) return "Video too large. Maximum 10 MB.";
+  } else {
+    if (kb < 1)  return "Document too small. Minimum 1 KB.";
+    if (mb > 10) return "Document too large. Maximum 10 MB.";
+  }
+  return null;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   isOpen,
   onClose,
   onSelect,
   approvedOnly = false,
-  fileType = "all",
+  fileType     = "all",
 }) => {
   const { isDarkMode } = useTheme();
+  const tenantId       = useSelector((state: any) => state.auth?.user?.tenant_id);
 
+  // ── Core state ──────────────────────────────────────────────────────────────
   const [mediaAssets,    setMediaAssets]    = useState<MediaAsset[]>([]);
   const [loading,        setLoading]        = useState(false);
-  const [selectedAsset,  setSelectedAsset]  = useState<MediaAsset | null>(null);
-  const [searchTerm,     setSearchTerm]     = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [filterType,     setFilterType]     = useState<FilterType>((fileType as FilterType) || "all");
-  const [page,           setPage]           = useState(1);
+  const [error,          setError]          = useState<string | null>(null);
   const [totalPages,     setTotalPages]     = useState(1);
   const [totalItems,     setTotalItems]     = useState(0);
-  const [uploading,      setUploading]      = useState(false);
+
+  // ── Selection / Preview ─────────────────────────────────────────────────────
+  const [selectedAsset,  setSelectedAsset]  = useState<MediaAsset | null>(null);
   const [previewAsset,   setPreviewAsset]   = useState<MediaAsset | null>(null);
+  const [drawerOpen,     setDrawerOpen]     = useState(false);
+  const [confirmId,      setConfirmId]      = useState<string | null>(null);
+
+  // ── Upload ──────────────────────────────────────────────────────────────────
+  const [uploading,      setUploading]      = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isDragOver,     setIsDragOver]     = useState(false);
 
-  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+  // ── UI ──────────────────────────────────────────────────────────────────────
+  const [viewMode,       setViewMode]       = useState<ViewMode>("grid");
+  const [filters,        setFilters]        = useState<GalleryFilters>({
+    filterType: (fileType as FilterType) || "all",
+    search:     "",
+    sortField:  "date",
+    sortDir:    "desc",
+    page:       1,
+  });
 
-  // Debounce search 300ms before sending to API
+  // Debounce search
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-      setPage(1);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+      setFilters((f) => ({ ...f, page: 1 }));
     }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+    return () => clearTimeout(debounceRef.current);
+  }, [filters.search]);
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // Helper to patch filters
+  const patchFilters = useCallback((patch: Partial<GalleryFilters>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+  }, []);
 
+  // ── Fetch ───────────────────────────────────────────────────────────────────
   const loadMediaAssets = useCallback(async () => {
     if (!tenantId) return;
-
     setLoading(true);
+    setError(null);
     try {
       const response = await fetchMediaAssets({
         tenant_id:    tenantId,
-        type:         filterType === "all" ? undefined : filterType,
+        type:         filters.filterType === "all" ? undefined : filters.filterType,
         search:       debouncedSearch || undefined,
-        approved_only: approvedOnly,
-        page,
-        limit: 20,
+        approved_only: undefined,
+        page:         filters.page,
+        limit:        20,
       });
-
       setMediaAssets(response.data);
       setTotalPages(response.totalPages);
       setTotalItems(response.total);
-    } catch (error) {
-      console.error("Error loading media assets:", error);
-      toast.error("Failed to load media assets");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Failed to load media assets.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [approvedOnly, filterType, page, debouncedSearch, tenantId]);
+  }, [tenantId, filters.filterType, filters.page, debouncedSearch]);
 
-  useEffect(() => {
-    if (isOpen) loadMediaAssets();
-  }, [isOpen, loadMediaAssets]);
+  useEffect(() => { if (isOpen) loadMediaAssets(); }, [isOpen, loadMediaAssets]);
 
-  // Reset state when modal closes
+  // Reset on close
   useEffect(() => {
     if (!isOpen) {
       setSelectedAsset(null);
-      setSearchTerm("");
-      setDebouncedSearch("");
-      setPage(1);
-      setFilterType((fileType as FilterType) || "all");
       setPreviewAsset(null);
+      setDrawerOpen(false);
+      setFilters({
+        filterType: (fileType as FilterType) || "all",
+        search:     "",
+        sortField:  "date",
+        sortDir:    "desc",
+        page:       1,
+      });
     }
   }, [isOpen, fileType]);
 
-  // ── Upload ─────────────────────────────────────────────────────────────────
+  // ESC to close drawer or modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (drawerOpen) { setDrawerOpen(false); setPreviewAsset(null); }
+        else if (isOpen) { setSelectedAsset(null); onClose(); }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen, drawerOpen]);
 
-  const uploadSelectedFile = async (file?: File | null, clearInput?: () => void) => {
+  // ── Upload ──────────────────────────────────────────────────────────────────
+  const uploadFile = async (file: File) => {
     if (!file || !tenantId) return;
-
-    const mb = file.size / 1024 / 1024;
-    const kb = file.size / 1024;
-
-    // Client-side validation
-    if (file.type.startsWith("image/")) {
-      if (kb < 5)  { toast.error("Image too small. Minimum 5KB"); clearInput?.(); return; }
-      if (mb > 2)  { toast.error("Image too large. Maximum 2MB"); clearInput?.(); return; }
-    } else if (file.type.startsWith("video/")) {
-      if (kb < 10) { toast.error("Video too small. Minimum 10KB"); clearInput?.(); return; }
-      if (mb > 10) { toast.error("Video too large. Maximum 10MB"); clearInput?.(); return; }
-    } else {
-      if (kb < 1)  { toast.error("Document too small. Minimum 1KB"); clearInput?.(); return; }
-      if (mb > 10) { toast.error("Document too large. Maximum 10MB"); clearInput?.(); return; }
-    }
+    const err = validateFile(file, filters.filterType);
+    if (err) { toast.error(err); return; }
 
     setUploading(true);
     setUploadProgress(0);
     try {
-      await uploadMedia(file, tenantId, { folder: "root", tags: [] }, setUploadProgress);
-      toast.success("Media uploaded successfully");
+      const uploadResult = await uploadMedia(file, tenantId, { folder: "root", tags: [] }, setUploadProgress);
+      toast.success("File uploaded successfully.");
+
+      // Reload the list so the new asset appears
       await loadMediaAssets();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to upload file");
+
+      // Auto-select the newly uploaded asset (not blocked when approvedOnly=false)
+      if (!approvedOnly && uploadResult?.data) {
+        const newAsset: MediaAsset = {
+          id:             uploadResult.data.asset_id,
+          media_asset_id: uploadResult.data.asset_id,
+          tenant_id:      tenantId,
+          file_name:      uploadResult.data.file_name,
+          file_type:      uploadResult.data.file_type as MediaAsset["file_type"],
+          mime_type:      uploadResult.data.mime_type,
+          file_size:      uploadResult.data.file_size,
+          media_handle:   uploadResult.data.media_handle,
+          preview_url:    uploadResult.data.preview_url,
+          tags:           uploadResult.data.tags,
+          folder:         uploadResult.data.folder,
+          is_approved:    uploadResult.data.is_approved,
+          is_deleted:     false,
+          templates_used: [],
+          campaigns_used: [],
+          created_at:     uploadResult.data.created_at,
+          updated_at:     uploadResult.data.created_at,
+        };
+        setSelectedAsset(newAsset);
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Upload failed.");
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      clearInput?.();
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    await uploadSelectedFile(file, () => { event.target.value = ""; });
+  // ── Delete ──────────────────────────────────────────────────────────────────
+  const deleteAsset = async (assetId: string) => {
+    try {
+      await deleteMediaAsset(assetId, tenantId);
+      toast.success("Asset deleted.");
+      await loadMediaAssets();
+      if (selectedAsset?.media_asset_id === assetId || selectedAsset?.id === assetId) {
+        setSelectedAsset(null);
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Delete failed.");
+    }
   };
 
-  // ── Selection ──────────────────────────────────────────────────────────────
+  const handleDeleteFromCard = async (assetId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmId(assetId);
+  };
 
-  // Passes full asset object to parent and closes modal
-  const handleConfirmSelection = () => {
+  const confirmDelete = async () => {
+    if (!confirmId) return;
+    await deleteAsset(confirmId);
+    setConfirmId(null);
+  };
+
+  const handleLocalSelect = (asset: MediaAsset) => {
+    const isAlreadySelected = 
+      selectedAsset?.media_asset_id === asset.media_asset_id || 
+      selectedAsset?.id === asset.id;
+    
+    if (isAlreadySelected) {
+      setSelectedAsset(null);
+    } else {
+      setSelectedAsset(asset);
+    }
+  };
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+  const handleConfirm = () => {
     if (!selectedAsset) return;
     onSelect(selectedAsset);
     onClose();
   };
 
-  // Cancel: close modal, clear selection, do NOT call onSelect
   const handleCancel = () => {
     setSelectedAsset(null);
     onClose();
   };
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
-
-  const deleteAssetById = async (assetId: string) => {
-    try {
-      await deleteMediaAsset(assetId, tenantId);
-      toast.success("Media deleted successfully");
-      await loadMediaAssets();
-      if (selectedAsset?.media_asset_id === assetId || selectedAsset?.id === assetId) {
-        setSelectedAsset(null);
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to delete media asset");
-    }
+  const openDrawer = (asset: MediaAsset) => {
+    setPreviewAsset(asset);
+    setDrawerOpen(true);
+  };
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    // Delay clearing asset so close animation plays
+    setTimeout(() => setPreviewAsset(null), 300);
   };
 
-  const handleDeleteAsset = async (assetId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (!confirm("Are you sure you want to delete this media asset?")) return;
-    await deleteAssetById(assetId);
-  };
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const handleSelectFromDrawer = (asset: MediaAsset) => {
+    onSelect(asset);
+    closeDrawer();
+    onClose();
   };
 
   if (!isOpen) return null;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
-      <style>{`
-        @keyframes gallerypulse {
-          0%, 100% { opacity: 0.4; }
-          50%       { opacity: 0.8; }
-        }
-      `}</style>
-
-      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
+      {/* ── Backdrop ────────────────────────────────────────────────────────── */}
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <GlassCard
           isDarkMode={isDarkMode}
           className={cn(
-            "w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden rounded-[2rem]",
-            isDarkMode ? "bg-[#111114]/95 border-white/10" : "bg-white/95 border-slate-200"
+            "w-full max-w-5xl flex flex-col overflow-hidden",
+            "max-h-[88vh] rounded-2xl",
+            isDarkMode ? "bg-[#0c0d11] border-white/8" : "bg-white border-slate-200"
           )}
         >
 
-          {/* ── Header ── */}
-          <div className={cn(
-            "flex items-start justify-between gap-4 px-6 py-5 border-b shrink-0",
-            isDarkMode ? "border-white/10" : "border-slate-200"
-          )}>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-emerald-500">
-                <ImageIcon size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.24em]">Media Gallery</span>
+          {/* ── Modal Header ──────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 px-6 py-4 border-b shrink-0",
+              isDarkMode
+                ? "border-white/6 bg-linear-to-r from-white/[0.03] to-transparent"
+                : "border-slate-100 bg-linear-to-r from-slate-50 to-white"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+                isDarkMode ? "bg-emerald-500/15 border border-emerald-500/20" : "bg-emerald-50 border border-emerald-100"
+              )}>
+                <ImageIcon size={16} className="text-emerald-500" />
               </div>
-              <h2 className={cn("text-2xl font-bold", isDarkMode ? "text-white" : "text-slate-900")}>
-                {approvedOnly ? "Select Approved Media" : "Select Media"}
-              </h2>
-              <p className={cn("text-xs", isDarkMode ? "text-white/45" : "text-slate-500")}>
-                Pick from your existing gallery or upload a new file without leaving this flow.
-              </p>
+              <div>
+                <h2 className={cn("text-[15px] font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                  {approvedOnly ? "Select Approved Media" : "Select Media"}
+                </h2>
+                <p className={cn("text-[11px]", isDarkMode ? "text-white/35" : "text-slate-500")}>
+                  Pick from your gallery or upload a new file
+                </p>
+              </div>
             </div>
+
             <button
+              type="button"
               onClick={handleCancel}
               className={cn(
-                "p-2 rounded-xl transition-all shrink-0",
+                "w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0",
                 isDarkMode
-                  ? "text-white/50 hover:bg-white/10 hover:text-white"
-                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+                  ? "text-white/30 hover:bg-white/8 hover:text-white/80"
+                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               )}
+              aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* ── Toolbar: search + filter tabs + upload ── */}
-          <div className={cn(
-            "px-6 py-4 border-b space-y-3 shrink-0",
-            isDarkMode ? "border-white/10" : "border-slate-200"
-          )}>
-            {/* Search + Upload */}
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <Search className={cn(
-                  "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4",
-                  isDarkMode ? "text-white/30" : "text-slate-400"
-                )} />
-                <input
-                  type="text"
-                  placeholder="Search by filename or tags"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={cn(
-                    "w-full pl-11 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all",
-                    isDarkMode
-                      ? "bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-emerald-500/50"
-                      : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-emerald-400"
-                  )}
-                />
-              </div>
-              <label
-                className={cn(
-                  "h-10 px-4 rounded-xl font-bold text-xs uppercase tracking-wide bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap border-2 border-dashed",
-                  isDragOver ? "border-emerald-300" : "border-transparent",
-                )}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragOver(true);
-                }}
-                onDragLeave={() => setIsDragOver(false)}
-                onDrop={async (e) => {
-                  e.preventDefault();
-                  setIsDragOver(false);
-                  const droppedFile = e.dataTransfer.files?.[0];
-                  await uploadSelectedFile(droppedFile);
-                }}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>{uploading ? "Uploading..." : "Upload"}</span>
-                <input
-                  type="file"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={uploading}
-                  accept={ACCEPTED_TYPES}
-                />
-              </label>
-              <div className={cn("flex items-center rounded-xl border px-1", isDarkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white")}>
-                <button type="button" onClick={() => setViewMode("grid")} className={cn("p-2 rounded-lg", viewMode === "grid" ? "text-emerald-500" : (isDarkMode ? "text-white/50" : "text-slate-500"))}><Grid3X3 size={14} /></button>
-                <button type="button" onClick={() => setViewMode("list")} className={cn("p-2 rounded-lg", viewMode === "list" ? "text-emerald-500" : (isDarkMode ? "text-white/50" : "text-slate-500"))}><List size={14} /></button>
-              </div>
-            </div>
-            {uploading && (
-              <div className="w-full">
-                <div className={cn("h-1.5 rounded-full overflow-hidden", isDarkMode ? "bg-white/10" : "bg-slate-200")}>
-                  <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                </div>
-              </div>
-            )}
+          {/* ── Toolbar ───────────────────────────────────────────────────── */}
+          <GalleryToolbar
+            filters={filters}
+            viewMode={viewMode}
+            isDarkMode={isDarkMode}
+            uploading={uploading}
+            uploadProgress={uploadProgress}
+            isDragOver={isDragOver}
+            totalItems={totalItems}
+            fileType={fileType as FilterType}
+            onFiltersChange={patchFilters}
+            onViewMode={setViewMode}
+            onUpload={uploadFile}
+            onDragOver={() => setIsDragOver(true)}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={async (e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) await uploadFile(file);
+            }}
+          />
 
-            {/* Filter tabs — replaces dropdown */}
-            <div className="flex gap-2 flex-wrap">
-              {FILTER_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => { setFilterType(tab.id); setPage(1); }}
-                  style={
-                    filterType === tab.id
-                      ? {
-                          background: "#25d366",
-                          color: "#fff",
-                          borderRadius: 6,
-                          padding: "6px 14px",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          border: "none",
-                          cursor: "pointer",
-                          transition: "all 0.15s",
-                        }
-                      : {
-                          background: "transparent",
-                          color: "#888",
-                          borderRadius: 6,
-                          padding: "6px 14px",
-                          fontSize: 12,
-                          fontWeight: 500,
-                          border: "1px solid #444",
-                          cursor: "pointer",
-                          transition: "all 0.15s",
-                        }
-                  }
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Grid area ── */}
+          {/* ── Gallery body ──────────────────────────────────────────────── */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
 
-            {/* Loading: 6 skeleton cards */}
-            {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            {/* Error state */}
+            {error && !loading && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                <p className={cn("text-sm font-semibold", isDarkMode ? "text-red-400" : "text-red-600")}>
+                  Failed to load assets
+                </p>
+                <p className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>{error}</p>
+                <button
+                  type="button"
+                  onClick={loadMediaAssets}
+                  className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-all"
+                >
+                  Retry
+                </button>
               </div>
+            )}
 
-            /* Empty state */
-            ) : mediaAssets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                <span style={{ fontSize: 32, lineHeight: 1, color: isDarkMode ? "#94a3b8" : "#64748b" }}>No files</span>
-                <div>
-                  <p className={cn("text-sm font-semibold", isDarkMode ? "text-white/60" : "text-slate-700")}>
-                    No media found
-                  </p>
-                  <p className={cn("text-xs mt-1", isDarkMode ? "text-white/35" : "text-slate-500")}>
-                    {EMPTY_SUBTITLE[filterType]}
-                  </p>
-                </div>
-              </div>
+            {/* Loading skeletons */}
+            {loading && !error && (
+              viewMode === "grid"
+                ? <GridSkeletons isDarkMode={isDarkMode} count={8} />
+                : <ListSkeletons isDarkMode={isDarkMode} count={6} />
+            )}
 
-            /* Media grid */
-            ) : viewMode === "grid" ? (
+            {/* Empty state */}
+            {!loading && !error && mediaAssets.length === 0 && (
+              <GalleryEmptyState
+                filterType={filters.filterType}
+                isDarkMode={isDarkMode}
+                onUploadClick={() => document.querySelector<HTMLInputElement>('input[type="file"]')?.click()}
+              />
+            )}
+
+            {/* ── Grid view ─────────────────────────────────────────────── */}
+            {!loading && !error && mediaAssets.length > 0 && viewMode === "grid" && (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
                 {mediaAssets.map((asset) => {
-                  const isSelected = selectedAsset?.media_asset_id === asset.media_asset_id
-                    || selectedAsset?.id === asset.id;
-                  const assetId   = asset.media_asset_id || String(asset.id);
-                  const hasPreview = asset.file_type === "image" && !!asset.preview_url;
-                  const thumbBg   = hasPreview ? undefined : (THUMB_BG[asset.file_type] || "#1a1a1a");
-                  const canDelete = !asset.is_approved;
-
+                  const isDisabled = approvedOnly ? !asset.is_approved : false;
+                  const isSelected =
+                    selectedAsset?.media_asset_id === asset.media_asset_id ||
+                    selectedAsset?.id === asset.id;
                   return (
-                    <div
+                    <GalleryGridCard
                       key={asset.id}
-                      onClick={() => setSelectedAsset(asset)}
-                      className="group cursor-pointer"
-                      style={{
-                        borderRadius: 10,
-                        overflow: "hidden",
-                        border: isSelected
-                          ? "2px solid #25d366"
-                          : isDarkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e2e8f0",
-                        boxShadow: isSelected ? "0 0 0 2px rgba(37,211,102,0.2)" : "none",
-                        background: isDarkMode ? "#18181c" : "#fff",
-                        transition: "border 0.15s, box-shadow 0.15s",
-                      }}
-                    >
-                      {/* ── Thumbnail ── */}
-                      <div
-                        style={{
-                          aspectRatio: "1/1",
-                          position: "relative",
-                          background: thumbBg,
-                          overflow: "hidden",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 40,
-                          userSelect: "none",
-                        }}
-                      >
-                        {hasPreview ? (
-                          <img
-                            src={asset.preview_url!}
-                            alt={asset.file_name}
-                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                            onError={(e) => { e.currentTarget.style.display = "none"; }}
-                          />
-                        ) : (
-                          TYPE_EMOJI[asset.file_type] || "FILE"
-                        )}
-
-                        {/* Selected checkmark overlay */}
-                        {isSelected && (
-                          <div style={{
-                            position: "absolute",
-                            inset: 0,
-                            background: "rgba(37,211,102,0.18)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "#fff",
-                          }}>
-                            <Check size={30} />
-                          </div>
-                        )}
-
-                        {/* Type badge — top left */}
-                        {TYPE_BADGE[asset.file_type] && (
-                          <span style={{
-                            position: "absolute",
-                            top: 6,
-                            left: 6,
-                            background: TYPE_BADGE[asset.file_type].bg,
-                            color: "#fff",
-                            fontSize: 9,
-                            fontWeight: 700,
-                            padding: "2px 5px",
-                            borderRadius: 3,
-                            letterSpacing: "0.04em",
-                          }}>
-                            {TYPE_BADGE[asset.file_type].label}
-                          </span>
-                        )}
-
-                        {/* Approval badge — top right */}
-                        <span style={{
-                          position: "absolute",
-                          top: 6,
-                          right: 6,
-                          background: asset.is_approved ? "#25d366" : "#f5a623",
-                          color: "#fff",
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: "2px 6px",
-                          borderRadius: 3,
-                        }}>
-                          {asset.is_approved ? "Approved" : "Pending"}
-                        </span>
-                      </div>
-
-                      {/* ── Card info ── */}
-                      <div style={{ padding: "8px 10px" }}>
-                        <p
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: isDarkMode ? "#fff" : "#1a1a1a",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            marginBottom: 4,
-                          }}
-                          title={asset.file_name}
-                        >
-                          {asset.file_name}
-                        </p>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{
-                              color: TYPE_LABEL_COLOR[asset.file_type] || "#888",
-                              fontSize: 11,
-                              fontWeight: 600,
-                              textTransform: "capitalize",
-                            }}>
-                              {asset.file_type}
-                            </span>
-                            <span style={{ color: "#666", fontSize: 11, fontFamily: "monospace" }}>
-                              {formatFileSize(asset.file_size)}
-                            </span>
-                          </div>
-
-                          {/* Delete button — visible on card hover, only if not approved */}
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPreviewAsset(asset);
-                              }}
-                              style={{
-                                background: "transparent",
-                                border: "1px solid #333",
-                                borderRadius: 5,
-                                padding: "4px 8px",
-                                fontSize: 11,
-                                color: "#666",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.color = "#fff";
-                                e.currentTarget.style.borderColor = "#555";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.color = "#666";
-                                e.currentTarget.style.borderColor = "#333";
-                              }}
-                              title="View"
-                            >
-                              <Eye size={12} />
-                            </button>
-                            {canDelete && (
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteAsset(assetId, e)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  padding: "2px 4px",
-                                  color: "#ef4444",
-                                  borderRadius: 4,
-                                  lineHeight: 0,
-                                }}
-                                title="Delete"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {mediaAssets.map((asset) => {
-                  const assetId = asset.media_asset_id || String(asset.id);
-                  return (
-                    <div key={asset.id} className={cn("rounded-xl border p-3 flex items-center justify-between gap-3", isDarkMode ? "border-white/10 bg-white/[0.03]" : "border-slate-200 bg-white")}>
-                      <div className="min-w-0" onClick={() => setSelectedAsset(asset)}>
-                        <p className={cn("text-sm font-semibold truncate", isDarkMode ? "text-white" : "text-slate-900")}>{asset.file_name}</p>
-                        <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                          {asset.file_type.toUpperCase()} • {formatFileSize(asset.file_size)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setPreviewAsset(asset)} className={cn("text-xs px-2 py-1 rounded border", isDarkMode ? "border-white/20 text-white/70" : "border-slate-300 text-slate-700")}>View</button>
-                        {!asset.is_approved && (
-                          <button type="button" onClick={(e) => handleDeleteAsset(assetId, e as any)} className="text-xs px-2 py-1 rounded border border-red-400 text-red-500">Delete</button>
-                        )}
-                      </div>
-                    </div>
+                      asset={asset}
+                      isSelected={isSelected}
+                      isDisabled={isDisabled}
+                      isDarkMode={isDarkMode}
+                      onSelect={handleLocalSelect}
+                      onPreview={openDrawer}
+                      onDelete={handleDeleteFromCard}
+                    />
                   );
                 })}
               </div>
             )}
+
+            {/* ── List view ─────────────────────────────────────────────── */}
+            {!loading && !error && mediaAssets.length > 0 && viewMode === "list" && (
+              <div>
+                <GalleryListHeader isDarkMode={isDarkMode} showCheckbox={true} />
+                <div className="space-y-1">
+                  {mediaAssets.map((asset) => {
+                    const assetSelected =
+                      selectedAsset?.media_asset_id === asset.media_asset_id ||
+                      selectedAsset?.id === asset.id;
+                    const isDisabled = approvedOnly
+                      ? !asset.is_approved
+                      : !!selectedAsset && !assetSelected;
+                    return (
+                      <GalleryListRow
+                        key={asset.id}
+                        asset={asset}
+                        isSelected={assetSelected}
+                        isDisabled={isDisabled}
+                        isDarkMode={isDarkMode}
+                        showCheckbox={true}
+                        onSelect={handleLocalSelect}
+                        onPreview={openDrawer}
+                        onDelete={handleDeleteFromCard}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* ── Footer ── */}
-          <div className={cn(
-            "px-6 py-4 border-t shrink-0",
-            isDarkMode ? "border-white/10" : "border-slate-200"
-          )}>
+          {/* ── Footer ────────────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "px-6 pt-3 pb-4 border-t shrink-0",
+              isDarkMode ? "border-white/6 bg-white/[0.015]" : "border-slate-100 bg-slate-50/60"
+            )}
+          >
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className="mb-3">
                 <Pagination
-                  currentPage={page}
+                  currentPage={filters.page}
                   totalPages={totalPages}
-                  onPageChange={setPage}
+                  onPageChange={(p) => patchFilters({ page: p })}
                   totalItems={totalItems}
                   itemsPerPage={20}
                   isDarkMode={isDarkMode}
@@ -669,55 +470,108 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-3">
-              {/* Cancel — closes modal, does NOT call onSelect */}
-              <button
-                onClick={handleCancel}
-                className={cn(
-                  "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                  isDarkMode
-                    ? "bg-white/5 text-white hover:bg-white/10"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            {/* Footer action bar */}
+            <div className="flex items-center justify-between gap-3">
+              {/* Selected asset preview */}
+              <div className="flex items-center gap-2.5 min-w-0">
+                {selectedAsset ? (
+                  <>
+                    {/* Thumbnail / icon */}
+                    <div className={cn(
+                      "w-9 h-9 rounded-lg overflow-hidden shrink-0 border flex items-center justify-center",
+                      isDarkMode ? "border-emerald-500/30" : "border-emerald-200"
+                    )}
+                      style={{
+                        background: selectedAsset.file_type === "image" && selectedAsset.preview_url
+                          ? undefined
+                          : selectedAsset.file_type === "video"
+                            ? "#a78bfa18"
+                            : selectedAsset.file_type === "document"
+                              ? "#fbbf2418"
+                              : "#94a3b818"
+                      }}
+                    >
+                      {selectedAsset.file_type === "image" && selectedAsset.preview_url ? (
+                        <img src={selectedAsset.preview_url} alt="" className="w-full h-full object-cover" />
+                      ) : selectedAsset.file_type === "video" ? (
+                        <Video size={17} style={{ color: "#a78bfa" }} />
+                      ) : selectedAsset.file_type === "document" ? (
+                        <FileText size={17} style={{ color: "#fbbf24" }} />
+                      ) : (
+                        <File size={17} className={isDarkMode ? "text-white/40" : "text-slate-400"} />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={cn("text-[12px] font-semibold truncate leading-tight", isDarkMode ? "text-white/85" : "text-slate-800")}>
+                        {selectedAsset.file_name}
+                      </p>
+                      <p className={cn("text-[10px]", isDarkMode ? "text-emerald-400/80" : "text-emerald-600")}>
+                        Selected
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <span className={cn("text-xs", isDarkMode ? "text-white/20" : "text-slate-400")}>
+                    No file selected
+                  </span>
                 )}
-              >
-                Cancel
-              </button>
+              </div>
 
-              {/* Select Media — disabled styling when no selection */}
-              <button
-                onClick={handleConfirmSelection}
-                disabled={!selectedAsset}
-                style={{
-                  background:    selectedAsset ? "#25d366" : "#333",
-                  color:         selectedAsset ? "#fff"    : "#666",
-                  cursor:        selectedAsset ? "pointer" : "not-allowed",
-                  padding:       "10px 20px",
-                  borderRadius:  12,
-                  fontSize:      14,
-                  fontWeight:    600,
-                  border:        "none",
-                  transition:    "background 0.15s, color 0.15s",
-                }}
-              >
-                Select Media
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
+                    isDarkMode
+                      ? "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/90"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                  )}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  disabled={!selectedAsset}
+                  className={cn(
+                    "px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200",
+                    selectedAsset
+                      ? "bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-lg shadow-emerald-500/30"
+                      : isDarkMode
+                        ? "bg-white/5 text-white/20 cursor-not-allowed"
+                        : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                  )}
+                >
+                  Select Media
+                </button>
+              </div>
             </div>
           </div>
 
         </GlassCard>
       </div>
 
-      <MediaAssetPreviewModal
-        isOpen={!!previewAsset}
+      {/* ── Preview Drawer (rendered outside modal so it slides over) ─────── */}
+      <MediaPreviewDrawer
         asset={previewAsset}
-        onClose={() => setPreviewAsset(null)}
-        onDelete={deleteAssetById}
+        isOpen={drawerOpen}
+        isDarkMode={isDarkMode}
         fromPicker
-        onSelect={(asset) => {
-          onSelect(asset);
-          setPreviewAsset(null);
-          onClose();
-        }}
+        onClose={closeDrawer}
+        onDelete={deleteAsset}
+        onSelect={handleSelectFromDrawer}
+      />
+      <ConfirmationModal
+        isOpen={!!confirmId}
+        onClose={() => setConfirmId(null)}
+        onConfirm={confirmDelete}
+        title="Delete Media Asset"
+        message="Are you sure you want to delete this asset? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+        isDarkMode={isDarkMode}
       />
     </>
   );
