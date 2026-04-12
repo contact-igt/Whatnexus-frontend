@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { PageTransition } from '@/components/ui/pageTransition';
 import { useSelector } from 'react-redux';
-import { fetchMediaAssets, deleteMediaAsset, MediaAsset, uploadMedia } from '@/services/gallery/galleryApi';
+import { fetchMediaAssets, fetchMediaStats, deleteMediaAsset, restoreMediaAsset, MediaAsset, uploadMedia } from '@/services/gallery/galleryApi';
 import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
@@ -22,7 +22,7 @@ import { formatFileSize } from '@/components/gallery/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabType = 'all' | 'image' | 'video' | 'document' | 'approved' | 'pending';
+type TabType = 'all' | 'image' | 'video' | 'document' | 'approved' | 'pending' | 'deleted';
 type ViewMode = 'grid' | 'list';
 
 const TABS: { id: TabType; label: string }[] = [
@@ -32,6 +32,7 @@ const TABS: { id: TabType; label: string }[] = [
   { id: 'document', label: 'Documents' },
   { id: 'approved', label: 'Approved' },
   { id: 'pending',  label: 'Pending' },
+  { id: 'deleted',  label: 'Deleted' },
 ];
 
 const ACCEPTED_TYPES = [
@@ -126,6 +127,7 @@ export default function GalleryPage() {
   const [previewAsset,  setPreviewAsset]  = useState<MediaAsset | null>(null);
   const [drawerOpen,    setDrawerOpen]    = useState(false);
   const [confirmId,     setConfirmId]     = useState<string | null>(null);
+  const [restoreId,     setRestoreId]     = useState<string | null>(null);
 
   const [globalStats,   setGlobalStats]   = useState({
     totalAssets: 0,
@@ -150,12 +152,14 @@ export default function GalleryPage() {
     if (!tenantId) return;
     setLoading(true);
     try {
+      const isDeletedTab = activeTab === 'deleted';
       const res = await fetchMediaAssets({
         tenant_id:    tenantId,
-        type:         ['all', 'approved', 'pending'].includes(activeTab) ? undefined : activeTab,
+        type:         !isDeletedTab && !['all', 'approved', 'pending'].includes(activeTab) ? activeTab : undefined,
         search:       debouncedQ || undefined,
-        approved_only: activeTab === 'approved' ? true : undefined,
-        pending_only:  activeTab === 'pending'  ? true : undefined,
+        approved_only: !isDeletedTab && activeTab === 'approved' ? true : undefined,
+        pending_only:  !isDeletedTab && activeTab === 'pending'  ? true : undefined,
+        show_deleted:  isDeletedTab ? true : undefined,
         page:         currentPage,
         limit:        20,
       });
@@ -172,16 +176,15 @@ export default function GalleryPage() {
   const loadGlobalStats = useCallback(async () => {
     if (!tenantId) return;
     try {
-      const res = await fetchMediaAssets({ tenant_id: tenantId, limit: 10000 });
-      const assets = res.data || [];
+      const res = await fetchMediaStats();
       setGlobalStats({
-        totalAssets: res.total || assets.length,
-        images: assets.filter((a: any) => a.file_type === 'image').length,
-        videos: assets.filter((a: any) => a.file_type === 'video').length,
-        docs: assets.filter((a: any) => a.file_type === 'document').length,
-        approved: assets.filter((a: any) => a.is_approved).length,
-        pending: assets.filter((a: any) => !a.is_approved).length,
-        totalSize: assets.reduce((acc: number, a: any) => acc + (a.file_size || 0), 0)
+        totalAssets: res.data.total,
+        images:      res.data.images,
+        videos:      res.data.videos,
+        docs:        res.data.documents,
+        approved:    res.data.approved,
+        pending:     res.data.pending,
+        totalSize:   res.data.totalSize,
       });
     } catch {
       console.error("Failed to load global media stats");
@@ -255,6 +258,30 @@ export default function GalleryPage() {
     if (!confirmId) return;
     await deleteAsset(confirmId);
     setConfirmId(null);
+  };
+
+  // ── Restore ────────────────────────────────────────────────────────────────
+  const restoreAsset = async (assetId: string) => {
+    if (!tenantId) return;
+    try {
+      await restoreMediaAsset(assetId);
+      toast.success('Asset restored successfully.');
+      await loadAssets();
+      await loadGlobalStats();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Restore failed.');
+    }
+  };
+
+  const handleRestoreFromCard = (assetId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRestoreId(assetId);
+  };
+
+  const confirmRestore = async () => {
+    if (!restoreId) return;
+    await restoreAsset(restoreId);
+    setRestoreId(null);
   };
 
   // ── Drawer ─────────────────────────────────────────────────────────────────
@@ -501,14 +528,16 @@ export default function GalleryPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {mediaAssets.map(asset => (
                 <GalleryGridCard
-                  key={asset.id}
+                  key={asset.media_asset_id}
                   asset={asset}
                   isSelected={false}
-                  isDisabled={!asset.is_approved}
+                  isDisabled={activeTab !== 'deleted' && !asset.is_approved}
+                  isDeleted={activeTab === 'deleted'}
                   isDarkMode={isDarkMode}
-                  onSelect={openDrawer}
-                  onPreview={openDrawer}
+                  onSelect={activeTab === 'deleted' ? () => {} : openDrawer}
+                  onPreview={activeTab === 'deleted' ? () => {} : openDrawer}
                   onDelete={handleDeleteFromCard}
+                  onRestore={handleRestoreFromCard}
                 />
               ))}
             </div>
@@ -521,15 +550,17 @@ export default function GalleryPage() {
               <div className="space-y-1">
                 {mediaAssets.map(asset => (
                   <GalleryListRow
-                    key={asset.id}
+                    key={asset.media_asset_id}
                     asset={asset}
                     isSelected={false}
-                    isDisabled={!asset.is_approved}
+                    isDisabled={activeTab !== 'deleted' && !asset.is_approved}
+                    isDeleted={activeTab === 'deleted'}
                     isDarkMode={isDarkMode}
                     showCheckbox={false}
-                    onSelect={openDrawer}
-                    onPreview={openDrawer}
+                    onSelect={activeTab === 'deleted' ? () => {} : openDrawer}
+                    onPreview={activeTab === 'deleted' ? () => {} : openDrawer}
                     onDelete={handleDeleteFromCard}
+                    onRestore={handleRestoreFromCard}
                   />
                 ))}
               </div>
@@ -551,7 +582,7 @@ export default function GalleryPage() {
           )}
         </GlassCard>
 
-        {/* ── Confirmation Modal ─────────────────────────────────────────────── */}
+        {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
         <ConfirmationModal
           isOpen={!!confirmId}
           onClose={() => setConfirmId(null)}
@@ -560,6 +591,17 @@ export default function GalleryPage() {
           message="Are you sure you want to delete this asset? This action cannot be undone."
           confirmText="Delete"
           variant="danger"
+          isDarkMode={isDarkMode}
+        />
+
+        {/* ── Restore Confirmation Modal ─────────────────────────────────────── */}
+        <ConfirmationModal
+          isOpen={!!restoreId}
+          onClose={() => setRestoreId(null)}
+          onConfirm={confirmRestore}
+          title="Restore Media Asset"
+          message="Restore this asset? It will become visible in the gallery again."
+          confirmText="Restore"
           isDarkMode={isDarkMode}
         />
 

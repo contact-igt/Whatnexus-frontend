@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Eye, Trash2, Download, FileText, Image as ImageIcon, Video, ChevronUp, ChevronDown, Check } from "lucide-react";
+import { Eye, Trash2, Download, FileText, Image as ImageIcon, Video, ChevronUp, ChevronDown, Check, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MediaAsset } from "@/services/gallery/galleryApi";
 import { TYPE_COLOR, formatFileSize, formatDate, forceDownload } from "./types";
@@ -12,9 +12,11 @@ interface Props {
   isDisabled:    boolean;
   isDarkMode:    boolean;
   showCheckbox?: boolean;
+  isDeleted?:    boolean;
   onSelect:      (asset: MediaAsset) => void;
   onPreview:     (asset: MediaAsset) => void;
   onDelete:      (assetId: string, e: React.MouseEvent) => void;
+  onRestore?:    (assetId: string, e: React.MouseEvent) => void;
 }
 
 const FileIcon = ({ type, color }: { type: string; color: string }) => {
@@ -32,7 +34,7 @@ const COL_DATE  = "w-40 hidden lg:block";
 const COL_ACTS  = "w-28 shrink-0";
 
 const HEADER_COLS: { label: string; cls: string; align?: string; sortable?: boolean }[] = [
-  { label: "Product",      cls: COL_FILE, sortable: false },
+  { label: "File name",    cls: COL_FILE, sortable: false },
   { label: "Status",       cls: COL_TYPE, sortable: false, align: "text-center" },
   { label: "File Size",    cls: COL_SIZE, sortable: false },
   { label: "Date Added",   cls: COL_DATE, sortable: false },
@@ -78,7 +80,8 @@ export function GalleryListHeader({ isDarkMode, showCheckbox = false }: { isDark
 export function GalleryListRow({
   asset, isSelected, isDisabled, isDarkMode,
   showCheckbox = false,
-  onSelect, onPreview, onDelete,
+  isDeleted = false,
+  onSelect, onPreview, onDelete, onRestore,
 }: Props) {
   const [imgError, setImgError] = useState(false);
 
@@ -225,15 +228,28 @@ export function GalleryListRow({
               </button>
             )}
 
-            {canDelete && (
-              <button
-                type="button"
-                onClick={(e) => onDelete(assetId, e)}
-                className="p-1.5 rounded-lg text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
-                title="Delete"
-              >
-                <Trash2 size={14} />
-              </button>
+            {isDeleted ? (
+              onRestore && (
+                <button
+                  type="button"
+                  onClick={(e) => onRestore(assetId, e)}
+                  className="p-1.5 rounded-lg text-emerald-400/60 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all"
+                  title="Restore"
+                >
+                  <RotateCcw size={14} />
+                </button>
+              )
+            ) : (
+              canDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => onDelete(assetId, e)}
+                  className="p-1.5 rounded-lg text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                  title="Delete"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )
             )}
           </div>
         )}

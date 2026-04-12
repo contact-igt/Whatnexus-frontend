@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Eye, Trash2, Download, Clock } from "lucide-react";
+import { Check, Eye, Trash2, Download, Clock, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MediaAsset } from "@/services/gallery/galleryApi";
 import { TYPE_BADGE, TYPE_COLOR, THUMB_BG, TYPE_EMOJI, formatFileSize, formatDate, forceDownload } from "./types";
@@ -11,14 +11,17 @@ interface Props {
   isSelected: boolean;
   isDisabled: boolean;
   isDarkMode: boolean;
+  isDeleted?: boolean;
   onSelect: (asset: MediaAsset) => void;
   onPreview: (asset: MediaAsset) => void;
   onDelete: (assetId: string, e: React.MouseEvent) => void;
+  onRestore?: (assetId: string, e: React.MouseEvent) => void;
 }
 
 export function GalleryGridCard({
   asset, isSelected, isDisabled, isDarkMode,
-  onSelect, onPreview, onDelete,
+  isDeleted = false,
+  onSelect, onPreview, onDelete, onRestore,
 }: Props) {
   const [imgError, setImgError] = useState(false);
 
@@ -107,15 +110,28 @@ export function GalleryGridCard({
               </button>
             )}
 
-            {canDelete && (
-              <button
-                type="button"
-                onClick={(e) => onDelete(assetId, e)}
-                className="w-9 h-9 rounded-xl bg-red-500/80 hover:bg-red-500 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-110 shadow-lg"
-                title="Delete"
-              >
-                <Trash2 size={15} />
-              </button>
+            {isDeleted ? (
+              onRestore && (
+                <button
+                  type="button"
+                  onClick={(e) => onRestore(assetId, e)}
+                  className="w-9 h-9 rounded-xl bg-emerald-500/80 hover:bg-emerald-500 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-110 shadow-lg"
+                  title="Restore"
+                >
+                  <RotateCcw size={15} />
+                </button>
+              )
+            ) : (
+              canDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => onDelete(assetId, e)}
+                  className="w-9 h-9 rounded-xl bg-red-500/80 hover:bg-red-500 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-110 shadow-lg"
+                  title="Delete"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )
             )}
           </div>
         )}
@@ -151,8 +167,8 @@ export function GalleryGridCard({
           <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50 flex items-center justify-center pointer-events-none z-10">
             <Check size={13} strokeWidth={3} className="text-white" />
           </div>
-        ) : !isDisabled && (
-          /* ── Approval badge — top-right (approved only) ──────────────── */
+        ) : asset.is_approved && (
+          /* ── Approval badge — top-right (approved assets only) ───────── */
           <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm bg-emerald-500/85 text-white">
             ✓ Approved
           </span>

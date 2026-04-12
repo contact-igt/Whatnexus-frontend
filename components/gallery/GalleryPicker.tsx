@@ -120,7 +120,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
         tenant_id:    tenantId,
         type:         filters.filterType === "all" ? undefined : filters.filterType,
         search:       debouncedSearch || undefined,
-        approved_only: undefined,
+        approved_only: approvedOnly ? true : undefined,
         page:         filters.page,
         limit:        20,
       });
@@ -184,7 +184,6 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
       // Auto-select the newly uploaded asset (not blocked when approvedOnly=false)
       if (!approvedOnly && uploadResult?.data) {
         const newAsset: MediaAsset = {
-          id:             uploadResult.data.asset_id,
           media_asset_id: uploadResult.data.asset_id,
           tenant_id:      tenantId,
           file_name:      uploadResult.data.file_name,
@@ -404,7 +403,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
                     selectedAsset?.id === asset.id;
                   return (
                     <GalleryGridCard
-                      key={asset.id}
+                      key={asset.media_asset_id}
                       asset={asset}
                       isSelected={isSelected}
                       isDisabled={isDisabled}
@@ -427,12 +426,10 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
                     const assetSelected =
                       selectedAsset?.media_asset_id === asset.media_asset_id ||
                       selectedAsset?.id === asset.id;
-                    const isDisabled = approvedOnly
-                      ? !asset.is_approved
-                      : !!selectedAsset && !assetSelected;
+                    const isDisabled = approvedOnly ? !asset.is_approved : false;
                     return (
                       <GalleryListRow
-                        key={asset.id}
+                        key={asset.media_asset_id}
                         asset={asset}
                         isSelected={assetSelected}
                         isDisabled={isDisabled}

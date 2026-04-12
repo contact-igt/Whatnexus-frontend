@@ -1,11 +1,11 @@
 import { _axios } from "@/helper/axios";
 
 export interface MediaAsset {
-  id: string;
+  id?: number;
   media_asset_id?: string;
   tenant_id: string;
   file_name: string;
-  file_type: "image" | "video" | "document" | "audio";
+  file_type: "image" | "video" | "document";
   mime_type: string;
   file_size: number;
   media_handle: string;
@@ -51,6 +51,26 @@ export interface UploadMediaResponse {
   };
 }
 
+export interface MediaStatsResponse {
+  success: boolean;
+  data: {
+    total: number;
+    images: number;
+    videos: number;
+    documents: number;
+    approved: number;
+    pending: number;
+    totalSize: number;
+  };
+}
+
+/**
+ * Fetch aggregated media stats (single SQL query — no bulk row transfer)
+ */
+export const fetchMediaStats = async (): Promise<MediaStatsResponse> => {
+  return await _axios("get", "/whatsapp/gallery/stats", null, "application/json");
+};
+
 /**
  * Fetch media assets with filters and pagination
  */
@@ -62,6 +82,9 @@ export const fetchMediaAssets = async (params: {
   folder?: string;
   approved_only?: boolean;
   pending_only?: boolean;
+  show_deleted?: boolean;
+  sort_field?: "date" | "name" | "size";
+  sort_dir?: "asc" | "desc";
   page?: number;
   limit?: number;
 }): Promise<MediaAssetsResponse> => {
@@ -113,9 +136,10 @@ export const uploadMedia = async (
  */
 export const getMediaAsset = async (
   assetId: string,
-  tenantId: string
+  // tenantId kept for API compatibility but backend reads it from JWT
+  _tenantId?: string
 ): Promise<{ success: boolean; data: MediaAsset }> => {
-  return await _axios("get", `/whatsapp/gallery/${assetId}`, null, "application/json", { tenant_id: tenantId });
+  return await _axios("get", `/whatsapp/gallery/${assetId}`, null, "application/json");
 };
 
 /**
@@ -123,9 +147,10 @@ export const getMediaAsset = async (
  */
 export const deleteMediaAsset = async (
   assetId: string,
-  tenantId: string
+  // tenantId kept for API compatibility but backend reads it from JWT
+  _tenantId?: string
 ): Promise<{ success: boolean; message: string }> => {
-  return await _axios("delete", `/whatsapp/gallery/${assetId}`, { tenant_id: tenantId });
+  return await _axios("delete", `/whatsapp/gallery/${assetId}`);
 };
 
 /**
@@ -133,15 +158,10 @@ export const deleteMediaAsset = async (
  */
 export const restoreMediaAsset = async (
   assetId: string,
-  tenantId: string,
+  // tenantId kept for API compatibility but backend reads it from JWT
+  _tenantId?: string,
 ): Promise<{ success: boolean; asset_id: string; file_name: string; preview_url: string | null; media_handle: string; message: string }> => {
-  return await _axios(
-    "post",
-    `/whatsapp/gallery/${assetId}/restore`,
-    null,
-    "application/json",
-    { tenant_id: tenantId },
-  );
+  return await _axios("post", `/whatsapp/gallery/${assetId}/restore`, null, "application/json");
 };
 
 /**
@@ -149,11 +169,9 @@ export const restoreMediaAsset = async (
  */
 export const updateMediaTags = async (
   assetId: string,
-  tenantId: string,
-  tags: string[]
+  // tenantId kept for API compatibility but backend reads it from JWT
+  _tenantId?: string,
+  tags: string[] = []
 ): Promise<{ success: boolean; message: string; data: MediaAsset }> => {
-  return await _axios("patch", `/whatsapp/gallery/${assetId}/tags`, {
-    tenant_id: tenantId,
-    tags,
-  });
+  return await _axios("patch", `/whatsapp/gallery/${assetId}/tags`, { tags });
 };
