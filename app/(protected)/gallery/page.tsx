@@ -26,13 +26,13 @@ type TabType = 'all' | 'image' | 'video' | 'document' | 'approved' | 'pending' |
 type ViewMode = 'grid' | 'list';
 
 const TABS: { id: TabType; label: string }[] = [
-  { id: 'all',      label: 'All' },
-  { id: 'image',    label: 'Images' },
-  { id: 'video',    label: 'Videos' },
+  { id: 'all', label: 'All' },
+  { id: 'image', label: 'Images' },
+  { id: 'video', label: 'Videos' },
   { id: 'document', label: 'Documents' },
   { id: 'approved', label: 'Approved' },
-  { id: 'pending',  label: 'Pending' },
-  { id: 'deleted',  label: 'Deleted' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'deleted', label: 'Deleted' },
 ];
 
 const ACCEPTED_TYPES = [
@@ -78,7 +78,7 @@ function StatCard({
             {label}
           </span>
           <span className={cn(
-             colorStyles && isDarkMode ? colorStyles.text : (isDarkMode ? "text-white/40" : "text-slate-400")
+            colorStyles && isDarkMode ? colorStyles.text : (isDarkMode ? "text-white/40" : "text-slate-400")
           )}>
             {icon}
           </span>
@@ -109,27 +109,27 @@ function StatCard({
 
 export default function GalleryPage() {
   const { isDarkMode } = useTheme();
-  const tenantId       = useSelector((state: any) => state.auth?.user?.tenant_id);
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [activeTab,     setActiveTab]     = useState<TabType>('all');
-  const [searchQuery,   setSearchQuery]   = useState('');
-  const [debouncedQ,    setDebouncedQ]    = useState('');
-  const [mediaAssets,   setMediaAssets]   = useState<MediaAsset[]>([]);
-  const [loading,       setLoading]       = useState(false);
-  const [uploading,     setUploading]     = useState(false);
-  const [uploadProgress,setUploadProgress]= useState(0);
-  const [isDragOver,    setIsDragOver]    = useState(false);
-  const [currentPage,   setCurrentPage]   = useState(1);
-  const [totalPages,    setTotalPages]    = useState(1);
-  const [totalAssets,   setTotalAssets]   = useState(0);
-  const [viewMode,      setViewMode]      = useState<ViewMode>('grid');
-  const [previewAsset,  setPreviewAsset]  = useState<MediaAsset | null>(null);
-  const [drawerOpen,    setDrawerOpen]    = useState(false);
-  const [confirmId,     setConfirmId]     = useState<string | null>(null);
-  const [restoreId,     setRestoreId]     = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAssets, setTotalAssets] = useState(0);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [restoreId, setRestoreId] = useState<string | null>(null);
 
-  const [globalStats,   setGlobalStats]   = useState({
+  const [globalStats, setGlobalStats] = useState({
     totalAssets: 0,
     images: 0,
     videos: 0,
@@ -154,14 +154,14 @@ export default function GalleryPage() {
     try {
       const isDeletedTab = activeTab === 'deleted';
       const res = await fetchMediaAssets({
-        tenant_id:    tenantId,
-        type:         !isDeletedTab && !['all', 'approved', 'pending'].includes(activeTab) ? activeTab : undefined,
-        search:       debouncedQ || undefined,
+        tenant_id: tenantId,
+        type: !isDeletedTab && !['all', 'approved', 'pending'].includes(activeTab) ? activeTab : undefined,
+        search: debouncedQ || undefined,
         approved_only: !isDeletedTab && activeTab === 'approved' ? true : undefined,
-        pending_only:  !isDeletedTab && activeTab === 'pending'  ? true : undefined,
-        show_deleted:  isDeletedTab ? true : undefined,
-        page:         currentPage,
-        limit:        20,
+        pending_only: !isDeletedTab && activeTab === 'pending' ? true : undefined,
+        show_deleted: isDeletedTab ? true : undefined,
+        page: currentPage,
+        limit: 20,
       });
       setMediaAssets(res.data);
       setTotalPages(res.totalPages);
@@ -179,12 +179,12 @@ export default function GalleryPage() {
       const res = await fetchMediaStats();
       setGlobalStats({
         totalAssets: res.data.total,
-        images:      res.data.images,
-        videos:      res.data.videos,
-        docs:        res.data.documents,
-        approved:    res.data.approved,
-        pending:     res.data.pending,
-        totalSize:   res.data.totalSize,
+        images: res.data.images,
+        videos: res.data.videos,
+        docs: res.data.documents,
+        approved: res.data.approved,
+        pending: res.data.pending,
+        totalSize: res.data.totalSize,
       });
     } catch {
       console.error("Failed to load global media stats");
@@ -200,14 +200,14 @@ export default function GalleryPage() {
     const mb = file.size / 1024 / 1024;
     const kb = file.size / 1024;
     if (file.type.startsWith('image/')) {
-      if (kb < 5)  { toast.error('Image too small. Min 5 KB.');  return; }
-      if (mb > 2)  { toast.error('Image too large. Max 2 MB.');  return; }
+      if (kb < 5) { toast.error('Image too small. Min 5 KB.'); return; }
+      if (mb > 2) { toast.error('Image too large. Max 2 MB.'); return; }
     } else if (file.type.startsWith('video/')) {
       if (kb < 10) { toast.error('Video too small. Min 10 KB.'); return; }
       if (mb > 10) { toast.error('Video too large. Max 10 MB.'); return; }
     } else {
-      if (kb < 1)  { toast.error('Doc too small. Min 1 KB.');    return; }
-      if (mb > 10) { toast.error('Doc too large. Max 10 MB.');   return; }
+      if (kb < 1) { toast.error('Doc too small. Min 1 KB.'); return; }
+      if (mb > 10) { toast.error('Doc too large. Max 10 MB.'); return; }
     }
     setUploading(true);
     setUploadProgress(0);
@@ -232,7 +232,7 @@ export default function GalleryPage() {
       toast.success('Deleted successfully.');
       await loadAssets();
       await loadGlobalStats();
-      if (previewAsset?.media_asset_id === assetId || previewAsset?.id === assetId) {
+      if (previewAsset?.media_asset_id === assetId || String(previewAsset?.id) === assetId) {
         setDrawerOpen(false);
         setTimeout(() => setPreviewAsset(null), 300);
       }
@@ -534,8 +534,8 @@ export default function GalleryPage() {
                   isDisabled={activeTab !== 'deleted' && !asset.is_approved}
                   isDeleted={activeTab === 'deleted'}
                   isDarkMode={isDarkMode}
-                  onSelect={activeTab === 'deleted' ? () => {} : openDrawer}
-                  onPreview={activeTab === 'deleted' ? () => {} : openDrawer}
+                  onSelect={activeTab === 'deleted' ? () => { } : openDrawer}
+                  onPreview={activeTab === 'deleted' ? () => { } : openDrawer}
                   onDelete={handleDeleteFromCard}
                   onRestore={handleRestoreFromCard}
                 />
@@ -557,8 +557,8 @@ export default function GalleryPage() {
                     isDeleted={activeTab === 'deleted'}
                     isDarkMode={isDarkMode}
                     showCheckbox={false}
-                    onSelect={activeTab === 'deleted' ? () => {} : openDrawer}
-                    onPreview={activeTab === 'deleted' ? () => {} : openDrawer}
+                    onSelect={activeTab === 'deleted' ? () => { } : openDrawer}
+                    onPreview={activeTab === 'deleted' ? () => { } : openDrawer}
                     onDelete={handleDeleteFromCard}
                     onRestore={handleRestoreFromCard}
                   />
