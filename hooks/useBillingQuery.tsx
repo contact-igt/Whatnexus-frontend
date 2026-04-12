@@ -1,12 +1,16 @@
 import { billingApiData, BillingLedgerParams } from "@/services/billing";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/redux/selectors/auth/authSelector";
 
 const billingApis = new billingApiData();
 
 export const useGetBillingKpiQuery = (startDate?: string, endDate?: string) => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['billing-kpi', startDate, endDate],
-        queryFn: () => billingApis.getBillingKpi(startDate, endDate)
+        queryFn: () => billingApis.getBillingKpi(startDate, endDate),
+        enabled: !!token && !isManagement,
     });
 };
 
@@ -26,9 +30,12 @@ export const useGetBillingSpendChartQuery = (startDate?: string, endDate?: strin
 };
 
 export const useGetWalletBalanceQuery = () => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['wallet-balance'],
-        queryFn: () => billingApis.getWalletBalance()
+        queryFn: () => billingApis.getWalletBalance(),
+        enabled: !!token && !isManagement,
     });
 };
 
@@ -132,18 +139,24 @@ export const useGetAvailableAiModelsQuery = () => {
 };
 
 export const useGetWalletStatusQuery = () => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['wallet-status'],
         queryFn: () => billingApis.getWalletStatus(),
-        refetchInterval: 60000, // Refetch every minute to stay updated
+        refetchInterval: 60000,
+        enabled: !!token && !isManagement,
     });
 };
 
 export const useGetBillingModeQuery = () => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['billing-mode'],
         queryFn: () => billingApis.getBillingMode(),
         staleTime: 5 * 60 * 1000,
+        enabled: !!token && !isManagement,
     });
 };
 

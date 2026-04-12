@@ -2,19 +2,17 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Wallet, CreditCard, Download, Plus, Calendar, Loader2, Settings, Zap, FileDown } from "lucide-react";
+import { Wallet, CreditCard, Download, Plus, Loader2, Settings, Zap, FileDown } from "lucide-react";
 import { useGetWalletBalanceQuery, useGetPaymentHistoryQuery, useGetAutoRechargeSettingsQuery, useUpdateAutoRechargeSettingsMutation } from "@/hooks/useBillingQuery";
 import { toast } from "sonner";
 
 interface BillingWalletProps {
   isDarkMode: boolean;
   onRecharge?: () => void;
-  startDate?: Date | null;
-  endDate?: Date | null;
   billingMode?: 'prepaid' | 'postpaid';
 }
 
-export const BillingWallet = ({ isDarkMode, onRecharge, startDate, endDate, billingMode = 'prepaid' }: BillingWalletProps) => {
+export const BillingWallet = ({ isDarkMode, onRecharge, billingMode = 'prepaid' }: BillingWalletProps) => {
   const [showAutoRechargeConfig, setShowAutoRechargeConfig] = useState(false);
   const [localThreshold, setLocalThreshold] = useState<string>("");
   const [localAmount, setLocalAmount] = useState<string>("");
@@ -259,10 +257,13 @@ For support: support@whatnexus.com
                     </div>
                     <button
                       onClick={() => {
-                        updateAutoRecharge.mutate({
-                          threshold: parseFloat(localThreshold),
-                          amount: parseFloat(localAmount),
-                        });
+                        const threshold = parseFloat(localThreshold);
+                        const amount = parseFloat(localAmount);
+                        if (isNaN(threshold) || isNaN(amount) || threshold < 0 || amount < 100) {
+                          toast.error('Invalid settings: threshold must be ≥ 0 and amount must be ≥ ₹100');
+                          return;
+                        }
+                        updateAutoRecharge.mutate({ threshold, amount });
                         setShowAutoRechargeConfig(false);
                       }}
                       disabled={updateAutoRecharge.isPending}

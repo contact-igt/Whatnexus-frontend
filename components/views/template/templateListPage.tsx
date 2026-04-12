@@ -62,7 +62,6 @@ export const TemplateListPage = ({
         type: 'soft'
     });
 
-    console.log(templates)
     const tabs: { id: TabType; label: string; count?: number }[] = [
         { id: 'all', label: 'All', count: templates?.templates?.length },
         { id: 'draft', label: 'Draft', count: templates?.templates?.filter((t: any) => t.status === 'draft').length },
@@ -136,6 +135,7 @@ export const TemplateListPage = ({
             align: 'center',
             headerAlign: 'center',
             width: 120,
+            className: 'hidden sm:table-cell',
             renderCell: ({ row }) => (
                 <span className={cn(
                     "text-xs font-medium px-2 py-1 rounded",
@@ -166,6 +166,7 @@ export const TemplateListPage = ({
             align: 'center',
             headerAlign: 'center',
             width: 100,
+            className: 'hidden md:table-cell',
             renderCell: ({ row }) => (
                 <span className={cn("text-xs font-medium", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
                     {row.template_type}
@@ -178,6 +179,7 @@ export const TemplateListPage = ({
             align: 'center',
             headerAlign: 'center',
             width: 150,
+            className: 'hidden md:table-cell',
             renderCell: ({ row }) => (
                 <span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                     {formatDate(row.created_at)}
@@ -215,7 +217,7 @@ export const TemplateListPage = ({
     ], [isDarkMode, activeTab, user?.role, onEdit, onView, onResubmitTemplate, onSubmitTemplate, onSyncTemplate]);
 
     return (
-        <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
+        <div className="h-full overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32 overflow-x-hidden">
             {/* Header */}
             <div className="flex justify-between items-end">
                 <div className="space-y-1">
@@ -301,8 +303,8 @@ export const TemplateListPage = ({
                 ))}
             </div>
 
-            {/* Templates Table */}
-            <GlassCard isDarkMode={isDarkMode} className="p-0 overflow-hidden">
+            {/* Templates Table — horizontally scrollable on small screens */}
+            <GlassCard isDarkMode={isDarkMode} className="p-0 overflow-hidden overflow-x-auto min-w-0">
                 <DataTable
                     columns={columns}
                     data={paginatedTemplates}

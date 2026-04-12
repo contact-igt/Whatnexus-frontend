@@ -28,7 +28,8 @@ import {
     FlaskConical,
     Landmark,
     UserPlus,
-    DollarSign
+    DollarSign,
+    Image
 
 } from 'lucide-react';
 
@@ -134,6 +135,12 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Campaign",
                 route: "/campaign",
                 icon: Megaphone,
+                requiresWhatsApp: true,
+            },
+            {
+                label: "Media Gallery",
+                route: "/gallery",
+                icon: Image,
                 requiresWhatsApp: true,
             }
         ]

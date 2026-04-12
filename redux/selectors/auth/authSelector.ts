@@ -12,6 +12,7 @@ export function useAuth() {
       activationToken: state.auth.activationToken,
       activeStatus: state.auth.activeStatus,
       currentStatusDataState: state.auth.currentStatusDataState,
+      accountErrorMessage: state.auth.accountErrorMessage,
     }),
     shallowEqual
   );

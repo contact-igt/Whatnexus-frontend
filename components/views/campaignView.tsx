@@ -29,7 +29,7 @@ import { CreateCampaignModal } from '@/components/campaign/createCampaignModal';
 import { PageTransition } from '@/components/ui/pageTransition';
 import { socket } from '@/utils/socket';
 
-type TabType = 'all' | 'broadcast' | 'api' | 'scheduled' | 'immediate' | 'trash';
+type TabType = 'all' | 'draft' | 'scheduled' | 'active' | 'paused' | 'completed' | 'failed' | 'trash';
 
 export const CampaignView = memo(() => {
     const { whatsappApiDetails } = useAuth();
@@ -51,6 +51,7 @@ export const CampaignView = memo(() => {
 
     // Use the custom hook for campaign data
     const { campaigns, loading, error, refetch, pagination, filters, deletedCampaigns, fetchDeletedCampaigns } = useCampaigns();
+    const { setStatus, setSearch } = filters;
 
     // Fetch deleted campaigns when Trash tab is active
     useEffect(() => {
@@ -95,21 +96,28 @@ export const CampaignView = memo(() => {
 
     const tabs: { id: TabType; label: string }[] = [
         { id: 'all', label: 'All' },
-        { id: 'broadcast', label: 'Broadcast' },
-        { id: 'api', label: 'API' },
+        { id: 'draft', label: 'Draft' },
         { id: 'scheduled', label: 'Scheduled' },
-        { id: 'immediate', label: 'Immediate' },
+        { id: 'active', label: 'Running' },
+        { id: 'paused', label: 'Paused' },
+        { id: 'completed', label: 'Completed' },
+        { id: 'failed', label: 'Failed' },
         { id: 'trash', label: 'Trash' },
     ];
 
-    // Filter campaigns by active tab and search query
     const campaignsToDisplay = activeTab === 'trash' ? deletedCampaigns : campaigns;
 
-    const filteredCampaigns = campaignsToDisplay.filter(campaign => {
-        const matchesTab = activeTab === 'all' || activeTab === 'trash' || campaign.campaign_type.toLowerCase() === activeTab;
-        const matchesSearch = campaign.campaign_name.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesTab && matchesSearch;
-    });
+    useEffect(() => {
+        if (activeTab === 'trash' || activeTab === 'all') {
+            setStatus(undefined);
+        } else {
+            setStatus(activeTab as CampaignStatus);
+        }
+    }, [activeTab, setStatus]);
+
+    useEffect(() => {
+        setSearch(searchQuery);
+    }, [searchQuery, setSearch]);
 
     // Handle row click to navigate to details
     const handleCampaignClick = (campaignId: string) => {
@@ -285,7 +293,7 @@ export const CampaignView = memo(() => {
 
     return (
         <PageTransition>
-            <div className="h-full overflow-y-auto p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
+            <div className="h-full overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-8 animate-in slide-in-from-bottom-8 duration-700 max-w-[1600px] mx-auto no-scrollbar pb-32">
                 <div className="flex justify-between items-end">
                     <div className="space-y-1">
                         <div className="flex items-center space-x-2 text-emerald-500">
@@ -384,10 +392,11 @@ export const CampaignView = memo(() => {
 
                 {/* Campaign Table */}
                 {!error && (
-                    <GlassCard isDarkMode={isDarkMode} className="p-0 overflow-hidden">
+                    <GlassCard isDarkMode={isDarkMode} className="p-0 overflow-hidden overflow-x-auto">
+                        <div className="hidden md:block">
                         <DataTable
                             columns={columns}
-                            data={filteredCampaigns}
+                            data={campaignsToDisplay}
                             isLoading={loading}
                             isDarkMode={isDarkMode}
                             onRowClick={(row) => handleCampaignClick(row.campaign_id)}
@@ -419,6 +428,38 @@ export const CampaignView = memo(() => {
                                 </div>
                             }
                         />
+                        </div>
+
+                        <div className="md:hidden space-y-3 p-4">
+                            {campaignsToDisplay.map((campaign) => (
+                                <div
+                                    key={campaign.campaign_id}
+                                    onClick={() => handleCampaignClick(campaign.campaign_id)}
+                                    className={cn(
+                                        "rounded-xl border p-3 cursor-pointer",
+                                        isDarkMode ? "border-white/10 bg-white/[0.03]" : "border-slate-200 bg-white",
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <p className={cn("text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            {campaign.campaign_name}
+                                        </p>
+                                        <span className={cn("text-[10px] font-bold px-2 py-1 rounded uppercase", getCampaignStatusColor(campaign.status))}>
+                                            {campaign.status}
+                                        </span>
+                                    </div>
+                                    <p className={cn("text-xs mt-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                        Scheduled: {campaign.scheduled_at ? formatCampaignDate(campaign.scheduled_at) : "Immediate"}
+                                    </p>
+                                    <p className={cn("text-xs mt-1", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                        Sent: {campaign.delivered_count}/{campaign.total_audience}
+                                    </p>
+                                </div>
+                            ))}
+                            {!loading && campaignsToDisplay.length === 0 && (
+                                <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>No campaigns found.</p>
+                            )}
+                        </div>
 
                         {(!loading && pagination.totalPages > 1) && (
                             <div className="p-4 border-t border-white/5">

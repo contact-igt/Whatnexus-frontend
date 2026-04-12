@@ -21,6 +21,8 @@ interface UseCampaignsReturn {
     filters: {
         status: CampaignStatus | undefined;
         setStatus: (status: CampaignStatus | undefined) => void;
+        search: string;
+        setSearch: (search: string) => void;
     };
     deletedCampaigns: Campaign[];
     fetchDeletedCampaigns: () => Promise<void>;
@@ -46,6 +48,7 @@ export const useCampaigns = (
         undefined
     );
     const [deletedCampaigns, setDeletedCampaigns] = useState<Campaign[]>([]);
+    const [searchFilter, setSearchFilter] = useState<string>("");
 
     const fetchCampaigns = useCallback(async () => {
         try {
@@ -56,6 +59,7 @@ export const useCampaigns = (
                 page: currentPage,
                 limit,
                 ...(statusFilter && { status: statusFilter }),
+                ...(searchFilter ? { search: searchFilter } : {}),
             };
 
             const response = await campaignService.getCampaignList(params);
@@ -69,7 +73,7 @@ export const useCampaigns = (
         } finally {
             setLoading(false);
         }
-    }, [currentPage, limit, statusFilter]);
+    }, [currentPage, limit, statusFilter, searchFilter]);
 
     const fetchDeletedCampaigns = useCallback(async () => {
         try {
@@ -120,6 +124,11 @@ export const useCampaigns = (
         setCurrentPage(1); // Reset to first page when filter changes
     }, []);
 
+    const setSearch = useCallback((search: string) => {
+        setSearchFilter(search);
+        setCurrentPage(1);
+    }, []);
+
     return {
         campaigns,
         loading,
@@ -135,6 +144,8 @@ export const useCampaigns = (
         filters: {
             status: statusFilter,
             setStatus,
+            search: searchFilter,
+            setSearch,
         },
         deletedCampaigns,
         fetchDeletedCampaigns,
