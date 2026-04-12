@@ -13,8 +13,8 @@ import { Pagination } from "@/components/ui/pagination";
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
 
 import { FilterType, ViewMode, GalleryFilters, ACCEPT_MAP } from "./types";
-import { GalleryToolbar }    from "./GalleryToolbar";
-import { GalleryGridCard }   from "./GalleryGridCard";
+import { GalleryToolbar } from "./GalleryToolbar";
+import { GalleryGridCard } from "./GalleryGridCard";
 import { GalleryListRow, GalleryListHeader } from "./GalleryListRow";
 import { GalleryEmptyState } from "./GalleryEmptyState";
 import { GridSkeletons, ListSkeletons } from "./GallerySkeletons";
@@ -23,11 +23,11 @@ import { MediaPreviewDrawer } from "./MediaPreviewDrawer";
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface GalleryPickerProps {
-  isOpen:       boolean;
-  onClose:      () => void;
-  onSelect:     (asset: MediaAsset) => void;
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (asset: MediaAsset) => void;
   approvedOnly?: boolean;
-  fileType?:    "image" | "video" | "document" | "all";
+  fileType?: "image" | "video" | "document" | "all";
 }
 
 // ─── File validation ──────────────────────────────────────────────────────────
@@ -41,13 +41,13 @@ function validateFile(file: File, filterType: FilterType): string | null {
     return `Invalid file type. Please select a ${filterType} file.`;
   }
   if (file.type.startsWith("image/")) {
-    if (kb < 5)  return "Image too small. Minimum 5 KB.";
-    if (mb > 2)  return "Image too large. Maximum 2 MB.";
+    if (kb < 5) return "Image too small. Minimum 5 KB.";
+    if (mb > 2) return "Image too large. Maximum 2 MB.";
   } else if (file.type.startsWith("video/")) {
     if (kb < 10) return "Video too small. Minimum 10 KB.";
     if (mb > 10) return "Video too large. Maximum 10 MB.";
   } else {
-    if (kb < 1)  return "Document too small. Minimum 1 KB.";
+    if (kb < 1) return "Document too small. Minimum 1 KB.";
     if (mb > 10) return "Document too large. Maximum 10 MB.";
   }
   return null;
@@ -60,37 +60,37 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   onClose,
   onSelect,
   approvedOnly = false,
-  fileType     = "all",
+  fileType = "all",
 }) => {
   const { isDarkMode } = useTheme();
-  const tenantId       = useSelector((state: any) => state.auth?.user?.tenant_id);
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
 
   // ── Core state ──────────────────────────────────────────────────────────────
-  const [mediaAssets,    setMediaAssets]    = useState<MediaAsset[]>([]);
-  const [loading,        setLoading]        = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
-  const [totalPages,     setTotalPages]     = useState(1);
-  const [totalItems,     setTotalItems]     = useState(0);
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   // ── Selection / Preview ─────────────────────────────────────────────────────
-  const [selectedAsset,  setSelectedAsset]  = useState<MediaAsset | null>(null);
-  const [previewAsset,   setPreviewAsset]   = useState<MediaAsset | null>(null);
-  const [drawerOpen,     setDrawerOpen]     = useState(false);
-  const [confirmId,      setConfirmId]      = useState<string | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
+  const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   // ── Upload ──────────────────────────────────────────────────────────────────
-  const [uploading,      setUploading]      = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isDragOver,     setIsDragOver]     = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // ── UI ──────────────────────────────────────────────────────────────────────
-  const [viewMode,       setViewMode]       = useState<ViewMode>("grid");
-  const [filters,        setFilters]        = useState<GalleryFilters>({
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [filters, setFilters] = useState<GalleryFilters>({
     filterType: (fileType as FilterType) || "all",
-    search:     "",
-    sortField:  "date",
-    sortDir:    "desc",
-    page:       1,
+    search: "",
+    sortField: "date",
+    sortDir: "desc",
+    page: 1,
   });
 
   // Debounce search
@@ -117,12 +117,12 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
     setError(null);
     try {
       const response = await fetchMediaAssets({
-        tenant_id:    tenantId,
-        type:         filters.filterType === "all" ? undefined : filters.filterType,
-        search:       debouncedSearch || undefined,
+        tenant_id: tenantId,
+        type: filters.filterType === "all" ? undefined : filters.filterType,
+        search: debouncedSearch || undefined,
         approved_only: approvedOnly ? true : undefined,
-        page:         filters.page,
-        limit:        20,
+        page: filters.page,
+        limit: 20,
       });
       setMediaAssets(response.data);
       setTotalPages(response.totalPages);
@@ -146,10 +146,10 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
       setDrawerOpen(false);
       setFilters({
         filterType: (fileType as FilterType) || "all",
-        search:     "",
-        sortField:  "date",
-        sortDir:    "desc",
-        page:       1,
+        search: "",
+        sortField: "date",
+        sortDir: "desc",
+        page: 1,
       });
     }
   }, [isOpen, fileType]);
@@ -185,21 +185,21 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
       if (!approvedOnly && uploadResult?.data) {
         const newAsset: MediaAsset = {
           media_asset_id: uploadResult.data.asset_id,
-          tenant_id:      tenantId,
-          file_name:      uploadResult.data.file_name,
-          file_type:      uploadResult.data.file_type as MediaAsset["file_type"],
-          mime_type:      uploadResult.data.mime_type,
-          file_size:      uploadResult.data.file_size,
-          media_handle:   uploadResult.data.media_handle,
-          preview_url:    uploadResult.data.preview_url,
-          tags:           uploadResult.data.tags,
-          folder:         uploadResult.data.folder,
-          is_approved:    uploadResult.data.is_approved,
-          is_deleted:     false,
+          tenant_id: tenantId,
+          file_name: uploadResult.data.file_name,
+          file_type: uploadResult.data.file_type as MediaAsset["file_type"],
+          mime_type: uploadResult.data.mime_type,
+          file_size: uploadResult.data.file_size,
+          media_handle: uploadResult.data.media_handle,
+          preview_url: uploadResult.data.preview_url,
+          tags: uploadResult.data.tags,
+          folder: uploadResult.data.folder,
+          is_approved: uploadResult.data.is_approved,
+          is_deleted: false,
           templates_used: [],
           campaigns_used: [],
-          created_at:     uploadResult.data.created_at,
-          updated_at:     uploadResult.data.created_at,
+          created_at: uploadResult.data.created_at,
+          updated_at: uploadResult.data.created_at,
         };
         setSelectedAsset(newAsset);
       }
@@ -217,7 +217,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
       await deleteMediaAsset(assetId, tenantId);
       toast.success("Asset deleted.");
       await loadMediaAssets();
-      if (selectedAsset?.media_asset_id === assetId || selectedAsset?.id === assetId) {
+      if (selectedAsset?.media_asset_id === assetId || String(selectedAsset?.id) === assetId) {
         setSelectedAsset(null);
       }
     } catch (e: any) {
@@ -237,10 +237,10 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   };
 
   const handleLocalSelect = (asset: MediaAsset) => {
-    const isAlreadySelected = 
-      selectedAsset?.media_asset_id === asset.media_asset_id || 
+    const isAlreadySelected =
+      selectedAsset?.media_asset_id === asset.media_asset_id ||
       selectedAsset?.id === asset.id;
-    
+
     if (isAlreadySelected) {
       setSelectedAsset(null);
     } else {
