@@ -14,8 +14,9 @@ import { Modal } from "@/components/ui/modal";
 import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation, useDeletePromptPermanentById, useRestorePromptById } from '@/hooks/usePromptQuery';
 import { toast } from "sonner";
 import { useDeleteKnowledgeById, useDeleteKnowledgePermanentById, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useRestoreKnowledgeById } from '@/hooks/useUploadKnowledge';
+import { FaqReview } from './faqReview';
 
-type TabType = 'data-sources' | 'prompts';
+type TabType = 'data-sources' | 'prompts' | 'faq-review';
 
 export const KnowledgeView = () => {
     const { isDarkMode } = useTheme();
@@ -67,6 +68,7 @@ export const KnowledgeView = () => {
     const knowledgeTabs = [
         { value: "data-sources", label: "Data Sources" },
         { value: "prompts", label: "Prompts" },
+        { value: "faq-review", label: "FAQ Review" },
         // { value: "aiLogs", label: "AI Logs" },
         // { value: "settings", label: "Settings" }
     ];
@@ -407,6 +409,10 @@ export const KnowledgeView = () => {
                     handleView={handleView}
                     uploading={uploading}
                 />
+            )}
+
+            {activeTab === 'faq-review' && (
+                <FaqReview isDarkMode={isDarkMode} />
             )}
 
             {activeTab === 'prompts' && (
