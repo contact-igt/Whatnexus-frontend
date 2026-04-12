@@ -99,6 +99,7 @@ export const useActivateKnowledgeMutation = () => {
         },
         onSuccess: (response: any) => {
             queryClient.invalidateQueries({ queryKey: ["knowledges"] });
+            queryClient.invalidateQueries({ queryKey: ["faq-master"] });
             const message =
                 response?.data?.message ||
                 response?.message ||

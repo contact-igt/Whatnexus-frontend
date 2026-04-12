@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, ImagePlus, Link2, Trash2, CheckCircle2, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { Select } from '@/components/ui/select';
@@ -34,6 +34,10 @@ import { RootState } from '@/redux/store';
 import { setUploadedMedia, setUploading, clearUploadedMedia } from '@/redux/slices/template/templateSlice';
 import { CarouselCardEditor } from './carouselCardEditor';
 import { CarouselCard } from './templateTypes';
+import { GalleryPicker } from '@/components/gallery/GalleryPicker';
+import { MediaAsset } from '@/services/gallery/galleryApi';
+import { MediaAssetPreviewModal } from '@/components/gallery/MediaAssetPreviewModal';
+import { logger } from '@/utils/logger';
 
 interface TemplateFormPageProps {
     templateId?: string;
@@ -43,6 +47,13 @@ interface TemplateFormPageProps {
     isViewMode?: boolean;
     isSaving?: boolean;
 }
+
+type SelectedHeaderAsset = {
+    media_asset_id: string;
+    media_handle: string;
+    file_name: string;
+    file_type: MediaAsset['file_type'];
+};
 
 const templateSchema = z.object({
     category: z.enum(['UTILITY', 'MARKETING', 'AUTHENTICATION']),
@@ -220,6 +231,10 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const isMediaUploading = useSelector((state: RootState) => state.template.isUploading);
     const { mutateAsync: uploadMedia } = useUploadTemplateMediaMutation();
     const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [selectedHeaderAsset, setSelectedHeaderAsset] = useState<SelectedHeaderAsset | null>(null);
+    const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     // Get language name from code (reverse of getLanguageCode)
     const getLanguageName = (code: string): string => {
@@ -305,7 +320,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             ]
         }
     });
-    console.log("initialData", initialData)    // Update form when initialData changes (seed the form for editing)
+    logger.debug("initialData", initialData)    // Update form when initialData changes (seed the form for editing)
     useEffect(() => {
         if (initialData) {
             // Only reset if this is the first load of this specific template name
@@ -332,6 +347,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     ]
                 });
 
+                if (initialData.headerMediaHandle) {
+                    setSelectedHeaderAsset({
+                        media_asset_id: initialData.headerMediaAssetId || '',
+                        media_handle: initialData.headerMediaHandle,
+                        file_name: initialData.headerMediaFileName || 'Gallery media',
+                        file_type: ((initialData.headerType || 'DOCUMENT').toLowerCase() as MediaAsset['file_type']),
+                    });
+                } else {
+                    setSelectedHeaderAsset(null);
+                }
+
                 if (initialData.headerValue && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(initialData.headerType || '')) {
                     dispatch(setUploadedMedia({
                         url: initialData.headerValue,
@@ -357,7 +383,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
                 lastInitialDataNameRef.current = initialData.name;
             }
-        } else if (uploadedMediaUrl) {
+        } else if (uploadedMediaUrl && !selectedHeaderAsset) {
             // New template creation: Pull from Redux if form field is empty
             const currentHeaderValue = getValues('headerValue');
             if (!currentHeaderValue) {
@@ -368,7 +394,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 }
             }
         }
-    }, [initialData, reset, getValues, dispatch, uploadedMediaUrl, uploadedMediaType, setValue]);
+    }, [initialData, reset, getValues, dispatch, uploadedMediaUrl, uploadedMediaType, setValue, selectedHeaderAsset]);
 
     // Cleanup uploaded media when unmounting or changing template type
     useEffect(() => {
@@ -409,6 +435,12 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const previous_content = watch('previous_content');
     const footer = watch('footer');
     const variables = watch('variables');
+    const previewHeaderValue =
+        selectedHeaderAsset &&
+        previewAsset &&
+        (previewAsset.media_asset_id || String(previewAsset.id)) === selectedHeaderAsset.media_asset_id
+            ? (previewAsset.preview_url || previewAsset.media_url || previewAsset.url || headerValue || '')
+            : (headerValue || '');
 
     // Language-content mismatch detection (real-time, debounced)
     // validateContentLanguageMatch handles ALL cases: script mismatch, English↔non-English Latin, etc.
@@ -420,7 +452,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         }
         const timer = setTimeout(() => {
             const error = validateContentLanguageMatch(content, language);
-            console.log('[LanguageValidation] Debounced check:', { language, contentLength: content.length, error });
+            logger.debug('[LanguageValidation] Debounced check:', { language, contentLength: content.length, error });
             setDebouncedMismatchError(error);
         }, 500);
         return () => clearTimeout(timer);
@@ -435,7 +467,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
         if (currentCategory !== 'AUTHENTICATION' && currentContent?.trim()) {
             const mismatchError = validateContentLanguageMatch(currentContent, currentLanguage);
-            console.log('[LanguageValidation] Save click check:', { currentLanguage, contentLength: currentContent.length, mismatchError });
+            logger.debug('[LanguageValidation] Save click check:', { currentLanguage, contentLength: currentContent.length, mismatchError });
             if (mismatchError) {
                 toast.error(mismatchError);
                 setDebouncedMismatchError(mismatchError);
@@ -551,7 +583,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 language: currentLang,
                 ...(previous_content && { previous_content })
             };
-            console.log("payload", payload)
+            logger.debug("payload", payload)
             const data = await generateTemplate(payload);
 
             if (data?.data?.content) {
@@ -570,7 +602,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 toast.error('No content generated');
             }
         } catch (error: any) {
-            console.error('AI Generation error:', error);
+            logger.error('AI Generation error:', error);
             // toast.error(error.message || 'Failed to generate template'); 
             // Error toast is already handled in the mutation hook, but we can keep it simple or let the hook handle it.
             // The hook has onError toast. So we might not need one here unless we want specific control.
@@ -581,7 +613,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             // We can just log it here.
         }
     };
-    console.log("content", content)
+    logger.debug("content", content)
     const handleAIGenerateTitle = async (prompt: string) => {
         const titlePrompt = `Generate a suitable WhatsApp Template Name (internal name) based on this description: "${prompt}". 
         Format rules: Lowercase alphanumeric and underscores only. No spaces. Max 30 chars. concise.
@@ -604,6 +636,35 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             key: `{{${key}}}`,
             sample: value
         }));
+    };
+
+    const isUrlLikeValue = (value: string) => value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:');
+
+    const handleGallerySelect = (asset: MediaAsset) => {
+        const normalizedType = asset.file_type.toUpperCase() as HeaderType;
+        setSelectedHeaderAsset({
+            media_asset_id: asset.media_asset_id || String(asset.id),
+            media_handle: asset.media_handle,
+            file_name: asset.file_name,
+            file_type: asset.file_type,
+        });
+        setPreviewAsset(asset);
+        setUploadedFileName(asset.file_name);
+        dispatch(clearUploadedMedia());
+        setValue('templateType', normalizedType as TemplateType, { shouldValidate: true });
+        setValue('headerType', normalizedType, { shouldValidate: true });
+        setValue('headerValue', asset.media_handle, { shouldValidate: true });
+        setIsGalleryOpen(false);
+    };
+
+    const clearSelectedHeaderAsset = (onChange?: (...event: any[]) => void) => {
+        setSelectedHeaderAsset(null);
+        setPreviewAsset(null);
+        setIsPreviewOpen(false);
+        setUploadedFileName(null);
+        dispatch(clearUploadedMedia());
+        onChange?.('');
+        setValue('headerValue', '', { shouldValidate: true });
     };
 
     // Get language code from language name
@@ -645,7 +706,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
         if (data.category !== 'AUTHENTICATION' && data.content?.trim()) {
             const langValidationError = validateContentLanguageMatch(data.content, data.language);
-            console.log('[LanguageValidation] onSubmit check:', { language: data.language, contentLength: data.content.length, langValidationError });
+            logger.debug('[LanguageValidation] onSubmit check:', { language: data.language, contentLength: data.content.length, langValidationError });
             if (langValidationError) {
                 toast.error(langValidationError);
                 setDebouncedMismatchError(langValidationError);
@@ -753,6 +814,18 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 ...(normalizedHeaderType === 'LOCATION' ? {} : { [valueKey]: finalHeaderValue })
             };
 
+            if (selectedHeaderAsset && normalizedHeaderType !== 'TEXT' && normalizedHeaderType !== 'LOCATION') {
+                if (selectedHeaderAsset.media_asset_id) {
+                    payload.components.header.media_asset_id = selectedHeaderAsset.media_asset_id;
+                }
+                if (selectedHeaderAsset.media_handle) {
+                    payload.components.header.media_handle = selectedHeaderAsset.media_handle;
+                }
+                if (!isUrlLikeValue(finalHeaderValue)) {
+                    delete payload.components.header.media_url;
+                }
+            }
+
             // Meta usually expects header variables if it's dynamic.
         }
 
@@ -806,6 +879,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const handleFileUpload = async (file: File, type: 'image' | 'video' | 'document', onChange: (...event: any[]) => void) => {
         try {
             dispatch(setUploading(true));
+            setSelectedHeaderAsset(null);
             setUploadedFileName(file.name); // Store local filename for display
             const response = await uploadMedia({ file, type });
             if (response?.url) {
@@ -814,7 +888,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 toast.success(`${type} uploaded successfully`);
             }
         } catch (error) {
-            console.error('Upload failed:', error);
+            logger.error('Upload failed:', error);
             dispatch(setUploading(false));
         }
     };
@@ -915,7 +989,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         name="language"
                                         control={control}
                                         render={({ field }) => {
-                                            console.log("field", field)
+                                            logger.debug("field", field)
                                             return (
                                                 <Select
                                                     isDarkMode={isDarkMode}
@@ -928,7 +1002,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                         const currentContent = getValues('content');
                                                         if (currentContent?.trim() && getValues('category') !== 'AUTHENTICATION') {
                                                             const result = validateLanguageMatch(val, currentContent);
-                                                            console.log('[LanguageValidation] Language changed:', { newLang: val, contentLength: currentContent.length, result });
+                                                            logger.debug('[LanguageValidation] Language changed:', { newLang: val, contentLength: currentContent.length, result });
                                                             if (!result.valid && result.message) {
                                                                 toast.error(result.message);
                                                                 setDebouncedMismatchError(result.message);
@@ -1013,6 +1087,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         onChange={(val) => {
                                             field.onChange(val);
                                             setValue('headerValue', '');
+                                            setSelectedHeaderAsset(null);
+                                            setUploadedFileName(null);
                                             dispatch(clearUploadedMedia());
                                             if (val === 'TEXT') {
                                                 setValue('headerType', 'NONE');
@@ -1027,7 +1103,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             { value: 'IMAGE', label: 'Image' },
                                             { value: 'VIDEO', label: 'Video' },
                                             { value: 'DOCUMENT', label: 'Document' },
-                                            { value: 'LOCATION', label: 'Location' },
+                                            // { value: 'LOCATION', label: 'Location' },
                                             // { value: 'CAROUSEL', label: 'Carousel' }
                                         ].filter(opt => {
                                             const cat = String(category).toUpperCase();
@@ -1168,30 +1244,71 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             name="headerValue"
                                             control={control}
                                             render={({ field }) => (
-                                                <FileUpload
-                                                    isDarkMode={isDarkMode}
-                                                    label="Image File"
-                                                    accept="image/*"
-                                                    uploadedUrl={field.value || ''}
-                                                    isUploading={isMediaUploading}
-                                                    onFileSelected={(file) => {
-                                                        setValue('headerType', 'IMAGE');
-                                                        handleFileUpload(file, 'image', field.onChange);
-                                                    }}
-                                                    onRemove={() => {
-                                                        field.onChange('');
-                                                        dispatch(clearUploadedMedia());
-                                                    }}
-                                                    placeholder="Click to upload or drag and drop"
-                                                    uploadType="image"
-                                                    disabled={isViewMode}
-                                                    fileName={uploadedFileName}
-                                                    compact
-                                                />
+                                                <div className="space-y-3">
+                                                    {!selectedHeaderAsset ? (
+                                                        <FileUpload
+                                                            isDarkMode={isDarkMode}
+                                                            label="Image File"
+                                                            accept="image/*"
+                                                            uploadedUrl={isUrlLikeValue(field.value || '') ? field.value : ''}
+                                                            isUploading={isMediaUploading}
+                                                            onFileSelected={(file) => {
+                                                                setValue('headerType', 'IMAGE');
+                                                                handleFileUpload(file, 'image', field.onChange);
+                                                            }}
+                                                            onRemove={() => {
+                                                                field.onChange('');
+                                                                dispatch(clearUploadedMedia());
+                                                            }}
+                                                            placeholder="Click to upload or drag and drop"
+                                                            uploadType="image"
+                                                            disabled={isViewMode}
+                                                            fileName={uploadedFileName}
+                                                            compact
+                                                            onPickFromGallery={() => setIsGalleryOpen(true)}
+                                                        />
+                                                    ) : (
+                                                        <div className={cn(
+                                                            "rounded-xl border p-4 space-y-3",
+                                                            isDarkMode ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
+                                                        )}>
+                                                            <div className="flex items-start gap-3">
+                                                                <div className={cn("p-2 rounded-lg", isDarkMode ? 'bg-white/10 text-emerald-300' : 'bg-white text-emerald-600')}>
+                                                                    <CheckCircle2 size={18} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={cn("text-xs font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>Selected from media gallery</p>
+                                                                    <p className={cn("text-sm font-medium truncate", isDarkMode ? 'text-emerald-200' : 'text-emerald-800')}>{selectedHeaderAsset.file_name}</p>
+                                                                    <p className={cn("text-[10px]", isDarkMode ? 'text-white/50' : 'text-slate-500')}>This draft will store the gallery asset handle.</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50')}>
+                                                                    <Link2 size={14} />
+                                                                    Change selection
+                                                                </button>
+                                                                {previewAsset && (
+                                                                    <button type="button" onClick={() => setIsPreviewOpen(true)} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50')}>
+                                                                        <Eye size={14} />
+                                                                        Preview
+                                                                    </button>
+                                                                )}
+                                                                <button type="button" onClick={() => clearSelectedHeaderAsset(field.onChange)} disabled={isViewMode} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-red-500/10 text-red-300 hover:bg-red-500/15' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100')}>
+                                                                    <Trash2 size={14} />
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {/* <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("w-full px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-2", isDarkMode ? 'border-white/10 bg-white/5 text-white hover:bg-white/10' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100')}>
+                                                        <ImagePlus size={14} />
+                                                        Pick image from gallery
+                                                    </button> */}
+                                                </div>
                                             )}
                                         />
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            Upload an image for the header
+                                            Select an image from Gallery or upload a new image for the header
                                         </p>
                                         {errors.headerValue && (
                                             <p className="text-red-500 text-[10px] mt-1 ml-1 font-semibold">{errors.headerValue.message}</p>
@@ -1210,30 +1327,67 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             name="headerValue"
                                             control={control}
                                             render={({ field }) => (
-                                                <FileUpload
-                                                    isDarkMode={isDarkMode}
-                                                    label="Video File"
-                                                    accept="video/*"
-                                                    uploadedUrl={field.value || ''}
-                                                    isUploading={isMediaUploading}
-                                                    onFileSelected={(file) => {
-                                                        setValue('headerType', 'VIDEO');
-                                                        handleFileUpload(file, 'video', field.onChange);
-                                                    }}
-                                                    onRemove={() => {
-                                                        field.onChange('');
-                                                        dispatch(clearUploadedMedia());
-                                                    }}
-                                                    placeholder="Click to upload or drag and drop"
-                                                    uploadType="video"
-                                                    disabled={isViewMode}
-                                                    fileName={uploadedFileName}
-                                                    compact
-                                                />
+                                                <div className="space-y-3">
+                                                    {!selectedHeaderAsset ? (
+                                                        <FileUpload
+                                                            isDarkMode={isDarkMode}
+                                                            label="Video File"
+                                                            accept="video/*"
+                                                            uploadedUrl={isUrlLikeValue(field.value || '') ? field.value : ''}
+                                                            isUploading={isMediaUploading}
+                                                            onFileSelected={(file) => {
+                                                                setValue('headerType', 'VIDEO');
+                                                                handleFileUpload(file, 'video', field.onChange);
+                                                            }}
+                                                            onRemove={() => {
+                                                                field.onChange('');
+                                                                dispatch(clearUploadedMedia());
+                                                            }}
+                                                            placeholder="Click to upload or drag and drop"
+                                                            uploadType="video"
+                                                            disabled={isViewMode}
+                                                            fileName={uploadedFileName}
+                                                            compact
+                                                            onPickFromGallery={() => setIsGalleryOpen(true)}
+                                                        />
+                                                    ) : (
+                                                        <div className={cn(
+                                                            "rounded-xl border p-4 space-y-3",
+                                                            isDarkMode ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
+                                                        )}>
+                                                            <div className="flex items-start gap-3">
+                                                                <div className={cn("p-2 rounded-lg", isDarkMode ? 'bg-white/10 text-emerald-300' : 'bg-white text-emerald-600')}>
+                                                                    <CheckCircle2 size={18} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={cn("text-xs font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>Selected from media gallery</p>
+                                                                    <p className={cn("text-sm font-medium truncate", isDarkMode ? 'text-emerald-200' : 'text-emerald-800')}>{selectedHeaderAsset.file_name}</p>
+                                                                    <p className={cn("text-[10px]", isDarkMode ? 'text-white/50' : 'text-slate-500')}>The gallery handle will be saved with this template.</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50')}>
+                                                                    <Link2 size={14} />
+                                                                    Change selection
+                                                                </button>
+                                                                {previewAsset && (
+                                                                    <button type="button" onClick={() => setIsPreviewOpen(true)} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50')}>
+                                                                        <Eye size={14} />
+                                                                        Preview
+                                                                    </button>
+                                                                )}
+                                                                <button type="button" onClick={() => clearSelectedHeaderAsset(field.onChange)} disabled={isViewMode} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-red-500/10 text-red-300 hover:bg-red-500/15' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100')}>
+                                                                    <Trash2 size={14} />
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         />
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            Upload a video for the header
+                                            Select a video from Gallery or upload a new video for the header
                                         </p>
                                         {errors.headerValue && (
                                             <p className="text-red-500 text-[10px] mt-1 ml-1 font-semibold">{errors.headerValue.message}</p>
@@ -1252,30 +1406,67 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             name="headerValue"
                                             control={control}
                                             render={({ field }) => (
-                                                <FileUpload
-                                                    isDarkMode={isDarkMode}
-                                                    label="Document File"
-                                                    accept=".pdf,.doc,.docx"
-                                                    uploadedUrl={field.value || ''}
-                                                    isUploading={isMediaUploading}
-                                                    onFileSelected={(file) => {
-                                                        setValue('headerType', 'DOCUMENT');
-                                                        handleFileUpload(file, 'document', field.onChange);
-                                                    }}
-                                                    onRemove={() => {
-                                                        field.onChange('');
-                                                        dispatch(clearUploadedMedia());
-                                                    }}
-                                                    placeholder="Click to upload or drag and drop"
-                                                    uploadType="document"
-                                                    disabled={isViewMode}
-                                                    fileName={displayFileName}
-                                                    compact
-                                                />
+                                                <div className="space-y-3">
+                                                    {!selectedHeaderAsset ? (
+                                                        <FileUpload
+                                                            isDarkMode={isDarkMode}
+                                                            label="Document File"
+                                                            accept=".pdf,.doc,.docx"
+                                                            uploadedUrl={field.value || ''}
+                                                            isUploading={isMediaUploading}
+                                                            onFileSelected={(file) => {
+                                                                setValue('headerType', 'DOCUMENT');
+                                                                handleFileUpload(file, 'document', field.onChange);
+                                                            }}
+                                                            onRemove={() => {
+                                                                field.onChange('');
+                                                                dispatch(clearUploadedMedia());
+                                                            }}
+                                                            placeholder="Click to upload or drag and drop"
+                                                            uploadType="document"
+                                                            disabled={isViewMode}
+                                                            fileName={displayFileName}
+                                                            compact
+                                                            onPickFromGallery={() => setIsGalleryOpen(true)}
+                                                        />
+                                                    ) : (
+                                                        <div className={cn(
+                                                            "rounded-xl border p-4 space-y-3",
+                                                            isDarkMode ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
+                                                        )}>
+                                                            <div className="flex items-start gap-3">
+                                                                <div className={cn("p-2 rounded-lg", isDarkMode ? 'bg-white/10 text-emerald-300' : 'bg-white text-emerald-600')}>
+                                                                    <CheckCircle2 size={18} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={cn("text-xs font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>Selected from media gallery</p>
+                                                                    <p className={cn("text-sm font-medium truncate", isDarkMode ? 'text-emerald-200' : 'text-emerald-800')}>{selectedHeaderAsset.file_name}</p>
+                                                                    <p className={cn("text-[10px]", isDarkMode ? 'text-white/50' : 'text-slate-500')}>The attached gallery document will be saved as the template header media.</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button type="button" onClick={() => setIsGalleryOpen(true)} disabled={isViewMode} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50')}>
+                                                                    <Link2 size={14} />
+                                                                    Change selection
+                                                                </button>
+                                                                {previewAsset && (
+                                                                    <button type="button" onClick={() => setIsPreviewOpen(true)} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50')}>
+                                                                        <Eye size={14} />
+                                                                        Preview
+                                                                    </button>
+                                                                )}
+                                                                <button type="button" onClick={() => clearSelectedHeaderAsset(field.onChange)} disabled={isViewMode} className={cn("px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2", isDarkMode ? 'bg-red-500/10 text-red-300 hover:bg-red-500/15' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100')}>
+                                                                    <Trash2 size={14} />
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         />
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            Upload a document for the header
+                                            Select a document from Gallery or upload a new document for the header
                                         </p>
                                         {errors.headerValue && (
                                             <p className="text-red-500 text-[10px] mt-1 ml-1 font-semibold">{errors.headerValue.message}</p>
@@ -1284,7 +1475,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                 </div>
                             )}
 
-                            {templateType === 'LOCATION' && (
+                            {/* {templateType === 'LOCATION' && (
                                 <div className="w-full">
                                     <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
                                         Location Header
@@ -1307,7 +1498,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     </div>
                                     <input type="hidden" value="LOCATION" {...register('headerValue')} />
                                 </div>
-                            )}
+                            )} */}
 
 
                         </div>
@@ -1435,7 +1626,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                             isDarkMode={isDarkMode}
                             templateType={templateType}
                             headerType={headerType}
-                            headerValue={headerValue}
+                            headerValue={previewHeaderValue}
                             content={content}
                             footer={footer}
                             variables={variables}
@@ -1449,6 +1640,26 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     </div>
                 </div>
             </div>
+            <GalleryPicker
+                isOpen={isGalleryOpen}
+                onClose={() => setIsGalleryOpen(false)}
+                onSelect={handleGallerySelect}
+                approvedOnly={false}
+                fileType={
+                    templateType === 'IMAGE'
+                        ? 'image'
+                        : templateType === 'VIDEO'
+                            ? 'video'
+                            : templateType === 'DOCUMENT'
+                                ? 'document'
+                                : 'all'
+                }
+            />
+            <MediaAssetPreviewModal
+                isOpen={isPreviewOpen && !!previewAsset}
+                asset={previewAsset}
+                onClose={() => setIsPreviewOpen(false)}
+            />
         </div>
     );
 };

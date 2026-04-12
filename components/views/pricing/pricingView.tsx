@@ -349,15 +349,17 @@ export const PricingView = () => {
                                 <TableHead isDarkMode={isDarkMode}>Category</TableHead>
                                 <TableHead isDarkMode={isDarkMode}>Country Code</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="right">Base Rate ($)</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Base Rate (₹)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="right">Markup (%)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="right">Final Rate ($)</TableHead>
+                                <TableHead isDarkMode={isDarkMode} align="right">Final Rate (₹)</TableHead>
                                 <TableHead isDarkMode={isDarkMode} align="center" width="100px">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 <TableRow isDarkMode={isDarkMode}>
-                                    <TableCell align="center" colSpan={6}>
+                                    <TableCell align="center" colSpan={8}>
                                         <div className="flex flex-col items-center justify-center h-32 text-gray-500">
                                             <Loader2 className="w-6 h-6 animate-spin mb-2" />
                                             Loading pricing rules...
@@ -366,7 +368,7 @@ export const PricingView = () => {
                                 </TableRow>
                             ) : pricingRules.length === 0 ? (
                                 <TableRow isDarkMode={isDarkMode}>
-                                    <TableCell align="center" colSpan={6}>
+                                    <TableCell align="center" colSpan={8}>
                                         <div className="flex items-center justify-center h-32 text-gray-500">
                                             No pricing rules found.
                                         </div>
@@ -389,11 +391,21 @@ export const PricingView = () => {
                                             <span>${parseFloat(rule.rate).toFixed(4)}</span>
                                         </TableCell>
                                         <TableCell align="right">
+                                            <span className="text-blue-400 font-medium">
+                                                ₹{(parseFloat(rule.rate) * DEFAULT_USD_TO_INR).toFixed(4)}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell align="right">
                                             <span>{parseFloat(rule.markup_percent).toFixed(1)}%</span>
                                         </TableCell>
                                         <TableCell align="right">
                                             <span className="text-emerald-400 font-medium">
                                                 ${(parseFloat(rule.rate) * (1 + parseFloat(rule.markup_percent) / 100)).toFixed(4)}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <span className="text-emerald-400 font-medium">
+                                                ₹{(parseFloat(rule.rate) * (1 + parseFloat(rule.markup_percent) / 100) * DEFAULT_USD_TO_INR).toFixed(4)}
                                             </span>
                                         </TableCell>
                                         <TableCell align="center" width="100px">

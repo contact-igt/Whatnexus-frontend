@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { campaignService } from "@/services/campaign/campaign.service";
 import type {
     CampaignDetails,
+    CampaignStatsResponse,
     Recipient,
     RecipientStatus,
 } from "@/services/campaign/campaign.types";
@@ -12,6 +13,7 @@ interface UseCampaignDetailsReturn {
     recipients: Recipient[];
     loading: boolean;
     error: string | null;
+    stats: CampaignStatsResponse["data"] | null;
     refetch: () => Promise<void>;
     filters: {
         recipientStatus: RecipientStatus | undefined;
@@ -34,6 +36,7 @@ export const useCampaignDetails = (
     const [recipients, setRecipients] = useState<Recipient[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [stats, setStats] = useState<CampaignStatsResponse["data"] | null>(null);
     const [recipientStatusFilter, setRecipientStatusFilter] = useState<
         RecipientStatus | undefined
     >(undefined);
@@ -51,9 +54,11 @@ export const useCampaignDetails = (
                 campaignId,
                 params
             );
+            const statsResponse = await campaignService.getCampaignStats(campaignId);
 
             setCampaign(response.data);
             setRecipients(response.data.recipients);
+            setStats(statsResponse.data);
         } catch (err) {
             console.error("Error fetching campaign details:", err);
             setError("Failed to load campaign details. Please try again.");
@@ -127,6 +132,7 @@ export const useCampaignDetails = (
         recipients,
         loading,
         error,
+        stats,
         refetch: fetchCampaignDetails,
         filters: {
             recipientStatus: recipientStatusFilter,

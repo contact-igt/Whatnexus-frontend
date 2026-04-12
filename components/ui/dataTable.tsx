@@ -13,6 +13,8 @@ export interface ColumnDef<T> {
     flex?: number;
     sortable?: boolean;
     renderCell?: (params: { row: T; value: any; index: number }) => ReactNode;
+    /** Tailwind class(es) applied to both <th> and <td> — use e.g. "hidden sm:table-cell" for responsive hiding */
+    className?: string;
 }
 
 interface DataTableProps<T> {
@@ -52,10 +54,11 @@ export function DataTable<T>({
                                 <th
                                     key={col.field + index}
                                     className={cn(
-                                        "px-6 py-4",
+                                        "px-3 md:px-6 py-3 md:py-4",
                                         col.headerAlign === 'center' && "text-center",
                                         col.headerAlign === 'right' && "text-right",
-                                        col.headerAlign === 'left' && "text-left" // Default
+                                        col.headerAlign === 'left' && "text-left", // Default
+                                        col.className
                                     )}
                                     style={{
                                         width: col.width,
@@ -73,7 +76,7 @@ export function DataTable<T>({
                             Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className={cn(isDarkMode ? 'border-b border-white/5' : 'border-b border-slate-100')}>
                                     {columns.map((col, j) => (
-                                        <td key={j} className="px-6 py-5">
+                                        <td key={j} className={cn("px-3 md:px-6 py-4 md:py-5", col.className)}>
                                             <div className="relative overflow-hidden">
                                                 <div
                                                     className={cn(
@@ -134,10 +137,11 @@ export function DataTable<T>({
                                         <td
                                             key={`${row.id || rowIndex}-${col.field}`}
                                             className={cn(
-                                                "px-6 py-5",
+                                                "px-3 md:px-6 py-4 md:py-5",
                                                 col.align === 'center' && "text-center",
                                                 col.align === 'right' && "text-right",
-                                                col.align === 'left' && "text-left"
+                                                col.align === 'left' && "text-left",
+                                                col.className
                                             )}
                                         >
                                             <div className={cn(

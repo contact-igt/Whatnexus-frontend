@@ -17,6 +17,7 @@ interface FileUploadProps {
     isUploading?: boolean;
     compact?: boolean; // Reduced size variant for use inside form panels
     fileName?: string | null; // Optional: Display actual filename if available
+    onPickFromGallery?: () => void;
 }
 
 export const FileUpload = ({
@@ -32,6 +33,7 @@ export const FileUpload = ({
     isUploading = false,
     compact = false,
     fileName = null,
+    onPickFromGallery,
 }: FileUploadProps) => {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +58,13 @@ export const FileUpload = ({
     const handleDragLeave = () => setIsDragging(false);
 
     const handleClick = () => {
-        if (!disabled && !isUploading) fileInputRef.current?.click();
+        if (!disabled && !isUploading) {
+            if (onPickFromGallery) {
+                onPickFromGallery();
+            } else {
+                fileInputRef.current?.click();
+            }
+        }
     };
 
     const handleRemove = (e: React.MouseEvent) => {
@@ -210,16 +218,37 @@ export const FileUpload = ({
                         )}>
                             {getIcon()}
                         </div>
-                        <div className={cn("flex items-center mb-1", compact ? "gap-1.5" : "gap-2")}>
-                            <Upload size={compact ? 13 : 16} className="text-emerald-500" />
-                            <p className={cn(
-                                "font-medium",
-                                compact ? "text-xs" : "text-sm",
-                                isDarkMode ? "text-white" : "text-slate-900"
-                            )}>
-                                Upload {getTypeLabel()}
-                            </p>
-                        </div>
+                        {onPickFromGallery && (
+                            <button 
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPickFromGallery();
+                                }}
+                                className={cn("flex items-center mb-1 hover:opacity-80 transition-opacity z-10", compact ? "gap-1.5" : "gap-2")}
+                            >
+                                <Upload size={compact ? 13 : 16} className="text-emerald-500" />
+                                <p className={cn(
+                                    "font-medium hover:underline",
+                                    compact ? "text-xs" : "text-sm",
+                                    isDarkMode ? "text-emerald-400" : "text-emerald-600"
+                                )}>
+                                    Pick {getTypeLabel()} from gallery
+                                </p>
+                            </button>
+                        )}
+                        {!onPickFromGallery && (
+                            <div className={cn("flex items-center mb-1", compact ? "gap-1.5" : "gap-2")}>
+                                <Upload size={compact ? 13 : 16} className="text-emerald-500" />
+                                <p className={cn(
+                                    "font-medium",
+                                    compact ? "text-xs" : "text-sm",
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                )}>
+                                    Upload {getTypeLabel()}
+                                </p>
+                            </div>
+                        )}
                         <p className={cn(
                             "text-center",
                             compact ? "text-[10px]" : "text-xs",

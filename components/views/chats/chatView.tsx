@@ -5,6 +5,7 @@ import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useAddMessageMutation, useChatSuggestMutation, useGetAllLiveChatsQuery, useMessagesByPhoneQuery, useUpdateSeenMutation, useClaimChatMutation, useAssignAgentMutation, useGetAgentsQuery, useToggleSilenceAIMutation } from '@/hooks/useMessagesQuery';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
+import { useLeadIntelligenceQuery } from '@/hooks/useLeadIntelligenceQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -12,6 +13,7 @@ import { socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
+import { LeadSummarySidebar } from '../leadSummarySidebar';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
 import { toast } from 'sonner';
 // Extracted Components
@@ -70,6 +72,14 @@ export const ChatView = () => {
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
     const [message, setMessage] = useState<string>("");
     const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
+    const [isNeuralSummarySidebarOpen, setIsNeuralSummarySidebarOpen] = useState(false);
+
+    // Leads list — used to resolve lead_id from contact_id for LeadSummarySidebar
+    const { data: leadsData } = useLeadIntelligenceQuery();
+    const selectedLeadForNeuralSummary = useMemo(() => {
+        const leads: any[] = leadsData?.data?.leads || [];
+        return leads.find((l: any) => l.contact_id === selectedChat?.contact_id) ?? null;
+    }, [leadsData?.data?.leads, selectedChat?.contact_id]);
     const router = useRouter();
     const selectedChatRef = useRef<any>(null);
     const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -748,7 +758,7 @@ export const ChatView = () => {
                 </GlassCard>
             </div>
 
-            {selectedChat && (
+            {!isNeuralSummarySidebarOpen && selectedChat && (
                 <ChatDetails
                     isDarkMode={isDarkMode}
                     selectedChat={selectedChat}
@@ -765,6 +775,7 @@ export const ChatView = () => {
                     summarizeChat={summarizeChat}
                     isSummarizing={isSummarizing}
                     setIsWeeklySummaryOpen={setIsWeeklySummaryOpen}
+                    openNeuralSummarySidebar={() => setIsNeuralSummarySidebarOpen(true)}
                     toggleSilenceAiMutate={toggleSilenceAiMutate}
                     isTogglingSilence={isTogglingSilence}
                     isNeuralSummaryEnabled={aiSettings.neural_summary}
@@ -778,6 +789,14 @@ export const ChatView = () => {
                 chatPhone={selectedChat?.phone}
                 isDarkMode={isDarkMode}
                 contactId={selectedChat?.contact_id}
+            />
+
+            {/* Neural Summary — Lead Summary Sidebar */}
+            <LeadSummarySidebar
+                isOpen={isNeuralSummarySidebarOpen}
+                onClose={() => setIsNeuralSummarySidebarOpen(false)}
+                lead={selectedLeadForNeuralSummary}
+                isDarkMode={isDarkMode}
             />
         </div>
     );

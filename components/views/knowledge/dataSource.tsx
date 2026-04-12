@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Link2, File, Database } from 'lucide-react';
+import { Upload, FileText, Globe, Trash2, CheckCircle2, Clock, Plus, FileUp, Loader2, Link2, File, Database, MessageCircle } from 'lucide-react';
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { GlassCard } from "@/components/ui/glassCard";
 import { KNOWLEDGE_SOURCES } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useActivateKnowledgeMutation, useDeletedKnowledgeList, useDeleteKnowledgeById, useGetKnowledgesQuery, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useUploadKnowledgeMutation } from '@/hooks/useUploadKnowledge';
+import { useFaqMasterSourceQuery, useFaqKnowledgeEntriesQuery, useEditFaqKnowledgeEntryMutation, useRemoveFaqKnowledgeEntryMutation } from '@/hooks/useFaqQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Pagination } from '@/components/ui/pagination';
 
@@ -31,6 +32,14 @@ interface DataSourceProps {
 }
 
 type TabType = 'data-sources' | 'prompts';
+
+const FAQ_MASTER_TITLE = 'doctor faq knowledge';
+
+const isFaqMasterLikeSource = (source: any) => {
+    if (!source) return false;
+    const title = String(source?.title || '').trim().toLowerCase();
+    return source?.type === 'faq' || title === FAQ_MASTER_TITLE;
+};
 
 const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -77,6 +86,15 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
     const { mutate: uploadKnowledgeMutate, isPending } = useUploadKnowledgeMutation();
     const { mutate: activateKnowledgeMutate, isPending: isActivatePending } = useActivateKnowledgeMutation();
     const { mutate: updateKnowledgeMutate } = useUpdateKnowledgeMutation();
+    const { data: faqMasterData, isLoading: isFaqMasterLoading } = useFaqMasterSourceQuery();
+    const { data: faqEntriesData, isLoading: isFaqEntriesLoading } = useFaqKnowledgeEntriesQuery();
+    const { mutate: editFaqEntry } = useEditFaqKnowledgeEntryMutation();
+    const { mutate: removeFaqEntry } = useRemoveFaqKnowledgeEntryMutation();
+    const [editingFaqEntry, setEditingFaqEntry] = useState<any>(null);
+    const [faqEntryDraft, setFaqEntryDraft] = useState<{ question: string; answer: string }>({ question: "", answer: "" });
+    const faqMasterSource = faqMasterData?.data?.source ?? faqMasterData?.data ?? null;
+    const faqPublishedCount = faqMasterData?.data?.published_count;
+    const isFaqMasterActive = faqMasterSource?.status === "active";
     const [activeTab, setActiveTab] = useState<TabType>('data-sources');
     const [isUpdating, setIsUpdating] = useState<{ status: boolean, type: any }>({
         status: false,
@@ -272,11 +290,9 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
             id, data: status
         })
     }
-    console.log("deletedKnowledgesData", deletedKnowledgesData);
-    console.log("knowledgeData", knowledgeData)
-    const activeKnowledgeData = knowledgeData?.data?.sources?.filter((source: any) => source.status === "active");
-    const inactiveKnowledgeData = knowledgeData?.data?.sources?.filter((source: any) => source.status === "inactive");
-    const deletedSources = deletedKnowledgesData?.data?.sources || [];
+    const activeKnowledgeData = knowledgeData?.data?.sources?.filter((source: any) => source.status === "active" && !isFaqMasterLikeSource(source));
+    const inactiveKnowledgeData = knowledgeData?.data?.sources?.filter((source: any) => source.status === "inactive" && !isFaqMasterLikeSource(source));
+    const deletedSources = (deletedKnowledgesData?.data?.sources || []).filter((source: any) => !isFaqMasterLikeSource(source));
 
     const knowledgeItemsPerPage = 5;
 
@@ -596,6 +612,156 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                 </div>
 
                 <div className="space-y-3">
+                    {/* FAQ Master Source card — single shared Doctor FAQ Knowledge source */}
+                    {isFaqMasterLoading ? (
+                        <div className={cn("p-4 rounded-xl border animate-pulse", isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200')}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-start space-x-4 flex-1">
+                                    <div className={cn("w-10 h-10 rounded-lg shrink-0", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                    <div className="flex-1 min-w-0 space-y-2">
+                                        <div className={cn("h-4 w-40 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                        <div className={cn("h-3 w-24 rounded", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                                    </div>
+                                </div>
+                                <div className={cn("w-11 h-6 rounded-full", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={cn("p-4 rounded-xl border transition-all hover:border-violet-500/30", isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200')}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-start space-x-4 flex-1">
+                                    <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", isDarkMode ? 'bg-violet-500/10' : 'bg-violet-50')}>
+                                        <MessageCircle className="text-violet-500" size={20} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center space-x-3 mb-1">
+                                            <h4 className={cn("text-sm font-semibold truncate", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                Doctor FAQ Knowledge
+                                            </h4>
+                                            <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-violet-500/10 text-violet-500 border border-violet-500/20">
+                                                FAQ
+                                            </span>
+                                            <span className={cn(
+                                                "flex items-center space-x-1.5 px-2.5 py-1 rounded-md border",
+                                                isFaqMasterActive
+                                                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                                    : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                            )}>
+                                                {isFaqMasterActive ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                                                <span className="text-xs font-semibold">{isFaqMasterActive ? 'Active' : 'Inactive'}</span>
+                                            </span>
+                                        </div>
+                                        <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                            {faqPublishedCount != null
+                                                ? `${faqPublishedCount} published answer${faqPublishedCount !== 1 ? 's' : ''}`
+                                                : 'Manage answers in the FAQ Review tab'}
+                                        </p>
+                                    </div>
+                                </div>
+                                {faqMasterSource && (
+                                    <label className="relative inline-flex items-center cursor-pointer mx-3">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={isFaqMasterActive}
+                                            onChange={() =>
+                                                handleToggleActive(
+                                                    String(faqMasterSource.id),
+                                                    faqMasterSource.status,
+                                                )
+                                            }
+                                        />
+                                        <div className={cn("w-11 h-6 rounded-full peer transition-all peer-checked:bg-emerald-600", isDarkMode ? 'bg-white/10' : 'bg-slate-300')}>
+                                            <div className={cn("absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all", isFaqMasterActive ? "translate-x-5" : "translate-x-0")} />
+                                        </div>
+                                    </label>
+                                )}
+                                {faqMasterSource && (
+                                    <ActionMenu
+                                        isDarkMode={isDarkMode}
+                                        isView={true}
+                                        isEdit={true}
+                                        isDelete={true}
+                                        onView={() => handleView(faqMasterSource, 'knowledge')}
+                                        onEdit={() => handleEdit(faqMasterSource, 'knowledge')}
+                                        onDelete={() => handleDeleteClick(faqMasterSource, 'knowledge')}
+                                    />
+                                )}
+                            </div>
+
+                            {/* Child FAQ entries */}
+                            {faqMasterSource && (
+                                <div className="mt-3 ml-14 space-y-2">
+                                    {isFaqEntriesLoading ? (
+                                        <p className={cn("text-xs", isDarkMode ? "text-white/30" : "text-slate-400")}>Loading entries…</p>
+                                    ) : (
+                                        (() => {
+                                            const entries: any[] = Array.isArray(faqEntriesData?.data?.entries)
+                                                ? faqEntriesData.data.entries
+                                                : [];
+                                            if (entries.length === 0) return null;
+                                            return entries.map((entry: any) => (
+                                                editingFaqEntry?.id === entry.id ? (
+                                                    <div key={entry.id} className={cn("p-3 rounded-lg border", isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200")}>
+                                                        <input
+                                                            className={cn("w-full text-xs rounded px-2 py-1 mb-1.5 border outline-none", isDarkMode ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-900")}
+                                                            value={faqEntryDraft.question}
+                                                            onChange={(e) => setFaqEntryDraft((d) => ({ ...d, question: e.target.value }))}
+                                                            placeholder="Question"
+                                                        />
+                                                        <textarea
+                                                            rows={3}
+                                                            className={cn("w-full text-xs rounded px-2 py-1 border outline-none resize-none", isDarkMode ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-900")}
+                                                            value={faqEntryDraft.answer}
+                                                            onChange={(e) => setFaqEntryDraft((d) => ({ ...d, answer: e.target.value }))}
+                                                            placeholder="Answer"
+                                                        />
+                                                        <div className="flex items-center space-x-2 mt-2">
+                                                            <button
+                                                                className="px-3 py-1 text-xs rounded bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                                                                onClick={() => {
+                                                                    editFaqEntry(
+                                                                        { id: String(entry.id), data: faqEntryDraft },
+                                                                        { onSuccess: () => setEditingFaqEntry(null) }
+                                                                    );
+                                                                }}
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button
+                                                                className={cn("px-3 py-1 text-xs rounded transition-colors", isDarkMode ? "text-white/50 hover:text-white/80" : "text-slate-500 hover:text-slate-700")}
+                                                                onClick={() => setEditingFaqEntry(null)}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div key={entry.id} className={cn("flex items-start justify-between gap-2 p-2.5 rounded-lg border", isDarkMode ? "bg-white/3 border-white/8 hover:bg-white/5" : "bg-white border-slate-100 hover:border-slate-200")}>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={cn("text-xs font-medium truncate", isDarkMode ? "text-white/80" : "text-slate-700")}>{entry.question}</p>
+                                                            <p className={cn("text-xs mt-0.5 line-clamp-2", isDarkMode ? "text-white/40" : "text-slate-400")}>{entry.answer}</p>
+                                                        </div>
+                                                        <ActionMenu
+                                                            isDarkMode={isDarkMode}
+                                                            isEdit={true}
+                                                            isDelete={true}
+                                                            onEdit={() => {
+                                                                setEditingFaqEntry(entry);
+                                                                setFaqEntryDraft({ question: entry.question, answer: entry.answer });
+                                                            }}
+                                                            onDelete={() => removeFaqEntry(String(entry.id))}
+                                                        />
+                                                    </div>
+                                                )
+                                            ));
+                                        })()
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {isKnowledgeLoading ? (
                         Array.from({ length: 3 }).map((_, index) => (
                             <div

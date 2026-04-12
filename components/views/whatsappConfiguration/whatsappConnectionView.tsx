@@ -26,6 +26,7 @@ interface WhatsAppConfig {
     phone_number_id: string;
     whatsapp_number: string;
     access_token: string;
+    app_id: string;
 }
 
 export const whatsappConnectSchema = z.object({
@@ -51,6 +52,12 @@ export const whatsappConnectSchema = z.object({
         .string()
         .min(100, "Access token is too short")
         .max(300, "Access token is too long"),
+
+    app_id: z
+        .string()
+        .regex(/^\d+$/, "App ID must contain only numbers")
+        .min(8, "App ID is too short")
+        .max(20, "App ID is too long"),
 });
 
 export const WhatsAppConnectionView = () => {
@@ -61,6 +68,7 @@ export const WhatsAppConnectionView = () => {
             whatsapp_number: '',
             phone_number_id: '',
             access_token: '',
+            app_id: '',
         }
     })
     const { user } = useAuth();
@@ -358,7 +366,7 @@ export const WhatsAppConnectionView = () => {
                                             </div>
 
                                             <div className="md:col-span-2 relative mb-5">
-                                                <Input
+                                                 <Input
                                                     {...register("access_token")}
                                                     autoComplete='new-password'
                                                     isDarkMode={isDarkMode}
@@ -381,6 +389,22 @@ export const WhatsAppConnectionView = () => {
                                                 >
                                                     {showAccessToken ? <EyeOff size={16} /> : <Eye size={16} />}
                                                 </button>
+                                            </div>
+
+                                            <div className="md:col-span-2">
+                                                <Input
+                                                    {...register("app_id")}
+                                                    autoComplete='new-password'
+                                                    isDarkMode={isDarkMode}
+                                                    label="Meta App ID"
+                                                    icon={Building2}
+                                                    placeholder="Enter Meta App ID"
+                                                    error={errors.app_id?.message}
+                                                    required
+                                                />
+                                                <p className={cn("text-[10px] mt-1.5 ml-1", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                                    Providing your Meta App ID is required for Media Gallery features.
+                                                </p>
                                             </div>
                                         </div>
 

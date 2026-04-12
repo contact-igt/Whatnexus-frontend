@@ -233,6 +233,8 @@ export const WhatsAppPreviewPanel = ({
     fileName = null,
     category
 }: WhatsAppPreviewPanelProps) => {
+    const isGalleryHandle = (value: string) => value.includes("::") && !value.startsWith('http') && !value.startsWith('data:');
+
     // Replace variables and format text
     let processedContent = content;
 
@@ -260,12 +262,14 @@ export const WhatsAppPreviewPanel = ({
         }
 
         if (normalizedType === 'IMAGE' || normalizedType === 'VIDEO') {
-            if (headerValue) {
-                const isVideo = normalizedType === 'VIDEO' || headerValue.startsWith('data:video') || headerValue.match(/\.(mp4|webm|ogg)$/i);
+            const isVideo = normalizedType === 'VIDEO';
+            const isGallery = headerValue && isGalleryHandle(headerValue);
 
+            if (headerValue && !isGallery) {
+                const isActualVideo = isVideo || headerValue.startsWith('data:video') || headerValue.match(/\.(mp4|webm|ogg)$/i);
                 return (
                     <div className="w-full bg-black/5 flex items-center justify-center overflow-hidden">
-                        {isVideo ? (
+                        {isActualVideo ? (
                             <video src={headerValue} className="w-full max-h-52 object-cover rounded-t-xl" controls />
                         ) : (
                             <img src={headerValue} alt="Header media" className="w-full max-h-52 object-cover rounded-t-xl" />
@@ -273,15 +277,26 @@ export const WhatsAppPreviewPanel = ({
                     </div>
                 );
             }
-            const isVideo = normalizedType === 'VIDEO';
+
             return (
-                <div className={cn("w-full h-48 rounded-t-xl flex flex-col items-center justify-center gap-2",
+                <div className={cn("w-full h-48 rounded-t-xl flex flex-col items-center justify-center gap-2 relative overflow-hidden",
                     isVideo ? "bg-blue-500/10" : "bg-orange-500/10"
                 )}>
+                    {isGallery && (
+                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full shadow-lg z-10 flex items-center gap-1">
+                            <Check size={10} />
+                            GALLERY MEDIA
+                        </div>
+                    )}
                     {isVideo ? <Video size={56} className="text-blue-400" /> : <ImageIcon size={56} className="text-orange-400" />}
                     <span className={cn("text-xs font-semibold", isVideo ? "text-blue-400" : "text-orange-400")}>
-                        {isVideo ? 'Video' : 'Image'} Preview
+                        {isGallery ? (isVideo ? 'Gallery Video' : 'Gallery Image') : (isVideo ? 'Video Preview' : 'Image Preview')}
                     </span>
+                    {isGallery && (
+                        <p className={cn("text-[9px] opacity-60 px-6 text-center", isDarkMode ? "text-white" : "text-slate-600")}>
+                            Meta-hosted media assets do not provide public preview URLs. This asset will be delivered correctly to recipients.
+                        </p>
+                    )}
                 </div>
             );
         }
