@@ -20,8 +20,42 @@ export interface EditFaqKnowledgeEntryData {
   answer?: string;
 }
 
+export interface FaqReviewItem {
+  id: string | number;
+  question: string;
+  normalized_question?: string;
+  agent_category?: string;
+  agent_reason?: string;
+  doctor_answer?: string;
+  status: "pending_review" | "published" | "deleted" | string;
+  add_to_kb?: boolean;
+  is_active?: boolean;
+  reviewed_by?: string | null;
+  creator_name?: string | null;
+  whatsapp_number?: string | null;
+  created_at: string;
+  updated_at?: string;
+  answered_at?: string | null;
+  deleted_at?: string | null;
+  knowledge_entry_id?: string | number | null;
+}
+
+export interface FaqReviewsListData {
+  reviews: FaqReviewItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface FaqReviewsListResponse {
+  message: string;
+  data: FaqReviewsListData;
+}
+
 export class faqApiData {
-  getFaqReviews = async (status?: "pending_review" | "published") => {
+  getFaqReviews = async (
+    status?: "pending_review" | "published",
+  ): Promise<FaqReviewsListResponse> => {
     const params = status ? `?status=${status}` : "";
     return await _axios("get", `/whatsapp/faq-reviews${params}`);
   };

@@ -14,9 +14,18 @@ import { Modal } from "@/components/ui/modal";
 import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation, useDeletePromptPermanentById, useRestorePromptById } from '@/hooks/usePromptQuery';
 import { toast } from "sonner";
 import { useDeleteKnowledgeById, useDeleteKnowledgePermanentById, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useRestoreKnowledgeById } from '@/hooks/useUploadKnowledge';
+import { useEditFaqKnowledgeEntryMutation, useFaqKnowledgeEntriesQuery, useRemoveFaqKnowledgeEntryMutation } from '@/hooks/useFaqQuery';
 import { FaqReview } from './faqReview';
 
 type TabType = 'data-sources' | 'prompts' | 'faq-review';
+
+const FAQ_MASTER_TITLE = 'doctor faq knowledge';
+
+const isFaqMasterLikeSource = (source: any) => {
+    if (!source) return false;
+    const title = String(source?.title || '').trim().toLowerCase();
+    return source?.type === 'faq' || title === FAQ_MASTER_TITLE;
+};
 
 export const KnowledgeView = () => {
     const { isDarkMode } = useTheme();
@@ -47,6 +56,11 @@ export const KnowledgeView = () => {
     const {user} = useAuth();
     const { data: knowledgeDetailsById, refetch: refetchKnowledgeById, isLoading: isKnowledgeByIdLoading } = useKnowledgeByIdQuery(selectedItem?.item?.id, selectedItem?.mode ?? "knowledge");
     const { data: promptDetailsById, isLoading: isPromptByIdLoading } = usePromptByIdQuery(selectedItem?.item?.id, selectedItem?.mode ?? "prompt");
+    const { data: faqEntriesData, isLoading: isFaqEntriesLoading } = useFaqKnowledgeEntriesQuery();
+    const { mutate: editFaqEntry } = useEditFaqKnowledgeEntryMutation();
+    const { mutate: removeFaqEntry } = useRemoveFaqKnowledgeEntryMutation();
+    const [editingFaqEntry, setEditingFaqEntry] = useState<any>(null);
+    const [faqEntryDraft, setFaqEntryDraft] = useState<{ question: string; answer: string }>({ question: "", answer: "" });
     const [isDragging, setIsDragging] = useState(false);
     const { mutate: updateKnowledgeMutate } = useUpdateKnowledgeMutation();
     const { mutate: updatePromptMutute } = useUpdatePromptMutation();
@@ -65,6 +79,7 @@ export const KnowledgeView = () => {
     const isEdit = viewMode === "edit";
     const isKnowledge = selectedItem?.mode === "knowledge";
     const isPrompt = selectedItem?.mode === "prompt";
+    const isFaqKnowledgeSelected = isKnowledge && isFaqMasterLikeSource(selectedItem?.item);
     const knowledgeTabs = [
         { value: "data-sources", label: "Data Sources" },
         { value: "prompts", label: "Prompts" },
@@ -111,6 +126,9 @@ export const KnowledgeView = () => {
 
     const handleUpdate = () => {
         if (!selectedItem) return;
+        if (selectedItem?.mode === "knowledge" && isFaqMasterLikeSource(selectedItem?.item)) {
+            return;
+        }
         if (selectedItem?.mode == "knowledge") {
             if (editContent?.title.trim().length >= 3) {
                 setError((prev) => ({ ...prev, title: "" }));
@@ -343,6 +361,8 @@ export const KnowledgeView = () => {
         setIsViewModalOpen(false);
         setEditContent({ title: "", text: "" });
         setError({ title: "", text: "" });
+        setEditingFaqEntry(null);
+        setFaqEntryDraft({ question: "", answer: "" });
     }
     useEffect(() => {
         if (isViewModalOpen && knowledgeDetailsById && selectedItem?.mode == "knowledge") {
@@ -459,7 +479,7 @@ export const KnowledgeView = () => {
                         >
                             {isView ? "Close" : "Cancel"}
                         </button>
-                        {isEdit && (
+                        {isEdit && !isFaqKnowledgeSelected && (
                             <button
                                 onClick={handleUpdate}
                                 className={cn(
@@ -480,7 +500,116 @@ export const KnowledgeView = () => {
                 <div className="space-y-5">
                     {isKnowledge && (
                         <>
-                            {isKnowledgeByIdLoading ? (
+                            {isFaqKnowledgeSelected ? (
+                                <div>
+                                    <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                        FAQ Entries
+                                    </label>
+                                    {isFaqEntriesLoading ? (
+                                        <p className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                            Loading FAQ entries...
+                                        </p>
+                                    ) : (
+                                        (() => {
+                                            const entries: any[] = Array.isArray(faqEntriesData?.data?.entries)
+                                                ? faqEntriesData.data.entries
+                                                : [];
+
+                                            if (!entries.length) {
+                                                return (
+                                                    <p className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                                        No FAQ entries available.
+                                                    </p>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="space-y-2">
+                                                    {entries.map((entry: any) => (
+                                                        editingFaqEntry?.id === entry.id && isEdit ? (
+                                                            <div key={entry.id} className={cn("p-3 rounded-lg border", isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200")}>
+                                                                <input
+                                                                    className={cn("w-full text-xs rounded px-2 py-1 mb-1.5 border outline-none", isDarkMode ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-900")}
+                                                                    value={faqEntryDraft.question}
+                                                                    onChange={(e) => setFaqEntryDraft((d) => ({ ...d, question: e.target.value }))}
+                                                                    placeholder="Question"
+                                                                />
+                                                                <textarea
+                                                                    rows={3}
+                                                                    className={cn("w-full text-xs rounded px-2 py-1 border outline-none resize-none", isDarkMode ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-900")}
+                                                                    value={faqEntryDraft.answer}
+                                                                    onChange={(e) => setFaqEntryDraft((d) => ({ ...d, answer: e.target.value }))}
+                                                                    placeholder="Answer"
+                                                                />
+                                                                <div className="flex items-center space-x-2 mt-2">
+                                                                    <button
+                                                                        className="px-3 py-1 text-xs rounded bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                                                                        onClick={() => {
+                                                                            editFaqEntry(
+                                                                                { id: String(entry.id), data: faqEntryDraft },
+                                                                                { onSuccess: () => setEditingFaqEntry(null) }
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        Update
+                                                                    </button>
+                                                                    <button
+                                                                        className={cn("px-3 py-1 text-xs rounded transition-colors", isDarkMode ? "text-white/50 hover:text-white/80" : "text-slate-500 hover:text-slate-700")}
+                                                                        onClick={() => setEditingFaqEntry(null)}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div key={entry.id} className={cn("flex items-start justify-between gap-2 p-2.5 rounded-lg border", isDarkMode ? "bg-white/3 border-white/8 hover:bg-white/5" : "bg-white border-slate-100 hover:border-slate-200")}>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={cn("text-xs font-medium truncate", isDarkMode ? "text-white/80" : "text-slate-700")}>{entry.question}</p>
+                                                                    <p className={cn("text-xs mt-0.5 line-clamp-2", isDarkMode ? "text-white/40" : "text-slate-400")}>{entry.answer}</p>
+                                                                </div>
+                                                                {isEdit && (
+                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                        <button
+                                                                            className={cn(
+                                                                                "px-2.5 py-1 text-xs rounded border transition-colors",
+                                                                                isDarkMode
+                                                                                    ? "border-white/20 text-white/80 hover:bg-white/10"
+                                                                                    : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                                                                            )}
+                                                                            onClick={() => {
+                                                                                setEditingFaqEntry(entry);
+                                                                                setFaqEntryDraft({ question: entry.question, answer: entry.answer });
+                                                                            }}
+                                                                        >
+                                                                            Update
+                                                                        </button>
+                                                                        <button
+                                                                            className={cn(
+                                                                                "px-2.5 py-1 text-xs rounded border transition-colors",
+                                                                                isDarkMode
+                                                                                    ? "border-red-500/40 text-red-300 hover:bg-red-500/10"
+                                                                                    : "border-red-300 text-red-600 hover:bg-red-50"
+                                                                            )}
+                                                                            onClick={() => {
+                                                                                removeFaqEntry(String(entry.id));
+                                                                                if (editingFaqEntry?.id === entry.id) {
+                                                                                    setEditingFaqEntry(null);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            Remove
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()
+                                    )}
+                                </div>
+                            ) : isKnowledgeByIdLoading ? (
                                 <div className="space-y-4 animate-pulse">
                                     <div>
                                         <div className={cn("h-4 w-24 rounded mb-2", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
