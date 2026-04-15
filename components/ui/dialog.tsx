@@ -104,7 +104,7 @@ export const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps
         <div
             ref={ref}
             className={cn(
-                "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200",
+                "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150",
                 className
             )}
             {...props}
@@ -149,7 +149,7 @@ export const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps
                         "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
                         "w-full max-w-lg max-h-[90vh] overflow-y-auto",
                         "rounded-xl border border-[#2a2a2a] bg-[#111111] shadow-2xl",
-                        "animate-in fade-in zoom-in-95 duration-200",
+                        "animate-in fade-in zoom-in-95 duration-150",
                         "p-6",
                         className
                     )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, FileText, Image as ImageIcon, File, Video, Grid3x3, Loader2, AlertCircle, RefreshCw, MapPin } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
@@ -64,122 +64,126 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
     ];
 
     // Map API templates to component format
-    const templates: ProcessedTemplate[] = apiTemplates
-        .filter(t => (t.status?.toUpperCase() === 'APPROVED' || t.status === 'approved'))
-        .map(t => {
-            // Extract data from components if standard fields are missing
-            let bodyTextData = t.body;
-            let headerType = t.header_type;
+    const templates: ProcessedTemplate[] = useMemo(() => {
+        return apiTemplates
+            .filter(t => (t.status?.toUpperCase() === 'APPROVED' || t.status === 'approved'))
+            .map(t => {
+                // Extract data from components if standard fields are missing
+                let bodyTextData = t.body;
+                let headerType = t.header_type;
 
-            if (Array.isArray(t.components)) {
-                // Support both 'component_type' (your API) and 'type' (Standard Meta API)
-                const bodyComponent = t.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === 'body' || c.type?.toLowerCase() === 'body'
-                );
-                if (bodyComponent && !bodyTextData) bodyTextData = bodyComponent.text_content || bodyComponent.text;
+                if (Array.isArray(t.components)) {
+                    // Support both 'component_type' (your API) and 'type' (Standard Meta API)
+                    const bodyComponent = t.components.find((c: any) =>
+                        c.component_type?.toLowerCase() === 'body' || c.type?.toLowerCase() === 'body'
+                    );
+                    if (bodyComponent && !bodyTextData) bodyTextData = bodyComponent.text_content || bodyComponent.text;
 
-                const headerComponent = t.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === 'header' || c.type?.toLowerCase() === 'header'
-                );
-                if (headerComponent && !headerType) headerType = headerComponent.header_format || headerComponent.format;
-            }
+                    const headerComponent = t.components.find((c: any) =>
+                        c.component_type?.toLowerCase() === 'header' || c.type?.toLowerCase() === 'header'
+                    );
+                    if (headerComponent && !headerType) headerType = headerComponent.header_format || headerComponent.format;
+                }
 
-            // Extract Header/Footer Text explicitly
-            let headerText = '';
-            let footerText = '';
-            if (Array.isArray(t.components)) {
-                const h = t.components.find((c: any) => c.component_type?.toLowerCase() === 'header' || c.type?.toLowerCase() === 'header');
-                if (h) headerText = h.text_content || h.text || '';
-                const f = t.components.find((c: any) => c.component_type?.toLowerCase() === 'footer' || c.type?.toLowerCase() === 'footer');
-                if (f) footerText = f.text_content || f.text || '';
-            }
+                // Extract Header/Footer Text explicitly
+                let headerText = '';
+                let footerText = '';
+                if (Array.isArray(t.components)) {
+                    const h = t.components.find((c: any) => c.component_type?.toLowerCase() === 'header' || c.type?.toLowerCase() === 'header');
+                    if (h) headerText = h.text_content || h.text || '';
+                    const f = t.components.find((c: any) => c.component_type?.toLowerCase() === 'footer' || c.type?.toLowerCase() === 'footer');
+                    if (f) footerText = f.text_content || f.text || '';
+                }
 
-            // Parse Buttons for dynamic variables
-            let buttonVariables: any[] = [];
-            let allButtons: any[] = [];
-            if (Array.isArray(t.components)) {
-                const buttonsComp = t.components.find((c: any) => c.component_type?.toLowerCase() === 'buttons' || c.type?.toLowerCase() === 'buttons');
-                if (buttonsComp) {
-                    try {
-                        let btns = [];
-                        if (buttonsComp.text_content) {
-                            btns = typeof buttonsComp.text_content === 'string' ? JSON.parse(buttonsComp.text_content) : buttonsComp.text_content;
-                        } else if (buttonsComp.buttons) {
-                            btns = buttonsComp.buttons;
+                // Parse Buttons for dynamic variables
+                let buttonVariables: any[] = [];
+                let allButtons: any[] = [];
+                if (Array.isArray(t.components)) {
+                    const buttonsComp = t.components.find((c: any) => c.component_type?.toLowerCase() === 'buttons' || c.type?.toLowerCase() === 'buttons');
+                    if (buttonsComp) {
+                        try {
+                            let btns = [];
+                            if (buttonsComp.text_content) {
+                                btns = typeof buttonsComp.text_content === 'string' ? JSON.parse(buttonsComp.text_content) : buttonsComp.text_content;
+                            } else if (buttonsComp.buttons) {
+                                btns = buttonsComp.buttons;
+                            }
+
+                            if (Array.isArray(btns)) {
+                                allButtons = btns.map((btn: any, idx: number) => ({
+                                    index: idx,
+                                    type: btn.type,
+                                    text: btn.text,
+                                    url: btn.url || null,
+                                    phone_number: btn.phone_number || btn.value || null,
+                                }));
+                                btns.forEach((btn: any, idx: number) => {
+                                    // WhatsApp only supports {{1}} in URL buttons
+                                    if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
+                                        buttonVariables.push({
+                                            index: idx,
+                                            text: btn.text,
+                                            variable_key: `button_${idx}_1`, // Unique key for internal mapping
+                                            sample_value: btn.example || ''
+                                        });
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Error parsing template buttons:", e);
                         }
-
-                        if (Array.isArray(btns)) {
-                            allButtons = btns.map((btn: any, idx: number) => ({
-                                index: idx,
-                                type: btn.type,
-                                text: btn.text,
-                                url: btn.url || null,
-                                phone_number: btn.phone_number || btn.value || null,
-                            }));
-                            btns.forEach((btn: any, idx: number) => {
-                                // WhatsApp only supports {{1}} in URL buttons
-                                if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
-                                    buttonVariables.push({
-                                        index: idx,
-                                        text: btn.text,
-                                        variable_key: `button_${idx}_1`, // Unique key for internal mapping
-                                        sample_value: btn.example || ''
-                                    });
-                                }
-                            });
-                        }
-                    } catch (e) {
-                        console.error("Error parsing template buttons:", e);
                     }
                 }
-            }
 
-            const bodyVariables = t.variables || [];
-            const totalVarCount = bodyVariables.length + buttonVariables.length;
+                const bodyVariables = t.variables || [];
+                const totalVarCount = bodyVariables.length + buttonVariables.length;
 
-            return {
-                id: t.template_id || t.id || '',
-                name: t.name || t.template_name || (t as any).element_name || t.id || 'Untitled',
-                category: (t.category?.toLowerCase() as any) || 'marketing',
-                description: bodyTextData || 'No description',
-                type: (() => {
-                    // Check for carousel component
-                    const isCarousel = Array.isArray(t.components) && t.components.some((c: any) =>
-                        c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
-                    );
-                    if (isCarousel) return 'carousel';
-                    if (!headerType) return 'text';
-                    const ht = headerType.toLowerCase();
-                    if (ht === 'image') return 'image';
-                    if (ht === 'video') return 'video';
-                    if (ht === 'document') return 'document';
-                    if (ht === 'location') return 'location';
-                    return 'text';
-                })() as any,
-                variables: totalVarCount,
-                variableArray: bodyVariables,
-                buttonVariables,
-                allButtons,
-                headerText,
-                footerText,
-                bodyText: bodyTextData || '',
-                carouselCards: (() => {
-                    const carouselComp = Array.isArray(t.components) && t.components.find((c: any) =>
-                        c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
-                    );
-                    return carouselComp?.cards || [];
-                })(),
-                originalDetails: t,
-            };
+                return {
+                    id: t.template_id || t.id || '',
+                    name: t.name || t.template_name || (t as any).element_name || t.id || 'Untitled',
+                    category: (t.category?.toLowerCase() as any) || 'marketing',
+                    description: bodyTextData || 'No description',
+                    type: (() => {
+                        // Check for carousel component
+                        const isCarousel = Array.isArray(t.components) && t.components.some((c: any) =>
+                            c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
+                        );
+                        if (isCarousel) return 'carousel';
+                        if (!headerType) return 'text';
+                        const ht = headerType.toLowerCase();
+                        if (ht === 'image') return 'image';
+                        if (ht === 'video') return 'video';
+                        if (ht === 'document') return 'document';
+                        if (ht === 'location') return 'location';
+                        return 'text';
+                    })() as any,
+                    variables: totalVarCount,
+                    variableArray: bodyVariables,
+                    buttonVariables,
+                    allButtons,
+                    headerText,
+                    footerText,
+                    bodyText: bodyTextData || '',
+                    carouselCards: (() => {
+                        const carouselComp = Array.isArray(t.components) && t.components.find((c: any) =>
+                            c.type?.toLowerCase() === 'carousel' || c.component_type?.toLowerCase() === 'carousel'
+                        );
+                        return carouselComp?.cards || [];
+                    })(),
+                    originalDetails: t,
+                };
+            });
+    }, [apiTemplates]);
+
+    const filteredTemplates = useMemo(() => {
+        return templates.filter(template => {
+            const matchesCategory = template.category === activeCategory;
+            const matchesType = activeType === 'all' || template.type === activeType;
+            const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                template.description.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesCategory && matchesType && matchesSearch;
         });
-
-    const filteredTemplates = templates.filter(template => {
-        const matchesCategory = template.category === activeCategory;
-        const matchesType = activeType === 'all' || template.type === activeType;
-        const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            template.description.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesType && matchesSearch;
-    });
+    }, [templates, activeCategory, activeType, searchQuery]);
 
     const handleSync = (e: React.MouseEvent) => {
         e.stopPropagation();

@@ -5,26 +5,16 @@ export type TemplateType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION' 
 export type TemplateStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'paused' | 'deleted';
 export type TemplateHealth = 'High' | 'Medium' | 'Low';
 export type InteractiveActionType = 'None' | 'CTA' | 'QuickReplies' | 'Marketing' | 'Authentication' | 'All';
-export type CTAType = 'URL' | 'PHONE' | 'COPY_CODE' | 'CATALOG' | 'MPM';
+export type CTAType = 'URL' | 'PHONE' | 'COPY_CODE';
 export type MessageStyle = 'Normal' | 'Poetic' | 'Exciting' | 'Funny';
 export type OptimizationGoal = 'Click Rate' | 'Reply Rate';
 export type HeaderType = 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
-
-export interface MPMSection {
-    title: string;
-    productRetailerIds: string[];
-}
 
 export interface CTAButton {
     id: string;
     type: CTAType;
     label: string;
     value: string; // URL, phone number, or code to copy
-    // CATALOG specific
-    thumbnailProductRetailerId?: string;
-    // MPM specific
-    mpmThumbnailProductRetailerId?: string;
-    mpmSections?: MPMSection[];
 }
 
 export interface QuickReply {
@@ -61,6 +51,9 @@ export interface Template {
     media_handle?: string;
     created_at: string;
     updated_at?: string;
+    last_edited_at?: string | null;   // timestamp of last successful Meta edit
+    edit_period_start?: string | null; // start of current 30-day edit window
+    edit_count_30d?: number;           // edits made in current 30-day window (max 10)
 }
 
 export interface TemplateFormData {
@@ -83,6 +76,10 @@ export interface TemplateFormData {
     headerMediaHandle?: string;
     headerMediaFileName?: string;
     status?: TemplateStatus; // Passed in edit mode to enforce Meta edit limitations
+    updated_at?: string;
+    last_edited_at?: string | null;    // for 24h cooldown
+    edit_period_start?: string | null; // for 30-day window
+    edit_count_30d?: number;           // edits used in current 30-day window
 }
 
 export interface AIGeneratorData {

@@ -29,6 +29,7 @@ interface GalleryPickerProps {
   onSelect: (asset: MediaAsset) => void;
   approvedOnly?: boolean;
   fileType?: "image" | "video" | "document" | "all";
+  initialSelectedId?: string | null;
 }
 
 // ─── File validation ──────────────────────────────────────────────────────────
@@ -62,6 +63,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   onSelect,
   approvedOnly = false,
   fileType = "all",
+  initialSelectedId = null,
 }) => {
   const { isDarkMode } = useTheme();
   const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
@@ -125,7 +127,6 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
     try {
       const response = await fetchMediaAssets({
         tenant_id: tenantId,
-        approved_only: approvedOnly ? true : undefined,
         type: filters.filterType === "all" ? undefined : filters.filterType,
         search: debouncedSearch || undefined,
         page: filters.page,
@@ -144,6 +145,18 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   }, [tenantId, filters.filterType, filters.page, debouncedSearch]);
 
   useEffect(() => { if (isOpen) loadMediaAssets(); }, [isOpen, loadMediaAssets]);
+
+  // Pre-select initial asset if provided
+  useEffect(() => {
+    if (isOpen && initialSelectedId && !selectedAsset && mediaAssets.length > 0) {
+      const foundItem = mediaAssets.find(
+        (a) => (a.media_asset_id || String(a.id)) === initialSelectedId
+      );
+      if (foundItem) {
+        setSelectedAsset(foundItem);
+      }
+    }
+  }, [isOpen, initialSelectedId, mediaAssets, selectedAsset]);
 
   // Reset on close
   useEffect(() => {
@@ -351,7 +364,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
                 </div>
                 <div>
                   <h2 className={cn("text-[15px] font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
-                    {approvedOnly ? "Select Approved Media" : "Select Media"}
+                    Select Media
                   </h2>
                   <p className={cn("text-[11px]", isDarkMode ? "text-white/35" : "text-slate-500")}>
                     Pick from your gallery or upload a new file

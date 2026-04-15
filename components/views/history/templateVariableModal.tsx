@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
 import { useUploadTemplateMediaMutation } from "@/hooks/useTemplateQuery";
 import { toast } from "sonner";
+import { GalleryPicker } from "@/components/gallery/GalleryPicker";
+import { MediaAsset } from "@/services/gallery/galleryApi";
 
 interface TemplateVariableModalProps {
     isOpen: boolean;
@@ -33,8 +35,10 @@ export const TemplateVariableModal = ({
     const [mediaUrl, setMediaUrl] = useState<string>("");
     const [mediaError, setMediaError] = useState<string>("");
     const [mediaFileName, setMediaFileName] = useState<string>("");
+    const [mediaAssetId, setMediaAssetId] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     // Button variables state
@@ -57,6 +61,16 @@ export const TemplateVariableModal = ({
     // Upload mutation
     const { mutateAsync: uploadMedia } = useUploadTemplateMediaMutation();
 
+    // Gallery select handler — only approved assets are selectable (approvedOnly={true})
+    const handleGallerySelect = (asset: MediaAsset) => {
+        const url = asset.preview_url || asset.media_url || (asset as any).url || "";
+        setMediaUrl(url);
+        setMediaFileName(asset.file_name);
+        setMediaAssetId(asset.media_asset_id || String(asset.id));
+        setMediaError("");
+        setIsGalleryOpen(false);
+    };
+
     // Check if template has media header
     const hasMediaHeader = template?.type === 'image' || template?.type === 'video' || template?.type === 'document';
     const hasLocationHeader = template?.type === 'location';
@@ -74,6 +88,7 @@ export const TemplateVariableModal = ({
             setMediaUrl("");
             setMediaError("");
             setMediaFileName("");
+            setMediaAssetId("");
             setLocationParams({ latitude: "", longitude: "", name: "", address: "" });
             setLocationErrors({ latitude: "", longitude: "", name: "", address: "" });
 
@@ -126,7 +141,10 @@ export const TemplateVariableModal = ({
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) handleFileUpload(file);
+        if (file) {
+            handleFileUpload(file);
+            setMediaAssetId(""); // clear any gallery selection when manually uploading
+        }
     };
 
     const handleSubmit = () => {
@@ -325,46 +343,66 @@ export const TemplateVariableModal = ({
                                     <input ref={fileInputRef} type="file" accept={getAcceptedFileTypes()} onChange={handleFileSelect} className="hidden" />
 
                                     {!mediaUrl ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={isUploading}
-                                            className={cn(
-                                                "w-full flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-8 transition-all",
-                                                mediaError ? "border-red-500 bg-red-500/5"
-                                                    : isDarkMode ? "border-white/10 bg-white/3 hover:bg-white/6 hover:border-emerald-500/40" : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-emerald-400/50",
-                                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                                            )}
-                                        >
-                                            {isUploading ? (
-                                                <><Loader2 size={26} className={cn("animate-spin", isDarkMode ? "text-white/40" : "text-slate-400")} /><span className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-400")}>Uploading…</span></>
-                                            ) : (
-                                                <>
-                                                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center",
-                                                        mediaType === 'image' ? isDarkMode ? "bg-blue-500/10" : "bg-blue-50"
-                                                            : mediaType === 'video' ? isDarkMode ? "bg-purple-500/10" : "bg-purple-50"
-                                                                : isDarkMode ? "bg-orange-500/10" : "bg-orange-50"
-                                                    )}>
-                                                        {mediaType === 'image' && <ImageIcon size={22} className="text-blue-400" />}
-                                                        {mediaType === 'video' && <Film size={22} className="text-purple-400" />}
-                                                        {mediaType === 'document' && <FileText size={22} className="text-orange-400" />}
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className={cn("text-sm font-semibold", isDarkMode ? "text-white/70" : "text-slate-700")}>
-                                                            {mediaType === 'image' ? 'Upload Photo' : mediaType === 'video' ? 'Upload Video' : 'Upload Document'}
-                                                        </p>
-                                                        <p className={cn("text-[11px] mt-0.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                                            {mediaType === 'image' && 'JPG, PNG · max 5 MB'}
-                                                            {mediaType === 'video' && 'MP4 · max 16 MB'}
-                                                            {mediaType === 'document' && 'PDF · max 100 MB'}
-                                                        </p>
-                                                    </div>
-                                                    <span className={cn("px-4 py-1.5 rounded-lg text-xs font-semibold", isDarkMode ? "bg-white/10 text-white/70" : "bg-white text-slate-600 shadow-sm border border-slate-200")}>
-                                                        Browse
-                                                    </span>
-                                                </>
-                                            )}
-                                        </button>
+                                        <div className="space-y-2">
+                                            {/* Pick from gallery row */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsGalleryOpen(true)}
+                                                disabled={isUploading}
+                                                className={cn(
+                                                    "w-full flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-semibold transition-all",
+                                                    isDarkMode
+                                                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15"
+                                                        : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                                                    "disabled:opacity-50 disabled:cursor-not-allowed"
+                                                )}
+                                            >
+                                                <ImageIcon size={13} />
+                                                Pick from gallery
+                                            </button>
+
+                                            {/* Or upload directly */}
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={isUploading}
+                                                className={cn(
+                                                    "w-full flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-8 transition-all",
+                                                    mediaError ? "border-red-500 bg-red-500/5"
+                                                        : isDarkMode ? "border-white/10 bg-white/3 hover:bg-white/6 hover:border-emerald-500/40" : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-emerald-400/50",
+                                                    "disabled:opacity-50 disabled:cursor-not-allowed"
+                                                )}
+                                            >
+                                                {isUploading ? (
+                                                    <><Loader2 size={26} className={cn("animate-spin", isDarkMode ? "text-white/40" : "text-slate-400")} /><span className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-400")}>Uploading…</span></>
+                                                ) : (
+                                                    <>
+                                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center",
+                                                            mediaType === 'image' ? isDarkMode ? "bg-blue-500/10" : "bg-blue-50"
+                                                                : mediaType === 'video' ? isDarkMode ? "bg-purple-500/10" : "bg-purple-50"
+                                                                    : isDarkMode ? "bg-orange-500/10" : "bg-orange-50"
+                                                        )}>
+                                                            {mediaType === 'image' && <ImageIcon size={22} className="text-blue-400" />}
+                                                            {mediaType === 'video' && <Film size={22} className="text-purple-400" />}
+                                                            {mediaType === 'document' && <FileText size={22} className="text-orange-400" />}
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <p className={cn("text-sm font-semibold", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                                                {mediaType === 'image' ? 'Upload Photo' : mediaType === 'video' ? 'Upload Video' : 'Upload Document'}
+                                                            </p>
+                                                            <p className={cn("text-[11px] mt-0.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                                {mediaType === 'image' && 'JPG, PNG · max 5 MB'}
+                                                                {mediaType === 'video' && 'MP4 · max 16 MB'}
+                                                                {mediaType === 'document' && 'PDF · max 100 MB'}
+                                                            </p>
+                                                        </div>
+                                                        <span className={cn("px-4 py-1.5 rounded-lg text-xs font-semibold", isDarkMode ? "bg-white/10 text-white/70" : "bg-white text-slate-600 shadow-sm border border-slate-200")}>
+                                                            Browse files
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     ) : (
                                         <div className={cn("flex items-center gap-3 p-3 rounded-xl border", isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200")}>
                                             <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
@@ -389,7 +427,7 @@ export const TemplateVariableModal = ({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => { setMediaUrl(""); setMediaFileName(""); setIsVideoPlaying(false); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                                                onClick={() => { setMediaUrl(""); setMediaFileName(""); setMediaAssetId(""); setIsVideoPlaying(false); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                                                 className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
                                             >
                                                 <X size={13} />
@@ -656,6 +694,21 @@ export const TemplateVariableModal = ({
                     </button>
                 </div>
             </GlassCard>
+
+            {/* Gallery Picker — only approved media selectable */}
+            <GalleryPicker
+                isOpen={isGalleryOpen}
+                onClose={() => setIsGalleryOpen(false)}
+                onSelect={handleGallerySelect}
+                initialSelectedId={mediaAssetId || null}
+                approvedOnly={true}
+                fileType={
+                    mediaType === 'image' ? 'image'
+                    : mediaType === 'video' ? 'video'
+                    : mediaType === 'document' ? 'document'
+                    : 'all'
+                }
+            />
         </div>
     );
 };

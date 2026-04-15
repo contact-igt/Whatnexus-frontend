@@ -12,6 +12,7 @@ interface Props {
   isDisabled: boolean;
   isDarkMode: boolean;
   isDeleted?: boolean;
+  showActionsAlways?: boolean;
   onSelect: (asset: MediaAsset) => void;
   onPreview: (asset: MediaAsset) => void;
   onDelete: (assetId: string, e: React.MouseEvent) => void;
@@ -21,6 +22,7 @@ interface Props {
 export function GalleryGridCard({
   asset, isSelected, isDisabled, isDarkMode,
   isDeleted = false,
+  showActionsAlways = false,
   onSelect, onPreview, onDelete, onRestore,
 }: Props) {
   const [imgError, setImgError] = useState(false);
@@ -72,11 +74,11 @@ export function GalleryGridCard({
           <img
             src={asset.preview_url!}
             alt={asset.file_name}
-            className="w-full h-full object-cover block transition-all duration-500 group-hover:scale-105 group-hover:blur-sm"
+            className="w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105"
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="select-none opacity-80 transition-all duration-500 group-hover:blur-sm">{TYPE_EMOJI[asset.file_type] || "📁"}</span>
+          <span className="select-none opacity-80 transition-transform duration-500 group-hover:scale-105">{TYPE_EMOJI[asset.file_type] || "📁"}</span>
         )}
 
         {/* Bottom gradient for readability */}
@@ -88,7 +90,9 @@ export function GalleryGridCard({
         {!isDisabled && (
           <div className={cn(
             "absolute inset-0 flex items-center justify-center gap-2 transition-all duration-300",
-            "bg-black/0 group-hover:bg-black/40 opacity-0 group-hover:opacity-100 z-20"
+            showActionsAlways
+              ? "bg-black/20 opacity-100 z-20"
+              : "bg-black/0 group-hover:bg-black/40 opacity-0 group-hover:opacity-100 z-20"
           )}>
             <button
               type="button"
@@ -145,10 +149,6 @@ export function GalleryGridCard({
         {isDisabled && (
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
-            <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm bg-amber-500/85 text-white flex items-center gap-1">
-              <Clock size={10} strokeWidth={3} />
-              Pending
-            </span>
           </div>
         )}
 
@@ -167,10 +167,24 @@ export function GalleryGridCard({
           <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50 flex items-center justify-center pointer-events-none z-10">
             <Check size={13} strokeWidth={3} className="text-white" />
           </div>
-        ) : asset.is_approved && (
-          /* ── Approval badge — top-right (approved assets only) ───────── */
-          <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm bg-emerald-500/85 text-white">
-            ✓ Approved
+        ) : (
+          <span
+            className={cn(
+              "absolute top-2.5 right-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm text-white flex items-center gap-1",
+              asset.is_approved ? "bg-emerald-500/85" : "bg-amber-500/85"
+            )}
+          >
+            {asset.is_approved ? (
+              <>
+                <Check size={10} strokeWidth={3} />
+                Approved
+              </>
+            ) : (
+              <>
+                <Clock size={10} strokeWidth={3} />
+                Pending
+              </>
+            )}
           </span>
         )}
       </div>

@@ -47,10 +47,10 @@ export const Modal = ({
     if (!mounted || !isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
             <div
                 className={cn(
-                    "relative w-full max-w-lg rounded-xl shadow-2xl border animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col",
+                    "relative w-full max-w-lg rounded-xl shadow-2xl border animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col",
                     isDarkMode
                         ? 'bg-[#1c1c21] border-white/10'
                         : 'bg-white border-slate-200',

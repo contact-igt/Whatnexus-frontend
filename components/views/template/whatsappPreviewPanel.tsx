@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import { MessageCircle, Image as ImageIcon, Video, FileText, Check, MapPin, ShoppingBag, Copy, Link, Phone, ChevronLeft, ChevronRight, Trash2, Plus } from 'lucide-react';
+import { MessageCircle, Image as ImageIcon, Video, FileText, Check, MapPin, Copy, Link, Phone, ChevronLeft, ChevronRight, Trash2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TemplateType, CTAButton, HeaderType, CarouselCard } from './templateTypes';
 import { replaceVariables, formatWhatsAppText } from './templateUtils';
@@ -559,8 +559,6 @@ export const WhatsAppPreviewPanel = ({
                                                 {button.type === 'URL' && <Link size={14} />}
                                                 {button.type === 'PHONE' && <Phone size={14} />}
                                                 {button.type === 'COPY_CODE' && <Copy size={14} />}
-                                                {button.type === 'CATALOG' && <ShoppingBag size={14} />}
-                                                {button.type === 'MPM' && <ShoppingBag size={14} />}
                                                 <span>{button.label || 'CTA Button'}</span>
                                             </div>
                                         </button>

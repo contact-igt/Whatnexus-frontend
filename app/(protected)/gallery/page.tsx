@@ -555,7 +555,7 @@ export default function GalleryPage() {
                   key={asset.media_asset_id}
                   asset={asset}
                   isSelected={false}
-                  isDisabled={activeTab !== 'deleted' && !asset.is_approved}
+                  isDisabled={false}
                   isDeleted={activeTab === 'deleted'}
                   isDarkMode={isDarkMode}
                   onSelect={activeTab === 'deleted' ? () => { } : openDrawer}
@@ -578,7 +578,7 @@ export default function GalleryPage() {
                     key={asset.media_asset_id}
                     asset={asset}
                     isSelected={false}
-                    isDisabled={activeTab !== 'deleted' && !asset.is_approved}
+                    isDisabled={false}
                     isDeleted={activeTab === 'deleted'}
                     isDarkMode={isDarkMode}
                     showCheckbox={false}

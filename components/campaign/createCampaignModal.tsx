@@ -53,6 +53,19 @@ interface FormData {
     card_media_urls?: Record<number, string> | null;
 }
 
+const campaignTypeOptions: Array<{ value: CampaignType; label: string }> = [
+    { value: 'immediate', label: 'Broadcast' },
+    { value: 'scheduled', label: 'Scheduled' }
+];
+
+const getCampaignTypeLabel = (campaignType: CampaignType) => {
+    if (campaignType === 'immediate') {
+        return 'Broadcast';
+    }
+
+    return campaignType;
+};
+
 export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampaignModalProps) => {
     const { isDarkMode } = useTheme();
     const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -672,7 +685,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 <input
                                     type="text"
                                     value={formData.campaign_name}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, campaign_name: e.target.value }))}
+                                    onChange={(e) => {
+                                        setFormData(prev => ({ ...prev, campaign_name: e.target.value }));
+                                        setError(null);
+                                    }}
                                     placeholder="e.g., Diwali Offer 2024"
                                     className={cn(
                                         "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
@@ -687,21 +703,21 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 <label className={cn("block text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                     Campaign Type *
                                 </label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {(['immediate', 'scheduled', 'broadcast', 'api'] as CampaignType[]).map((type) => (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {campaignTypeOptions.map(({ value, label }) => (
                                         <button
-                                            key={type}
-                                            onClick={() => setFormData(prev => ({ ...prev, campaign_type: type }))}
+                                            key={value}
+                                            onClick={() => setFormData(prev => ({ ...prev, campaign_type: value }))}
                                             className={cn(
                                                 "px-4 py-3 rounded-xl border text-sm font-semibold capitalize transition-all",
-                                                formData.campaign_type === type
+                                                formData.campaign_type === value
                                                     ? 'bg-emerald-500 border-emerald-500 text-white'
                                                     : isDarkMode
                                                         ? 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                                                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                             )}
                                         >
-                                            {type}
+                                            {label}
                                         </button>
                                     ))}
                                 </div>
@@ -1661,7 +1677,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                     <div className="flex justify-between">
                                         <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Type:</span>
-                                        <span className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>{formData.campaign_type}</span>
+                                        <span className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            {getCampaignTypeLabel(formData.campaign_type)}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Template:</span>
@@ -1795,12 +1813,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     )}
                                 </div>
                             )}
+                        </div>
+                    )}
 
-                            {error && (
-                                <div ref={errorRef} className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                                    <p className="text-red-500 text-sm">{error}</p>
-                                </div>
-                            )}
+                    {error && (
+                        <div ref={errorRef} className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                            <p className="text-red-500 text-sm">{error}</p>
                         </div>
                     )}
                 </div>
@@ -1870,7 +1888,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 isOpen={isGalleryOpen}
                 onClose={() => setIsGalleryOpen(false)}
                 onSelect={handleGallerySelect}
-                approvedOnly={false}
+                approvedOnly={true}
+                initialSelectedId={
+                    galleryUploadType === 'header' ? (formData.media_asset_id || selectedGalleryHeaderAsset?.media_asset_id || String(selectedGalleryHeaderAsset?.id)) : undefined
+                }
                 fileType={
                     galleryUploadType === 'header'
                         ? (selectedTemplate?.type === 'image' ? 'image' : selectedTemplate?.type === 'video' ? 'video' : selectedTemplate?.type === 'document' ? 'document' : 'all')

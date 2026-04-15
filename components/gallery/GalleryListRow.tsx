@@ -197,7 +197,7 @@ export function GalleryListRow({
         onClick={(e) => e.stopPropagation()}
       >
         {!isDisabled && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+          <div className="flex items-center gap-1 transition-all duration-200">
             <button
               type="button"
               onClick={() => onPreview(asset)}

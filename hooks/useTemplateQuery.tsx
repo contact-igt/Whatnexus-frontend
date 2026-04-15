@@ -32,7 +32,27 @@ export const useUpdateTemplateMutation = () => {
             toast.success(data?.message || 'Template updated successfully!');
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Template update failed!')
+            const errData = error?.response?.data;
+            const errorCode = errData?.error_code;
+            const msg = errData?.message || 'Template update failed!';
+
+            if (errorCode === 'EDIT_LIMIT_24H') {
+                const hoursLeft = errData?.hours_remaining;
+                const nextEditAt = errData?.next_edit_at;
+                const timeStr = hoursLeft
+                    ? `Try again in ${hoursLeft} hour(s).`
+                    : nextEditAt
+                        ? `Next edit available: ${new Date(nextEditAt).toLocaleString()}.`
+                        : '';
+                toast.error(`${msg}${timeStr ? ` ${timeStr}` : ''}`);
+            } else if (errorCode === 'EDIT_LIMIT_30DAYS') {
+                const daysLeft = errData?.days_remaining;
+                const editsUsed = errData?.edits_used ?? 10;
+                const suffix = daysLeft ? ` Resets in ${daysLeft} day(s).` : '';
+                toast.error(`${editsUsed}/10 edits used this period. ${msg}${suffix} Use "Duplicate & Edit" as a workaround.`);
+            } else {
+                toast.error(msg);
+            }
         }
     })
 }

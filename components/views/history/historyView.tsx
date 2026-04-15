@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { History as HistoryIcon, MessageCircle, Send } from 'lucide-react';
+import { History as HistoryIcon, MessageCircle, Send, Image as ImageIcon, Film, FileText } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useChatSuggestMutation, useGetAllHistoryChatsQuery, useMessagesByPhoneQuery, useSendTemplateMessageMutation, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
 import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
 import { TemplateVariableModal } from './templateVariableModal';
+import { HistoryMediaSendModal } from './HistoryMediaSendModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
@@ -61,6 +62,8 @@ export const HistoryView = () => {
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
     const [selectedTemplateForVariables, setSelectedTemplateForVariables] = useState<ProcessedTemplate | null>(null);
+    const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+    const [mediaSendType, setMediaSendType] = useState<'image' | 'video' | 'document'>('image');
     const router = useRouter();
     const selectedChatRef = useRef<any>(null);
     const searchParams = useSearchParams();
@@ -421,7 +424,7 @@ export const HistoryView = () => {
                     {selectedChat && (
                         <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
                             <div className={cn(
-                                "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
+                                "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-dashed transition-all",
                                 isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
                             )}>
                                 <div>
@@ -429,16 +432,63 @@ export const HistoryView = () => {
                                         History Thread Closed
                                     </h3>
                                     <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                        Send a template to re-initiate this conversation.
+                                        Re-initiate via template, or send media directly.
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setIsTemplateModalOpen(true)}
-                                    className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
-                                >
-                                    <Send size={16} />
-                                    <span>Send Template</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {/* Media shortcut buttons */}
+                                    <button
+                                        onClick={() => { setMediaSendType('image'); setIsMediaModalOpen(true); }}
+                                        title="Send Image"
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm",
+                                            isDarkMode
+                                                ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20'
+                                                : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
+                                        )}
+                                    >
+                                        <ImageIcon size={15} />
+                                        <span className="hidden sm:inline">Image</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { setMediaSendType('video'); setIsMediaModalOpen(true); }}
+                                        title="Send Video"
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm",
+                                            isDarkMode
+                                                ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20'
+                                                : 'bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100'
+                                        )}
+                                    >
+                                        <Film size={15} />
+                                        <span className="hidden sm:inline">Video</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { setMediaSendType('document'); setIsMediaModalOpen(true); }}
+                                        title="Send Document"
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm",
+                                            isDarkMode
+                                                ? 'bg-orange-500/10 border-orange-500/20 text-orange-400 hover:bg-orange-500/20'
+                                                : 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
+                                        )}
+                                    >
+                                        <FileText size={15} />
+                                        <span className="hidden sm:inline">Document</span>
+                                    </button>
+
+                                    {/* Divider */}
+                                    <div className={cn("w-px h-8 mx-1", isDarkMode ? 'bg-white/10' : 'bg-slate-200')} />
+
+                                    {/* Send Template */}
+                                    <button
+                                        onClick={() => setIsTemplateModalOpen(true)}
+                                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                    >
+                                        <Send size={16} />
+                                        <span>Send Template</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -478,6 +528,14 @@ export const HistoryView = () => {
                 onSend={handleSendWithVariables}
                 isDarkMode={isDarkMode}
                 isPending={isSendingTemplate}
+            />
+
+            <HistoryMediaSendModal
+                isOpen={isMediaModalOpen}
+                onClose={() => setIsMediaModalOpen(false)}
+                isDarkMode={isDarkMode}
+                selectedChat={selectedChat}
+                initialMediaType={mediaSendType}
             />
         </div>
     );

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from 'react';
-import { Zap, Plus, X, Link, Phone, Copy, ShoppingBag, Package, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Zap, Plus, X, Link, Phone, Copy, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { InteractiveActionType, CTAButton, CTAType, MPMSection } from './templateTypes';
+import { InteractiveActionType, CTAButton, CTAType } from './templateTypes';
 import { generateId } from './templateUtils';
 
 interface InteractiveActionsSectionProps {
@@ -50,201 +50,6 @@ const COUNTRY_CODES = [
     { value: '+82', label: '🇰🇷 South Korea (+82)' },
 ];
 
-// ─── MPM Section Editor ──────────────────────────────────────────────────────
-interface MPMSectionEditorProps {
-    isDarkMode: boolean;
-    sections: MPMSection[];
-    onChange: (sections: MPMSection[]) => void;
-    disabled?: boolean;
-}
-
-const MPMSectionEditor = ({ isDarkMode, sections, onChange, disabled }: MPMSectionEditorProps) => {
-    const [expandedIdx, setExpandedIdx] = useState<number | null>(sections.length > 0 ? 0 : null);
-
-    const addSection = () => {
-        if (sections.length >= 10) return;
-        const newSections = [...sections, { title: `Section ${sections.length + 1}`, productRetailerIds: [''] }];
-        onChange(newSections);
-        setExpandedIdx(newSections.length - 1);
-    };
-
-    const removeSection = (idx: number) => {
-        const updated = sections.filter((_, i) => i !== idx);
-        onChange(updated);
-        setExpandedIdx(updated.length > 0 ? Math.min(idx, updated.length - 1) : null);
-    };
-
-    const updateSectionTitle = (idx: number, title: string) => {
-        const updated = sections.map((s, i) => i === idx ? { ...s, title } : s);
-        onChange(updated);
-    };
-
-    const addProduct = (sectionIdx: number) => {
-        const updated = sections.map((s, i) => i === sectionIdx
-            ? { ...s, productRetailerIds: [...s.productRetailerIds, ''] }
-            : s
-        );
-        onChange(updated);
-    };
-
-    const updateProduct = (sectionIdx: number, productIdx: number, value: string) => {
-        const updated = sections.map((s, i) => i === sectionIdx
-            ? { ...s, productRetailerIds: s.productRetailerIds.map((p, pi) => pi === productIdx ? value : p) }
-            : s
-        );
-        onChange(updated);
-    };
-
-    const removeProduct = (sectionIdx: number, productIdx: number) => {
-        const updated = sections.map((s, i) => i === sectionIdx
-            ? { ...s, productRetailerIds: s.productRetailerIds.filter((_, pi) => pi !== productIdx) }
-            : s
-        );
-        onChange(updated);
-    };
-
-    return (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <p className={cn("text-[11px] font-bold uppercase tracking-wide", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                    Product Sections ({sections.length}/10)
-                </p>
-                {!disabled && (
-                    <button
-                        type="button"
-                        onClick={addSection}
-                        disabled={sections.length >= 10}
-                        className={cn(
-                            "py-1 px-3 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-all",
-                            isDarkMode
-                                ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 disabled:opacity-40'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40'
-                        )}
-                    >
-                        <Plus size={11} />
-                        Add Section
-                    </button>
-                )}
-            </div>
-
-            {sections.length === 0 && (
-                <div className={cn(
-                    "rounded-xl border border-dashed text-center py-6",
-                    isDarkMode ? 'border-white/10 text-white/30' : 'border-slate-200 text-slate-400'
-                )}>
-                    <Package size={20} className="mx-auto mb-2 opacity-40" />
-                    <p className="text-[11px]">No sections yet. Add at least one section with products.</p>
-                </div>
-            )}
-
-            {sections.map((section, idx) => (
-                <div key={idx} className={cn(
-                    "rounded-xl border overflow-hidden",
-                    isDarkMode ? 'border-white/10 bg-white/3' : 'border-slate-200 bg-slate-50/50'
-                )}>
-                    {/* Section Header */}
-                    <button
-                        type="button"
-                        className={cn(
-                            "w-full flex items-center justify-between px-4 py-3 text-left transition-colors",
-                            isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-100/50'
-                        )}
-                        onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
-                    >
-                        <div className="flex items-center gap-2">
-                            <Package size={14} className={isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} />
-                            <span className={cn("text-xs font-semibold", isDarkMode ? 'text-white' : 'text-slate-800')}>
-                                {section.title || `Section ${idx + 1}`}
-                            </span>
-                            <span className={cn(
-                                "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
-                                isDarkMode ? 'bg-white/10 text-white/50' : 'bg-slate-200 text-slate-500'
-                            )}>
-                                {section.productRetailerIds.filter(p => p.trim()).length} products
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {!disabled && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); removeSection(idx); }}
-                                    className="p-1 rounded hover:bg-red-500/10 text-red-500 transition-colors"
-                                >
-                                    <Trash2 size={13} />
-                                </button>
-                            )}
-                            {expandedIdx === idx ? <ChevronUp size={14} className="opacity-50" /> : <ChevronDown size={14} className="opacity-50" />}
-                        </div>
-                    </button>
-
-                    {/* Section Body */}
-                    {expandedIdx === idx && (
-                        <div className={cn("px-4 pb-4 space-y-3 border-t", isDarkMode ? 'border-white/5' : 'border-slate-200')}>
-                            {/* Section Title Input */}
-                            <div className="pt-3">
-                                <Input
-                                    isDarkMode={isDarkMode}
-                                    label="Section Title"
-                                    type="text"
-                                    value={section.title}
-                                    onChange={(e) => updateSectionTitle(idx, e.target.value)}
-                                    placeholder="e.g. Best Sellers, New Arrivals"
-                                    disabled={disabled}
-                                />
-                            </div>
-
-                            {/* Products */}
-                            <div className="space-y-2">
-                                <p className={cn("text-[11px] font-semibold", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                    Product Retailer IDs
-                                </p>
-                                {section.productRetailerIds.map((productId, pIdx) => (
-                                    <div key={pIdx} className="flex gap-2 items-center">
-                                        <div className="flex-1">
-                                            <Input
-                                                isDarkMode={isDarkMode}
-                                                type="text"
-                                                value={productId}
-                                                onChange={(e) => updateProduct(idx, pIdx, e.target.value)}
-                                                placeholder={`Product Retailer ID ${pIdx + 1}`}
-                                                disabled={disabled}
-                                            />
-                                        </div>
-                                        {!disabled && section.productRetailerIds.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => removeProduct(idx, pIdx)}
-                                                className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors flex-shrink-0"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {!disabled && (
-                                    <button
-                                        type="button"
-                                        onClick={() => addProduct(idx)}
-                                        className={cn(
-                                            "w-full py-2 rounded-lg border border-dashed text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all",
-                                            isDarkMode
-                                                ? 'border-white/10 text-white/40 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/5'
-                                                : 'border-slate-300 text-slate-400 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'
-                                        )}
-                                    >
-                                        <Plus size={12} />
-                                        Add Product
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const InteractiveActionsSection = ({
     isDarkMode,
@@ -263,7 +68,6 @@ export const InteractiveActionsSection = ({
         const urlButtons = ctaButtons.filter(b => b.type === 'URL').length;
         const phoneButtons = ctaButtons.filter(b => b.type === 'PHONE').length;
         const copyCodeButtons = ctaButtons.filter(b => b.type === 'COPY_CODE').length;
-        const commerceButtons = ctaButtons.filter(b => (b.type === 'CATALOG' || b.type === 'MPM')).length;
 
         // Carousel specific limit check
         const maxTotalButtons = isCarousel ? 2 : 3;
@@ -272,17 +76,12 @@ export const InteractiveActionsSection = ({
         if (type === 'URL' && urlButtons >= 2) return;
         if (type === 'PHONE' && phoneButtons >= 1) return;
         if (type === 'COPY_CODE' && copyCodeButtons >= 1) return;
-        if ((type === 'CATALOG' || type === 'MPM') && commerceButtons >= 1) return;
 
         const newButton: CTAButton = {
             id: generateId(),
             type,
-            label: type === 'URL' ? 'Visit Website' :
-                   type === 'PHONE' ? 'Call Us' :
-                   type === 'COPY_CODE' ? 'Copy Code' :
-                   type === 'CATALOG' ? 'View Catalog' : 'View Products',
+            label: type === 'URL' ? 'Visit Website' : type === 'PHONE' ? 'Call Us' : 'Copy Code',
             value: type === 'PHONE' ? '+91 ' : '',
-            ...(type === 'MPM' ? { mpmSections: [{ title: 'Section 1', productRetailerIds: [''] }] } : {}),
         };
         onCTAButtonsChange([...ctaButtons, newButton]);
     };
@@ -323,124 +122,6 @@ export const InteractiveActionsSection = ({
         : ['None', 'CTA', 'QuickReplies', 'All'];
 
     const renderCTAButtonFields = (button: CTAButton, index: number) => {
-        // ─── CATALOG Button ───────────────────────────────────────────────────
-        if (button.type === 'CATALOG') {
-            return (
-                <div className={cn("rounded-xl border p-4 space-y-3", isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200')}>
-                    <div className="flex items-center justify-between">
-                        <span className={cn("text-xs font-bold flex items-center gap-2", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                            <ShoppingBag size={14} className="text-emerald-500" />
-                            🛍️ Catalog Button
-                        </span>
-                        {!disabled && (
-                            <button type="button" onClick={() => removeCTAButton(button.id)} className="p-1 rounded hover:bg-red-500/10 text-red-500 transition-colors">
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Info Banner */}
-                    <div className={cn(
-                        "rounded-lg p-3 border text-[11px] leading-relaxed",
-                        isDarkMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    )}>
-                        📦 This button opens your WhatsApp Business catalog. Users can browse and order products directly. No URL needed.
-                    </div>
-
-                    {/* Button Label */}
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Button Label"
-                        type="text"
-                        value={button.label}
-                        onChange={(e) => updateCTAButton(button.id, 'label', e.target.value.slice(0, 25))}
-                        placeholder="e.g. View Catalog (max 25 chars)"
-                        error={ctaErrors?.[index]?.label?.message}
-                        disabled={disabled}
-                    />
-
-                    {/* Thumbnail Product Retailer ID (optional) */}
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Thumbnail Product Retailer ID (optional)"
-                        type="text"
-                        value={button.thumbnailProductRetailerId || ''}
-                        onChange={(e) => updateCTAButton(button.id, 'thumbnailProductRetailerId', e.target.value)}
-                        placeholder="e.g. PROD-001 — used as thumbnail in catalog preview"
-                        disabled={disabled}
-                    />
-
-                    <span className={cn("text-[10px]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                        {button.label.length}/25 characters
-                    </span>
-                </div>
-            );
-        }
-
-        // ─── MPM Button ───────────────────────────────────────────────────────
-        if (button.type === 'MPM') {
-            return (
-                <div className={cn("rounded-xl border p-4 space-y-4", isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200')}>
-                    <div className="flex items-center justify-between">
-                        <span className={cn("text-xs font-bold flex items-center gap-2", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                            <Package size={14} className="text-violet-500" />
-                            🛍️ Multi-Product Message (MPM)
-                        </span>
-                        {!disabled && (
-                            <button type="button" onClick={() => removeCTAButton(button.id)} className="p-1 rounded hover:bg-red-500/10 text-red-500 transition-colors">
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Info Banner */}
-                    <div className={cn(
-                        "rounded-lg p-3 border text-[11px] leading-relaxed",
-                        isDarkMode ? 'bg-violet-500/10 border-violet-500/20 text-violet-300' : 'bg-violet-50 border-violet-200 text-violet-700'
-                    )}>
-                        🗂️ MPM lets you send multiple product sections in one message. Users can browse and add products to cart from within the chat.
-                    </div>
-
-                    {/* Button Label */}
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Button Label"
-                        type="text"
-                        value={button.label}
-                        onChange={(e) => updateCTAButton(button.id, 'label', e.target.value.slice(0, 25))}
-                        placeholder="e.g. View Products (max 25 chars)"
-                        error={ctaErrors?.[index]?.label?.message}
-                        disabled={disabled}
-                    />
-
-                    {/* Thumbnail Product Retailer ID */}
-                    <Input
-                        isDarkMode={isDarkMode}
-                        label="Thumbnail Product Retailer ID"
-                        type="text"
-                        value={button.mpmThumbnailProductRetailerId || ''}
-                        onChange={(e) => updateCTAButton(button.id, 'mpmThumbnailProductRetailerId', e.target.value)}
-                        placeholder="e.g. PROD-001 — shown as message header thumbnail"
-                        disabled={disabled}
-                    />
-
-                    <span className={cn("text-[10px]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                        {button.label.length}/25 characters
-                    </span>
-
-                    {/* MPM Sections */}
-                    <div className={cn("rounded-xl border p-3 space-y-3", isDarkMode ? 'border-white/10 bg-white/3' : 'border-slate-200 bg-white/70')}>
-                        <MPMSectionEditor
-                            isDarkMode={isDarkMode}
-                            sections={button.mpmSections || []}
-                            onChange={(sections) => updateCTAButton(button.id, 'mpmSections', sections)}
-                            disabled={disabled}
-                        />
-                    </div>
-                </div>
-            );
-        }
-
         // ─── Standard Buttons (URL, PHONE, COPY_CODE) ────────────────────────
         return (
             <div key={button.id} className={cn(
@@ -662,34 +343,6 @@ export const InteractiveActionsSection = ({
                             >
                                 <Copy size={14} />
                                 Copy Code ({ctaButtons.some(b => b.type === 'COPY_CODE') ? '1' : '0'}/1)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => addCTAButton('CATALOG')}
-                                disabled={ctaButtons.some(b => b.type === 'CATALOG' || b.type === 'MPM')}
-                                className={cn(
-                                    "py-2 px-4 rounded-lg border text-xs font-semibold transition-all flex items-center gap-2",
-                                    isDarkMode
-                                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 disabled:opacity-40'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40'
-                                )}
-                            >
-                                <ShoppingBag size={14} />
-                                Catalog ({ctaButtons.some(b => b.type === 'CATALOG') ? '1' : '0'}/1)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => addCTAButton('MPM')}
-                                disabled={ctaButtons.some(b => b.type === 'MPM' || b.type === 'CATALOG')}
-                                className={cn(
-                                    "py-2 px-4 rounded-lg border text-xs font-semibold transition-all flex items-center gap-2",
-                                    isDarkMode
-                                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 disabled:opacity-40'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40'
-                                )}
-                            >
-                                <Package size={14} />
-                                MPM ({ctaButtons.some(b => b.type === 'MPM') ? '1' : '0'}/1)
                             </button>
                         </div>
                     )}
