@@ -9,7 +9,6 @@ import { BillingDashboard } from "./billingDashboard";
 import { RechargeModal } from "./rechargeModal";
 import { BillingWallet } from "./billingWallet";
 import { BillingInvoices } from "./billingInvoices";
-import { BillingInvoiceDetail } from "./billingInvoiceDetail";
 import { BillingUsageLimits } from "./billingUsageLimits";
 import { BillingUsageAnalytics } from "./billingUsageAnalytics";
 import { BillingPaymentHistory } from "./billingPaymentHistory";
@@ -40,7 +39,6 @@ export const BillingView = () => {
   const [overdueInvoice, setOverdueInvoice] = useState<{ invoice_number: string; amount: number; days_overdue?: number } | null>(null);
   const [creditLimitWarning, setCreditLimitWarning] = useState<{ usage: number; limit: number; percent: number } | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [invoiceDetailId, setInvoiceDetailId] = useState<number | null>(null);
   const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'platform_admin';
   const { data: billingModeRes } = useGetBillingModeQuery();
   const billingMode = billingModeRes?.data?.billing_mode || 'prepaid';
@@ -91,6 +89,7 @@ export const BillingView = () => {
         queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
         queryClient.refetchQueries({ queryKey: ['billing-ledger'] });
         queryClient.refetchQueries({ queryKey: ['billing-spend-chart'] });
+        queryClient.refetchQueries({ queryKey: ['gst-breakdown'] });
         queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
         queryClient.refetchQueries({ queryKey: ['wallet-transactions'] });
         queryClient.refetchQueries({ queryKey: ['ai-token-usage'] });
@@ -132,6 +131,7 @@ export const BillingView = () => {
       queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
       queryClient.refetchQueries({ queryKey: ['wallet-status'] });
       queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
+      queryClient.refetchQueries({ queryKey: ['gst-breakdown'] });
     };
 
     const handleInvoiceGenerated = (data: any) => {
@@ -192,6 +192,28 @@ export const BillingView = () => {
       queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
       queryClient.refetchQueries({ queryKey: ['wallet-status'] });
       queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
+      queryClient.refetchQueries({ queryKey: ['gst-breakdown'] });
+    };
+
+    const handleGstRateChanged = (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['gst-breakdown'] });
+      queryClient.refetchQueries({ queryKey: ['gst-breakdown'] });
+      if (data?.action === 'activated' && typeof data?.new_rate === 'number') {
+        toast.info(`GST rate updated to ${data.new_rate}%`, { duration: 4000 });
+        return;
+      }
+
+      if (data?.action === 'deactivated') {
+        toast.info('GST rate deactivated. Default rate is now applied.', { duration: 4000 });
+        return;
+      }
+
+      if (data?.action === 'deleted') {
+        toast.info('GST settings updated', { duration: 4000 });
+        return;
+      }
+
+      toast.info('GST rate updated', { duration: 4000 });
     };
 
     const handleInsufficientBalance = (data: any) => {
@@ -217,6 +239,7 @@ export const BillingView = () => {
     socket.on("usage-limit-reached", handleUsageLimitReached);
     socket.on("access-restored", handleAccessRestored);
     socket.on("billing-mode-changed", handleBillingModeChanged);
+    socket.on("gst-rate-changed", handleGstRateChanged);
 
     return () => {
       if (updateTimer) clearTimeout(updateTimer);
@@ -237,6 +260,7 @@ export const BillingView = () => {
       socket.off("usage-limit-reached", handleUsageLimitReached);
       socket.off("access-restored", handleAccessRestored);
       socket.off("billing-mode-changed", handleBillingModeChanged);
+      socket.off("gst-rate-changed", handleGstRateChanged);
     };
   }, [user?.tenant_id, queryClient]);
 
@@ -441,9 +465,9 @@ export const BillingView = () => {
       <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="space-y-8 relative z-10">
         <TabsList isDarkMode={isDarkMode}>
           <TabsTrigger value="dashboard"><div className="flex items-center gap-2"><LayoutDashboard size={12} />Dashboard</div></TabsTrigger>
+          <TabsTrigger value="usage"><div className="flex items-center gap-2"><BarChart3 size={12} />Usage Analytics</div></TabsTrigger>
           <TabsTrigger value="wallet"><div className="flex items-center gap-2"><Wallet size={12} />Wallet</div></TabsTrigger>
           <TabsTrigger value="invoices"><div className="flex items-center gap-2"><FileText size={12} />Invoices</div></TabsTrigger>
-          <TabsTrigger value="usage"><div className="flex items-center gap-2"><BarChart3 size={12} />Usage Analytics</div></TabsTrigger>
           <TabsTrigger value="payments"><div className="flex items-center gap-2"><CreditCard size={12} />Payment History</div></TabsTrigger>
           <TabsTrigger value="limits"><div className="flex items-center gap-2"><Gauge size={12} />Usage Limits</div></TabsTrigger>
         </TabsList>
@@ -466,42 +490,6 @@ export const BillingView = () => {
             </motion.div>
           </TabsContent>
 
-          {/* Wallet */}
-          <TabsContent key="wallet" value="wallet" className="outline-none">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <BillingWallet
-                isDarkMode={isDarkMode}
-                onRecharge={() => setIsRechargeModalOpen(true)}
-                billingMode={billingMode as 'prepaid' | 'postpaid'}
-              />
-            </motion.div>
-          </TabsContent>
-
-          {/* Invoices (always visible — tenants may have old postpaid invoices) */}
-          <TabsContent key="invoices" value="invoices" className="outline-none">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              {invoiceDetailId ? (
-                <BillingInvoiceDetail
-                  isDarkMode={isDarkMode}
-                  invoiceId={invoiceDetailId}
-                  onBack={() => setInvoiceDetailId(null)}
-                />
-              ) : (
-                <BillingInvoices isDarkMode={isDarkMode} />
-              )}
-            </motion.div>
-          </TabsContent>
-
           {/* Usage Analytics */}
           <TabsContent key="usage" value="usage" className="outline-none">
             <motion.div
@@ -514,6 +502,34 @@ export const BillingView = () => {
                 isDarkMode={isDarkMode}
                 startDate={startDate}
                 endDate={endDate}
+              />
+            </motion.div>
+          </TabsContent>
+
+          {/* Invoices (always visible — tenants may have old postpaid invoices) */}
+          <TabsContent key="invoices" value="invoices" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <BillingInvoices isDarkMode={isDarkMode} />
+            </motion.div>
+          </TabsContent>
+
+          {/* Wallet */}
+          <TabsContent key="wallet" value="wallet" className="outline-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <BillingWallet
+                isDarkMode={isDarkMode}
+                onRecharge={() => setIsRechargeModalOpen(true)}
+                billingMode={billingMode as 'prepaid' | 'postpaid'}
               />
             </motion.div>
           </TabsContent>

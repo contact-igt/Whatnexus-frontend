@@ -16,7 +16,26 @@ export const TemplatePreviewModal = ({
     isDarkMode,
     onClose
 }: TemplatePreviewModalProps) => {
-    console.log("template", template)
+    const headerComponent = template?.components?.find((component: any) => component.component_type === "header");
+    const bodyComponent = template?.components?.find((component: any) => component.component_type === "body");
+    const footerComponent = template?.components?.find((component: any) => component.component_type === "footer");
+
+    const normalizedTemplateType = (template?.template_type || template?.type || 'TEXT').toUpperCase() as any;
+    const normalizedHeaderType = (headerComponent?.header_format || 'NONE').toUpperCase();
+    const normalizedHeaderValue =
+        headerComponent?.media_url ||
+        headerComponent?.text_content ||
+        headerComponent?.text ||
+        '';
+    const normalizedBodyText =
+        bodyComponent?.text_content ||
+        bodyComponent?.text ||
+        '';
+    const normalizedFooterText =
+        footerComponent?.text_content ||
+        footerComponent?.text ||
+        '';
+
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -53,11 +72,11 @@ export const TemplatePreviewModal = ({
                 <div className="p-6">
                     <WhatsAppPreviewPanel
                         isDarkMode={isDarkMode}
-                        templateType={template?.template_type}
-                        headerType={template?.components?.find((component: any) => component.component_type == "header")?.header_format || 'NONE'}
-                        headerValue={template?.components?.find((component: any) => component.component_type == "header")?.text_content || ''}
-                        content={template?.components?.find((component: any) => component.component_type == "body") || ''}
-                        footer={template?.components?.find((component: any) => component.component_type == "header")?.header_format || 'NONE'}
+                        templateType={normalizedTemplateType}
+                        headerType={normalizedHeaderType as any}
+                        headerValue={normalizedHeaderValue}
+                        content={normalizedBodyText}
+                        footer={normalizedFooterText}
                         variables={template?.variables}
                         ctaButtons={template?.ctaButtons || []}
                         quickReplies={template?.quickReplies || []}

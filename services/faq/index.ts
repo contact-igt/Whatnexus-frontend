@@ -2,12 +2,10 @@ import { _axios } from "@/helper/axios";
 
 export interface SaveFaqReviewData {
   doctor_answer: string;
-  add_to_kb: boolean;
 }
 
 export interface PublishFaqReviewData {
   doctor_answer: string;
-  add_to_kb: boolean;
 }
 
 export interface CreateFaqData {

@@ -1,47 +1,39 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
 import { Search, Upload, Grid3X3, List, X, Image as ImgIcon, Video, FileText, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FilterType, ViewMode, FILTER_TABS, ACCEPT_MAP, GalleryFilters } from "./types";
+import { FilterType, ViewMode, FILTER_TABS, GalleryFilters } from "./types";
 
 interface Props {
-  filters:         GalleryFilters;
-  viewMode:        ViewMode;
-  isDarkMode:      boolean;
-  uploading:       boolean;
-  uploadProgress:  number;
-  isDragOver:      boolean;
-  totalItems:      number;
-  fileType:        FilterType;
+  filters: GalleryFilters;
+  viewMode: ViewMode;
+  isDarkMode: boolean;
+  uploading: boolean;
+  uploadProgress: number;
+  isDragOver: boolean;
+  totalItems: number;
+  fileType: FilterType;
   onFiltersChange: (patch: Partial<GalleryFilters>) => void;
-  onViewMode:      (v: ViewMode) => void;
-  onUpload:        (file: File) => void;
-  onDragOver:      (e: React.DragEvent) => void;
-  onDragLeave:     () => void;
-  onDrop:          (e: React.DragEvent) => void;
+  onViewMode: (v: ViewMode) => void;
+  onUploadTrigger: (event?: React.SyntheticEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
 }
 
 const TAB_ICONS: Record<string, React.ReactNode> = {
-  all:      <Layers size={11} />,
-  image:    <ImgIcon size={11} />,
-  video:    <Video size={11} />,
+  all: <Layers size={11} />,
+  image: <ImgIcon size={11} />,
+  video: <Video size={11} />,
   document: <FileText size={11} />,
 };
 
 export function GalleryToolbar({
   filters, viewMode, isDarkMode, uploading, uploadProgress,
   isDragOver, totalItems, fileType,
-  onFiltersChange, onViewMode, onUpload, onDragOver, onDragLeave, onDrop,
+  onFiltersChange, onViewMode, onUploadTrigger, onDragOver, onDragLeave, onDrop,
 }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const triggerUpload = () => inputRef.current?.click();
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) onUpload(file);
-    e.target.value = "";
-  };
-
   return (
     <div className={cn("px-5 pt-3 pb-0 shrink-0", isDarkMode ? "bg-[#0c0d11]" : "bg-white")}>
 
@@ -85,7 +77,8 @@ export function GalleryToolbar({
         </div>
 
         {/* Upload */}
-        <label
+        <button
+          type="button"
           className={cn(
             "h-9 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5",
             "cursor-pointer transition-all whitespace-nowrap select-none",
@@ -96,12 +89,11 @@ export function GalleryToolbar({
           onDragOver={(e) => { e.preventDefault(); onDragOver(e); }}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
-          onClick={triggerUpload}
+          onClick={onUploadTrigger}
         >
           <Upload size={13} />
           <span>{uploading ? `${uploadProgress}%` : "Upload"}</span>
-          <input ref={inputRef} type="file" className="hidden" accept={ACCEPT_MAP[filters.filterType]} disabled={uploading} onChange={handleFileChange} />
-        </label>
+        </button>
 
         {/* View toggle */}
         <div className={cn(
@@ -141,8 +133,8 @@ export function GalleryToolbar({
       )}>
         {FILTER_TABS.map((tab) => {
           const restricted = fileType !== "all" && tab.id !== fileType;
-          const active     = filters.filterType === tab.id;
-          const icon       = TAB_ICONS[tab.id];
+          const active = filters.filterType === tab.id;
+          const icon = TAB_ICONS[tab.id];
           return (
             <button
               key={tab.id}

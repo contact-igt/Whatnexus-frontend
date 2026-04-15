@@ -31,6 +31,13 @@ export class billingApiData {
   };
 
   /**
+   * Fetch GST breakdown for recent wallet recharges
+   */
+  getGstBreakdown = async () => {
+    return await _axios("get", "/whatsapp/billing/gst-breakdown");
+  };
+
+  /**
    * Fetch current wallet balance
    */
   getWalletBalance = async () => {
@@ -150,6 +157,19 @@ export class billingApiData {
   };
 
   /**
+   * Download invoice PDF
+   */
+  downloadInvoicePdf = async (id: number, isAdmin = false) => {
+    const route = isAdmin
+      ? `/whatsapp/admin/invoices/${id}/pdf`
+      : `/whatsapp/billing/invoices/${id}/pdf`;
+
+    return await _axios("get", route, null, undefined, undefined, {
+      responseType: "blob",
+    });
+  };
+
+  /**
    * Pay a specific invoice via Razorpay
    */
   payInvoice = async (id: number, paymentData: {
@@ -237,5 +257,37 @@ export class billingApiData {
    */
   adminGetUnresolvedEvents = async () => {
     return await _axios("get", "/whatsapp/billing/admin/health/unresolved");
+  };
+
+  // ──────────────── GST Rate Management (SuperAdmin) ────────────────
+
+  /** Get currently active GST rate */
+  adminGetActiveGSTRate = async () => {
+    return await _axios("get", "/whatsapp/billing/admin/gst/current");
+  };
+
+  /** Get paginated GST rate history */
+  adminListGSTRates = async (params?: { page?: number; limit?: number }) => {
+    return await _axios("get", "/whatsapp/billing/admin/gst/list", null, undefined, params);
+  };
+
+  /** Add a new (inactive) GST rate */
+  adminAddGSTRate = async (data: { gst_rate: number; effective_from: string; notes?: string }) => {
+    return await _axios("post", "/whatsapp/billing/admin/gst/add", data);
+  };
+
+  /** Activate a GST rate by id (atomically deactivates the current one) */
+  adminActivateGSTRate = async (data: { id: number; force?: boolean }) => {
+    return await _axios("post", "/whatsapp/billing/admin/gst/activate", data);
+  };
+
+  /** Deactivate a GST rate by id */
+  adminDeactivateGSTRate = async (data: { id: number }) => {
+    return await _axios("post", "/whatsapp/billing/admin/gst/deactivate", data);
+  };
+
+  /** Delete an inactive GST rate by id */
+  adminDeleteGSTRate = async (id: number) => {
+    return await _axios("delete", `/whatsapp/billing/admin/gst/${id}`);
   };
 }

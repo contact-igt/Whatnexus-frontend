@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { billingApiData } from "@/services/billing";
+import { GSTSettings } from "@/components/views/billing/gstSettings";
 import {
     Shield, Users, Wallet, FileText, ScrollText, Activity,
     Loader2, CheckCircle, AlertTriangle, Search, ChevronLeft,
     ChevronRight, Unlock, CreditCard, ArrowRightLeft,
-    XCircle, DollarSign, ExternalLink, Download, ChevronDown, Building2, X
+    XCircle, DollarSign, ExternalLink, Download, ChevronDown, Building2, X, Percent
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -660,6 +662,7 @@ const InvoiceManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
     const [closeReason, setCloseReason] = useState("");
     const [confirmClose, setConfirmClose] = useState(false);
     const invoiceCloseM = useAdminInvoiceCloseMutation();
+    const billingApi = new billingApiData();
     const { data: invoicesRes, isLoading } = useGetInvoicesQuery({ limit: 20 });
     const invoices = invoicesRes?.data?.invoices || invoicesRes?.invoices || [];
 
@@ -680,6 +683,23 @@ const InvoiceManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
             },
             onError: (err: any) => { toast.error(err?.response?.data?.message || "Failed to close invoice"); setConfirmClose(false); },
         });
+    };
+
+    const handleDownloadInvoice = async (invoice: any) => {
+        try {
+            const pdfBlob = await billingApi.downloadInvoicePdf(invoice.id, true);
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${invoice.invoice_number}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success(`Downloaded ${invoice.invoice_number}.pdf`);
+        } catch {
+            toast.error("Failed to download invoice PDF");
+        }
     };
 
     const statusColor = (s: string) => {
@@ -764,7 +784,7 @@ const InvoiceManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
                         <table className="w-full">
                             <thead>
                                 <tr className={cn("border-b", isDarkMode ? "border-white/5" : "border-slate-100")}>
-                                    {['ID', 'Invoice #', 'Tenant', 'Amount', 'Status', 'Due Date'].map(h => (
+                                    {['ID', 'Invoice #', 'Tenant', 'Amount', 'Status', 'Due Date', 'Actions'].map(h => (
                                         <th key={h} className={cn("px-4 py-2.5 text-left text-[9px] font-black uppercase tracking-widest", isDarkMode ? "text-white/20" : "text-slate-400")}>{h}</th>
                                     ))}
                                 </tr>
@@ -782,6 +802,20 @@ const InvoiceManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3"><span className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-500')}>{inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-IN') : '—'}</span></td>
+                                        <td className="px-4 py-3">
+                                            <button
+                                                onClick={() => handleDownloadInvoice(inv)}
+                                                className={cn(
+                                                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
+                                                    isDarkMode
+                                                        ? "border-white/10 text-white/50 hover:bg-white/5 hover:text-white"
+                                                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                <Download size={12} />
+                                                PDF
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -1176,6 +1210,7 @@ export const SuperAdminBillingView = () => {
                     <TabsTrigger value="tenants"><div className="flex items-center gap-2"><Users size={12} />Tenant Management</div></TabsTrigger>
                     <TabsTrigger value="credit"><div className="flex items-center gap-2"><Wallet size={12} />Manual Credit</div></TabsTrigger>
                     <TabsTrigger value="invoices"><div className="flex items-center gap-2"><FileText size={12} />Invoice Mgmt</div></TabsTrigger>
+                    <TabsTrigger value="gst"><div className="flex items-center gap-2"><Percent size={12} />GST Settings</div></TabsTrigger>
                     <TabsTrigger value="audit"><div className="flex items-center gap-2"><ScrollText size={12} />Audit Log</div></TabsTrigger>
                     <TabsTrigger value="limits"><div className="flex items-center gap-2"><Activity size={12} />Usage Limits</div></TabsTrigger>
                     <TabsTrigger value="health"><div className="flex items-center gap-2"><Activity size={12} />System Health</div></TabsTrigger>
@@ -1197,6 +1232,12 @@ export const SuperAdminBillingView = () => {
                     <TabsContent key="invoices" value="invoices" className="outline-none">
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
                             <InvoiceManagement isDarkMode={isDarkMode} />
+                        </motion.div>
+                    </TabsContent>
+
+                    <TabsContent key="gst" value="gst" className="outline-none">
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
+                            <GSTSettings isDarkMode={isDarkMode} />
                         </motion.div>
                     </TabsContent>
 

@@ -17,6 +17,11 @@ export const BillingWallet = ({ isDarkMode, onRecharge, billingMode = 'prepaid' 
   const [localThreshold, setLocalThreshold] = useState<string>("");
   const [localAmount, setLocalAmount] = useState<string>("");
 
+  const formatRateLabel = (rate: number) => {
+    const safeRate = Number.isFinite(rate) ? rate : 0;
+    return safeRate % 1 === 0 ? safeRate.toFixed(0) : safeRate.toFixed(2).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+  };
+
   const { data: balanceResponse, isLoading: isLoadingBalance } = useGetWalletBalanceQuery();
   const { data: paymentHistoryResponse, isLoading: isLoadingPayments } = useGetPaymentHistoryQuery({ limit: 50 });
   const { data: autoRechargeResponse } = useGetAutoRechargeSettingsQuery();
@@ -34,28 +39,54 @@ export const BillingWallet = ({ isDarkMode, onRecharge, billingMode = 'prepaid' 
   const balanceScale = Math.max(balance, 1000);
   const balancePercent = Math.min((balance / balanceScale) * 100, 100);
 
-  // Download invoice for a payment
-  const handleDownloadInvoice = (payment: any) => {
-    const invoiceContent = `
+  // Download a GST-compliant tax invoice receipt for wallet recharge payments.
+  const handleDownloadReceipt = (payment: any) => {
+    // Use gross_amount (what was paid) when available; fall back to amount for legacy records
+    const grossAmt = parseFloat(payment.gross_amount || payment.amount || 0);
+    const baseAmt = parseFloat(payment.base_amount || payment.amount || 0);
+    const gstAmt = parseFloat(payment.gst_amount || 0);
+    const paymentGstRate = Number(payment.gst_rate || 18);
+    const halfGstRate = paymentGstRate / 2;
+    const halfGst = (gstAmt / 2).toFixed(2);
+    const isIntra = Boolean(payment.is_intra_state);
+
+    const gstLines = gstAmt > 0
+      ? isIntra
+        ? `CGST (${formatRateLabel(halfGstRate)}%):           ${currencySymbol}${halfGst}\nSGST (${formatRateLabel(halfGstRate)}%):           ${currencySymbol}${halfGst}`
+        : `IGST (${formatRateLabel(paymentGstRate)}%):             ${currencySymbol}${gstAmt.toFixed(2)}`
+      : `GST:                    ${currencySymbol}0.00`;
+
+    const receiptContent = `
 =====================================
-           WHATNEXUS INVOICE
+    WHATNEXUS — TAX INVOICE
 =====================================
 
-Invoice Number: ${payment.invoice_number || `INV-${payment.id}`}
-Date: ${new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
-Time: ${new Date(payment.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+Invoice No : ${payment.invoice_number || `REC-${payment.id}`}
+Date       : ${new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+Time       : ${new Date(payment.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+HSN/SAC    : 998314
 
 -------------------------------------
 TRANSACTION DETAILS
 -------------------------------------
-Razorpay Payment ID: ${payment.razorpay_payment_id || 'N/A'}
-Razorpay Order ID: ${payment.razorpay_order_id || 'N/A'}
+Payment ID : ${payment.razorpay_payment_id || 'N/A'}
+Order ID   : ${payment.razorpay_order_id || 'N/A'}
 Description: ${payment.description || 'Wallet Recharge'}
-Payment Method: ${payment.payment_method || 'Online'}
+Method     : ${payment.payment_method || 'Online'}
 
-Amount: ${currencySymbol}${parseFloat(payment.amount).toFixed(2)}
+-------------------------------------
+AMOUNT BREAKDOWN
+-------------------------------------
+Taxable Value (credited): ${currencySymbol}${baseAmt.toFixed(2)}
+${gstLines}
+                          ─────────────
+TOTAL PAID:               ${currencySymbol}${grossAmt.toFixed(2)}
+
+-------------------------------------
+WALLET BALANCE
+-------------------------------------
 Balance Before: ${currencySymbol}${parseFloat(payment.balance_before || 0).toFixed(2)}
-Balance After: ${currencySymbol}${parseFloat(payment.balance_after || 0).toFixed(2)}
+Balance After : ${currencySymbol}${parseFloat(payment.balance_after || 0).toFixed(2)}
 
 -------------------------------------
 PAYMENT STATUS: SUCCESS
@@ -67,16 +98,16 @@ For support: support@whatnexus.com
 =====================================
     `;
 
-    const blob = new Blob([invoiceContent], { type: 'text/plain' });
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${payment.invoice_number || `Invoice-${payment.id}`}.txt`;
+    a.download = `${payment.invoice_number || `Receipt-${payment.id}`}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Invoice downloaded!');
+    toast.success('Receipt downloaded!');
   };
 
   // Export all payments to CSV
@@ -86,17 +117,22 @@ For support: support@whatnexus.com
       return;
     }
 
-    const headers = ['Invoice Number', 'Date', 'Time', 'Razorpay Payment ID', 'Description', 'Amount', 'Balance After', 'Status'];
+    const headers = ['Invoice Number', 'Date', 'Time', 'Razorpay Payment ID', 'Description', 'Gross Paid', 'Wallet Credited', 'GST Amount', 'Balance After', 'Status'];
     const csvRows = [headers.join(',')];
 
     payments.forEach((payment: any) => {
+      const grossPaid = parseFloat(payment.gross_amount || payment.amount || 0).toFixed(2);
+      const walletCredit = parseFloat(payment.base_amount || payment.amount || 0).toFixed(2);
+      const gstAmt = parseFloat(payment.gst_amount || 0).toFixed(2);
       const row = [
         payment.invoice_number || `INV-${payment.id}`,
         new Date(payment.createdAt).toLocaleDateString('en-IN'),
         new Date(payment.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
         payment.razorpay_payment_id || 'N/A',
         `"${payment.description || 'Wallet Recharge'}"`,
-        parseFloat(payment.amount).toFixed(2),
+        grossPaid,
+        walletCredit,
+        gstAmt,
         parseFloat(payment.balance_after || 0).toFixed(2),
         'Paid'
       ];
@@ -424,25 +460,40 @@ For support: support@whatnexus.com
                       <div className="flex flex-col gap-0.5">
                         <span className={cn("text-[11px] font-black tracking-tight transition-colors", isDarkMode ? "text-white/80 group-hover/item:text-white" : "text-slate-900")}>{payment.description || 'Wallet Recharge'}</span>
                         <span className={cn("text-[9px] font-bold uppercase tracking-widest", isDarkMode ? "text-white/20" : "text-slate-400")}>
-                          {new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} â€¢ {new Date(payment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(payment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
+                        {/* Show GST split when available */}
+                        {payment.gst_amount && parseFloat(payment.gst_amount) > 0 && (
+                          <span className={cn("text-[8px] font-bold tracking-widest opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>
+                            GST ₹{parseFloat(payment.gst_amount).toFixed(2)} incl.
+                          </span>
+                        )}
                       </div>
-                      <span className={cn(
-                        "text-lg font-black tabular-nums transition-transform duration-300 group-hover/item:scale-110",
-                        isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                      )}>
-                        +{currencySymbol}{parseFloat(payment.amount).toFixed(2)}
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5">
+                        {/* Primary: gross amount paid */}
+                        <span className={cn(
+                          "text-lg font-black tabular-nums transition-transform duration-300 group-hover/item:scale-110",
+                          isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                        )}>
+                          +{currencySymbol}{parseFloat(payment.gross_amount || payment.amount).toFixed(2)}
+                        </span>
+                        {/* Secondary: wallet credit (base after GST) */}
+                        {payment.gross_amount && parseFloat(payment.gross_amount) !== parseFloat(payment.base_amount || payment.amount) && (
+                          <span className={cn("text-[8px] font-bold tabular-nums opacity-40", isDarkMode ? "text-emerald-300" : "text-emerald-700")}>
+                            {currencySymbol}{parseFloat(payment.base_amount || payment.amount).toFixed(2)} credited
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <button
-                      onClick={() => handleDownloadInvoice(payment)}
+                      onClick={() => handleDownloadReceipt(payment)}
                       className={cn(
                         "flex items-center gap-1.5 mt-4 text-[8px] font-black uppercase tracking-widest transition-all duration-500 opacity-30 hover:opacity-100 hover:translate-x-1",
                         isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
                       )}
                     >
                       <Download size={10} strokeWidth={3} />
-                      Download Invoice
+                      Download Receipt
                     </button>
                   </div>
                 );

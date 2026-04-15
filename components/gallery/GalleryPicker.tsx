@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ImageIcon, X, FileText, Video, File } from "lucide-react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
@@ -64,6 +65,8 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
 }) => {
   const { isDarkMode } = useTheme();
   const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+  const [mounted, setMounted] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   // ── Core state ──────────────────────────────────────────────────────────────
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
@@ -93,6 +96,10 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
     page: 1,
   });
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -118,9 +125,9 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
     try {
       const response = await fetchMediaAssets({
         tenant_id: tenantId,
+        approved_only: approvedOnly ? true : undefined,
         type: filters.filterType === "all" ? undefined : filters.filterType,
         search: debouncedSearch || undefined,
-        approved_only: approvedOnly ? true : undefined,
         page: filters.page,
         limit: 20,
       });
@@ -236,28 +243,49 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
     setConfirmId(null);
   };
 
-  const handleLocalSelect = (asset: MediaAsset) => {
-    const isAlreadySelected =
-      selectedAsset?.media_asset_id === asset.media_asset_id ||
-      selectedAsset?.id === asset.id;
+  const triggerUploadDialog = useCallback((event?: React.SyntheticEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (uploading) return;
+    uploadInputRef.current?.click();
+  }, [uploading]);
 
-    if (isAlreadySelected) {
-      setSelectedAsset(null);
-    } else {
-      setSelectedAsset(asset);
+  const handleUploadInputChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await uploadFile(file);
     }
+    event.target.value = "";
+  };
+
+  const closePicker = useCallback(() => {
+    window.setTimeout(() => {
+      onClose();
+    }, 0);
+  }, [onClose]);
+
+  const handleLocalSelect = (asset: MediaAsset) => {
+    setSelectedAsset(asset);
+    onSelect(asset);
+    closePicker();
   };
 
   // ── Navigation ──────────────────────────────────────────────────────────────
-  const handleConfirm = () => {
+  const handleConfirm = (event?: React.MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
     if (!selectedAsset) return;
     onSelect(selectedAsset);
-    onClose();
+    closePicker();
   };
 
-  const handleCancel = () => {
+  const handleCancel = (event?: React.MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
     setSelectedAsset(null);
-    onClose();
+    closePicker();
   };
 
   const openDrawer = (asset: MediaAsset) => {
@@ -273,168 +301,153 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   const handleSelectFromDrawer = (asset: MediaAsset) => {
     onSelect(asset);
     closeDrawer();
-    onClose();
+    closePicker();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  return (
+  return createPortal(
     <>
       {/* ── Backdrop ────────────────────────────────────────────────────────── */}
       <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <GlassCard
-          isDarkMode={isDarkMode}
-          className={cn(
-            "w-full max-w-5xl flex flex-col overflow-hidden",
-            "max-h-[88vh] rounded-2xl",
-            isDarkMode ? "bg-[#0c0d11] border-white/8" : "bg-white border-slate-200"
-          )}
+        <div
+          className="w-full max-w-5xl"
+          onClick={(event: React.MouseEvent<HTMLDivElement>) => event.stopPropagation()}
         >
-
-          {/* ── Modal Header ──────────────────────────────────────────────── */}
-          <div
+          <input
+            ref={uploadInputRef}
+            type="file"
+            className="hidden"
+            accept={ACCEPT_MAP[filters.filterType]}
+            disabled={uploading}
+            onChange={handleUploadInputChange}
+          />
+          <GlassCard
+            isDarkMode={isDarkMode}
             className={cn(
-              "flex items-center justify-between gap-4 px-6 py-4 border-b shrink-0",
-              isDarkMode
-                ? "border-white/6 bg-linear-to-r from-white/[0.03] to-transparent"
-                : "border-slate-100 bg-linear-to-r from-slate-50 to-white"
+              "w-full max-w-5xl flex flex-col overflow-hidden",
+              "max-h-[88vh] rounded-2xl",
+              isDarkMode ? "bg-[#0c0d11] border-white/8" : "bg-white border-slate-200"
             )}
           >
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-                isDarkMode ? "bg-emerald-500/15 border border-emerald-500/20" : "bg-emerald-50 border border-emerald-100"
-              )}>
-                <ImageIcon size={16} className="text-emerald-500" />
+
+            {/* ── Modal Header ──────────────────────────────────────────────── */}
+            <div
+              className={cn(
+                "flex items-center justify-between gap-4 px-6 py-4 border-b shrink-0",
+                isDarkMode
+                  ? "border-white/6 bg-linear-to-r from-white/[0.03] to-transparent"
+                  : "border-slate-100 bg-linear-to-r from-slate-50 to-white"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+                  isDarkMode ? "bg-emerald-500/15 border border-emerald-500/20" : "bg-emerald-50 border border-emerald-100"
+                )}>
+                  <ImageIcon size={16} className="text-emerald-500" />
+                </div>
+                <div>
+                  <h2 className={cn("text-[15px] font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
+                    {approvedOnly ? "Select Approved Media" : "Select Media"}
+                  </h2>
+                  <p className={cn("text-[11px]", isDarkMode ? "text-white/35" : "text-slate-500")}>
+                    Pick from your gallery or upload a new file
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className={cn("text-[15px] font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
-                  {approvedOnly ? "Select Approved Media" : "Select Media"}
-                </h2>
-                <p className={cn("text-[11px]", isDarkMode ? "text-white/35" : "text-slate-500")}>
-                  Pick from your gallery or upload a new file
-                </p>
-              </div>
+
+              <button
+                type="button"
+                onClick={handleCancel}
+                className={cn(
+                  "w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0",
+                  isDarkMode
+                    ? "text-white/30 hover:bg-white/8 hover:text-white/80"
+                    : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                )}
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleCancel}
-              className={cn(
-                "w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0",
-                isDarkMode
-                  ? "text-white/30 hover:bg-white/8 hover:text-white/80"
-                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            {/* ── Toolbar ───────────────────────────────────────────────────── */}
+            <GalleryToolbar
+              filters={filters}
+              viewMode={viewMode}
+              isDarkMode={isDarkMode}
+              uploading={uploading}
+              uploadProgress={uploadProgress}
+              isDragOver={isDragOver}
+              totalItems={totalItems}
+              fileType={fileType as FilterType}
+              onFiltersChange={patchFilters}
+              onViewMode={setViewMode}
+              onUploadTrigger={triggerUploadDialog}
+              onDragOver={() => setIsDragOver(true)}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={async (e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) await uploadFile(file);
+              }}
+            />
+
+            {/* ── Gallery body ──────────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+
+              {/* Error state */}
+              {error && !loading && (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                  <p className={cn("text-sm font-semibold", isDarkMode ? "text-red-400" : "text-red-600")}>
+                    Failed to load assets
+                  </p>
+                  <p className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>{error}</p>
+                  <button
+                    type="button"
+                    onClick={loadMediaAssets}
+                    className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-all"
+                  >
+                    Retry
+                  </button>
+                </div>
               )}
-              aria-label="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
 
-          {/* ── Toolbar ───────────────────────────────────────────────────── */}
-          <GalleryToolbar
-            filters={filters}
-            viewMode={viewMode}
-            isDarkMode={isDarkMode}
-            uploading={uploading}
-            uploadProgress={uploadProgress}
-            isDragOver={isDragOver}
-            totalItems={totalItems}
-            fileType={fileType as FilterType}
-            onFiltersChange={patchFilters}
-            onViewMode={setViewMode}
-            onUpload={uploadFile}
-            onDragOver={() => setIsDragOver(true)}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={async (e) => {
-              e.preventDefault();
-              setIsDragOver(false);
-              const file = e.dataTransfer.files?.[0];
-              if (file) await uploadFile(file);
-            }}
-          />
+              {/* Loading skeletons */}
+              {loading && !error && (
+                viewMode === "grid"
+                  ? <GridSkeletons isDarkMode={isDarkMode} count={8} />
+                  : <ListSkeletons isDarkMode={isDarkMode} count={6} />
+              )}
 
-          {/* ── Gallery body ──────────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+              {/* Empty state */}
+              {!loading && !error && mediaAssets.length === 0 && (
+                <GalleryEmptyState
+                  filterType={filters.filterType}
+                  isDarkMode={isDarkMode}
+                  onUploadClick={triggerUploadDialog}
+                />
+              )}
 
-            {/* Error state */}
-            {error && !loading && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                <p className={cn("text-sm font-semibold", isDarkMode ? "text-red-400" : "text-red-600")}>
-                  Failed to load assets
-                </p>
-                <p className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>{error}</p>
-                <button
-                  type="button"
-                  onClick={loadMediaAssets}
-                  className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-all"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {/* Loading skeletons */}
-            {loading && !error && (
-              viewMode === "grid"
-                ? <GridSkeletons isDarkMode={isDarkMode} count={8} />
-                : <ListSkeletons isDarkMode={isDarkMode} count={6} />
-            )}
-
-            {/* Empty state */}
-            {!loading && !error && mediaAssets.length === 0 && (
-              <GalleryEmptyState
-                filterType={filters.filterType}
-                isDarkMode={isDarkMode}
-                onUploadClick={() => document.querySelector<HTMLInputElement>('input[type="file"]')?.click()}
-              />
-            )}
-
-            {/* ── Grid view ─────────────────────────────────────────────── */}
-            {!loading && !error && mediaAssets.length > 0 && viewMode === "grid" && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-                {mediaAssets.map((asset) => {
-                  const isDisabled = approvedOnly ? !asset.is_approved : false;
-                  const isSelected =
-                    selectedAsset?.media_asset_id === asset.media_asset_id ||
-                    selectedAsset?.id === asset.id;
-                  return (
-                    <GalleryGridCard
-                      key={asset.media_asset_id}
-                      asset={asset}
-                      isSelected={isSelected}
-                      isDisabled={isDisabled}
-                      isDarkMode={isDarkMode}
-                      onSelect={handleLocalSelect}
-                      onPreview={openDrawer}
-                      onDelete={handleDeleteFromCard}
-                    />
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ── List view ─────────────────────────────────────────────── */}
-            {!loading && !error && mediaAssets.length > 0 && viewMode === "list" && (
-              <div>
-                <GalleryListHeader isDarkMode={isDarkMode} showCheckbox={true} />
-                <div className="space-y-1">
+              {/* ── Grid view ─────────────────────────────────────────────── */}
+              {!loading && !error && mediaAssets.length > 0 && viewMode === "grid" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
                   {mediaAssets.map((asset) => {
-                    const assetSelected =
+                    const isDisabled = approvedOnly ? !asset.is_approved : false;
+                    const isSelected =
                       selectedAsset?.media_asset_id === asset.media_asset_id ||
                       selectedAsset?.id === asset.id;
-                    const isDisabled = approvedOnly ? !asset.is_approved : false;
                     return (
-                      <GalleryListRow
+                      <GalleryGridCard
                         key={asset.media_asset_id}
                         asset={asset}
-                        isSelected={assetSelected}
+                        isSelected={isSelected}
                         isDisabled={isDisabled}
                         isDarkMode={isDarkMode}
-                        showCheckbox={true}
                         onSelect={handleLocalSelect}
                         onPreview={openDrawer}
                         onDelete={handleDeleteFromCard}
@@ -442,112 +455,140 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
                     );
                   })}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* ── Footer ────────────────────────────────────────────────────── */}
-          <div
-            className={cn(
-              "px-6 pt-3 pb-4 border-t shrink-0",
-              isDarkMode ? "border-white/6 bg-white/[0.015]" : "border-slate-100 bg-slate-50/60"
-            )}
-          >
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mb-3">
-                <Pagination
-                  currentPage={filters.page}
-                  totalPages={totalPages}
-                  onPageChange={(p) => patchFilters({ page: p })}
-                  totalItems={totalItems}
-                  itemsPerPage={20}
-                  isDarkMode={isDarkMode}
-                />
-              </div>
-            )}
+              {/* ── List view ─────────────────────────────────────────────── */}
+              {!loading && !error && mediaAssets.length > 0 && viewMode === "list" && (
+                <div>
+                  <GalleryListHeader isDarkMode={isDarkMode} showCheckbox={true} />
+                  <div className="space-y-1">
+                    {mediaAssets.map((asset) => {
+                      const assetSelected =
+                        selectedAsset?.media_asset_id === asset.media_asset_id ||
+                        selectedAsset?.id === asset.id;
+                      const isDisabled = approvedOnly ? !asset.is_approved : false;
+                      return (
+                        <GalleryListRow
+                          key={asset.media_asset_id}
+                          asset={asset}
+                          isSelected={assetSelected}
+                          isDisabled={isDisabled}
+                          isDarkMode={isDarkMode}
+                          showCheckbox={true}
+                          onSelect={handleLocalSelect}
+                          onPreview={openDrawer}
+                          onDelete={handleDeleteFromCard}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* Footer action bar */}
-            <div className="flex items-center justify-between gap-3">
-              {/* Selected asset preview */}
-              <div className="flex items-center gap-2.5 min-w-0">
-                {selectedAsset ? (
-                  <>
-                    {/* Thumbnail / icon */}
-                    <div className={cn(
-                      "w-9 h-9 rounded-lg overflow-hidden shrink-0 border flex items-center justify-center",
-                      isDarkMode ? "border-emerald-500/30" : "border-emerald-200"
-                    )}
-                      style={{
-                        background: selectedAsset.file_type === "image" && selectedAsset.preview_url
-                          ? undefined
-                          : selectedAsset.file_type === "video"
-                            ? "#a78bfa18"
-                            : selectedAsset.file_type === "document"
-                              ? "#fbbf2418"
-                              : "#94a3b818"
-                      }}
-                    >
-                      {selectedAsset.file_type === "image" && selectedAsset.preview_url ? (
-                        <img src={selectedAsset.preview_url} alt="" className="w-full h-full object-cover" />
-                      ) : selectedAsset.file_type === "video" ? (
-                        <Video size={17} style={{ color: "#a78bfa" }} />
-                      ) : selectedAsset.file_type === "document" ? (
-                        <FileText size={17} style={{ color: "#fbbf24" }} />
-                      ) : (
-                        <File size={17} className={isDarkMode ? "text-white/40" : "text-slate-400"} />
+            {/* ── Footer ────────────────────────────────────────────────────── */}
+            <div
+              className={cn(
+                "px-6 pt-3 pb-4 border-t shrink-0",
+                isDarkMode ? "border-white/6 bg-white/[0.015]" : "border-slate-100 bg-slate-50/60"
+              )}
+            >
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mb-3">
+                  <Pagination
+                    currentPage={filters.page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => patchFilters({ page: p })}
+                    totalItems={totalItems}
+                    itemsPerPage={20}
+                    isDarkMode={isDarkMode}
+                  />
+                </div>
+              )}
+
+              {/* Footer action bar */}
+              <div className="flex items-center justify-between gap-3">
+                {/* Selected asset preview */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {selectedAsset ? (
+                    <>
+                      {/* Thumbnail / icon */}
+                      <div className={cn(
+                        "w-9 h-9 rounded-lg overflow-hidden shrink-0 border flex items-center justify-center",
+                        isDarkMode ? "border-emerald-500/30" : "border-emerald-200"
                       )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className={cn("text-[12px] font-semibold truncate leading-tight", isDarkMode ? "text-white/85" : "text-slate-800")}>
-                        {selectedAsset.file_name}
-                      </p>
-                      <p className={cn("text-[10px]", isDarkMode ? "text-emerald-400/80" : "text-emerald-600")}>
-                        Selected
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <span className={cn("text-xs", isDarkMode ? "text-white/20" : "text-slate-400")}>
-                    No file selected
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
-                    isDarkMode
-                      ? "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/90"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                        style={{
+                          background: selectedAsset.file_type === "image" && selectedAsset.preview_url
+                            ? undefined
+                            : selectedAsset.file_type === "video"
+                              ? "#a78bfa18"
+                              : selectedAsset.file_type === "document"
+                                ? "#fbbf2418"
+                                : "#94a3b818"
+                        }}
+                      >
+                        {selectedAsset.file_type === "image" && selectedAsset.preview_url ? (
+                          <img src={selectedAsset.preview_url} alt="" className="w-full h-full object-cover" />
+                        ) : selectedAsset.file_type === "video" ? (
+                          <Video size={17} style={{ color: "#a78bfa" }} />
+                        ) : selectedAsset.file_type === "document" ? (
+                          <FileText size={17} style={{ color: "#fbbf24" }} />
+                        ) : (
+                          <File size={17} className={isDarkMode ? "text-white/40" : "text-slate-400"} />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={cn("text-[12px] font-semibold truncate leading-tight", isDarkMode ? "text-white/85" : "text-slate-800")}>
+                          {selectedAsset.file_name}
+                        </p>
+                        <p className={cn("text-[10px]", isDarkMode ? "text-emerald-400/80" : "text-emerald-600")}>
+                          Selected
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <span className={cn("text-xs", isDarkMode ? "text-white/20" : "text-slate-400")}>
+                      No file selected
+                    </span>
                   )}
-                >
-                  Cancel
-                </button>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={handleConfirm}
-                  disabled={!selectedAsset}
-                  className={cn(
-                    "px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200",
-                    selectedAsset
-                      ? "bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-lg shadow-emerald-500/30"
-                      : isDarkMode
-                        ? "bg-white/5 text-white/20 cursor-not-allowed"
-                        : "bg-slate-100 text-slate-300 cursor-not-allowed"
-                  )}
-                >
-                  Select Media
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
+                      isDarkMode
+                        ? "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/90"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                    )}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={!selectedAsset}
+                    className={cn(
+                      "px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200",
+                      selectedAsset
+                        ? "bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-lg shadow-emerald-500/30"
+                        : isDarkMode
+                          ? "bg-white/5 text-white/20 cursor-not-allowed"
+                          : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                    )}
+                  >
+                    Select Media
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-        </GlassCard>
+          </GlassCard>
+        </div>
       </div>
 
       {/* ── Preview Drawer (rendered outside modal so it slides over) ─────── */}
@@ -571,5 +612,6 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
         isDarkMode={isDarkMode}
       />
     </>
+    , document.body
   );
 };

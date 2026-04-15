@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,7 @@ const catStyles = (isDarkMode: boolean): Record<string, string> => ({
   Utility: isDarkMode ? 'text-orange-400' : 'text-orange-600',
   Authentication: isDarkMode ? 'text-rose-400' : 'text-rose-600',
   Service: isDarkMode ? 'text-emerald-400' : 'text-emerald-600',
+  Ai_usage: isDarkMode ? 'text-cyan-400' : 'text-cyan-600',
 });
 
 const catBorderColor: Record<string, string> = {
@@ -42,6 +43,7 @@ const catBorderColor: Record<string, string> = {
   Utility: 'border-l-orange-500',
   Authentication: 'border-l-rose-500',
   Service: 'border-l-emerald-500',
+  Ai_usage: 'border-l-cyan-500',
 };
 
 export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerProps) => {
@@ -89,13 +91,13 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
           </div>
 
           <div className={cn("flex p-1 rounded-2xl border transition-all duration-300", isDarkMode ? 'bg-white/[0.03] border-white/5' : 'bg-white border-slate-100 shadow-sm')}>
-            {(['All', 'Marketing', 'Utility', 'Authentication', 'Service'] as const).map(cat => {
-              const isActive = filterCategory === cat;
+            {(['All', 'Marketing', 'Utility', 'Authentication', 'Service', 'Ai_usage'] as const).map(cat => {
+              const isActive = filterCategory === cat || (cat === 'Ai_usage' && filterCategory === 'ai_usage');
               return (
                 <button
                   key={cat}
                   onClick={() => {
-                    setFilterCategory(cat);
+                    setFilterCategory(cat === 'Ai_usage' ? 'ai_usage' : cat);
                     setPage(1);
                   }}
                   className={cn(
@@ -172,10 +174,11 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                           <div className={cn("w-1.5 h-1.5 rounded-full shrink-0",
                             formattedCategory === 'Marketing' ? 'bg-purple-500' :
                               formattedCategory === 'Utility' ? 'bg-orange-500' :
-                                formattedCategory === 'Authentication' ? 'bg-rose-500' : 'bg-emerald-500'
+                                formattedCategory === 'Authentication' ? 'bg-rose-500' :
+                                  formattedCategory === 'Ai_usage' ? 'bg-cyan-500' : 'bg-emerald-500'
                           )} />
                           <span className={cn("text-[10px] font-black uppercase tracking-widest", cMap[formattedCategory as keyof typeof cMap])}>
-                            {formattedCategory}
+                            {formattedCategory === 'Ai_usage' ? 'AI Usage' : formattedCategory}
                           </span>
                         </div>
                       </td>
@@ -223,14 +226,14 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                       {/* Base Rate */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tabular-nums tracking-tighter opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>
-                          ${parseFloat(row.rate).toFixed(4)}
+                          {row.rate === "AI Usage" ? "—" : `$${parseFloat(row.rate).toFixed(4)}`}
                         </span>
                       </td>
 
                       {/* Platform Fee */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tabular-nums tracking-tighter text-emerald-500/60")}>
-                          +${parseFloat(row.platformFee).toFixed(4)}
+                          {row.platformFee ? `+$${parseFloat(row.platformFee).toFixed(4)}` : "—"}
                         </span>
                       </td>
 

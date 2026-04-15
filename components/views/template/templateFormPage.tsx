@@ -221,9 +221,9 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     };
     const lastInitialDataNameRef = useRef<string | null | undefined>(null);
 
-    // Disable category for all existing templates — once created, category should not change.
-    // Meta enforces this for approved templates; we enforce it consistently for all statuses EXCEPT draft.
-    const isExistingTemplate = !!templateId && initialData?.status !== 'draft';
+    // Meta allows edits for submitted templates, but with narrower restrictions than our original UI.
+    const isSubmittedTemplate = !!templateId && initialData?.status !== 'draft';
+    const isApprovedTemplate = initialData?.status === 'approved';
     const isDraft = initialData?.status === 'draft';
 
     const uploadedMediaUrl = useSelector((state: RootState) => state.template.uploadedMediaUrl);
@@ -437,8 +437,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const variables = watch('variables');
     const previewHeaderValue =
         selectedHeaderAsset &&
-        previewAsset &&
-        (previewAsset.media_asset_id || String(previewAsset.id)) === selectedHeaderAsset.media_asset_id
+            previewAsset &&
+            (previewAsset.media_asset_id || String(previewAsset.id)) === selectedHeaderAsset.media_asset_id
             ? (previewAsset.preview_url || previewAsset.media_url || previewAsset.url || headerValue || '')
             : (headerValue || '');
 
@@ -968,17 +968,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                 onChange={field.onChange}
                                                 options={categories.map(cat => ({ value: cat, label: cat }))}
                                                 error={errors.category?.message}
-                                                disabled={isViewMode || isExistingTemplate} // Category cannot be changed after creation
+                                                disabled={isViewMode || isApprovedTemplate}
                                             />
                                         )}
                                     />
-                                    {isExistingTemplate ? (
+                                    {isApprovedTemplate ? (
                                         <p className={cn("text-[10px] mt-1 ml-1 font-semibold", isDarkMode ? 'text-amber-400/80' : 'text-amber-600')}>
-                                            ⚠️ Category cannot be changed once a template is submitted to Meta
+                                            ⚠️ Approved templates cannot change category on Meta
                                         </p>
                                     ) : (
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            {isDraft ? 'You can update the category since this is still a draft' : 'Your template should fall under one of these categories'}
+                                            {isDraft ? 'You can update the category since this is still a draft' : 'Rejected and paused templates can still change category before re-review on Meta'}
                                         </p>
                                     )}
                                 </div>
@@ -1015,7 +1015,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                     }}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
-                                                    disabled={isViewMode || isExistingTemplate} // Language cannot be changed for submitted templates
+                                                    disabled={isViewMode || isSubmittedTemplate}
                                                 />
                                             )
                                         }}
@@ -1064,7 +1064,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         placeholder="e.g. app_verification_code"
                                         onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
                                         error={errors.templateName?.message}
-                                        disabled={isViewMode || (isExistingTemplate && !isDraft) || (!!templateId && !isDraft)} // Name cannot be changed for submitted templates
+                                        disabled={isViewMode || isSubmittedTemplate}
                                     />
                                 )}
                             />
@@ -1115,7 +1115,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             return true; // MARKETING shows all
                                         })}
                                         error={errors.templateType?.message}
-                                        disabled={isViewMode || isExistingTemplate || isAuthMode}
+                                        disabled={isViewMode || isAuthMode}
                                     />
                                 )}
                             />

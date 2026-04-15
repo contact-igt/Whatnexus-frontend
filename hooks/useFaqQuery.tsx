@@ -143,6 +143,7 @@ export const useDeleteFaqReviewMutation = () => {
       queryClient.invalidateQueries({ queryKey: ["faq-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["faq-counts"] });
       queryClient.invalidateQueries({ queryKey: ["faq-master"] });
+      queryClient.invalidateQueries({ queryKey: ["faq-knowledge-entries"] });
       toast.success("FAQ review deleted successfully!");
     },
     onError: (error: any) => {

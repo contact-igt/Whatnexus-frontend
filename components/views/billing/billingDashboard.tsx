@@ -13,7 +13,8 @@ import {
     useGetWalletBalanceQuery,
     useGetWalletStatusQuery,
     useGetInvoicesQuery,
-    useGetBillingSpendChartQuery
+    useGetBillingSpendChartQuery,
+    useGetGstBreakdownQuery
 } from "@/hooks/useBillingQuery";
 import { PulseMetric } from "@/components/ui/pulseMetric";
 
@@ -33,6 +34,7 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
     const { data: walletRes, isLoading: walletLoading } = useGetWalletBalanceQuery();
     const { data: statusRes } = useGetWalletStatusQuery();
     const { data: invoicesRes } = useGetInvoicesQuery({ status: 'overdue', limit: 3 });
+    const { data: gstRes } = useGetGstBreakdownQuery();
     const { data: spendChartRes } = useGetBillingSpendChartQuery(
         startDate?.toISOString(),
         endDate?.toISOString()
@@ -59,6 +61,23 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
     const sym = currency === 'INR' ? '₹' : currency;
     const overdueInvoices = invoicesRes?.data?.invoices || [];
     const spendData = spendChartRes?.data || [];
+    const gstData = gstRes?.data;
+    const gstSummary = gstData?.gst;
+    const tenantState = gstData?.tenant_state || '';
+    const companyState = gstData?.company_state || 'TN';
+    const tenantGstin = gstData?.tenant_gstin || '';
+    const currentGstRate = Number(gstSummary?.current_rate ?? gstSummary?.gst_rate ?? 18);
+    const summaryRate = gstSummary?.gst_rate != null ? Number(gstSummary.gst_rate) : null;
+    const gstRateLabel = gstSummary?.has_mixed_rates
+        ? 'Mixed recent rates'
+        : summaryRate != null
+            ? `${summaryRate.toFixed(2)}% recent`
+            : `${currentGstRate.toFixed(2)}% current`;
+    const taxModeLabel = !tenantState
+        ? 'State missing'
+        : gstSummary?.is_intra_state
+            ? 'CGST + SGST'
+            : 'IGST';
 
     // Calculate recent spend trend
     const recentSpend = spendData.slice(-7);
@@ -91,7 +110,7 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
     return (
         <div className="space-y-8">
             {/* Billing Mode & Cycle Status */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                 {/* Billing Mode Card */}
                 <div className={cn(
                     "relative group p-6 rounded-[24px] border transition-all duration-500 overflow-hidden",
@@ -240,6 +259,61 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
                                 )}
                             </>
                         )}
+                    </div>
+                </div>
+
+                <div className={cn(
+                    "relative group p-6 rounded-[24px] border transition-all duration-500 overflow-hidden",
+                    isDarkMode
+                        ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+                        : "bg-slate-50 border-slate-200 hover:bg-white hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5"
+                )}>
+                    <div className="absolute -top-16 -right-16 w-60 h-60 bg-amber-500/5 blur-[80px] rounded-full pointer-events-none" />
+                    <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-4">
+                            <p className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>
+                                GST Profile
+                            </p>
+                            <div className={cn(
+                                "p-2 rounded-xl border",
+                                isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'
+                            )}>
+                                <FileText size={14} className="text-amber-500" />
+                            </div>
+                        </div>
+                        <div className={cn("text-3xl font-black tracking-tight mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                            {taxModeLabel}
+                        </div>
+                        <p className={cn("text-xs opacity-50 mb-4", isDarkMode ? 'text-white' : 'text-slate-600')}>
+                            {tenantState
+                                ? `${tenantState} vs ${companyState} determines recharge tax split`
+                                : 'Set tenant state to classify GST correctly'}
+                        </p>
+                        <div className={cn("space-y-2 pt-4 border-t", isDarkMode ? 'border-white/5' : 'border-slate-100')}>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className={cn("text-[8px] font-bold uppercase tracking-wider opacity-40")}>Recent GST</span>
+                                <span className={cn("text-sm font-black", isDarkMode ? 'text-white/80' : 'text-slate-900')}>
+                                    {sym}{Number(gstSummary?.gst_amount || 0).toFixed(2)}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className={cn("text-[8px] font-bold uppercase tracking-wider opacity-40")}>Rate</span>
+                                <span className={cn("text-[11px] font-bold text-right", isDarkMode ? 'text-white/80' : 'text-slate-900')}>
+                                    {gstRateLabel}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className={cn("text-[8px] font-bold uppercase tracking-wider opacity-40")}>GSTIN</span>
+                                <span className={cn("text-[11px] font-bold text-right", tenantGstin ? (isDarkMode ? 'text-white/80' : 'text-slate-900') : (isDarkMode ? 'text-amber-400' : 'text-amber-700'))}>
+                                    {tenantGstin || 'Not configured'}
+                                </span>
+                            </div>
+                            {gstData?.breakdown && (
+                                <p className={cn("text-[10px] leading-relaxed", isDarkMode ? 'text-white/45' : 'text-slate-500')}>
+                                    {gstData.breakdown}
+                                </p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

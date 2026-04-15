@@ -15,17 +15,34 @@ export const useGetBillingKpiQuery = (startDate?: string, endDate?: string) => {
 };
 
 export const useGetBillingLedgerQuery = (params?: BillingLedgerParams & { startDate?: string; endDate?: string }) => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['billing-ledger', params],
         queryFn: () => billingApis.getBillingLedger(params),
+        enabled: !!token && !isManagement,
         placeholderData: (previousData) => previousData // Keeps old data on screen while paginating
     });
 };
 
 export const useGetBillingSpendChartQuery = (startDate?: string, endDate?: string) => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['billing-spend-chart', startDate, endDate],
-        queryFn: () => billingApis.getBillingSpendChart(startDate, endDate)
+        queryFn: () => billingApis.getBillingSpendChart(startDate, endDate),
+        enabled: !!token && !isManagement,
+    });
+};
+
+export const useGetGstBreakdownQuery = () => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
+    return useQuery({
+        queryKey: ['gst-breakdown'],
+        queryFn: () => billingApis.getGstBreakdown(),
+        enabled: !!token && !isManagement,
+        staleTime: 5 * 60 * 1000,
     });
 };
 
@@ -62,6 +79,7 @@ export const useVerifyPaymentMutation = () => {
             queryClient.invalidateQueries({ queryKey: ['billing-kpi'] });
             queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
             queryClient.invalidateQueries({ queryKey: ['payment-history'] });
+            queryClient.invalidateQueries({ queryKey: ['gst-breakdown'] });
         }
     });
 };
@@ -91,23 +109,32 @@ export const useUpdatePricingMutation = () => {
 };
 
 export const useGetBillingTemplateStatsQuery = (startDate?: string, endDate?: string) => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['billing-template-stats', startDate, endDate],
-        queryFn: () => billingApis.getBillingTemplateStats(startDate, endDate)
+        queryFn: () => billingApis.getBillingTemplateStats(startDate, endDate),
+        enabled: !!token && !isManagement,
     });
 };
 
 export const useGetBillingCampaignStatsQuery = (startDate?: string, endDate?: string) => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['billing-campaign-stats', startDate, endDate],
-        queryFn: () => billingApis.getBillingCampaignStats(startDate, endDate)
+        queryFn: () => billingApis.getBillingCampaignStats(startDate, endDate),
+        enabled: !!token && !isManagement,
     });
 };
 
 export const useGetAiTokenUsageQuery = (startDate?: string, endDate?: string) => {
+    const { user, token } = useAuth();
+    const isManagement = user?.user_type === 'management';
     return useQuery({
         queryKey: ['ai-token-usage', startDate, endDate],
-        queryFn: () => billingApis.getAiTokenUsage(startDate, endDate)
+        queryFn: () => billingApis.getAiTokenUsage(startDate, endDate),
+        enabled: !!token && !isManagement,
     });
 };
 
@@ -301,5 +328,76 @@ export const useAdminGetUnresolvedEventsQuery = () => {
         queryKey: ['admin-unresolved-events'],
         queryFn: () => billingApis.adminGetUnresolvedEvents(),
         refetchInterval: 60000,
+    });
+};
+
+// ──────────────── GST Rate Management Hooks ────────────────
+
+export const useAdminGetActiveGSTRateQuery = () => {
+    return useQuery({
+        queryKey: ['admin-gst-active'],
+        queryFn: () => billingApis.adminGetActiveGSTRate(),
+        staleTime: 60 * 1000,
+    });
+};
+
+export const useAdminListGSTRatesQuery = (params?: { page?: number; limit?: number }) => {
+    return useQuery({
+        queryKey: ['admin-gst-list', params],
+        queryFn: () => billingApis.adminListGSTRates(params),
+        placeholderData: (prev: unknown) => prev,
+    });
+};
+
+export const useAdminAddGSTRateMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { gst_rate: number; effective_from: string; notes?: string }) =>
+            billingApis.adminAddGSTRate(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-list'] });
+        },
+    });
+};
+
+export const useAdminActivateGSTRateMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { id: number; force?: boolean }) =>
+            billingApis.adminActivateGSTRate(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-active'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-list'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+            queryClient.invalidateQueries({ queryKey: ['gst-breakdown'] });
+        },
+    });
+};
+
+export const useAdminDeactivateGSTRateMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { id: number }) =>
+            billingApis.adminDeactivateGSTRate(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-active'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-list'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+            queryClient.invalidateQueries({ queryKey: ['gst-breakdown'] });
+        },
+    });
+};
+
+export const useAdminDeleteGSTRateMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number) =>
+            billingApis.adminDeleteGSTRate(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-active'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-list'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+            queryClient.invalidateQueries({ queryKey: ['gst-breakdown'] });
+        },
     });
 };

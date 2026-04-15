@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -10,7 +11,8 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { PageTransition } from '@/components/ui/pageTransition';
 import { useSelector } from 'react-redux';
-import { fetchMediaAssets, fetchMediaStats, deleteMediaAsset, restoreMediaAsset, MediaAsset, uploadMedia } from '@/services/gallery/galleryApi';
+import { fetchMediaAssets, fetchMediaStats, deleteMediaAsset, restoreMediaAsset, MediaAsset, uploadMedia, getDeletedGalleryItems, hardDeleteMediaAsset } from '@/services/gallery/galleryApi';
+// ...existing code...
 import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
@@ -110,6 +112,19 @@ function StatCard({
 export default function GalleryPage() {
   const { isDarkMode } = useTheme();
   const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+  const userRole = useSelector((state: any) => state.auth?.user?.role);
+  // Hard delete handler for admins
+  const hardDeleteAsset = async (assetId: string) => {
+    try {
+      await hardDeleteMediaAsset(assetId);
+      toast.success('Asset permanently deleted.');
+      await loadAssets();
+      await loadGlobalStats();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Permanent delete failed.');
+    }
+  };
+
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -152,20 +167,25 @@ export default function GalleryPage() {
     if (!tenantId) return;
     setLoading(true);
     try {
-      const isDeletedTab = activeTab === 'deleted';
-      const res = await fetchMediaAssets({
-        tenant_id: tenantId,
-        type: !isDeletedTab && !['all', 'approved', 'pending'].includes(activeTab) ? activeTab : undefined,
-        search: debouncedQ || undefined,
-        approved_only: !isDeletedTab && activeTab === 'approved' ? true : undefined,
-        pending_only: !isDeletedTab && activeTab === 'pending' ? true : undefined,
-        show_deleted: isDeletedTab ? true : undefined,
-        page: currentPage,
-        limit: 20,
-      });
-      setMediaAssets(res.data);
-      setTotalPages(res.totalPages);
-      setTotalAssets(res.total);
+      if (activeTab === 'deleted') {
+        const res = await getDeletedGalleryItems(currentPage, 20);
+        setMediaAssets(res.data.items as MediaAsset[]);
+        setTotalPages(Math.ceil(res.data.total / 20));
+        setTotalAssets(res.data.total);
+      } else {
+        const res = await fetchMediaAssets({
+          tenant_id: tenantId,
+          type: !['all', 'approved', 'pending', 'deleted'].includes(activeTab) ? activeTab : undefined,
+          search: debouncedQ || undefined,
+          approved_only: activeTab === 'approved' ? true : undefined,
+          pending_only: activeTab === 'pending' ? true : undefined,
+          page: currentPage,
+          limit: 20,
+        });
+        setMediaAssets(res.data);
+        setTotalPages(res.totalPages);
+        setTotalAssets(res.total);
+      }
     } catch {
       toast.error("Failed to load media assets.");
     } finally {
@@ -269,7 +289,11 @@ export default function GalleryPage() {
       await loadAssets();
       await loadGlobalStats();
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Restore failed.');
+      if (e?.response?.status === 410) {
+        toast.error('Restore window has expired — this asset can no longer be recovered.');
+      } else {
+        toast.error(e?.response?.data?.message || 'Restore failed.');
+      }
     }
   };
 
@@ -538,6 +562,7 @@ export default function GalleryPage() {
                   onPreview={activeTab === 'deleted' ? () => { } : openDrawer}
                   onDelete={handleDeleteFromCard}
                   onRestore={handleRestoreFromCard}
+                // ...existing code...
                 />
               ))}
             </div>
@@ -587,9 +612,9 @@ export default function GalleryPage() {
           isOpen={!!confirmId}
           onClose={() => setConfirmId(null)}
           onConfirm={confirmDelete}
-          title="Delete Media Asset"
-          message="Are you sure you want to delete this asset? This action cannot be undone."
-          confirmText="Delete"
+          title="Move to Trash"
+          message="This asset will be moved to trash and can be restored within 30 days."
+          confirmText="Move to Trash"
           variant="danger"
           isDarkMode={isDarkMode}
         />
