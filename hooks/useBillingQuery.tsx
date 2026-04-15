@@ -388,6 +388,18 @@ export const useAdminDeactivateGSTRateMutation = () => {
     });
 };
 
+export const useAdminUpdateGSTRateMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: number; data: { gst_rate?: number; effective_from?: string; notes?: string } }) =>
+            billingApis.adminUpdateGSTRate(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-gst-list'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-audit-log'] });
+        },
+    });
+};
+
 export const useAdminDeleteGSTRateMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({

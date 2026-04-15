@@ -48,7 +48,7 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth();
   const { data: gstRes, refetch: refetchGstBreakdown } = useGetGstBreakdownQuery();
-  const currentGstRate = Number(gstRes?.data?.gst?.current_rate ?? gstRes?.data?.gst?.gst_rate ?? 18);
+  const currentGstRate = Number(gstRes?.gst?.current_rate ?? gstRes?.gst?.gst_rate ?? 18);
 
   useEffect(() => {
     if (!isOpen) return;

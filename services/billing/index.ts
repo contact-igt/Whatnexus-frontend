@@ -286,6 +286,11 @@ export class billingApiData {
     return await _axios("post", "/whatsapp/billing/admin/gst/deactivate", data);
   };
 
+  /** Edit an inactive GST rate by id */
+  adminUpdateGSTRate = async (id: number, data: { gst_rate?: number; effective_from?: string; notes?: string }) => {
+    return await _axios("put", `/whatsapp/billing/admin/gst/${id}`, data);
+  };
+
   /** Delete an inactive GST rate by id */
   adminDeleteGSTRate = async (id: number) => {
     return await _axios("delete", `/whatsapp/billing/admin/gst/${id}`);

@@ -61,7 +61,7 @@ export const BillingDashboard = ({ isDarkMode, startDate, endDate, onNavigate }:
     const sym = currency === 'INR' ? '₹' : currency;
     const overdueInvoices = invoicesRes?.data?.invoices || [];
     const spendData = spendChartRes?.data || [];
-    const gstData = gstRes?.data;
+    const gstData = gstRes;
     const gstSummary = gstData?.gst;
     const tenantState = gstData?.tenant_state || '';
     const companyState = gstData?.company_state || 'TN';
