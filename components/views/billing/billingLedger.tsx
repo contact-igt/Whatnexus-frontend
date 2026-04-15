@@ -28,6 +28,18 @@ const statusStyles = (isDarkMode: boolean): Record<string, string> => ({
   Failed: isDarkMode
     ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
     : 'bg-rose-50 text-rose-600 border border-rose-200',
+  Billed: isDarkMode
+    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+    : 'bg-emerald-50 text-emerald-600 border border-emerald-200',
+  Unbilled: isDarkMode
+    ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+    : 'bg-slate-100 text-slate-500 border border-slate-300',
+  Unpaid: isDarkMode
+    ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+    : 'bg-orange-50 text-orange-600 border border-orange-200',
+  Unknown: isDarkMode
+    ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+    : 'bg-slate-100 text-slate-500 border border-slate-300',
 });
 
 const catStyles = (isDarkMode: boolean): Record<string, string> => ({
@@ -205,14 +217,14 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                       {/* Template */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tracking-tight truncate max-w-[120px] block", isDarkMode ? 'text-white/90' : 'text-slate-700')}>
-                          {row.template || 'â€”'}
+                          {row.template || '—'}
                         </span>
                       </td>
 
                       {/* Campaign */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[10px] font-black uppercase tracking-widest opacity-30 truncate max-w-[100px] block", isDarkMode ? "text-white" : "text-slate-500")}>
-                          {row.campaign || 'â€”'}
+                          {row.campaign || '—'}
                         </span>
                       </td>
 
@@ -226,14 +238,14 @@ export const BillingLedger = ({ isDarkMode, startDate, endDate }: BillingLedgerP
                       {/* Base Rate */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tabular-nums tracking-tighter opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>
-                          {row.rate === "AI Usage" ? "—" : `$${parseFloat(row.rate).toFixed(4)}`}
+                          {!row.rate || row.rate === "AI Usage" || parseFloat(row.rate) === 0 ? "—" : `$${parseFloat(row.rate).toFixed(4)}`}
                         </span>
                       </td>
 
                       {/* Platform Fee */}
                       <td className="px-6 py-5">
                         <span className={cn("text-[11px] font-black tabular-nums tracking-tighter text-emerald-500/60")}>
-                          {row.platformFee ? `+$${parseFloat(row.platformFee).toFixed(4)}` : "—"}
+                          {parseFloat(row.platformFee) > 0 ? `+$${parseFloat(row.platformFee).toFixed(4)}` : "—"}
                         </span>
                       </td>
 
