@@ -15,7 +15,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
 import { LeadSummarySidebar } from '../leadSummarySidebar';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
+import { useDispatch } from 'react-redux';
+import { clearWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
 // Extracted Components
 
 // Extracted Components
@@ -38,6 +40,7 @@ const arePhonesEqual = (p1: any, p2: any) => {
 
 export const ChatView = () => {
     const queryClient = useQueryClient();
+    const dispatch = useDispatch();
     const { user, whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -146,6 +149,7 @@ export const ChatView = () => {
         const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
 
         if (hasUnreadUserMessages) {
+            dispatch(clearWhatsAppUnreadCount());
             updateSeenMutate(selectedChat?.phone);
             // Optimistic: clear unread count immediately in local state
             setFilteredChats((prev: any) => {
@@ -155,7 +159,7 @@ export const ChatView = () => {
                 );
             });
         }
-    }, [selectedChat?.phone, chatList?.data]);
+    }, [chatList?.data, dispatch, selectedChat?.phone, updateSeenMutate]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Send, Loader2, Phone, AlertCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useSendTestWhatsAppConfigQuery, useTestWhatsAppConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 
 interface TestMessageCardProps {

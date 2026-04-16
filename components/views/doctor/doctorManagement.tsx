@@ -6,7 +6,7 @@ import { Search, Plus, Eye, Edit2, Trash2, UserCircle, Clock, Briefcase, Phone, 
 import { cn } from "@/lib/utils";
 import { DoctorDrawer } from './doctorDrawer';
 import { Select } from "@/components/ui/select";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
     useGetAllDoctorsQuery,
     useGetDeletedDoctorsQuery,

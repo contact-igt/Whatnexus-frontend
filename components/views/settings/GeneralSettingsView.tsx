@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useGetTenantSettingsQuery, useUpdateTenantAiSettingsMutation } from '@/hooks/useTenantSettingsQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import Link from 'next/link';
 
 type SettingsTab = 'capabilities' | 'models' | 'notifications';

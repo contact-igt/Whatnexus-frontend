@@ -1,6 +1,6 @@
 import { promptApiData } from "@/services/prompt";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useEffect } from "react";
 import { TenantApiData } from "@/services/tenant";
 import { useRouter } from "next/navigation";

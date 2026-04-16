@@ -15,6 +15,7 @@ interface SidebarGroupItemProps {
     isExpanded?: boolean;
     isDisabled?: boolean;
     requiresWhatsApp?: boolean;
+    notificationCount?: number;
 }
 
 export const SidebarGroupItem = ({
@@ -25,10 +26,12 @@ export const SidebarGroupItem = ({
     isDarkMode = true,
     isExpanded = false,
     isDisabled = false,
-    requiresWhatsApp = false
+    requiresWhatsApp = false,
+    notificationCount = 0,
 }: SidebarGroupItemProps) => {
     const pathname = usePathname();
     const active = pathname === route || pathname.startsWith(route + "/");
+    const hasNotificationCount = !isDisabled && notificationCount > 0;
 
     const handleClick = (e: React.MouseEvent) => {
         // Call onClick for state management (e.g., Redux updates)
@@ -127,6 +130,20 @@ export const SidebarGroupItem = ({
                         : 'bg-rose-100 text-rose-600 border border-rose-200'
                 )}>
                     <Lock size={9} />
+                </div>
+            )}
+
+            {hasNotificationCount && (
+                <div className={cn(
+                    "absolute rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 flex items-center justify-center z-20",
+                    isExpanded ? "top-2 right-2 min-w-[18px] h-[18px] px-1" : "top-1.5 right-1.5 min-w-4 h-4 px-0.5"
+                )}>
+                    <span className={cn(
+                        "text-white font-black leading-none",
+                        isExpanded ? "text-[9px]" : "text-[8px]"
+                    )}>
+                        {notificationCount > 99 ? '99+' : notificationCount}
+                    </span>
                 </div>
             )}
         </div>

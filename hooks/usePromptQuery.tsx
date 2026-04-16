@@ -1,6 +1,6 @@
 import { promptApiData } from "@/services/prompt";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useEffect } from "react";
 
 const PromptApis = new promptApiData();

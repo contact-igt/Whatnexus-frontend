@@ -24,7 +24,7 @@ import { WhatsAppPreviewPanel } from './whatsappPreviewPanel';
 import { VariableInputSection } from './variableInputSection';
 import { InteractiveActionsSection } from './interactiveActionsSection';
 import { AIGeneratorSection } from './aiGeneratorSection';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { callOpenAI } from '@/lib/openai';
 import { useGenerateAiTemplateMutation, useUploadTemplateMediaMutation } from '@/hooks/useTemplateQuery';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';

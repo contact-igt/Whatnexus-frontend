@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation, useValidateOpenAIKeyMutation } from "@/hooks/useTenantQuery";
 import { useGetAiPricingRulesQuery } from "@/hooks/useManagementQuery";
 import { Country, State, City } from 'country-state-city';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface OrganizationModalProps {
     isOpen: boolean;

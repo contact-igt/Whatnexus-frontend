@@ -9,6 +9,7 @@ import { useUploadTemplateMediaMutation } from "@/hooks/useTemplateQuery";
 import { toast } from "sonner";
 import { GalleryPicker } from "@/components/gallery/GalleryPicker";
 import { MediaAsset } from "@/services/gallery/galleryApi";
+// import { toast } from "@/lib/toast";
 
 interface TemplateVariableModalProps {
     isOpen: boolean;

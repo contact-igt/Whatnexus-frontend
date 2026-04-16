@@ -13,6 +13,7 @@ import { MessagingLimitTracker } from './dashboard/messagingLimitTracker';
 import { BillingSummary } from './dashboard/billingSummary';
 import { DoctorOverview } from './dashboard/doctorOverview';
 import { KnowledgeHealth } from './dashboard/knowledgeHealth';
+import { FaqPendingPreview } from './dashboard/faqPendingPreview';
 import { ContactOverview } from './dashboard/contactOverview';
 import { tx } from './dashboard/glassStyles';
 import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsappConnectionPlaceholder';
@@ -146,7 +147,6 @@ export const DashboardView = () => {
                 {/* 1. Command Bar */}
                 <GlobalCommandBar
                     isDarkMode={isDarkMode}
-                    headerData={dashboardData?.header}
                     wabaInfo={dashboardData?.wabaInfo}
                     period={period}
                     setPeriod={setPeriod}
@@ -369,6 +369,8 @@ export const DashboardView = () => {
                             />
                             <KnowledgeHealth isDarkMode={isDarkMode} knowledgeData={dashboardData?.knowledgeHealth} />
                         </section>
+
+                        <FaqPendingPreview isDarkMode={isDarkMode} />
 
                         {/* Contacts & Audience */}
                         <section>

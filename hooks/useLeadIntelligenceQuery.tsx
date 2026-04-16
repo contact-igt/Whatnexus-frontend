@@ -1,6 +1,6 @@
 import { LeadIntelligenceApiData } from "@/services/leadIntelligene"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 
 type LeadSummaryResponse = {
   data: {

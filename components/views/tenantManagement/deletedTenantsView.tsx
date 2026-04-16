@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { useGetDeletedTenantsQuery, useRestoreTenantMutation, usePermanentDeleteTenantMutation } from '@/hooks/useTenantQuery';
 import { useTheme } from '@/hooks/useTheme';
 import { Pagination } from '@/components/ui/pagination';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 export const DeletedTenantsView = () => {
     const { isDarkMode } = useTheme();

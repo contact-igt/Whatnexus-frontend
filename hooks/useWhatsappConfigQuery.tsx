@@ -1,7 +1,7 @@
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { whatsappConfigApiData } from "@/services/whatsappConfiguration";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useDispatch } from "react-redux";
 import { setWhatsAppApiDetails } from "@/redux/slices/auth/authSlice";
 import { useEffect } from "react";

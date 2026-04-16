@@ -24,7 +24,7 @@ import {
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { Pagination } from "@/components/ui/pagination";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface BillingInvoicesProps {
