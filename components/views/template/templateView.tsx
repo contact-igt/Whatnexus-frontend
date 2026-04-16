@@ -5,7 +5,7 @@ import { Template, TemplateCategory, TemplateFormData, TemplateStatus, TemplateT
 import { TemplateListPage } from './templateListPage';
 import { TemplateFormPage } from './templateFormPage';
 import { TemplatePreviewModal } from './templatePreviewModal';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation, useGetDeletedTemplatesQuery, useRestoreTemplateMutation } from '@/hooks/useTemplateQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';

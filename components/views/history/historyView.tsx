@@ -15,6 +15,8 @@ import { TemplateVariableModal } from './templateVariableModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
+import { useDispatch } from 'react-redux';
+import { clearWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
 // Extracted Components
 
 // Extracted Components
@@ -28,6 +30,7 @@ import { ThemedLoader } from '@/components/ui/themedLoader';
 
 export const HistoryView = () => {
     const queryClient = useQueryClient();
+    const dispatch = useDispatch();
     const { data: tenantSettingsData } = useGetTenantSettingsQuery();
     const rawAiSettings = tenantSettingsData?.data?.ai_settings || {};
     const aiSettings = {
@@ -93,6 +96,7 @@ export const HistoryView = () => {
         const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
 
         if (hasUnreadUserMessages) {
+            dispatch(clearWhatsAppUnreadCount());
             updateSeenMutate(selectedChat?.phone);
             setFilteredChats((prev: any) => {
                 if (!prev) return prev;
@@ -101,7 +105,7 @@ export const HistoryView = () => {
                 );
             });
         }
-    }, [selectedChat?.phone, chatHistoryList?.data?.chats]);
+    }, [chatHistoryList?.data?.chats, dispatch, selectedChat?.phone, updateSeenMutate]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {

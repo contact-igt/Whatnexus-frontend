@@ -1,14 +1,22 @@
 import { faqApiData, PublishFaqReviewData, SaveFaqReviewData, CreateFaqData, EditFaqKnowledgeEntryData, FaqReviewsListResponse } from "@/services/faq";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useEffect } from "react";
 
 const FaqApis = new faqApiData();
 
-export const useFaqReviewsQuery = (status?: "pending_review" | "published") => {
+interface FaqQueryOptions {
+  enabled?: boolean;
+}
+
+export const useFaqReviewsQuery = (
+  status?: "pending_review" | "published",
+  options?: FaqQueryOptions,
+) => {
   const { data, isLoading, isError, error } = useQuery<FaqReviewsListResponse>({
     queryKey: ["faq-reviews", status ?? "all"],
     queryFn: () => FaqApis.getFaqReviews(status),
+    enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -23,10 +31,11 @@ export const useFaqReviewsQuery = (status?: "pending_review" | "published") => {
   return { data, isLoading, isError };
 };
 
-export const useFaqCountsQuery = () => {
+export const useFaqCountsQuery = (options?: FaqQueryOptions) => {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["faq-counts"],
     queryFn: () => FaqApis.getFaqCounts(),
+    enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000,
   });
   return { data, isLoading, isError };

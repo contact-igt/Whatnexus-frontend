@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import type { CampaignStatus } from '@/services/campaign/campaign.types';

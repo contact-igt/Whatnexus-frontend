@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { useGetPromptConfigurationQuery, useActivatePromptMutation, useCreatePromptMutation, useDeletedPromptList } from '@/hooks/usePromptQuery';
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { extractTextFromFile } from '@/utils/ocr';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Pagination } from '@/components/ui/pagination';

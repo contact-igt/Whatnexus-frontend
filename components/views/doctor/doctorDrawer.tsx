@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
 import { Doctor } from '@/services/doctor';
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useCreateDoctorMutation, useUpdateDoctorMutation } from '@/hooks/useDoctorQuery';
 import { useDeleteSpecializationMutation } from '@/hooks/useSpecializationsQuery';
 import { SpecializationDrawer } from '../specialization/specializationDrawer';

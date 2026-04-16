@@ -1,6 +1,6 @@
 import { templateApiData } from "@/services/template";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 const templateApis = new templateApiData();
 

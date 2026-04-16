@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useCampaignDetails } from '@/hooks/useCampaignDetails';
 import { campaignService } from '@/services/campaign/campaign.service';
 import type { RecipientStatus } from '@/services/campaign/campaign.types';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import {
     formatCampaignDateTime,
     calculateCampaignStatistics,

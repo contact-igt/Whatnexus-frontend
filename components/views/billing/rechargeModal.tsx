@@ -14,7 +14,7 @@ import { useCreatePaymentOrderMutation, useVerifyPaymentMutation } from "@/hooks
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { Wallet, Loader2, CreditCard, ChevronRight, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { motion, AnimatePresence } from "framer-motion";
 

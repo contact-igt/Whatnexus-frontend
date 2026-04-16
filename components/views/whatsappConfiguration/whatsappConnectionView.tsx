@@ -20,7 +20,7 @@ import { getWebhookBaseURL } from '@/helper/axios';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useDispatch } from 'react-redux';
 import { updateWebhookStatus } from '@/redux/slices/auth/authSlice';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 interface WhatsAppConfig {
     waba_id: string;
     phone_number_id: string;

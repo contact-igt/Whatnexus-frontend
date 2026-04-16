@@ -23,7 +23,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { useSummarizeLeadMutation } from '@/hooks/useLeadIntelligenceQuery';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface LeadDetailsViewProps {
     lead: any;

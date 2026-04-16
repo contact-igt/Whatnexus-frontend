@@ -6,7 +6,7 @@ import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
 import { useUploadTemplateMediaMutation } from "@/hooks/useTemplateQuery";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface TemplateVariableModalProps {
     isOpen: boolean;

@@ -10,7 +10,7 @@ import {
 } from 'date-fns';
 import { Drawer } from "@/components/ui/drawer";
 import { Appointment } from './bookingList';
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useCreateAppointmentMutation, useUpdateAppointmentStatusMutation, useUpdateAppointmentMutation, useCheckAvailabilityQuery, useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
 import { useGetAllDoctorsQuery } from '@/hooks/useDoctorQuery';
 import { useGetAllContactsQuery } from '@/hooks/useContactQuery';

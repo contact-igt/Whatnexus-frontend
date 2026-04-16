@@ -20,7 +20,7 @@ import { socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
 import { WhatsAppConnectionPlaceholder } from "../whatsappConfiguration/whatsappConnectionPlaceholder";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Wallet, FileText, BarChart3,

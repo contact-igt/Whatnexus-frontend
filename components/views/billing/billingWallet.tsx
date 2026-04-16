@@ -4,7 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Wallet, CreditCard, Download, Plus, Calendar, Loader2, Settings, Zap, FileDown } from "lucide-react";
 import { useGetWalletBalanceQuery, useGetPaymentHistoryQuery, useGetAutoRechargeSettingsQuery, useUpdateAutoRechargeSettingsMutation } from "@/hooks/useBillingQuery";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface BillingWalletProps {
   isDarkMode: boolean;

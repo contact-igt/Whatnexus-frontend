@@ -1,6 +1,6 @@
 import { doctorApiData, CreateDoctorDto, UpdateDoctorDto } from "@/services/doctor";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 const doctorApis = new doctorApiData();
 

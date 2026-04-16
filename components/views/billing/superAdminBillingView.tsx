@@ -30,7 +30,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { jwtDecode } from "jwt-decode";
 import { clearAuthData } from "@/redux/slices/auth/authSlice";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ────────────── Confirm Dialog ──────────────

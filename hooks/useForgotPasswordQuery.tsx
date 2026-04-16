@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { forgotPasswordApis } from "@/services/forgotPassword";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type UserType = 'management' | 'tenant';
 

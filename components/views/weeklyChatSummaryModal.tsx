@@ -1,7 +1,7 @@
 import { X, Calendar, MessageSquare, TrendingUp, TrendingDown, Clock, ChevronRight, Download, Tag, CheckCircle2, AlertCircle, Smile, Meh, Frown, Zap, Target, ArrowUpRight, ArrowDownRight, Minus, Copy, Check, Loader2 } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import React from 'react';
 import { useGetContactWeeklySummaryQuery } from "@/hooks/useWhatsappDashboardQuery";
 

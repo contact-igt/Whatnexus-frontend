@@ -1,6 +1,6 @@
 import { specializationApiData } from "@/services/specialization"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { toast } from "@/lib/toast"
 
 const specializationsApis = new specializationApiData()
 

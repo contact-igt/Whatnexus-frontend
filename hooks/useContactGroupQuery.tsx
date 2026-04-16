@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { contactGroupApis } from "@/services/contactGroup";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { CreateGroupDto, UpdateGroupDto, AddContactsToGroupDto } from "@/types/contactGroup";
 
 // Create Group

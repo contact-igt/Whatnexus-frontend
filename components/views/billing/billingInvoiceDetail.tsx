@@ -9,7 +9,7 @@ import {
 import { useGetInvoiceDetailQuery, useCreatePaymentOrderMutation, usePayInvoiceMutation } from "@/hooks/useBillingQuery";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 
 interface BillingInvoiceDetailProps {
