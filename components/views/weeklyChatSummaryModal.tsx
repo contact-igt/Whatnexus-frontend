@@ -89,8 +89,9 @@ export const WeeklyChatSummaryModal = ({
     // Access data from API response structure: { success, data: { weeks, ... } }
     const summaries: WeeklySummary[] = summaryData?.data?.weeks || getEmptySummaries();
     const totalMessages = summaries.reduce((sum, week) => sum + week.messageCount, 0);
-    const avgEngagement = summaries.length > 0
-        ? Math.round(summaries.reduce((sum, week) => sum + week.engagementScore, 0) / summaries.length)
+    const activeWeeks = summaries.filter(week => week.messageCount > 0);
+    const avgEngagement = activeWeeks.length > 0
+        ? Math.round(activeWeeks.reduce((sum, week) => sum + week.engagementScore, 0) / activeWeeks.length)
         : 0;
 
     return (

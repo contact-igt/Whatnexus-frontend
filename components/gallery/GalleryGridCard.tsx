@@ -27,11 +27,13 @@ export function GalleryGridCard({
 }: Props) {
   const [imgError, setImgError] = useState(false);
 
-  const assetId = asset.media_asset_id || String(asset.id);
-  const hasPreview = asset.file_type === "image" && !!asset.preview_url && !imgError;
-  const canDelete = true;
-  const badge = TYPE_BADGE[asset.file_type];
-  const color = TYPE_COLOR[asset.file_type] || "#94a3b8";
+  const assetId    = asset.media_asset_id || String(asset.id);
+  const fileType   = (asset.file_type || "").toLowerCase() as string;
+  const isValidUrl = (u: string | null | undefined) => !!u && (u.startsWith("http") || u.startsWith("data:"));
+  const hasPreview = fileType === "image" && isValidUrl(asset.preview_url) && !imgError;
+  const canDelete  = true;
+  const badge      = TYPE_BADGE[fileType];
+  const color      = TYPE_COLOR[fileType] || "#94a3b8";
   const downloadUrl = asset.preview_url || asset.media_url || asset.url || "";
 
   return (
@@ -62,7 +64,7 @@ export function GalleryGridCard({
           background: hasPreview
             ? undefined
             : isDarkMode
-              ? (THUMB_BG[asset.file_type] || "#16171e")
+              ? (THUMB_BG[fileType] || "#16171e")
               : "#f1f5f9",
           display: "flex",
           alignItems: "center",
@@ -78,7 +80,7 @@ export function GalleryGridCard({
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="select-none opacity-80 transition-transform duration-500 group-hover:scale-105">{TYPE_EMOJI[asset.file_type] || "📁"}</span>
+          <span className="select-none opacity-80 transition-transform duration-500 group-hover:scale-105">{TYPE_EMOJI[fileType] || "📁"}</span>
         )}
 
         {/* Bottom gradient for readability */}
@@ -156,9 +158,9 @@ export function GalleryGridCard({
         {badge && !isSelected && !isDisabled && (
           <span
             className="absolute top-2.5 left-2.5 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm"
-            style={{ background: badge.color + "dd" }}
+            style={{ background: (badge as any).color + "dd" }}
           >
-            {badge.label}
+            {(badge as any).label}
           </span>
         )}
 
@@ -213,7 +215,7 @@ export function GalleryGridCard({
               className="text-[10px] font-bold px-1.5 py-0.5 rounded-md capitalize"
               style={{ color, background: color + "18" }}
             >
-              {asset.file_type}
+              {fileType}
             </span>
           )}
           <span className={cn("text-[11px] font-mono tabular-nums", isDarkMode ? "text-white/35" : "text-slate-400")}>

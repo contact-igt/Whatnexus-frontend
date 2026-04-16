@@ -126,6 +126,7 @@ export interface DashboardData {
     tier: string;
     rolling24hUsed: number;
     sevenDayUnique: number;
+    thirtyDayUnique: number;
   };
 
   header: {

@@ -15,6 +15,7 @@ interface GlobalCommandBarProps {
     period?: string;
     setPeriod?: (p: string) => void;
     isManagement?: boolean;
+    isFetching?: boolean;
 }
 
 const STATUS = {
@@ -41,7 +42,8 @@ export const GlobalCommandBar = ({
     wabaInfo,
     period = "30days",
     setPeriod,
-    isManagement = false
+    isManagement = false,
+    isFetching = false,
 }: GlobalCommandBarProps) => {
     const t = tx(isDarkMode);
     const router = useRouter();
@@ -202,22 +204,32 @@ export const GlobalCommandBar = ({
                         background: isDarkMode ? '#18181b' : '#f4f4f5',
                         borderColor: isDarkMode ? '#27272a' : '#e4e4e7'
                     }}>
-                        {PERIOD_OPTIONS.map(({ value, label }) => (
-                            <button
-                                key={value}
-                                onClick={() => setPeriod?.(value)}
-                                className="rounded-md px-3 py-1.5 transition-all"
-                                style={{
-                                    fontSize: '12px',
-                                    fontWeight: period === value ? 600 : 500,
-                                    ...(period === value
-                                        ? { background: '#10b981', color: '#ffffff', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }
-                                        : { color: t.secondary, background: 'transparent' })
-                                }}
-                            >
-                                {label}
-                            </button>
-                        ))}
+                        {PERIOD_OPTIONS.map(({ value, label }) => {
+                            const isActive = period === value;
+                            const showSpinner = isActive && isFetching;
+                            return (
+                                <button
+                                    key={value}
+                                    onClick={() => setPeriod?.(value)}
+                                    className="rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5"
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: isActive ? 600 : 500,
+                                        ...(isActive
+                                            ? { background: '#10b981', color: '#ffffff', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }
+                                            : { color: t.secondary, background: 'transparent' })
+                                    }}
+                                >
+                                    {label}
+                                    {showSpinner && (
+                                        <span
+                                            className="w-1.5 h-1.5 rounded-full animate-pulse"
+                                            style={{ background: 'rgba(255,255,255,0.7)', flexShrink: 0 }}
+                                        />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Alert bell */}

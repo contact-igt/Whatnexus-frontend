@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, UserX, BotOff, FolderOpen, ChevronRight } from 'lucide-react';
+import { Users, BotOff, FolderOpen, ChevronRight } from 'lucide-react';
 import { tx } from './glassStyles';
 
 interface ContactOverviewProps {
@@ -31,7 +31,6 @@ export const ContactOverview = ({ isDarkMode = true, contactData }: ContactOverv
     const stats = contactData ? [
         { icon: <Users size={15} />, label: 'Total Contacts', value: contactData.totalContacts, color: '#3b82f6' },
         { icon: <FolderOpen size={15} />, label: 'Groups', value: contactData.totalGroups, color: '#8b5cf6' },
-        { icon: <UserX size={15} />, label: 'Blocked', value: contactData.blocked, color: '#ef4444' },
         { icon: <BotOff size={15} />, label: 'AI Silenced', value: contactData.aiSilenced, color: '#f59e0b' },
     ] : [];
 
@@ -48,11 +47,11 @@ export const ContactOverview = ({ isDarkMode = true, contactData }: ContactOverv
 
             <div className="px-5 py-4">
                 {!contactData ? (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                         {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 rounded-xl bg-zinc-200 dark:bg-zinc-800 animate-pulse" />)}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                         {stats.map((s, i) => (
                             <div key={i} className="p-3 rounded-xl border flex flex-col items-center gap-1.5"
                                 style={{

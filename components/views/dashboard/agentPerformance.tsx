@@ -142,11 +142,14 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
             <div className="pt-4 grid grid-cols-3 gap-3" style={{ borderTop: `1px solid ${isDarkMode ? '#27272a' : '#e4e4e7'}` }}>
                 {!agentData ? (
                     Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 w-full bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />)
-                ) : [
-                    { label: 'Peak Time',    value: summary?.peakTime ?? '—' },
-                    { label: 'Active',       value: summary?.active ?? '—'   },
-                    { label: 'Satisfaction', value: summary?.satisfaction ?? '—' },
-                ].map((s, i) => (
+                ) : (() => {
+                    const totalChats = agents.reduce((sum, a) => sum + (a.chatCount || 0), 0);
+                    return [
+                        { label: 'Peak Time',   value: summary?.peakTime ?? '—'            },
+                        { label: 'Active',      value: summary?.active ?? '—'              },
+                        { label: 'Total Chats', value: totalChats.toLocaleString()         },
+                    ];
+                })().map((s, i) => (
                     <div key={i} className="p-3 rounded-xl flex flex-col justify-center border" style={{ background: isDarkMode ? '#18181b' : '#fafafa', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
                         <p style={{ fontSize: '11px', fontWeight: 500, color: t.secondary }}>{s.label}</p>
                         <p style={{ fontSize: '16px', fontWeight: 700, color: t.value, marginTop: 2 }}>{s.value}</p>

@@ -108,7 +108,11 @@ export const TemplateView = () => {
     const [prefillData, setPrefillData] = useState<Partial<TemplateFormData> | undefined>(undefined);
     const [formKey, setFormKey] = useState(0);
     const { data: templateData, isLoading: templateDataLoading } = useGetAllTemplateQuery();
-    const { data: templateDataById, isPending: getTemplateByIdLoading } = useGetTemplateByIdQuery(editTemplateById || previewTemplate?.template_id);
+    // Keep edit and preview as separate queries so they never share stale data.
+    // Previously both were combined with `||` which caused the preview modal to always
+    // show the last-edited template instead of the clicked one.
+    const { data: editTemplateDataById, isPending: getTemplateByIdLoading } = useGetTemplateByIdQuery(editTemplateById ?? null);
+    const { data: previewTemplateDataById } = useGetTemplateByIdQuery(previewTemplate?.template_id ?? null);
     const { mutate: createTemplateMutate, isPending: createTemplateLoading } = useCreateTemplateMutation();
     const { mutate: updateTemplateMutate, isPending: updateTemplateLoading } = useUpdateTemplateMutation();
     const { mutate: submitTemplateMutate, isPending: submitTemplateLoading } = useSubmitTemplateMutation();
@@ -211,6 +215,7 @@ export const TemplateView = () => {
     const handleBack = () => {
         setViewMode('list');
         setSelectedTemplate(null);
+        setEditTemplateById(null);
         setPrefillData(undefined);
     };
 
@@ -233,7 +238,7 @@ export const TemplateView = () => {
         }
     };
 
-    const selectedTemplateData = templateDataById?.data;
+    const selectedTemplateData = editTemplateDataById?.data;
     const initialData: TemplateFormData | undefined = useMemo(() => {
         if (!selectedTemplateData) return undefined;
         // Derive the correct template type from the header component when it's a media type.
@@ -271,8 +276,8 @@ export const TemplateView = () => {
             status: selectedTemplateData.status,
             headerType: derivedHeaderType as HeaderType,
             headerValue: derivedHeaderValue,
-            headerMediaAssetId: selectedTemplateData.media_asset_id || undefined,
-            headerMediaHandle: selectedTemplateData.media_handle || undefined,
+            headerMediaAssetId: selectedTemplateData.media_asset_id || headerComp?.media_asset_id || undefined,
+            headerMediaHandle: selectedTemplateData.media_handle || headerComp?.media_handle || undefined,
             updated_at: selectedTemplateData.updated_at || undefined,
             last_edited_at: selectedTemplateData.last_edited_at ?? null,
             edit_period_start: selectedTemplateData.edit_period_start ?? null,
@@ -428,7 +433,7 @@ export const TemplateView = () => {
             {/* Preview Modal */}
             {previewTemplate && (
                 <TemplatePreviewModal
-                    template={templateDataById?.data || previewTemplate}
+                    template={previewTemplateDataById?.data || previewTemplate}
                     isDarkMode={isDarkMode}
                     onClose={handleClosePreview}
                 />

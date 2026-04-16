@@ -92,3 +92,29 @@ export const formattedTime = (dateString: any) => {
         hour12: true,
     });
 }
+
+export const formatLastActiveConversation = (dateString: any) => {
+    if (!dateString) return "N/A";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+
+    if (Number.isNaN(date.getTime()) || diffMs < 0) {
+        return "N/A";
+    }
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMinutes <= 0) return "Just now";
+    if (diffMinutes === 1) return "1 min ago";
+    if (diffMinutes < 60) return `${diffMinutes} mins ago`;
+    if (diffHours === 1) return "1 hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return "1 day ago";
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return getDateLabel(dateString);
+}

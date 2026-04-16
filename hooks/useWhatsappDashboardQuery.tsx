@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { DashboardApiData } from "@/services/whatsappDashboard";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 
@@ -16,6 +16,10 @@ export const useGetWhatsappDashboardQuery = (period: string = "30days") => {
         queryFn: () => dashboardApis.getDashboardData(tenantId as string, period),
         staleTime: 5 * 60 * 1000, // 5 minutes
         refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
+        // Keep the previous period's data visible while the new period fetch is in-flight.
+        // Without this, data becomes undefined on every filter change which causes
+        // wabaConnected to evaluate false → flashes WhatsAppConnectionPlaceholder.
+        placeholderData: keepPreviousData,
     });
 };
 
@@ -45,7 +49,8 @@ export const useGetContactWeeklySummaryQuery = (
         queryKey: ['contact-weekly-summary', contactIdStr, phone],
         enabled: (options?.enabled ?? true) && !!token && (!!contactIdStr || !!phone),
         queryFn: () => dashboardApis.getContactWeeklySummary(contactIdStr, phone),
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 0, // Always fetch fresh data
+        gcTime: 0,   // Don't cache stale results
         refetchOnWindowFocus: false,
     });
 };

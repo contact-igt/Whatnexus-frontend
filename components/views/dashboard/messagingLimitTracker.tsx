@@ -10,6 +10,7 @@ interface MessagingLimitTrackerProps {
         limit: number;
         used: number;
         sevenDayUnique: number;
+        thirtyDayUnique: number;
         quality: 'GREEN' | 'YELLOW' | 'RED';
     };
 }
@@ -17,15 +18,20 @@ interface MessagingLimitTrackerProps {
 export const MessagingLimitTracker = ({ isDarkMode = true, limitData }: MessagingLimitTrackerProps) => {
     const t = tx(isDarkMode);
 
-    // Mock data if backend hasn't supplied it
-    const data = limitData || {
-        limit: 2000,
-        used: 1420,
-        sevenDayUnique: 14,
-        quality: 'GREEN' as const
-    };
+    if (!limitData) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 rounded-xl border p-6"
+                style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-16 rounded-xl bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+                ))}
+            </div>
+        );
+    }
 
-    const remaining = data.limit - data.used;
+    const data = limitData;
+
+    const remaining = data.limit === Infinity ? Infinity : Math.max(data.limit - data.used, 0);
     const usagePct = Math.min((data.used / data.limit) * 100, 100);
     
     // Determine alert level
@@ -59,7 +65,8 @@ export const MessagingLimitTracker = ({ isDarkMode = true, limitData }: Messagin
     const upgradeTarget  = upgradeCfg?.target  ?? data.limit;
     const upgradeDays    = upgradeCfg?.days    ?? 7;
     const upgradeHint    = upgradeCfg?.hint    ?? null;
-    const upgradePct = Math.min((data.sevenDayUnique / upgradeTarget) * 100, 100);
+    const upgradeWindowUnique = upgradeDays === 30 ? data.thirtyDayUnique : data.sevenDayUnique;
+    const upgradePct = Math.min((upgradeWindowUnique / upgradeTarget) * 100, 100);
 
     const qualityHex = {
         GREEN: '#10b981',
@@ -150,7 +157,7 @@ export const MessagingLimitTracker = ({ isDarkMode = true, limitData }: Messagin
                         <div className="flex items-center justify-between">
                                 <span style={{ fontSize: '12px', fontWeight: 500, color: t.secondary }}>{upgradeDays}-day unique users</span>
                                 <span style={{ fontSize: '13px', fontWeight: 600, color: t.primary }}>
-                                    {data.sevenDayUnique.toLocaleString()} <span style={{ color: t.secondary }}>/ {upgradeTarget.toLocaleString()}</span>
+                                    {upgradeWindowUnique.toLocaleString()} <span style={{ color: t.secondary }}>/ {upgradeTarget.toLocaleString()}</span>
                                 </span>
                             </div>
                         <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: isDarkMode ? '#27272a' : '#e4e4e7' }}>

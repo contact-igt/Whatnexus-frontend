@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, Trash2, ListFilter, Filter, AlertTriangle, Wallet } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, ListFilter, AlertTriangle, Wallet, Check, CheckCheck } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
@@ -22,6 +22,43 @@ interface CampaignDetailsViewProps {
     campaignId: string;
 }
 
+const getDeliveryUpdateMeta = (sentCount: number, deliveredCount: number, readCount: number, isDarkMode: boolean) => {
+    if (readCount > 0) {
+        return {
+            icon: <CheckCheck size={13} strokeWidth={2.4} />,
+            label: `${readCount.toLocaleString()} ${readCount === 1 ? 'message seen' : 'messages seen'}`,
+            note: 'Latest read update',
+            tone: isDarkMode
+                ? 'border-cyan-400/20 bg-cyan-500/10 text-cyan-300'
+                : 'border-cyan-200 bg-cyan-50 text-cyan-700',
+        };
+    }
+
+    if (deliveredCount > 0) {
+        return {
+            icon: <CheckCheck size={13} strokeWidth={2.4} />,
+            label: `${deliveredCount.toLocaleString()} ${deliveredCount === 1 ? 'message delivered' : 'messages delivered'}`,
+            note: 'Latest delivery update',
+            tone: isDarkMode
+                ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        };
+    }
+
+    if (sentCount > 0) {
+        return {
+            icon: <Check size={13} strokeWidth={3} />,
+            label: `${sentCount.toLocaleString()} ${sentCount === 1 ? 'message sent' : 'messages sent'}`,
+            note: 'Latest send update',
+            tone: isDarkMode
+                ? 'border-amber-400/20 bg-amber-500/10 text-amber-300'
+                : 'border-amber-200 bg-amber-50 text-amber-700',
+        };
+    }
+
+    return null;
+};
+
 export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) => {
     const { isDarkMode } = useTheme();
     const router = useRouter();
@@ -29,6 +66,10 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
     const [executing, setExecuting] = useState(false);
 
     const statistics = campaign ? calculateCampaignStatistics(campaign) : null;
+    const sentCount = stats?.total_sent ?? recipients.filter((recipient) => ['sent', 'delivered', 'read'].includes(recipient.status)).length;
+    const deliveredCount = stats?.total_delivered ?? statistics?.delivered_count ?? recipients.filter((recipient) => ['delivered', 'read'].includes(recipient.status)).length;
+    const readCount = stats?.total_opened ?? statistics?.read_count ?? recipients.filter((recipient) => recipient.status === 'read').length;
+    const deliveryUpdate = getDeliveryUpdateMeta(sentCount, deliveredCount, readCount, isDarkMode);
 
     const handleExecuteCampaign = async () => {
         if (!campaign || !canExecuteCampaign(campaign.status)) return;
@@ -120,35 +161,55 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                     </div>
                 </div>
 
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => refetch()}
-                        disabled={loading}
-                        className={cn(
-                            "px-4 py-2 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2",
-                            isDarkMode
-                                ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50',
-                            loading && 'opacity-50 cursor-not-allowed'
-                        )}
-                    >
-                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                        Refresh
-                    </button>
-
-                    {canExecuteCampaign(campaign.status) && (
+                <div className="flex flex-col items-end gap-3">
+                    <div className="flex gap-3">
                         <button
-                            onClick={handleExecuteCampaign}
-                            disabled={executing}
+                            onClick={() => refetch()}
+                            disabled={loading}
                             className={cn(
-                                "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2",
-                                "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95",
-                                executing && 'opacity-50 cursor-not-allowed'
+                                "px-4 py-2 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2",
+                                isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50',
+                                loading && 'opacity-50 cursor-not-allowed'
                             )}
                         >
-                            <Play size={14} />
-                            {executing ? 'Executing...' : 'Execute Now'}
+                            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                            Refresh
                         </button>
+
+                        {canExecuteCampaign(campaign.status) && (
+                            <button
+                                onClick={handleExecuteCampaign}
+                                disabled={executing}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2",
+                                    "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95",
+                                    executing && 'opacity-50 cursor-not-allowed'
+                                )}
+                            >
+                                <Play size={14} />
+                                {executing ? 'Executing...' : 'Execute Now'}
+                            </button>
+                        )}
+                    </div>
+
+                    {deliveryUpdate && (
+                        <div className={cn(
+                            'flex items-center gap-3 rounded-2xl border px-3.5 py-2 shadow-sm backdrop-blur-sm transition-all',
+                            'delivery-update-indicator',
+                            deliveryUpdate.tone
+                        )}>
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-black/10 dark:bg-white/10 shrink-0">
+                                {deliveryUpdate.icon}
+                            </div>
+                            <div className="flex flex-col leading-tight">
+                                <span className="text-[11px] font-semibold">{deliveryUpdate.label}</span>
+                                <span className={cn('text-[10px]', isDarkMode ? 'text-white/55' : 'text-slate-500')}>
+                                    {deliveryUpdate.note}
+                                </span>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
@@ -454,6 +515,62 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                     </table>
                 </div>
             </GlassCard>
+
+            <style jsx>{`
+                .delivery-update-indicator {
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .delivery-update-indicator::after {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    border-radius: 9999px;
+                    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 48%, transparent 100%);
+                    transform: translateX(-135%);
+                    animation: deliveryUpdateSweep 3s ease-in-out infinite;
+                    pointer-events: none;
+                }
+
+                .delivery-update-indicator svg {
+                    animation: deliveryUpdateTick 700ms ease-out;
+                    transform-origin: center;
+                }
+
+                @keyframes deliveryUpdateTick {
+                    0% {
+                        opacity: 0;
+                        transform: scale(0.78) translateY(2px);
+                    }
+                    60% {
+                        opacity: 1;
+                        transform: scale(1.06) translateY(0);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                @keyframes deliveryUpdateSweep {
+                    0%,
+                    100% {
+                        transform: translateX(-135%);
+                        opacity: 0;
+                    }
+                    20% {
+                        opacity: 1;
+                    }
+                    55% {
+                        transform: translateX(135%);
+                        opacity: 0.8;
+                    }
+                    56% {
+                        opacity: 0;
+                    }
+                }
+            `}</style>
         </div>
     );
 };

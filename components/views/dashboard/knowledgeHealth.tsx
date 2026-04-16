@@ -66,16 +66,17 @@ export const KnowledgeHealth = ({ isDarkMode = true, knowledgeData }: KnowledgeH
                 ) : (
                     <div className="grid grid-cols-3 gap-2">
                         {[
-                            { label: 'Active', value: knowledgeData.activeSources, color: '#10b981' },
-                            { label: 'Inactive', value: knowledgeData.inactiveSources, color: '#f59e0b' },
-                            { label: 'Chunks', value: knowledgeData.totalChunks, color: '#3b82f6' },
+                            { label: 'Total',    sub: 'all sources',      value: knowledgeData.totalSources,    color: '#8b5cf6' },
+                            { label: 'Active',   sub: 'sources enabled',  value: knowledgeData.activeSources,   color: '#10b981' },
+                            { label: 'Inactive', sub: 'sources disabled', value: knowledgeData.inactiveSources, color: '#f59e0b' },
                         ].map((s, i) => (
                             <div key={i} className="p-3 rounded-xl border text-center" style={{
                                 background: isDarkMode ? '#18181b' : '#fafafa', borderColor: isDarkMode ? '#27272a' : '#e4e4e7',
                                 opacity: show ? 1 : 0, transition: `opacity 0.3s ease ${i * 40}ms`
                             }}>
                                 <p style={{ fontSize: '20px', fontWeight: 700, color: s.color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{s.value.toLocaleString()}</p>
-                                <p style={{ fontSize: '11px', fontWeight: 500, color: t.secondary, marginTop: 4 }}>{s.label}</p>
+                                <p style={{ fontSize: '11px', fontWeight: 500, color: t.secondary, marginTop: 3 }}>{s.label}</p>
+                                <p style={{ fontSize: '9px', color: t.micro, marginTop: 1 }}>{s.sub}</p>
                             </div>
                         ))}
                     </div>

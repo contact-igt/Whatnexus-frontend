@@ -1,7 +1,7 @@
 import React from 'react';
 import { User, Loader2, Brain, History as HistoryIcon, Lock } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { getDateLabel } from '../chats/ChatUtils';
+import { formatLastActiveConversation } from '../chats/ChatUtils';
 
 interface HistoryDetailsProps {
     isDarkMode: boolean;
@@ -20,6 +20,8 @@ export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
     setIsWeeklySummaryOpen,
     isNeuralSummaryEnabled = true
 }) => {
+    const lastActiveLabel = formatLastActiveConversation(selectedChat?.last_message_time);
+
     return (
         <div className={cn("w-1/4 min-w-[280px] border-l flex flex-col shrink-0", isDarkMode ? "bg-[#111b21] border-white/5" : "bg-white border-slate-200")}>
             <div className="p-4 flex flex-col items-center border-b space-y-3">
@@ -47,9 +49,9 @@ export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
                             <span className={cn("text-xs font-semibold text-right", isDarkMode ? "text-slate-200" : "text-slate-800")}>{selectedChat?.phone}</span>
                         </div>
                         <div className="flex justify-between items-start gap-4">
-                            <span className={cn("text-xs shrink-0", isDarkMode ? "text-slate-400" : "text-slate-500")}>Last Active</span>
+                            <span className={cn("text-xs shrink-0", isDarkMode ? "text-slate-400" : "text-slate-500")}>Last Active Conversation</span>
                             <span className={cn("text-xs font-semibold text-right", isDarkMode ? "text-slate-200" : "text-slate-800")}>
-                                {selectedChat?.last_message_time ? getDateLabel(selectedChat.last_message_time) : "N/A"}
+                                {lastActiveLabel}
                             </span>
                         </div>
                     </div>

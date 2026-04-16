@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getDateLabel } from './ChatUtils';
+import { formatLastActiveConversation } from './ChatUtils';
 import { LeadSummarySidebar } from '../leadSummarySidebar';
 
 interface ChatDetailsProps {
@@ -56,6 +56,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
     const [isEditingName, setIsEditingName] = useState(false);
     const [editedName, setEditedName] = useState('');
     const { mutate: updateContactMutate, isPending: isUpdatingName } = useUpdateContactMutation();
+    const lastActiveLabel = formatLastActiveConversation(selectedChat?.last_message_time);
 
     const handleEditName = () => {
         setEditedName(selectedChat?.name || '');
@@ -322,9 +323,9 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                             <span className={cn("text-[11px] font-semibold text-right", isDarkMode ? "text-slate-200" : "text-slate-800")}>{selectedChat?.phone}</span>
                         </div>
                         <div className="flex justify-between items-start gap-4">
-                            <span className={cn("text-[11px] shrink-0 font-medium", isDarkMode ? "text-slate-400" : "text-slate-500")}>Last Active</span>
+                            <span className={cn("text-[11px] shrink-0 font-medium", isDarkMode ? "text-slate-400" : "text-slate-500")}>Last Active Conversation</span>
                             <span className={cn("text-[11px] font-semibold text-right", isDarkMode ? "text-slate-200" : "text-slate-800")}>
-                                {selectedChat?.last_message_time ? getDateLabel(selectedChat.last_message_time) : "N/A"}
+                                {lastActiveLabel}
                             </span>
                         </div>
                     </div>
