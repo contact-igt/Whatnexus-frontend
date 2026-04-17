@@ -25,7 +25,9 @@ export const _axios = async (
         ? process.env.NEXT_PUBLIC_PRODUCTION_API_URL
         : env === "development"
           ? process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL
-          : process.env.NEXT_PUBLIC_LOCALHOST_API_URL;
+          : env === "stage"
+            ? process.env.NEXT_PUBLIC_STAGE_API_URL
+            : process.env.NEXT_PUBLIC_LOCALHOST_API_URL;
 
   const endpoint = `${APIURL}${url}`;
   const state: RootState = store.getState();
