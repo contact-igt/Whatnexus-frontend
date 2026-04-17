@@ -252,7 +252,7 @@ export const TemplateView = () => {
         // If header has a media type, use it as the definitive templateType; otherwise fall back to backend value
         const derivedType = MEDIA_TYPES.includes(headerFormat)
             ? headerFormat  // e.g. "IMAGE"
-            : ((selectedTemplateData.template_type || selectedTemplateData.type || 'TEXT').toUpperCase());
+            : ((selectedTemplateData.template_type || 'TEXT').toUpperCase());
 
         const derivedHeaderType = headerFormat || 'NONE'; // "IMAGE" | "VIDEO" | "DOCUMENT" | "TEXT" | "NONE"
 
