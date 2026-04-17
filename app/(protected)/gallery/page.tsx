@@ -558,7 +558,6 @@ export default function GalleryPage() {
                   isDisabled={false}
                   isDeleted={activeTab === 'deleted'}
                   isDarkMode={isDarkMode}
-                  showActionsAlways={true}
                   onSelect={activeTab === 'deleted' ? () => { } : openDrawer}
                   onPreview={activeTab === 'deleted' ? () => { } : openDrawer}
                   onDelete={handleDeleteFromCard}

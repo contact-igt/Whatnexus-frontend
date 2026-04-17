@@ -67,10 +67,20 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     const restoreDoctorMutation = useRestoreDoctorMutation();
     const permanentDeleteDoctorMutation = usePermanentDeleteDoctorMutation();
 
+    const normalizeDoctors = (payload: any): Doctor[] => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.items)) return payload.items;
+        if (Array.isArray(payload?.doctors)) return payload.doctors;
+        return [];
+    };
+
+    const activeDoctors = normalizeDoctors(activeDoctorsData?.data);
+    const deletedDoctors = normalizeDoctors(deletedDoctorsData?.data);
+
     // Derived state
     const doctors = activeTab === 'active'
-        ? (activeDoctorsData?.data || [])
-        : (deletedDoctorsData?.data || []);
+        ? activeDoctors
+        : deletedDoctors;
 
     const isLoading = activeTab === 'active' ? isLoadingActive : isLoadingDeleted;
 
@@ -224,7 +234,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                             : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                     )}
                 >
-                    Trash ({deletedDoctorsData?.data?.length || 0})
+                    Trash ({deletedDoctors.length})
                 </button>
             </div>
 

@@ -17,6 +17,7 @@ import {
     getRecipientStatusColor,
     canExecuteCampaign,
 } from '@/utils/campaign.utils';
+import { Select } from '@/components/ui/select';
 
 interface CampaignDetailsViewProps {
     campaignId: string;
@@ -86,8 +87,8 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
         }
     };
 
-    const recipientStatusOptions: { value: RecipientStatus | undefined; label: string }[] = [
-        { value: undefined, label: 'All Recipients' },
+    const recipientStatusOptions = [
+        { value: 'all', label: 'All Recipients' },
         { value: 'pending', label: 'Pending' },
         { value: 'sent', label: 'Sent' },
         { value: 'delivered', label: 'Delivered' },
@@ -399,35 +400,14 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                     <h2 className={cn("text-lg font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
                         Recipients ({recipients.length})
                     </h2>
-                    <div className="flex items-center gap-3">
-                        <ListFilter size={16} className={cn(isDarkMode ? 'text-white/60' : 'text-slate-500')} />
-                        <select
-                            value={filters.recipientStatus || ''}
-                            onChange={(e) => filters.setRecipientStatus(e.target.value as RecipientStatus || undefined)}
-                            style={{
-                                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
-                                color: isDarkMode ? '#ffffff' : '#334155',
-                            }}
-                            className={cn(
-                                "px-4 py-2 rounded-xl border text-xs font-semibold transition-all outline-none cursor-pointer",
-                                isDarkMode
-                                    ? 'border-white/10 hover:bg-white/10 focus:border-emerald-500/50'
-                                    : 'border-slate-200 hover:bg-slate-50 focus:border-emerald-500'
-                            )}
-                        >
-                            {recipientStatusOptions.map(option => (
-                                <option
-                                    key={option.label}
-                                    value={option.value || ''}
-                                    style={{
-                                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-                                        color: isDarkMode ? '#ffffff' : '#334155',
-                                    }}
-                                >
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                    <div className="flex items-center gap-3 w-64">
+                        <Select
+                            isDarkMode={isDarkMode}
+                            options={recipientStatusOptions}
+                            value={filters.recipientStatus || 'all'}
+                            onChange={(value) => filters.setRecipientStatus(value === 'all' ? undefined : value as RecipientStatus)}
+                            placeholder="All Recipients"
+                        />
                     </div>
                 </div>
 

@@ -88,6 +88,27 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const getFaqDisplayName = (item: Record<string, unknown>) => {
+  const nameKeys = [
+    "creator_name",
+    "creatorName",
+    "reviewed_by",
+    "reviewedBy",
+    "name",
+    "user_name",
+    "userName",
+  ] as const;
+
+  for (const key of nameKeys) {
+    const value = item[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+};
+
 export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
   const [filter, setFilter] = useState<FilterType>("pending_review");
   const [page, setPage] = useState(1);
@@ -419,6 +440,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                 CATEGORY_CONFIG[
                   item.agent_category as keyof typeof CATEGORY_CONFIG
                 ];
+              const displayName = getFaqDisplayName(item);
               const currentAnswer = getAnswer(item);
               const currentAddToKb = getAddToKb(item);
               const answerError = answerErrors[item.id];
@@ -464,14 +486,14 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                             {categoryConfig.label}
                           </span>
                         )}
-                        {item.whatsapp_number && (
+                        {displayName && (
                           <span
                             className={cn(
-                              "text-xs",
-                              isDarkMode ? "text-white/40" : "text-slate-400"
+                              "text-xs font-medium",
+                              isDarkMode ? "text-white/50" : "text-slate-500"
                             )}
                           >
-                            {item.whatsapp_number}
+                            {displayName}
                           </span>
                         )}
                         <span

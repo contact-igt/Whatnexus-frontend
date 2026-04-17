@@ -8,7 +8,7 @@ import { DataSource } from './dataSource';
 import { useEffect, useState } from 'react';
 import { Loader2, Type, AlignLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { extractTextFromFile } from '@/utils/ocr';
 import { Drawer } from "@/components/ui/drawer";
 import { Modal } from "@/components/ui/modal";
@@ -47,6 +47,7 @@ const getInitialTab = (): TabType => {
 export const KnowledgeView = () => {
     const { isDarkMode } = useTheme();
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>(() => getInitialTab());
     const [uploading, setUploading] = useState(false);
     const { mutate: activatePromptMutate } = useActivatePromptMutation();
@@ -106,6 +107,7 @@ export const KnowledgeView = () => {
     console.log("user", user)
     const handleTabChange = (value: TabType) => {
         setActiveTab(value);
+        router.push(`/knowledge?tab=${value}`);
     };
 
     useEffect(() => {

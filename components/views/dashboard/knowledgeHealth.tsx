@@ -49,8 +49,7 @@ export const KnowledgeHealth = ({ isDarkMode = true, knowledgeData }: KnowledgeH
                     )}
                 </div>
                 <button onClick={() => {
-                    localStorage.setItem('selectedTab', 'data-sources');
-                    router.push('/knowledge');
+                    router.push('/knowledge?tab=data-sources');
                 }}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     style={{ fontSize: '12px', fontWeight: 500, color: t.secondary, borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>

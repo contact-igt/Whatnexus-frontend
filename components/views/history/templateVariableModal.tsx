@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Variable, Image, Video, FileText, Upload, Loader2, MapPin, Play, Pause, ImageIcon, Film, Phone, ExternalLink, Reply } from "lucide-react";
+import { X, Send, Variable, Image, Video, FileText, MapPin, Play, Pause, ImageIcon, Film, Phone, ExternalLink, Reply } from "lucide-react";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
 import { useUploadTemplateMediaMutation } from "@/hooks/useTemplateQuery";
 import { toast } from "sonner";
+import { FileUpload } from "@/components/ui/fileUpload";
 import { GalleryPicker } from "@/components/gallery/GalleryPicker";
 import { MediaAsset } from "@/services/gallery/galleryApi";
 // import { toast } from "@/lib/toast";
@@ -36,11 +37,10 @@ export const TemplateVariableModal = ({
     const [mediaUrl, setMediaUrl] = useState<string>("");
     const [mediaError, setMediaError] = useState<string>("");
     const [mediaFileName, setMediaFileName] = useState<string>("");
-    const [mediaAssetId, setMediaAssetId] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [mediaAssetId, setMediaAssetId] = useState<string>("");
     const videoRef = useRef<HTMLVideoElement>(null);
     // Button variables state
     const [buttonValues, setButtonValues] = useState<string[]>([]);
@@ -61,16 +61,6 @@ export const TemplateVariableModal = ({
 
     // Upload mutation
     const { mutateAsync: uploadMedia } = useUploadTemplateMediaMutation();
-
-    // Gallery select handler — only approved assets are selectable (approvedOnly={true})
-    const handleGallerySelect = (asset: MediaAsset) => {
-        const url = asset.preview_url || asset.media_url || (asset as any).url || "";
-        setMediaUrl(url);
-        setMediaFileName(asset.file_name);
-        setMediaAssetId(asset.media_asset_id || String(asset.id));
-        setMediaError("");
-        setIsGalleryOpen(false);
-    };
 
     // Check if template has media header
     const hasMediaHeader = template?.type === 'image' || template?.type === 'video' || template?.type === 'document';
@@ -140,12 +130,14 @@ export const TemplateVariableModal = ({
         }
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            handleFileUpload(file);
-            setMediaAssetId(""); // clear any gallery selection when manually uploading
-        }
+
+    const handleGallerySelect = (asset: MediaAsset) => {
+        const url = asset.preview_url || asset.media_url || (asset as any).url || "";
+        setMediaUrl(url);
+        setMediaFileName(asset.file_name);
+        setMediaAssetId(asset.media_asset_id || String(asset.id));
+        setMediaError("");
+        setIsGalleryOpen(false);
     };
 
     const handleSubmit = () => {
@@ -340,101 +332,23 @@ export const TemplateVariableModal = ({
                                         {getMediaIcon()}
                                         {mediaType === 'image' ? 'Image Header' : mediaType === 'video' ? 'Video Header' : 'Document Header'}
                                     </label>
-
-                                    <input ref={fileInputRef} type="file" accept={getAcceptedFileTypes()} onChange={handleFileSelect} className="hidden" />
-
-                                    {!mediaUrl ? (
-                                        <div className="space-y-2">
-                                            {/* Pick from gallery row */}
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsGalleryOpen(true)}
-                                                disabled={isUploading}
-                                                className={cn(
-                                                    "w-full flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-semibold transition-all",
-                                                    isDarkMode
-                                                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15"
-                                                        : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-                                                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                                                )}
-                                            >
-                                                <ImageIcon size={13} />
-                                                Pick from gallery
-                                            </button>
-
-                                            {/* Or upload directly */}
-                                            <button
-                                                type="button"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                disabled={isUploading}
-                                                className={cn(
-                                                    "w-full flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-8 transition-all",
-                                                    mediaError ? "border-red-500 bg-red-500/5"
-                                                        : isDarkMode ? "border-white/10 bg-white/3 hover:bg-white/6 hover:border-emerald-500/40" : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-emerald-400/50",
-                                                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                                                )}
-                                            >
-                                                {isUploading ? (
-                                                    <><Loader2 size={26} className={cn("animate-spin", isDarkMode ? "text-white/40" : "text-slate-400")} /><span className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-400")}>Uploading…</span></>
-                                                ) : (
-                                                    <>
-                                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center",
-                                                            mediaType === 'image' ? isDarkMode ? "bg-blue-500/10" : "bg-blue-50"
-                                                                : mediaType === 'video' ? isDarkMode ? "bg-purple-500/10" : "bg-purple-50"
-                                                                    : isDarkMode ? "bg-orange-500/10" : "bg-orange-50"
-                                                        )}>
-                                                            {mediaType === 'image' && <ImageIcon size={22} className="text-blue-400" />}
-                                                            {mediaType === 'video' && <Film size={22} className="text-purple-400" />}
-                                                            {mediaType === 'document' && <FileText size={22} className="text-orange-400" />}
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <p className={cn("text-sm font-semibold", isDarkMode ? "text-white/70" : "text-slate-700")}>
-                                                                {mediaType === 'image' ? 'Upload Photo' : mediaType === 'video' ? 'Upload Video' : 'Upload Document'}
-                                                            </p>
-                                                            <p className={cn("text-[11px] mt-0.5", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                                                {mediaType === 'image' && 'JPG, PNG · max 5 MB'}
-                                                                {mediaType === 'video' && 'MP4 · max 16 MB'}
-                                                                {mediaType === 'document' && 'PDF · max 100 MB'}
-                                                            </p>
-                                                        </div>
-                                                        <span className={cn("px-4 py-1.5 rounded-lg text-xs font-semibold", isDarkMode ? "bg-white/10 text-white/70" : "bg-white text-slate-600 shadow-sm border border-slate-200")}>
-                                                            Browse files
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className={cn("flex items-center gap-3 p-3 rounded-xl border", isDarkMode ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200")}>
-                                            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
-                                                mediaType === 'image' ? "bg-blue-500/15" : mediaType === 'video' ? "bg-purple-500/15" : "bg-orange-500/15"
-                                            )}>
-                                                {mediaType === 'image' && <ImageIcon size={16} className="text-blue-400" />}
-                                                {mediaType === 'video' && <Film size={16} className="text-purple-400" />}
-                                                {mediaType === 'document' && <FileText size={16} className="text-orange-400" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className={cn("text-xs font-semibold truncate", isDarkMode ? "text-white" : "text-slate-800")}>
-                                                    {mediaFileName || (mediaType === 'image' ? 'Image uploaded' : mediaType === 'video' ? 'Video uploaded' : 'Document uploaded')}
-                                                </p>
-                                                <p className={cn("text-[10px] mt-0.5 text-emerald-500 font-medium")}>✓ Ready to send</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className={cn("text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors", isDarkMode ? "bg-white/10 text-white/60 hover:bg-white/15" : "bg-slate-100 text-slate-500 hover:bg-slate-200")}
-                                            >
-                                                Replace
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setMediaUrl(""); setMediaFileName(""); setMediaAssetId(""); setIsVideoPlaying(false); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                                                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                                            >
-                                                <X size={13} />
-                                            </button>
-                                        </div>
-                                    )}
+                                    <FileUpload
+                                        isDarkMode={isDarkMode}
+                                        accept={getAcceptedFileTypes()}
+                                        uploadedUrl={mediaUrl || null}
+                                        isUploading={isUploading}
+                                        uploadType={getUploadType(mediaType)}
+                                        fileName={mediaFileName || null}
+                                        compact={true}
+                                        onFileSelected={(file) => { handleFileUpload(file); setMediaAssetId(""); }}
+                                        onRemove={() => { setMediaUrl(""); setMediaFileName(""); setMediaAssetId(""); setIsVideoPlaying(false); }}
+                                        onPickFromGallery={() => setIsGalleryOpen(true)}
+                                        placeholder={
+                                            mediaType === 'image' ? 'JPG, PNG · max 5 MB'
+                                            : mediaType === 'video' ? 'MP4 · max 16 MB'
+                                            : 'PDF · max 100 MB'
+                                        }
+                                    />
                                     {mediaError && <p className="text-red-500 text-[11px]">{mediaError}</p>}
                                 </div>
                             )}
@@ -696,7 +610,7 @@ export const TemplateVariableModal = ({
                 </div>
             </GlassCard>
 
-            {/* Gallery Picker — only approved media selectable */}
+            {/* Gallery Picker */}
             <GalleryPicker
                 isOpen={isGalleryOpen}
                 onClose={() => setIsGalleryOpen(false)}

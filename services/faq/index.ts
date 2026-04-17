@@ -14,6 +14,7 @@ export interface FaqReviewItem {
   status: FaqReviewStatus;
   add_to_kb: boolean;
   is_active: boolean;
+  creator_name?: string | null;
   reviewed_by?: string | number | null;
   answered_at?: string | null;
   created_at: string;

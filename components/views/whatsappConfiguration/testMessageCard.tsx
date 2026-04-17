@@ -41,6 +41,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
 
     const { mutate: testWhatsConfigMutate, isPending: isTestLoading } = useTestWhatsAppConfigQuery();
     const { mutate: sendTestWhatsConfigMutate, isPending: isSendTestLoading } = useSendTestWhatsAppConfigQuery();
+    const isSendingMessage = isSendTestLoading || isTestLoading;
 
     const handleTemplateSelect = (template: ProcessedTemplate) => {
         setSelectedTemplate(template);
@@ -167,11 +168,13 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                 setMessageType(type);
                                 setErrors({});
                             }}
+                            disabled={isSendingMessage}
                             className={cn(
                                 "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
                                 messageType === type
                                     ? isDarkMode ? "bg-white/10 text-white shadow-sm" : "bg-white text-slate-900 shadow-sm"
-                                    : isDarkMode ? "text-white/50 hover:text-white" : "text-slate-500 hover:text-slate-900"
+                                    : isDarkMode ? "text-white/50 hover:text-white" : "text-slate-500 hover:text-slate-900",
+                                isSendingMessage && "cursor-not-allowed opacity-60"
                             )}
                         >
                             {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -188,6 +191,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                         <select
                             value={testCountryCode}
                             onChange={(e) => setTestCountryCode(e.target.value)}
+                            disabled={isSendingMessage}
                             className={cn(
                                 "w-full px-3 py-2.5 rounded-xl text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-offset-0",
                                 isDarkMode
@@ -213,6 +217,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                 )}
                                 value={testPhoneNumber}
                                 maxLength={10}
+                                disabled={isSendingMessage}
                                 onChange={(e) => {
                                     const val = e.target.value.replace(/\D/g, '');
                                     setTestPhoneNumber(val);
@@ -232,6 +237,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                             Message Body
                         </label>
                         <textarea
+                            disabled={isSendingMessage}
                             className={cn(
                                 "w-full rounded-xl mt-2 border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-offset-0 min-h-[120px] resize-none transition-all",
                                 isDarkMode
@@ -315,7 +321,7 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
             <div className="pt-4 mt-auto border-t border-white/5">
                 <button
                     onClick={handleSendTestMessage}
-                    disabled={isTestLoading || !isActive}
+                    disabled={isSendingMessage || !isActive}
                     className={cn(
                         "w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all",
                         isActive
@@ -324,11 +330,16 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                 : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20")
                             : (isDarkMode
                                 ? "bg-white/5 text-white/40 cursor-not-allowed"
-                                : "bg-slate-100 text-slate-400 cursor-not-allowed")
+                                : "bg-slate-100 text-slate-400 cursor-not-allowed"),
+                        isSendingMessage && "opacity-80 cursor-not-allowed hover:bg-blue-600"
                     )}
                 >
-                    {isTestLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                    <span>{messageType === 'normal' ? 'Send Message' : 'Send Template'}</span>
+                    {isSendingMessage ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    <span>
+                        {isSendingMessage
+                            ? messageType === 'normal' ? 'Sending Message...' : 'Sending Template...'
+                            : messageType === 'normal' ? 'Send Message' : 'Send Template'}
+                    </span>
                 </button>
             </div>
 
