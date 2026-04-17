@@ -22,7 +22,7 @@ export const WalletAnnouncementBar = () => {
     const isManagement = user?.user_type === "management";
 
     const isZero = typeof walletBalance === "number" && walletBalance <= 0;
-    const isLow = typeof walletBalance === "number" && walletBalance > 0 && walletBalance < 100;
+    const isLow = typeof walletBalance === "number" && walletBalance > 0 && walletBalance < 500;
     const showBar = !dismissed && !isPostpaid && !isManagement && (isZero || isLow);
 
     if (!showBar) return null;
@@ -91,7 +91,7 @@ export const WalletAnnouncementBar = () => {
                         </>
                     ) : (
                         <>
-                            Wallet balance is low —{" "}
+                            Wallet balance is below ₹500 —{" "}
                             <span className={cn("font-black tabular-nums", isDarkMode ? "text-white/80" : "text-slate-800")}>
                                 ₹{(walletBalance as number).toFixed(2)}
                             </span>{" "}

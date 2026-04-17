@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Appointment } from './bookingList';
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useCreateAppointmentMutation, useUpdateAppointmentMutation } from '@/hooks/useAppointmentQuery';
 
 interface AppointmentModalProps {

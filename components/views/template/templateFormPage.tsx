@@ -1,9 +1,9 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Save, Loader2, ImagePlus, Link2, Trash2, CheckCircle2, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, ImagePlus, Link2, Trash2, CheckCircle2, Eye, Clock, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { Select } from '@/components/ui/select';
@@ -24,7 +24,7 @@ import { WhatsAppPreviewPanel } from './whatsappPreviewPanel';
 import { VariableInputSection } from './variableInputSection';
 import { InteractiveActionsSection } from './interactiveActionsSection';
 import { AIGeneratorSection } from './aiGeneratorSection';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { callOpenAI } from '@/lib/openai';
 import { useGenerateAiTemplateMutation, useUploadTemplateMediaMutation } from '@/hooks/useTemplateQuery';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
@@ -35,7 +35,7 @@ import { setUploadedMedia, setUploading, clearUploadedMedia } from '@/redux/slic
 import { CarouselCardEditor } from './carouselCardEditor';
 import { CarouselCard } from './templateTypes';
 import { GalleryPicker } from '@/components/gallery/GalleryPicker';
-import { MediaAsset } from '@/services/gallery/galleryApi';
+import { MediaAsset, getMediaAsset } from '@/services/gallery/galleryApi';
 import { MediaAssetPreviewModal } from '@/components/gallery/MediaAssetPreviewModal';
 import { logger } from '@/utils/logger';
 
@@ -46,6 +46,7 @@ interface TemplateFormPageProps {
     onSave: (data: any) => void;
     isViewMode?: boolean;
     isSaving?: boolean;
+    onDuplicate?: () => void;
 }
 
 type SelectedHeaderAsset = {
@@ -53,6 +54,7 @@ type SelectedHeaderAsset = {
     media_handle: string;
     file_name: string;
     file_type: MediaAsset['file_type'];
+    preview_url?: string | null; // Cloudinary URL for in-session preview
 };
 
 const templateSchema = z.object({
@@ -74,7 +76,7 @@ const templateSchema = z.object({
     ctaButtons: z.array(
         z.object({
             id: z.string(),
-            type: z.enum(['URL', 'PHONE', 'COPY_CODE', 'CATALOG', 'MPM']),
+            type: z.enum(['URL', 'PHONE', 'COPY_CODE']),
             label: z.string().min(1, "Label is required").max(25, "Label too long"),
             value: z.string().min(1, "Value is required")
         }).superRefine((data, ctx) => {
@@ -207,7 +209,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     onBack,
     onSave,
     isViewMode = false,
-    isSaving = false
+    isSaving = false,
+    onDuplicate
 }) => {
     const { isDarkMode } = useTheme();
     const dispatch = useDispatch();
@@ -221,10 +224,68 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     };
     const lastInitialDataNameRef = useRef<string | null | undefined>(null);
 
-    // Disable category for all existing templates — once created, category should not change.
-    // Meta enforces this for approved templates; we enforce it consistently for all statuses EXCEPT draft.
-    const isExistingTemplate = !!templateId && initialData?.status !== 'draft';
+    // Meta allows edits for submitted templates, but with narrower restrictions than our original UI.
+    const isSubmittedTemplate = !!templateId && initialData?.status !== 'draft';
+    const isApprovedTemplate = initialData?.status === 'approved';
     const isDraft = initialData?.status === 'draft';
+
+    // Meta rate limit: approved templates can only be edited once per 24 hours.
+    // For legacy records where last_edited_at is still null, fall back to updated_at.
+    const lastEditedAt = initialData?.last_edited_at || initialData?.updated_at || null;
+
+    const withinCooldown = useMemo(() => {
+        if (!isApprovedTemplate || !lastEditedAt) return false;
+        const hoursSinceEdit = (Date.now() - new Date(lastEditedAt).getTime()) / 3_600_000;
+        return hoursSinceEdit < 24;
+    }, [isApprovedTemplate, lastEditedAt]);
+
+    const cooldownHoursLeft = useMemo(() => {
+        if (!withinCooldown || !lastEditedAt) return 0;
+        const hoursSinceEdit = (Date.now() - new Date(lastEditedAt).getTime()) / 3_600_000;
+        return Math.max(1, Math.ceil(24 - hoursSinceEdit));
+    }, [withinCooldown, lastEditedAt]);
+
+    const nextEditTime = useMemo(() => {
+        if (!lastEditedAt) return null;
+        return new Date(new Date(lastEditedAt).getTime() + 24 * 3_600_000).toLocaleString();
+    }, [lastEditedAt]);
+
+    // Meta 30-day window: max 10 edits per window (window starts from first edit, not approval)
+    const editCount30d = initialData?.edit_count_30d ?? 0;
+    const editPeriodStart = initialData?.edit_period_start ?? null;
+
+    const daysSincePeriodStart = useMemo(() => {
+        if (!editPeriodStart) return null;
+        return (Date.now() - new Date(editPeriodStart).getTime()) / 86_400_000;
+    }, [editPeriodStart]);
+
+    // If the 30-day window is still active AND count has hit 10 → hard blocked
+    const at30DayLimit = useMemo(() => {
+        if (!isApprovedTemplate) return false;
+        if (daysSincePeriodStart === null) return false; // no edits yet → allowed
+        if (daysSincePeriodStart >= 30) return false;    // window reset → allowed
+        return editCount30d >= 10;
+    }, [isApprovedTemplate, daysSincePeriodStart, editCount30d]);
+
+    const days30Left = useMemo(() => {
+        if (!at30DayLimit || daysSincePeriodStart === null) return 0;
+        return Math.max(1, Math.ceil(30 - daysSincePeriodStart));
+    }, [at30DayLimit, daysSincePeriodStart]);
+
+    const periodResetDate = useMemo(() => {
+        if (!editPeriodStart) return null;
+        return new Date(new Date(editPeriodStart).getTime() + 30 * 86_400_000).toLocaleDateString();
+    }, [editPeriodStart]);
+
+    // Effective edits remaining in current window
+    const editsRemaining = useMemo(() => {
+        if (!isApprovedTemplate) return 10;
+        if (daysSincePeriodStart !== null && daysSincePeriodStart >= 30) return 10; // window reset
+        return Math.max(0, 10 - editCount30d);
+    }, [isApprovedTemplate, daysSincePeriodStart, editCount30d]);
+
+    // Overall save is blocked if either 24h OR 30d limit is active
+    const isSaveBlocked = withinCooldown || at30DayLimit;
 
     const uploadedMediaUrl = useSelector((state: RootState) => state.template.uploadedMediaUrl);
     const uploadedMediaType = useSelector((state: RootState) => state.template.uploadedMediaType);
@@ -353,6 +414,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         media_handle: initialData.headerMediaHandle,
                         file_name: initialData.headerMediaFileName || 'Gallery media',
                         file_type: ((initialData.headerType || 'DOCUMENT').toLowerCase() as MediaAsset['file_type']),
+                        // Restore preview URL if headerValue is a Cloudinary URL (not a gallery handle)
+                        preview_url: (initialData.headerValue && isUrlLikeValue(initialData.headerValue)) ? initialData.headerValue : null,
                     });
                 } else {
                     setSelectedHeaderAsset(null);
@@ -396,6 +459,42 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         }
     }, [initialData, reset, getValues, dispatch, uploadedMediaUrl, uploadedMediaType, setValue, selectedHeaderAsset]);
 
+    useEffect(() => {
+        if (!selectedHeaderAsset?.media_asset_id || selectedHeaderAsset.preview_url) return;
+
+        let isCancelled = false;
+
+        const restoreGalleryPreview = async () => {
+            try {
+                const response = await getMediaAsset(selectedHeaderAsset.media_asset_id);
+                const asset = response?.data;
+                if (!asset || isCancelled) return;
+
+                const resolvedPreviewUrl = asset.preview_url || asset.media_url || asset.url || null;
+
+                setSelectedHeaderAsset((prev) => {
+                    if (!prev || prev.media_asset_id !== selectedHeaderAsset.media_asset_id) return prev;
+                    return {
+                        ...prev,
+                        file_name: asset.file_name || prev.file_name,
+                        file_type: asset.file_type || prev.file_type,
+                        preview_url: resolvedPreviewUrl,
+                    };
+                });
+
+                setPreviewAsset(asset);
+            } catch (error: any) {
+                logger.error('Failed to restore gallery preview asset', error);
+            }
+        };
+
+        restoreGalleryPreview();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [selectedHeaderAsset?.media_asset_id, selectedHeaderAsset?.preview_url]);
+
     // Cleanup uploaded media when unmounting or changing template type
     useEffect(() => {
         return () => {
@@ -435,12 +534,11 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const previous_content = watch('previous_content');
     const footer = watch('footer');
     const variables = watch('variables');
-    const previewHeaderValue =
-        selectedHeaderAsset &&
-        previewAsset &&
-        (previewAsset.media_asset_id || String(previewAsset.id)) === selectedHeaderAsset.media_asset_id
-            ? (previewAsset.preview_url || previewAsset.media_url || previewAsset.url || headerValue || '')
-            : (headerValue || '');
+    const previewHeaderValue = selectedHeaderAsset
+        ? (previewAsset && (previewAsset.media_asset_id || String(previewAsset.id)) === selectedHeaderAsset.media_asset_id
+            ? (previewAsset.preview_url || previewAsset.media_url || previewAsset.url || selectedHeaderAsset.preview_url || headerValue || '')
+            : (selectedHeaderAsset.preview_url || headerValue || ''))
+        : (headerValue || '');
 
     // Language-content mismatch detection (real-time, debounced)
     // validateContentLanguageMatch handles ALL cases: script mismatch, English↔non-English Latin, etc.
@@ -642,11 +740,13 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     const handleGallerySelect = (asset: MediaAsset) => {
         const normalizedType = asset.file_type.toUpperCase() as HeaderType;
+        const cloudinaryUrl = asset.preview_url || asset.media_url || asset.url || null;
         setSelectedHeaderAsset({
             media_asset_id: asset.media_asset_id || String(asset.id),
             media_handle: asset.media_handle,
             file_name: asset.file_name,
             file_type: asset.file_type,
+            preview_url: cloudinaryUrl,
         });
         setPreviewAsset(asset);
         setUploadedFileName(asset.file_name);
@@ -822,7 +922,13 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     payload.components.header.media_handle = selectedHeaderAsset.media_handle;
                 }
                 if (!isUrlLikeValue(finalHeaderValue)) {
-                    delete payload.components.header.media_url;
+                    // Store the Cloudinary preview URL in media_url for display purposes (NOT sent to Meta).
+                    // Meta uses media_handle; media_url is our internal preview source.
+                    if (selectedHeaderAsset.preview_url) {
+                        payload.components.header.media_url = selectedHeaderAsset.preview_url;
+                    } else {
+                        delete payload.components.header.media_url;
+                    }
                 }
             }
 
@@ -922,28 +1028,107 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         </div>
                     </div>
                     {!isViewMode && (
-                        <button
-                            onClick={handleSaveClick}
-                            disabled={isSubmitting || isSaving || isLanguageMismatch}
-                            className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {(isSubmitting || isSaving) ? (
-                                <>
-                                    <Loader2 size={16} className="animate-spin" />
-                                    <span>{isSaving && 'Saving...'}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Save size={16} />
-                                    <span>Save</span>
-                                </>
+                        <div className="flex items-center gap-2">
+                            {isApprovedTemplate && onDuplicate && (
+                                <button
+                                    onClick={onDuplicate}
+                                    className={cn(
+                                        "h-11 px-5 rounded-xl font-bold text-sm border transition-all flex items-center gap-2",
+                                        isDarkMode
+                                            ? 'border-amber-500/40 text-amber-400 hover:bg-amber-500/10'
+                                            : 'border-amber-400 text-amber-700 hover:bg-amber-50'
+                                    )}
+                                >
+                                    <Copy size={15} />
+                                    <span>Duplicate & Edit</span>
+                                </button>
                             )}
-                        </button>
+                            <button
+                                onClick={handleSaveClick}
+                                disabled={isSubmitting || isSaving || isLanguageMismatch || (isApprovedTemplate && isSaveBlocked)}
+                                className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {(isSubmitting || isSaving) ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        <span>{isSaving && 'Saving...'}</span>
+                                    </>
+                                ) : (isApprovedTemplate && at30DayLimit) ? (
+                                    <>
+                                        <Clock size={16} />
+                                        <span>Limit reached</span>
+                                    </>
+                                ) : (isApprovedTemplate && withinCooldown) ? (
+                                    <>
+                                        <Clock size={16} />
+                                        <span>Editable in {cooldownHoursLeft}h</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save size={16} />
+                                        <span>Save</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
 
             <div className="max-w-[1800px] mx-auto px-10 py-8">
+                {/* Meta 30-day limit: hard-blocked (10/10 used) */}
+                {isApprovedTemplate && at30DayLimit && !isViewMode && (
+                    <div className={cn(
+                        "rounded-2xl p-4 border flex items-start gap-3 mb-4",
+                        isDarkMode
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : 'bg-red-50 border-red-200'
+                    )}>
+                        <Clock size={18} className={cn("shrink-0 mt-0.5", isDarkMode ? 'text-red-400' : 'text-red-600')} />
+                        <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm font-bold", isDarkMode ? 'text-red-300' : 'text-red-800')}>
+                                Edit limit reached — {editCount30d}/10 edits used in the current 30-day period
+                            </p>
+                            <p className={cn("text-xs mt-1", isDarkMode ? 'text-red-300/70' : 'text-red-700')}>
+                                This period resets on <strong>{periodResetDate}</strong> ({days30Left} day(s) remaining).
+                                Use <strong>Duplicate & Edit</strong> to create a new editable copy now.
+                            </p>
+                        </div>
+                    </div>
+                )}
+                {/* Meta 24h edit cooldown warning (only shown when not at 30-day hard limit) */}
+                {isApprovedTemplate && withinCooldown && !at30DayLimit && !isViewMode && (
+                    <div className={cn(
+                        "rounded-2xl p-4 border flex items-start gap-3 mb-4",
+                        isDarkMode
+                            ? 'bg-amber-500/10 border-amber-500/30'
+                            : 'bg-amber-50 border-amber-200'
+                    )}>
+                        <Clock size={18} className={cn("shrink-0 mt-0.5", isDarkMode ? 'text-amber-400' : 'text-amber-600')} />
+                        <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm font-bold", isDarkMode ? 'text-amber-300' : 'text-amber-800')}>
+                                Edit limit reached — Meta allows approved templates to be edited once per 24 hours
+                            </p>
+                            <p className={cn("text-xs mt-1", isDarkMode ? 'text-amber-300/70' : 'text-amber-700')}>
+                                Next edit available at: <strong>{nextEditTime}</strong> ({cooldownHoursLeft}h remaining).
+                                Use <strong>Duplicate & Edit</strong> to create an editable copy now.
+                            </p>
+                        </div>
+                    </div>
+                )}
+                {/* 30-day edit counter (informational, shown when edits > 0 and not fully blocked) */}
+                {isApprovedTemplate && !isViewMode && editCount30d > 0 && !at30DayLimit && (
+                    <div className={cn(
+                        "rounded-2xl px-4 py-2.5 border flex items-center gap-2 mb-4 text-xs font-medium",
+                        isDarkMode ? 'bg-slate-800/60 border-white/10 text-white/50' : 'bg-slate-50 border-slate-200 text-slate-500'
+                    )}>
+                        <Clock size={13} className="shrink-0" />
+                        <span>
+                            Meta edits this 30-day period: <strong className={cn(editCount30d >= 8 ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : '')}>{editCount30d}/10</strong>
+                            {editPeriodStart && <> &nbsp;·&nbsp; Resets on {periodResetDate}</>}
+                        </span>
+                    </div>
+                )}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column - Form */}
                     <div className="lg:col-span-2 space-y-6">
@@ -968,17 +1153,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                 onChange={field.onChange}
                                                 options={categories.map(cat => ({ value: cat, label: cat }))}
                                                 error={errors.category?.message}
-                                                disabled={isViewMode || isExistingTemplate} // Category cannot be changed after creation
+                                                disabled={isViewMode || isApprovedTemplate}
                                             />
                                         )}
                                     />
-                                    {isExistingTemplate ? (
+                                    {isApprovedTemplate ? (
                                         <p className={cn("text-[10px] mt-1 ml-1 font-semibold", isDarkMode ? 'text-amber-400/80' : 'text-amber-600')}>
-                                            ⚠️ Category cannot be changed once a template is submitted to Meta
+                                            ⚠️ Approved templates cannot change category on Meta
                                         </p>
                                     ) : (
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                            {isDraft ? 'You can update the category since this is still a draft' : 'Your template should fall under one of these categories'}
+                                            {isDraft ? 'You can update the category since this is still a draft' : 'Rejected and paused templates can still change category before re-review on Meta'}
                                         </p>
                                     )}
                                 </div>
@@ -1015,7 +1200,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                     }}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
-                                                    disabled={isViewMode || isExistingTemplate} // Language cannot be changed for submitted templates
+                                                    disabled={isViewMode || isSubmittedTemplate}
                                                 />
                                             )
                                         }}
@@ -1064,7 +1249,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         placeholder="e.g. app_verification_code"
                                         onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
                                         error={errors.templateName?.message}
-                                        disabled={isViewMode || (isExistingTemplate && !isDraft) || (!!templateId && !isDraft)} // Name cannot be changed for submitted templates
+                                        disabled={isViewMode || isSubmittedTemplate}
                                     />
                                 )}
                             />
@@ -1115,7 +1300,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             return true; // MARKETING shows all
                                         })}
                                         error={errors.templateType?.message}
-                                        disabled={isViewMode || isExistingTemplate || isAuthMode}
+                                        disabled={isViewMode || isAuthMode}
                                     />
                                 )}
                             />
@@ -1645,6 +1830,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 onClose={() => setIsGalleryOpen(false)}
                 onSelect={handleGallerySelect}
                 approvedOnly={false}
+                initialSelectedId={selectedHeaderAsset?.media_asset_id}
                 fileType={
                     templateType === 'IMAGE'
                         ? 'image'

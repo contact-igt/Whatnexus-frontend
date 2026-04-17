@@ -53,6 +53,19 @@ interface FormData {
     card_media_urls?: Record<number, string> | null;
 }
 
+const campaignTypeOptions: Array<{ value: CampaignType; label: string }> = [
+    { value: 'immediate', label: 'Broadcast' },
+    { value: 'scheduled', label: 'Scheduled' }
+];
+
+const getCampaignTypeLabel = (campaignType: CampaignType) => {
+    if (campaignType === 'immediate') {
+        return 'Broadcast';
+    }
+
+    return campaignType;
+};
+
 export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampaignModalProps) => {
     const { isDarkMode } = useTheme();
     const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -145,7 +158,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         if (!file || !selectedTemplate) return;
 
         const headerFormat = getUploadType(selectedTemplate.type); // always sends 'image', 'video', or 'document'
-        
+
         setIsUploading(true);
         setHeaderFileName(file.name);
         setError(null);
@@ -226,7 +239,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             }, 100);
         }
     }, [error]);
-    
+
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -245,7 +258,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 try {
                     setIsEstimatingCost(true);
                     setError(null);
-                    
+
                     // Calculate recipient count
                     let recipientCount = 1;
                     if (formData.recipient_source === 'csv') {
@@ -260,7 +273,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     if (recipientCount > 0 && formData.template_id) {
                         const estimate = await campaignService.estimateCost(formData.template_id, recipientCount);
                         setCostEstimate(estimate);
-                        
+
                         // If balance is insufficient, we still allow them to view the review step, 
                         // but we can pre-emptively show the error there (or wait til submit).
                     }
@@ -315,7 +328,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 }
 
                 // Skip variable check for authentication, CSV, and group sources (per-member inputs)
-                if (selectedTemplate?.category !== 'authentication' && 
+                if (selectedTemplate?.category !== 'authentication' &&
                     formData.recipient_source !== 'csv' &&
                     formData.recipient_source !== 'group') {
                     // Strictly validate all template variables are filled
@@ -419,7 +432,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             // Validate using template variable count
             const validation = validateCSVData(dataRows, templateVariableCount);
             setCsvValidation(validation);
-            
+
             // Raw data for preview (unvalidated)
             const rawParsedData: CSVRecipient[] = dataRows.map(row => ({
                 mobile_number: (row[0] || '') + (row[1] || ''),
@@ -457,12 +470,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         template.variableArray?.forEach((v: any) => {
             initialValues[v.variable_key] = '';
         });
-        
+
         // Initialize button variables
         template.buttonVariables?.forEach((v: any) => {
             initialValues[v.variable_key] = '';
         });
-        
+
         setVariableValues(initialValues);
 
         setError(null);
@@ -513,7 +526,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     index: v.index,
                     parameters: [vals[v.variable_key] || '']
                 })) || [];
-                
+
                 return { body: bodyVars, buttons: buttonVars };
             };
 
@@ -524,16 +537,16 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             let audienceData: CSVRecipient[] | string;
 
             if (formData.recipient_source === 'group') {
-                const hasVars = ( (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) || (selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0) ) && selectedTemplate.category !== 'authentication';
+                const hasVars = ((selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) || (selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0)) && selectedTemplate.category !== 'authentication';
                 if (hasVars && selectedGroupMembers.length > 0) {
                     // Send as per-member CSVRecipient array for personalized group campaigns
                     audienceData = selectedGroupMembers.map(member => {
                         const contactId = member.contact?.contact_id || member.contact_id;
                         const phone = member.contact?.phone || member.mobile_number || '';
                         const memberVars = groupMemberVariables[contactId] || {};
-                        return { 
-                            mobile_number: phone, 
-                            dynamic_variables: getRecipientVariables(memberVars) 
+                        return {
+                            mobile_number: phone,
+                            dynamic_variables: getRecipientVariables(memberVars)
                         };
                     });
                 } else {
@@ -672,7 +685,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 <input
                                     type="text"
                                     value={formData.campaign_name}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, campaign_name: e.target.value }))}
+                                    onChange={(e) => {
+                                        setFormData(prev => ({ ...prev, campaign_name: e.target.value }));
+                                        setError(null);
+                                    }}
                                     placeholder="e.g., Diwali Offer 2024"
                                     className={cn(
                                         "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
@@ -687,21 +703,21 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 <label className={cn("block text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                     Campaign Type *
                                 </label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {(['immediate', 'scheduled', 'broadcast', 'api'] as CampaignType[]).map((type) => (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {campaignTypeOptions.map(({ value, label }) => (
                                         <button
-                                            key={type}
-                                            onClick={() => setFormData(prev => ({ ...prev, campaign_type: type }))}
+                                            key={value}
+                                            onClick={() => setFormData(prev => ({ ...prev, campaign_type: value }))}
                                             className={cn(
                                                 "px-4 py-3 rounded-xl border text-sm font-semibold capitalize transition-all",
-                                                formData.campaign_type === type
+                                                formData.campaign_type === value
                                                     ? 'bg-emerald-500 border-emerald-500 text-white'
                                                     : isDarkMode
                                                         ? 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                                                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                             )}
                                         >
-                                            {type}
+                                            {label}
                                         </button>
                                     ))}
                                 </div>
@@ -802,66 +818,66 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             {selectedTemplate.type !== 'text' && selectedTemplate.type !== 'location' && (
                                                 <div className="mb-2 w-full">
                                                     <div className="w-full bg-black/10 rounded overflow-hidden flex items-center justify-center text-xs opacity-80 flex-col gap-2">
-                                                    {formData.header_media_url ? (
-                                                        selectedTemplate.type === 'image' ? (
-                                                            <img 
-                                                                src={formData.header_media_url} 
-                                                                alt="Header" 
-                                                                className="w-full max-h-[200px] object-cover rounded"
-                                                                onError={(e) => {
-                                                                    (e.target as any).style.display = 'none';
-                                                                }}
-                                                            />
-                                                        ) : selectedTemplate.type === 'video' ? (
-                                                            <video 
-                                                                src={formData.header_media_url} 
-                                                                className="w-full max-h-[200px] object-cover rounded"
-                                                                muted
-                                                            />
+                                                        {formData.header_media_url ? (
+                                                            selectedTemplate.type === 'image' ? (
+                                                                <img
+                                                                    src={formData.header_media_url}
+                                                                    alt="Header"
+                                                                    className="w-full max-h-[200px] object-cover rounded"
+                                                                    onError={(e) => {
+                                                                        (e.target as any).style.display = 'none';
+                                                                    }}
+                                                                />
+                                                            ) : selectedTemplate.type === 'video' ? (
+                                                                <video
+                                                                    src={formData.header_media_url}
+                                                                    className="w-full max-h-[200px] object-cover rounded"
+                                                                    muted
+                                                                />
+                                                            ) : (
+                                                                <div className={cn(
+                                                                    "flex items-center gap-3 p-3 w-full",
+                                                                    isDarkMode ? "bg-white/5" : "bg-slate-50"
+                                                                )}>
+                                                                    <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-purple-500/20" : "bg-purple-100/50")}>
+                                                                        <FileText size={18} className="text-purple-500" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0 text-left">
+                                                                        <p className={cn("text-xs font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
+                                                                            {headerFileName || 'Document.pdf'}
+                                                                        </p>
+                                                                        <p className={cn("text-[9px] uppercase font-bold tracking-tight", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                                            PDF
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            )
                                                         ) : (
                                                             <div className={cn(
-                                                                "flex items-center gap-3 p-3 w-full",
-                                                                isDarkMode ? "bg-white/5" : "bg-slate-50"
+                                                                "flex flex-col items-center justify-center gap-2 w-full py-6 transition-colors",
+                                                                isDocType(selectedTemplate.type) ? (isDarkMode ? "bg-purple-500/10" : "bg-purple-50") : (isDarkMode ? "bg-black/20" : "bg-black/5")
                                                             )}>
-                                                                <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-purple-500/20" : "bg-purple-100/50")}>
-                                                                    <FileText size={18} className="text-purple-500" />
+                                                                <div className={cn(
+                                                                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg",
+                                                                    isDocType(selectedTemplate.type)
+                                                                        ? (isDarkMode ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-500")
+                                                                        : (isDarkMode ? "bg-white/10 text-white/40" : "bg-white text-slate-400")
+                                                                )}>
+                                                                    {selectedTemplate.type === 'image' ? <ImageIcon size={20} /> :
+                                                                        selectedTemplate.type === 'video' ? <Video size={20} /> : <FileText size={20} />}
                                                                 </div>
-                                                                <div className="flex-1 min-w-0 text-left">
-                                                                    <p className={cn("text-xs font-medium truncate", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                                        {headerFileName || 'Document.pdf'}
-                                                                    </p>
-                                                                    <p className={cn("text-[9px] uppercase font-bold tracking-tight", isDarkMode ? "text-white/30" : "text-slate-400")}>
-                                                                        PDF
-                                                                    </p>
-                                                                </div>
+                                                                <span className={cn(
+                                                                    "text-[9px] font-bold tracking-widest uppercase",
+                                                                    isDocType(selectedTemplate.type)
+                                                                        ? (isDarkMode ? "text-purple-400/80" : "text-purple-600")
+                                                                        : (isDarkMode ? "text-white/40" : "text-slate-500")
+                                                                )}>
+                                                                    {getUploadType(selectedTemplate.type)} Required
+                                                                </span>
                                                             </div>
-                                                        )
-                                                    ) : (
-                                                        <div className={cn(
-                                                            "flex flex-col items-center justify-center gap-2 w-full py-6 transition-colors",
-                                                            isDocType(selectedTemplate.type) ? (isDarkMode ? "bg-purple-500/10" : "bg-purple-50") : (isDarkMode ? "bg-black/20" : "bg-black/5")
-                                                        )}>
-                                                            <div className={cn(
-                                                                "w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg",
-                                                                isDocType(selectedTemplate.type) 
-                                                                    ? (isDarkMode ? "bg-purple-500/20 text-purple-400" : "bg-purple-100 text-purple-500")
-                                                                    : (isDarkMode ? "bg-white/10 text-white/40" : "bg-white text-slate-400")
-                                                            )}>
-                                                                {selectedTemplate.type === 'image' ? <ImageIcon size={20} /> : 
-                                                                 selectedTemplate.type === 'video' ? <Video size={20} /> : <FileText size={20} />}
-                                                            </div>
-                                                            <span className={cn(
-                                                                "text-[9px] font-bold tracking-widest uppercase",
-                                                                isDocType(selectedTemplate.type) 
-                                                                    ? (isDarkMode ? "text-purple-400/80" : "text-purple-600")
-                                                                    : (isDarkMode ? "text-white/40" : "text-slate-500")
-                                                            )}>
-                                                                {getUploadType(selectedTemplate.type)} Required
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
                                             )}
                                             {/* Location Preview */}
                                             {selectedTemplate.type === 'location' && (
@@ -908,7 +924,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     {selectedTemplate.footerText}
                                                 </div>
                                             )}
-                                            
+
                                             {/* Preview Buttons - Show ALL CTA buttons */}
                                             {selectedTemplate?.allButtons && selectedTemplate.allButtons.length > 0 && (
                                                 <div className={cn("mt-2 pt-2 space-y-1 border-t", isDarkMode ? "border-white/10" : "border-black/10")}>
@@ -923,7 +939,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     ))}
                                                 </div>
                                             )}
-                                            
+
                                             {/* Preview Timestamp */}
                                             <div className={cn("text-[10px] text-right mt-1 opacity-60", isDarkMode ? "text-white" : "text-gray-500")}>
                                                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -932,92 +948,92 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 )}
 
-                                 {/* Variable Inputs — only for 'manual' source with non-auth templates */}
-                                 {( (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) || (selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0) ) && 
-                                  selectedTemplate.category !== 'authentication' && 
-                                  formData.recipient_source === 'manual' && (
-                                    <div className="mt-4 space-y-3">
-                                        <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                            Template Variables
-                                        </label>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* Body Variables */}
-                                            {selectedTemplate.variableArray?.map((v: any) => (
-                                                <div key={v.id || v.variable_key}>
-                                                    <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
-                                                        Body Variable {'{{' + v.variable_key + '}}'}
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={variableValues[v.variable_key] || ''}
-                                                        onChange={(e) => {
-                                                            setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
-                                                            if (error) setError(null);
-                                                        }}
-                                                        placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Value'}
-                                                        className={cn(
-                                                            "w-full px-3 py-2 rounded-lg border text-sm outline-none transition-all",
-                                                            !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
-                                                                ? 'border-red-500 bg-red-500/5'
-                                                                : isDarkMode
-                                                                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
-                                                                    : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
-                                                        )}
-                                                    />
-                                                </div>
-                                            ))}
-                                            
-                                            {/* Button Variables */}
-                                            {selectedTemplate.buttonVariables?.map((v: any) => (
-                                                <div key={v.variable_key}>
-                                                    <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-blue-400 font-semibold')}>
-                                                        Button Variable: {v.text} (URL)
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={variableValues[v.variable_key] || ''}
-                                                        onChange={(e) => {
-                                                            setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
-                                                            if (error) setError(null);
-                                                        }}
-                                                        placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Dynamic URL part'}
-                                                        className={cn(
-                                                            "w-full px-3 py-2 rounded-lg border border-blue-500/30 text-sm outline-none transition-all",
-                                                            !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
-                                                                ? 'border-red-500 bg-red-500/5'
-                                                                : isDarkMode
-                                                                    ? 'bg-blue-500/5 border-blue-500/20 text-white placeholder:text-blue-500/30'
-                                                                    : 'bg-blue-50 border-blue-200 text-slate-900 placeholder:text-blue-300'
-                                                        )}
-                                                    />
-                                                </div>
-                                            ))}
+                                {/* Variable Inputs — only for 'manual' source with non-auth templates */}
+                                {((selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) || (selectedTemplate?.buttonVariables && selectedTemplate.buttonVariables.length > 0)) &&
+                                    selectedTemplate.category !== 'authentication' &&
+                                    formData.recipient_source === 'manual' && (
+                                        <div className="mt-4 space-y-3">
+                                            <label className={cn("block text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                Template Variables
+                                            </label>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* Body Variables */}
+                                                {selectedTemplate.variableArray?.map((v: any) => (
+                                                    <div key={v.id || v.variable_key}>
+                                                        <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
+                                                            Body Variable {'{{' + v.variable_key + '}}'}
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={variableValues[v.variable_key] || ''}
+                                                            onChange={(e) => {
+                                                                setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
+                                                                if (error) setError(null);
+                                                            }}
+                                                            placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Value'}
+                                                            className={cn(
+                                                                "w-full px-3 py-2 rounded-lg border text-sm outline-none transition-all",
+                                                                !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
+                                                                    ? 'border-red-500 bg-red-500/5'
+                                                                    : isDarkMode
+                                                                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30'
+                                                                        : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                                                            )}
+                                                        />
+                                                    </div>
+                                                ))}
+
+                                                {/* Button Variables */}
+                                                {selectedTemplate.buttonVariables?.map((v: any) => (
+                                                    <div key={v.variable_key}>
+                                                        <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-blue-400 font-semibold')}>
+                                                            Button Variable: {v.text} (URL)
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={variableValues[v.variable_key] || ''}
+                                                            onChange={(e) => {
+                                                                setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
+                                                                if (error) setError(null);
+                                                            }}
+                                                            placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Dynamic URL part'}
+                                                            className={cn(
+                                                                "w-full px-3 py-2 rounded-lg border border-blue-500/30 text-sm outline-none transition-all",
+                                                                !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
+                                                                    ? 'border-red-500 bg-red-500/5'
+                                                                    : isDarkMode
+                                                                        ? 'bg-blue-500/5 border-blue-500/20 text-white placeholder:text-blue-500/30'
+                                                                        : 'bg-blue-50 border-blue-200 text-slate-900 placeholder:text-blue-300'
+                                                            )}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                 )}
+                                    )}
 
                                 {/* Info banner for CSV/Group — variables filled per-recipient in Step 3 */}
                                 {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 &&
-                                 selectedTemplate.category !== 'authentication' &&
-                                 (formData.recipient_source === 'csv' || formData.recipient_source === 'group') && (
-                                    <div className={cn(
-                                        "mt-4 p-3 rounded-xl border flex items-start gap-3",
-                                        isDarkMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
-                                    )}>
-                                        <Check size={15} className="text-emerald-500 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className={cn("text-xs font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-700')}>
-                                                {formData.recipient_source === 'csv' ? 'Variables go in your CSV file' : 'Variables filled per-member in Step 3'}
-                                            </p>
-                                            <p className={cn("text-xs mt-0.5", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                                {formData.recipient_source === 'csv'
-                                                    ? `Columns: country_code, mobile_number, ${selectedTemplate.variableArray.map((v: any) => v.variable_key).join(', ')}`
-                                                    : `You'll fill ${selectedTemplate.variableArray.length} variable(s) for each group member in the next step.`
-                                                }
-                                            </p>
+                                    selectedTemplate.category !== 'authentication' &&
+                                    (formData.recipient_source === 'csv' || formData.recipient_source === 'group') && (
+                                        <div className={cn(
+                                            "mt-4 p-3 rounded-xl border flex items-start gap-3",
+                                            isDarkMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                                        )}>
+                                            <Check size={15} className="text-emerald-500 mt-0.5 shrink-0" />
+                                            <div>
+                                                <p className={cn("text-xs font-semibold", isDarkMode ? 'text-emerald-400' : 'text-emerald-700')}>
+                                                    {formData.recipient_source === 'csv' ? 'Variables go in your CSV file' : 'Variables filled per-member in Step 3'}
+                                                </p>
+                                                <p className={cn("text-xs mt-0.5", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                                    {formData.recipient_source === 'csv'
+                                                        ? `Columns: country_code, mobile_number, ${selectedTemplate.variableArray.map((v: any) => v.variable_key).join(', ')}`
+                                                        : `You'll fill ${selectedTemplate.variableArray.length} variable(s) for each group member in the next step.`
+                                                    }
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
                                 {/* Authentication OTP Info Banner */}
                                 {selectedTemplate?.category === 'authentication' && (
@@ -1060,7 +1076,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 </span>
                                             )}
                                         </div>
-                                        
+
                                         <div className="w-full md:w-2/5">
                                             <FileUpload
                                                 isDarkMode={isDarkMode}
@@ -1124,9 +1140,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             <input
                                                 type="number"
                                                 value={formData.location_params?.latitude || ''}
-                                                onChange={(e) => setFormData(prev => ({ 
-                                                    ...prev, 
-                                                    location_params: { ...prev.location_params!, latitude: e.target.value } 
+                                                onChange={(e) => setFormData(prev => ({
+                                                    ...prev,
+                                                    location_params: { ...prev.location_params!, latitude: e.target.value }
                                                 }))}
                                                 placeholder="Latitude (e.g. 77.0797)"
                                                 step="any"
@@ -1140,9 +1156,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             <input
                                                 type="number"
                                                 value={formData.location_params?.longitude || ''}
-                                                onChange={(e) => setFormData(prev => ({ 
-                                                    ...prev, 
-                                                    location_params: { ...prev.location_params!, longitude: e.target.value } 
+                                                onChange={(e) => setFormData(prev => ({
+                                                    ...prev,
+                                                    location_params: { ...prev.location_params!, longitude: e.target.value }
                                                 }))}
                                                 placeholder="Longitude (e.g. 28.4968)"
                                                 step="any"
@@ -1156,9 +1172,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             <input
                                                 type="text"
                                                 value={formData.location_params?.name || ''}
-                                                onChange={(e) => setFormData(prev => ({ 
-                                                    ...prev, 
-                                                    location_params: { ...prev.location_params!, name: e.target.value } 
+                                                onChange={(e) => setFormData(prev => ({
+                                                    ...prev,
+                                                    location_params: { ...prev.location_params!, name: e.target.value }
                                                 }))}
                                                 placeholder="Location Name"
                                                 className={cn(
@@ -1170,9 +1186,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             />
                                             <textarea
                                                 value={formData.location_params?.address || ''}
-                                                onChange={(e) => setFormData(prev => ({ 
-                                                    ...prev, 
-                                                    location_params: { ...prev.location_params!, address: e.target.value } 
+                                                onChange={(e) => setFormData(prev => ({
+                                                    ...prev,
+                                                    location_params: { ...prev.location_params!, address: e.target.value }
                                                 }))}
                                                 placeholder="Full Address"
                                                 rows={2}
@@ -1198,17 +1214,17 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                         <p className={cn("text-xs mb-4", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
                                             Upload media for each card in the carousel.
                                         </p>
-                                        
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                                             {selectedTemplate?.carouselCards?.map((card: any, idx: number) => {
                                                 const headerComp = card.components?.find((c: any) => c.type === 'HEADER');
                                                 const isMediaHeader = headerComp && (headerComp.format === 'IMAGE' || headerComp.format === 'VIDEO');
-                                                
+
                                                 if (!isMediaHeader) return null;
-                                                
+
                                                 const cardMediaUrl = formData.card_media_urls?.[idx];
                                                 const isCardUploading = !!cardUploading[idx];
-                                                
+
                                                 return (
                                                     <div key={idx} className={cn(
                                                         "p-4 rounded-xl border flex flex-col gap-3",
@@ -1218,13 +1234,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                             <span className={cn("text-xs font-bold uppercase tracking-wider", isDarkMode ? "text-white/60" : "text-slate-600")}>
                                                                 Card {idx + 1}
                                                             </span>
-                                                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", 
+                                                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold",
                                                                 headerComp.format === 'IMAGE' ? "bg-blue-500/10 text-blue-500" : "bg-purple-500/10 text-purple-500"
                                                             )}>
                                                                 {headerComp.format}
                                                             </span>
                                                         </div>
-                                                        
+
                                                         <FileUpload
                                                             isDarkMode={isDarkMode}
                                                             accept={headerComp.format === 'IMAGE' ? 'image/*' : 'video/*'}
@@ -1287,7 +1303,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     {/* CSV Data Requirements Banner */}
                                     <div className={cn(
                                         "p-4 rounded-xl border flex flex-col gap-3 transition-all",
-                                        csvValidation?.isValid 
+                                        csvValidation?.isValid
                                             ? (isDarkMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200')
                                             : (isDarkMode ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-200')
                                     )}>
@@ -1413,8 +1429,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
                             {/* Group Selection */}
                             {formData.recipient_source === 'group' && (() => {
-                                const hasTemplateVars = selectedTemplate?.variableArray && 
-                                    selectedTemplate.variableArray.length > 0 && 
+                                const hasTemplateVars = selectedTemplate?.variableArray &&
+                                    selectedTemplate.variableArray.length > 0 &&
                                     selectedTemplate.category !== 'authentication';
                                 const selectedGroup = groups.find(g => g.group_id === formData.group_id);
 
@@ -1661,7 +1677,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                     <div className="flex justify-between">
                                         <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Type:</span>
-                                        <span className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>{formData.campaign_type}</span>
+                                        <span className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            {getCampaignTypeLabel(formData.campaign_type)}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>Template:</span>
@@ -1729,12 +1747,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             carouselCards={(() => {
                                                 if (selectedTemplate?.type !== 'carousel') return undefined;
                                                 const cards = selectedTemplate.carouselCards || [];
-                                                
+
                                                 return cards.map((card: any, idx: number) => {
                                                     const header = card.components?.find((c: any) => c.type === 'HEADER');
                                                     const body = card.components?.find((c: any) => c.type === 'BODY');
                                                     const btnComp = card.components?.find((c: any) => c.type === 'BUTTONS');
-                                                    
+
                                                     return {
                                                         id: `card-${idx}`,
                                                         mediaType: (header?.format || 'IMAGE') as any,
@@ -1753,17 +1771,17 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 </div>
                             </div>
-                            
+
                             {/* Cost Estimate Panel */}
                             {costEstimate && (
                                 <div className={cn(
                                     "p-4 rounded-xl border flex flex-col gap-2",
-                                    !costEstimate.is_sufficient 
-                                        ? 'bg-red-500/10 border-red-500/20' 
+                                    !costEstimate.is_sufficient
+                                        ? 'bg-red-500/10 border-red-500/20'
                                         : isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'
                                 )}>
                                     <div className="flex justify-between items-center mb-1">
-                                        <h4 className={cn("text-sm font-bold flex items-center gap-2", 
+                                        <h4 className={cn("text-sm font-bold flex items-center gap-2",
                                             !costEstimate.is_sufficient ? 'text-red-500' : isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
                                         )}>
                                             {!costEstimate.is_sufficient && <AlertTriangle size={16} />}
@@ -1771,7 +1789,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                         </h4>
                                         {isEstimatingCost && <span className="text-xs opacity-60">Calculating...</span>}
                                     </div>
-                                    
+
                                     <div className="flex justify-between items-center text-sm">
                                         <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>
                                             {costEstimate.recipient_count} recipients × ₹{costEstimate.per_message_cost_inr.toFixed(2)}
@@ -1780,14 +1798,14 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             ₹{costEstimate.total_cost_inr.toFixed(2)}
                                         </span>
                                     </div>
-                                    
+
                                     <div className="flex justify-between items-center text-sm pt-2 border-t border-current/10">
                                         <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>Wallet Balance</span>
                                         <span className={cn("font-semibold", !costEstimate.is_sufficient ? 'text-red-500' : isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             ₹{costEstimate.wallet_balance.toFixed(2)}
                                         </span>
                                     </div>
-                                    
+
                                     {!costEstimate.is_sufficient && (
                                         <div className="text-xs text-red-500 mt-2 font-medium">
                                             Insufficient balance. You need ₹{costEstimate.shortfall.toFixed(2)} more to send this campaign.
@@ -1795,12 +1813,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     )}
                                 </div>
                             )}
+                        </div>
+                    )}
 
-                            {error && (
-                                <div ref={errorRef} className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                                    <p className="text-red-500 text-sm">{error}</p>
-                                </div>
-                            )}
+                    {error && (
+                        <div ref={errorRef} className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                            <p className="text-red-500 text-sm">{error}</p>
                         </div>
                     )}
                 </div>
@@ -1871,10 +1889,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 onClose={() => setIsGalleryOpen(false)}
                 onSelect={handleGallerySelect}
                 approvedOnly={true}
+                initialSelectedId={
+                    galleryUploadType === 'header' ? (formData.media_asset_id || selectedGalleryHeaderAsset?.media_asset_id || String(selectedGalleryHeaderAsset?.id)) : undefined
+                }
                 fileType={
                     galleryUploadType === 'header'
                         ? (selectedTemplate?.type === 'image' ? 'image' : selectedTemplate?.type === 'video' ? 'video' : selectedTemplate?.type === 'document' ? 'document' : 'all')
-                        : (galleryUploadType === 'card_media' && galleryCardIdx !== null 
+                        : (galleryUploadType === 'card_media' && galleryCardIdx !== null
                             ? (selectedTemplate?.carouselCards?.[galleryCardIdx]?.components?.find((c: any) => c.type === 'HEADER')?.format?.toLowerCase() as any || 'all')
                             : 'all')
                 }

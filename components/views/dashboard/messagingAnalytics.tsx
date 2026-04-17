@@ -15,6 +15,7 @@ import { NoDataFound } from './noDataFound';
 interface MessagingAnalyticsProps {
     isDarkMode?: boolean;
     messagingData?: MessagingAnalyticsData;
+    period?: string; // '7days' | '30days' | 'alltime'
 }
 
 const CustomTooltip = ({ active, payload, label, isDark }: any) => {
@@ -39,16 +40,21 @@ const CustomTooltip = ({ active, payload, label, isDark }: any) => {
     );
 };
 
-export const MessagingAnalytics = ({ isDarkMode = true, messagingData }: MessagingAnalyticsProps) => {
+export const MessagingAnalytics = ({ isDarkMode = true, messagingData, period = '30days' }: MessagingAnalyticsProps) => {
     const [show, setShow] = useState(false);
     const t = tx(isDarkMode);
 
+    // Human-readable period label
+    const periodLabel = period === '7days' ? '7 Days' : period === 'alltime' ? 'All Time' : '30 Days';
+
+    // Re-animate KPI cards whenever period or data changes
     useEffect(() => {
+        setShow(false);
         if (messagingData) {
-            const t1 = setTimeout(() => setShow(true), 200);
+            const t1 = setTimeout(() => setShow(true), 150);
             return () => clearTimeout(t1);
         }
-    }, [messagingData]);
+    }, [messagingData, period]);
 
     const hasData = messagingData && messagingData.totalMessages > 0;
 
@@ -72,6 +78,7 @@ export const MessagingAnalytics = ({ isDarkMode = true, messagingData }: Messagi
     const trend = messagingData?.trendVsLastWeek ?? 0;
     const trendUp = trend >= 0;
     const chartData = messagingData?.dailyVolume ?? [];
+    const chartRangeLabel = period === '7days' ? '7-day' : period === '30days' ? '30-day' : 'All Time';
 
     return (
         <div className="rounded-xl border flex flex-col gap-5 transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
@@ -81,7 +88,7 @@ export const MessagingAnalytics = ({ isDarkMode = true, messagingData }: Messagi
                 <div className="flex items-start justify-between mb-5">
                     <div>
                         <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary, marginBottom: 2 }}>Messaging Analytics</h3>
-                        <p style={{ fontSize: '12px', color: t.secondary }}>Period totals &amp; 7-day trend chart</p>
+                        <p style={{ fontSize: '12px', color: t.secondary }}>{periodLabel} totals &amp; {chartRangeLabel} trend chart</p>
                     </div>
                     {messagingData && (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"

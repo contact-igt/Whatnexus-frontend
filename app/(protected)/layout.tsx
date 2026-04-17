@@ -2,6 +2,7 @@
 import { Header } from "@/components/layout/header";
 import { GroupedSidebar } from "@/components/layout/groupedSidebar";
 import { WalletAnnouncementBar } from "@/components/layout/walletAnnouncementBar";
+import { useFaqRealtimeUpdates } from "@/hooks/useFaqNotifications";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/routes/ProtectedRoute";
@@ -9,6 +10,7 @@ import { AccountStatusOverlay } from "@/components/ui/accountStatusOverlay";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
     const { isDarkMode } = useTheme();
+    useFaqRealtimeUpdates();
 
     return (<ProtectedRoute>
         <AccountStatusOverlay />

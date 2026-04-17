@@ -13,6 +13,7 @@ import { MessagingLimitTracker } from './dashboard/messagingLimitTracker';
 import { BillingSummary } from './dashboard/billingSummary';
 import { DoctorOverview } from './dashboard/doctorOverview';
 import { KnowledgeHealth } from './dashboard/knowledgeHealth';
+import { FaqPendingPreview } from './dashboard/faqPendingPreview';
 import { ContactOverview } from './dashboard/contactOverview';
 import { tx } from './dashboard/glassStyles';
 import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsappConnectionPlaceholder';
@@ -71,7 +72,7 @@ export const DashboardView = () => {
     const isManagement = user?.role === 'super_admin' || user?.role === 'platform_admin';
     const [period, setPeriod] = useState<string>("30days");
     const [waBannerDismissed, setWaBannerDismissed] = useState(false);
-    const { data: dashboardResult, isLoading, isError, refetch } = useGetWhatsappDashboardQuery(period);
+    const { data: dashboardResult, isLoading, isFetching, isError, refetch } = useGetWhatsappDashboardQuery(period);
     const [loaderDone, setLoaderDone] = useState(false);
 
     const dashboardData = dashboardResult?.data;
@@ -146,11 +147,11 @@ export const DashboardView = () => {
                 {/* 1. Command Bar */}
                 <GlobalCommandBar
                     isDarkMode={isDarkMode}
-                    headerData={dashboardData?.header}
                     wabaInfo={dashboardData?.wabaInfo}
                     period={period}
                     setPeriod={setPeriod}
                     isManagement={isManagement}
+                    isFetching={isFetching}
                 />
 
                 {/* 1b. WhatsApp Not Connected Banner */}
@@ -304,7 +305,8 @@ export const DashboardView = () => {
                                     limit,
                                     used: dashboardData!.wabaInfo?.rolling24hUsed ?? 0,
                                     sevenDayUnique: dashboardData!.wabaInfo?.sevenDayUnique ?? 0,
-                                    quality: dashboardData!.wabaInfo.quality
+                                    thirtyDayUnique: dashboardData!.wabaInfo?.thirtyDayUnique ?? 0,
+                                    quality: dashboardData!.wabaInfo.quality as 'GREEN' | 'YELLOW' | 'RED',
                                 }}
                             />
                         </section>
@@ -349,11 +351,11 @@ export const DashboardView = () => {
                             <SectionHeader
                                 icon={<CalendarCheck size={18} />}
                                 title={`Messaging Volume & Analytics — ${dashboardData?.period || '30 Days'}`}
-                                subtitle="Communication trends and delivery stats (chart: last 7 days)"
+                                subtitle={`${dashboardData?.period || '30 Days'} period stats · chart: ${period === '7days' ? 'last 7 days' : period === 'alltime' ? 'all time' : 'last 30 days'}`}
                                 accentColor="#f59e0b"
                                 isDarkMode={isDarkMode}
                             />
-                            <MessagingAnalytics isDarkMode={isDarkMode} messagingData={dashboardData?.messagingAnalytics} />
+                            <MessagingAnalytics isDarkMode={isDarkMode} messagingData={dashboardData?.messagingAnalytics} period={period} />
                         </section>
 
                         {/* Knowledge Base Health */}
@@ -367,6 +369,8 @@ export const DashboardView = () => {
                             />
                             <KnowledgeHealth isDarkMode={isDarkMode} knowledgeData={dashboardData?.knowledgeHealth} />
                         </section>
+
+                        <FaqPendingPreview isDarkMode={isDarkMode} />
 
                         {/* Contacts & Audience */}
                         <section>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Globe, Bell, Sun, Moon, Power, Flag, MessageSquare, Bell as BellIcon, Shield, Zap, RefreshCw } from 'lucide-react';
+import { Globe, Sun, Moon, Power, Flag, MessageSquare, Shield, Zap, RefreshCw, Bell } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useState, useEffect, useRef } from 'react';
@@ -11,7 +11,12 @@ import { clearAuthData } from '@/redux/slices/auth/authSlice';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { socket } from '@/utils/socket';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { MessagesApiData } from '@/services/messages';
+import { playNotificationSound } from '@/lib/notificationSound';
+import { clearWhatsAppUnreadCount, incrementWhatsAppUnreadCount, setWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
+import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
+import { FAQ_REVIEW_ROUTE, useFaqNotifications } from '@/hooks/useFaqNotifications';
 
 export const META_TIER_CONFIG: Record<string, { name: string, limit: string | number, upgradeHint: string | null }> = {
     TIER_NOT_SET: {
@@ -68,26 +73,84 @@ const Sep = ({ isDarkMode }: { isDarkMode: boolean }) => (
     <div className={cn('h-4 w-px shrink-0', isDarkMode ? 'bg-white/10' : 'bg-slate-300/60')} />
 );
 
+type UnreadChatRow = {
+    unread_count?: number | string | null;
+};
+
+type LiveChatsResponse = {
+    data?: UnreadChatRow[];
+};
+
+type HistoryChatsResponse = {
+    data?: {
+        chats?: UnreadChatRow[];
+    };
+};
+
+const messagesApi = new MessagesApiData();
+
 export const Header = () => {
     const { user, whatsappApiDetails } = useAuth();
     const { setTheme, isDarkMode } = useTheme();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const queryClient = useQueryClient();
     const dispatch = useDispatch();
     const router = useRouter();
     const pathname = usePathname();
     const pathnameRef = useRef(pathname);
+    const { unreadCount } = useNotifications();
+    const { canAccessFaqNotifications, pendingCount: faqPendingCount } = useFaqNotifications();
+    const isManagement = user?.user_type === 'management';
+    const isSharedInboxRoute = pathname?.includes('/shared-inbox');
+
+    const { data: liveChatsData, isFetched: isLiveChatsFetched } = useQuery<LiveChatsResponse>({
+        queryKey: ['livechats'],
+        queryFn: () => messagesApi.getAllLiveChats(),
+        enabled: !!user?.tenant_id && !isManagement,
+        staleTime: 2 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
+
+    const { data: historyChatsData, isFetched: isHistoryChatsFetched } = useQuery<HistoryChatsResponse>({
+        queryKey: ['historychats'],
+        queryFn: () => messagesApi.getAllHistoryChats(),
+        enabled: !!user?.tenant_id && !isManagement,
+        staleTime: 2 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
 
     useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
 
     // Reset unread badge when user visits chats pages
     useEffect(() => {
-        if (pathname?.includes('/shared-inbox')) {
-            setUnreadCount(0);
+        if (isSharedInboxRoute) {
+            dispatch(clearWhatsAppUnreadCount());
         }
-    }, [pathname]);
+    }, [dispatch, isSharedInboxRoute]);
+
+    useEffect(() => {
+        if (isManagement || isSharedInboxRoute) return;
+        if (!isLiveChatsFetched && !isHistoryChatsFetched) return;
+
+        const liveUnread = Array.isArray(liveChatsData?.data)
+            ? liveChatsData.data.reduce((total: number, chat: UnreadChatRow) => total + Number(chat?.unread_count || 0), 0)
+            : 0;
+
+        const historyUnread = Array.isArray(historyChatsData?.data?.chats)
+            ? historyChatsData.data.chats.reduce((total: number, chat: UnreadChatRow) => total + Number(chat?.unread_count || 0), 0)
+            : 0;
+
+        dispatch(setWhatsAppUnreadCount(liveUnread + historyUnread));
+    }, [
+        dispatch,
+        historyChatsData,
+        isHistoryChatsFetched,
+        isLiveChatsFetched,
+        isManagement,
+        isSharedInboxRoute,
+        liveChatsData,
+    ]);
 
     useEffect(() => {
         if (!user?.tenant_id) return;
@@ -104,9 +167,12 @@ export const Header = () => {
         };
         socket.on('connect', handleConnect);
 
-        const handleNewMessage = () => {
+        const handleNewMessage = (payload: { sender?: string } = {}) => {
+            if (payload.sender !== 'user') return;
+
             if (!pathnameRef.current?.includes('/shared-inbox')) {
-                setUnreadCount(prev => prev + 1);
+                void playNotificationSound({ soundPath: '/sounds/whatsapp.mp3' });
+                dispatch(incrementWhatsAppUnreadCount(1));
             }
         };
 
@@ -116,7 +182,7 @@ export const Header = () => {
             socket.off('new-message', handleNewMessage);
             socket.off('connect', handleConnect);
         };
-    }, [user?.tenant_id]);
+    }, [dispatch, user?.tenant_id]);
 
     const toggleTheme = () => {
         setTheme(isDarkMode ? "light" : "dark");
@@ -127,7 +193,6 @@ export const Header = () => {
     };
 
     // ── WABA info from Redux (populated by useGetWhatsappConfigQuery) ──────────
-    const isManagement = user?.user_type === 'management';
     const wabaNumber = whatsappApiDetails?.whatsapp_number ?? whatsappApiDetails?.wabaNumber ?? null;
     const wabaStatus = whatsappApiDetails?.status ?? null;
     // Consider connected only when we have a real numeric phone number AND active status
@@ -338,22 +403,41 @@ export const Header = () => {
             {/* ── RIGHT: Theme + Org name + Avatar ────────────────────────── */}
             <div className="flex items-center gap-3">
 
+                {/* FAQ notifications */}
+                {!isManagement && canAccessFaqNotifications && (
+                    <button
+                        onClick={() => router.push(FAQ_REVIEW_ROUTE)}
+                        className={cn(
+                            "p-2.5 rounded-xl transition-all relative",
+                            isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+                        )}
+                        aria-label="Open FAQ notifications"
+                    >
+                        <Bell size={18} />
+                        {faqPendingCount > 0 && (
+                            <div className="absolute top-1.5 right-1.5 min-w-4 h-4 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50 flex items-center justify-center">
+                                <span className="text-white text-[8px] font-black px-0.5">{faqPendingCount > 99 ? '99+' : faqPendingCount}</span>
+                            </div>
+                        )}
+                    </button>
+                )}
+
                 {/* Bell — tenant only (management has no shared-inbox) */}
                 {!isManagement && (
                     <button
-                        onClick={() => { setUnreadCount(0); router.push('/shared-inbox/live-chats'); }}
+                        onClick={() => { dispatch(clearWhatsAppUnreadCount()); router.push('/shared-inbox/live-chats'); }}
                         className={cn(
                             "p-2.5 rounded-xl transition-all relative",
                             isDarkMode ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-400'
                         )}
                     >
-                        <Bell size={18} />
-                        {unreadCount > 0 ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                        {unreadCount > 0 && (
                             <div className="absolute top-1.5 right-1.5 min-w-4 h-4 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 flex items-center justify-center">
                                 <span className="text-white text-[8px] font-black px-0.5">{unreadCount > 99 ? '99+' : unreadCount}</span>
                             </div>
-                        ) : (
-                            <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
                         )}
                     </button>
                 )}

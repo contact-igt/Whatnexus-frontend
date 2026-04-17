@@ -124,7 +124,7 @@ export const AiApiTokensUsage = ({ isDarkMode, startDate, endDate }: AiApiTokens
 
   const inputTokens = summary.totalPromptTokens;
   const outputTokens = summary.totalCompletionTokens;
-  const totalTokens = summary.totalTokens || 1;
+  const totalTokens = summary.totalTokens || 0;
   const amountSpent = summary.totalCostInr;
 
   const animatedInput = useAnimatedValue(inputTokens);

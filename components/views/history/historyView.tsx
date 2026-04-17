@@ -3,8 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { History as HistoryIcon, MessageCircle, Send } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
-import { useChatSuggestMutation, useGetAllHistoryChatsQuery, useMessagesByPhoneQuery, useSendTemplateMessageMutation, useUpdateSeenMutation } from '@/hooks/useMessagesQuery';
-import { callOpenAI } from '@/lib/openai';
+import { useChatSuggestMutation, useGetAllHistoryChatsQuery, useMessagesByPhoneQuery, useSendTemplateMessageMutation, useUpdateSeenMutation, useAssignAgentMutation } from '@/hooks/useMessagesQuery';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { socket } from "@/utils/socket";
@@ -15,6 +14,8 @@ import { TemplateVariableModal } from './templateVariableModal';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
+import { useLeadIntelligenceQuery } from '@/hooks/useLeadIntelligenceQuery';
+import { LeadSummarySidebar } from '../leadSummarySidebar';
 // Extracted Components
 
 // Extracted Components
@@ -23,8 +24,8 @@ import { HistorySidebar } from './HistorySidebar';
 import { HistoryHeader } from './HistoryHeader';
 import { HistoryMessageList } from './HistoryMessageList';
 import { HistoryDetails } from './HistoryDetails';
-import { ChatSummaryOverlay } from '../chats/ChatSummaryOverlay';
 import { ThemedLoader } from '@/components/ui/themedLoader';
+import { ChatSummaryOverlay } from '../chats/ChatSummaryOverlay';
 
 export const HistoryView = () => {
     const queryClient = useQueryClient();
@@ -35,6 +36,7 @@ export const HistoryView = () => {
     };
     const { user, whatsappApiDetails } = useAuth();
     const { isDarkMode } = useTheme();
+    const [chatSummary, setChatSummary] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
     const {
@@ -53,11 +55,18 @@ export const HistoryView = () => {
         isLoading: isMessagesLoading,
     } = useMessagesByPhoneQuery(selectedChat?.phone);
     const { mutateAsync: chatSuggestMutate } = useChatSuggestMutation();
-    const [isSummarizing, setIsSummarizing] = useState(false);
-    const [chatSummary, setChatSummary] = useState<string | null>(null);
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
+    const { mutate: assignAgentMutate, isPending: isUnclaiming } = useAssignAgentMutation();
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
+    const [isNeuralSummarySidebarOpen, setIsNeuralSummarySidebarOpen] = useState(false);
+
+    // Leads list — used to resolve lead_id from contact_id for LeadSummarySidebar
+    const { data: leadsData } = useLeadIntelligenceQuery();
+    const selectedLeadForNeuralSummary = useMemo(() => {
+        const leads: any[] = leadsData?.data?.leads || [];
+        return leads.find((l: any) => l.contact_id === selectedChat?.contact_id) ?? null;
+    }, [leadsData?.data?.leads, selectedChat?.contact_id]);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
     const [selectedTemplateForVariables, setSelectedTemplateForVariables] = useState<ProcessedTemplate | null>(null);
@@ -80,6 +89,8 @@ export const HistoryView = () => {
             phone: chat?.phone,
             contact_id: chat?.contact_id,
             name: chat?.name ?? chat.phone,
+            assigned_admin_id: chat?.assigned_admin_id ?? null,
+            assigned_agent_name: chat?.assigned_agent_name ?? null,
         });
         setChatSummary(null);
         router.replace(`?phone=${chat.phone}`, { scroll: false });
@@ -101,7 +112,7 @@ export const HistoryView = () => {
                 );
             });
         }
-    }, [selectedChat?.phone, chatHistoryList?.data?.chats]);
+    }, [chatHistoryList?.data?.chats, selectedChat?.phone, updateSeenMutate]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {
@@ -250,23 +261,6 @@ export const HistoryView = () => {
         : updatedMessageData ?? [];
     const groupedMessages = groupMessagesByDate(displayMessages);
     const groupedEntries = Object.entries(groupedMessages);
-
-    const summarizeChat = async () => {
-        setIsSummarizing(true);
-        setChatSummary(null);
-        try {
-            const history = messagesData?.data?.map((m: any) => `${m.sender}: ${m.message}`).join('\n');
-            const prompt = `Summarize this conversation between a business AI receptionist and a lead named ${selectedChat?.name || selectedChat?.phone}. 
-      Highlight the key needs of the lead and any pending action items. Keep it under 40 words.
-      History:\n${history}`;
-            const result = await callOpenAI(prompt, "You are a concise business analyst.");
-            setChatSummary(result);
-        } catch (err) {
-            setChatSummary("Unable to generate neural brief. Retry sync.");
-        } finally {
-            setIsSummarizing(false);
-        }
-    };
 
     const handleIncomingMessage = (data: any) => {
         // Validate incoming socket data to prevent crashes
@@ -421,7 +415,7 @@ export const HistoryView = () => {
                     {selectedChat && (
                         <div className={cn("px-6 py-4 border-t", isDarkMode ? "bg-[#202c33] border-white/5" : "bg-[#f0f2f5] border-slate-200")}>
                             <div className={cn(
-                                "flex items-center justify-between p-4 rounded-xl border border-dashed transition-all",
+                                "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-dashed transition-all",
                                 isDarkMode ? 'bg-black/20 border-white/10' : 'bg-white/50 border-slate-300'
                             )}>
                                 <div>
@@ -429,30 +423,39 @@ export const HistoryView = () => {
                                         History Thread Closed
                                     </h3>
                                     <p className={cn("text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                        Send a template to re-initiate this conversation.
+                                        Re-initiate via template.
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setIsTemplateModalOpen(true)}
-                                    className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
-                                >
-                                    <Send size={16} />
-                                    <span>Send Template</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {/* Send Template */}
+                                    <button
+                                        onClick={() => setIsTemplateModalOpen(true)}
+                                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                                    >
+                                        <Send size={16} />
+                                        <span>Send Template</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
                 </GlassCard>
             </div>
 
-            {selectedChat && (
+            {!isNeuralSummarySidebarOpen && selectedChat && (
                 <HistoryDetails
                     isDarkMode={isDarkMode}
                     selectedChat={selectedChat}
-                    summarizeChat={summarizeChat}
-                    isSummarizing={isSummarizing}
+                    setSelectedChat={setSelectedChat}
                     setIsWeeklySummaryOpen={setIsWeeklySummaryOpen}
                     isNeuralSummaryEnabled={aiSettings?.neural_summary !== false}
+                    openNeuralSummarySidebar={() => setIsNeuralSummarySidebarOpen(true)}
+                    user={user}
+                    unclaimLead={(contactId: string) => {
+                        assignAgentMutate({ contact_id: contactId, agent_id: "" });
+                        setSelectedChat((prev: any) => ({ ...prev, assigned_admin_id: null, assigned_agent_name: null }));
+                    }}
+                    isUnclaiming={isUnclaiming}
                 />
             )}
 
@@ -478,6 +481,14 @@ export const HistoryView = () => {
                 onSend={handleSendWithVariables}
                 isDarkMode={isDarkMode}
                 isPending={isSendingTemplate}
+            />
+
+            {/* Neural Summary — Lead Summary Sidebar */}
+            <LeadSummarySidebar
+                isOpen={isNeuralSummarySidebarOpen}
+                onClose={() => setIsNeuralSummarySidebarOpen(false)}
+                lead={selectedLeadForNeuralSummary}
+                isDarkMode={isDarkMode}
             />
         </div>
     );

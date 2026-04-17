@@ -3,7 +3,7 @@ import { TenantActivationApiData } from "@/services/tenantActivation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios";
 import { useDispatch } from "react-redux";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 
 const tenantActivationApis = new TenantActivationApiData();

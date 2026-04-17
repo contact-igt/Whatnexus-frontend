@@ -169,7 +169,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         items: [
             {
                 label: "Knowledge",
-                route: "/knowledge",
+                route: "/knowledge?tab=data-sources",
                 icon: Database,
                 requiresWhatsApp: false,
             }

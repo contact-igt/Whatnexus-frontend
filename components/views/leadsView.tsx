@@ -22,7 +22,7 @@ import { SearchInput } from '@/components/ui/searchInput';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGetAgentsQuery } from '@/hooks/useMessagesQuery';
 import { useBulkUpdateLeadsMutation } from '@/hooks/useLeadIntelligenceQuery';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { socket } from '@/utils/socket';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 

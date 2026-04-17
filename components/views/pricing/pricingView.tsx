@@ -13,7 +13,7 @@ import {
 } from "@/hooks/useManagementQuery";
 import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/modal";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";

@@ -181,7 +181,7 @@ export const FileUpload = ({
                             </div>
                         )}
 
-                        {(uploadType === 'image' || uploadType === 'video') && (
+                        {/* {(uploadType === 'image' || uploadType === 'video') && (
                             <div className={cn(
                                 "absolute left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2",
                                 compact ? "bottom-1.5 py-0.5" : "bottom-2 py-1"
@@ -189,7 +189,7 @@ export const FileUpload = ({
                                 <CheckCircle size={compact ? 10 : 12} className="text-emerald-400" />
                                 <span className={cn("text-white font-medium", compact ? "text-[10px]" : "text-xs")}>Successfully Uploaded</span>
                             </div>
-                        )}
+                        )} */}
 
                         {!disabled && (
                             <button

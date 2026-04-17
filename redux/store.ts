@@ -4,6 +4,7 @@ import storage from 'redux-persist/lib/storage';
 import storageSession from 'redux-persist/lib/storage/session';
 import authReducer from './slices/auth/authSlice';
 import templateReducer from './slices/template/templateSlice';
+import notificationsReducer from './slices/notifications/notificationsSlice';
 import { combineReducers } from 'redux';
 
 const persistConfig = {
@@ -26,6 +27,7 @@ const templatePersistConfig = {
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   template: persistReducer(templatePersistConfig, templateReducer),
+  notifications: notificationsReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -11,10 +11,14 @@ import { setActiveTabData } from '@/redux/slices/auth/authSlice';
 import { tenantSidebarConfig, managementSidebarConfig, SidebarGroup } from './sidebarConfig';
 import { SidebarGroupItem } from '@/components/ui/sidebarGroupItem';
 import { useGetWhatsappConfigQuery } from '@/hooks/useWhatsappConfigQuery';
+import { useFaqNotifications } from '@/hooks/useFaqNotifications';
+import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
 import Link from 'next/link';
 
 export const GroupedSidebar = () => {
     const { user, whatsappApiDetails } = useAuth();
+    const { unreadCount } = useNotifications();
+    const { pendingCount: faqPendingCount, canAccessFaqNotifications } = useFaqNotifications();
     useGetWhatsappConfigQuery();
     const { isDarkMode } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);
@@ -52,11 +56,11 @@ export const GroupedSidebar = () => {
             .flatMap((group) => group.items.map((item) => item.route));
         const unique = [...new Set(allRoutes)];
         unique.forEach((route) => router.prefetch(route));
-    }, []);
+    }, [router]);
 
 
     // Filter items based on user role (case-insensitive) and local environment requirement
-    const filterItemsByRole = (items: any[]) => {
+    const filterItemsByRole = (items: SidebarGroup['items']) => {
         return items.filter(item => {
             // Filter out items that require local environment when not in local mode
             if (item.requiresLocal && !isLocalServer) return false;
@@ -287,6 +291,13 @@ export const GroupedSidebar = () => {
                                                 isExpanded={isExpanded}
                                                 isDisabled={isDisabled}
                                                 requiresWhatsApp={item.requiresWhatsApp}
+                                                notificationCount={
+                                                    item.route === '/shared-inbox/live-chats'
+                                                        ? unreadCount
+                                                        : item.route === '/knowledge' && canAccessFaqNotifications
+                                                            ? faqPendingCount
+                                                            : 0
+                                                }
                                             />
                                         );
                                     })}

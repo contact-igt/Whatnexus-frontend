@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { billingApiData } from "@/services/billing";
 import {
     FileText, ArrowLeft, Download, CreditCard, Calendar, Clock,
     CheckCircle, AlertTriangle, XCircle, Loader2, Receipt,
@@ -9,7 +10,7 @@ import {
 import { useGetInvoiceDetailQuery, useCreatePaymentOrderMutation, usePayInvoiceMutation } from "@/hooks/useBillingQuery";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 
 interface BillingInvoiceDetailProps {
@@ -41,6 +42,7 @@ export const BillingInvoiceDetail = ({ isDarkMode, invoiceId, onBack }: BillingI
     const createOrder = useCreatePaymentOrderMutation();
     const payInvoice = usePayInvoiceMutation();
     const [isPaying, setIsPaying] = useState(false);
+    const billingApi = new billingApiData();
 
     const handlePay = async () => {
         if (!invoice || isPaying) return;
@@ -84,56 +86,22 @@ export const BillingInvoiceDetail = ({ isDarkMode, invoiceId, onBack }: BillingI
         } catch { toast.error("Failed to initiate payment"); setIsPaying(false); }
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         if (!invoice) return;
-        const breakdown = invoice.breakdown || {};
-        const content = `
-=====================================
-       WHATNEXUS BILLING INVOICE
-=====================================
-
-Invoice Number : ${invoice.invoice_number}
-Status         : ${invoice.status?.toUpperCase()}
-Generated      : ${new Date(invoice.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
-Due Date       : ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}
-
--------------------------------------
-BILLING PERIOD
--------------------------------------
-Cycle Start    : ${cycle?.start_date ? new Date(cycle.start_date).toLocaleDateString('en-IN') : 'N/A'}
-Cycle End      : ${cycle?.end_date ? new Date(cycle.end_date).toLocaleDateString('en-IN') : 'N/A'}
-
--------------------------------------
-COST BREAKDOWN
--------------------------------------
-Message Cost   : ₹${parseFloat(breakdown.messages || 0).toFixed(2)}
-AI Usage Cost  : ₹${parseFloat(breakdown.ai || 0).toFixed(2)}
-──────────────────────
-Total Amount   : ₹${parseFloat(invoice.amount || 0).toFixed(2)}
-
--------------------------------------
-PAYMENT
--------------------------------------
-${invoice.status === 'paid'
-                ? `Paid On   : ${invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString('en-IN') : 'N/A'}\nPayment ID: ${invoice.payment_reference || 'N/A'}`
-                : 'Status: AWAITING PAYMENT'}
-
-=====================================
-    Thank you for using Whatnexus!
-    support@whatnexus.com
-=====================================
-    `.trim();
-
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${invoice.invoice_number}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success('Invoice downloaded!');
+        try {
+            const pdfBlob = await billingApi.downloadInvoicePdf(invoice.id);
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${invoice.invoice_number}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success('Invoice PDF downloaded');
+        } catch {
+            toast.error('Failed to download invoice PDF');
+        }
     };
 
     if (isLoading) {

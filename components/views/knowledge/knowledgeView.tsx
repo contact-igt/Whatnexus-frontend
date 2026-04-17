@@ -8,19 +8,47 @@ import { DataSource } from './dataSource';
 import { useEffect, useState } from 'react';
 import { Loader2, Type, AlignLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { useSearchParams, useRouter } from 'next/navigation';
 import { extractTextFromFile } from '@/utils/ocr';
 import { Drawer } from "@/components/ui/drawer";
 import { Modal } from "@/components/ui/modal";
 import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation, useDeletePromptPermanentById, useRestorePromptById } from '@/hooks/usePromptQuery';
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useDeleteKnowledgeById, useDeleteKnowledgePermanentById, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useRestoreKnowledgeById } from '@/hooks/useUploadKnowledge';
+import { useEditFaqKnowledgeEntryMutation, useFaqCountsQuery, useFaqKnowledgeEntriesQuery, useRemoveFaqKnowledgeEntryMutation } from '@/hooks/useFaqQuery';
 import { FaqReview } from './faqReview';
 
 type TabType = 'data-sources' | 'prompts' | 'faq-review';
+const VALID_TABS: TabType[] = ['data-sources', 'prompts', 'faq-review'];
+
+const isValidTab = (tab: string | null): tab is TabType => {
+    return !!tab && VALID_TABS.includes(tab as TabType);
+};
+
+const getInitialTab = (): TabType => {
+    if (typeof window === 'undefined') {
+        return 'data-sources';
+    }
+
+    const queryTab = new URLSearchParams(window.location.search).get('tab');
+    if (isValidTab(queryTab)) {
+        return queryTab;
+    }
+
+    const storedTab = localStorage.getItem('selectedTab');
+    if (isValidTab(storedTab)) {
+        localStorage.removeItem('selectedTab');
+        return storedTab;
+    }
+
+    return 'data-sources';
+};
 
 export const KnowledgeView = () => {
     const { isDarkMode } = useTheme();
-    const [activeTab, setActiveTab] = useState<TabType>('data-sources');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useState<TabType>(() => getInitialTab());
     const [uploading, setUploading] = useState(false);
     const { mutate: activatePromptMutate } = useActivatePromptMutation();
 
@@ -45,6 +73,10 @@ export const KnowledgeView = () => {
         text: ""
     });
     const {user} = useAuth();
+    const normalizedRole = String(user?.role || '').toLowerCase();
+    const canAccessFaqCounts = user?.user_type === 'tenant' && ['tenant_admin', 'staff', 'doctor'].includes(normalizedRole);
+    const { data: faqCountsData } = useFaqCountsQuery({ enabled: canAccessFaqCounts });
+    const faqPendingCount = canAccessFaqCounts ? Math.max(0, Number(faqCountsData?.data?.pending_review || 0)) : 0;
     const { data: knowledgeDetailsById, refetch: refetchKnowledgeById, isLoading: isKnowledgeByIdLoading } = useKnowledgeByIdQuery(selectedItem?.item?.id, selectedItem?.mode ?? "knowledge");
     const { data: promptDetailsById, isLoading: isPromptByIdLoading } = usePromptByIdQuery(selectedItem?.item?.id, selectedItem?.mode ?? "prompt");
     const [isDragging, setIsDragging] = useState(false);
@@ -68,14 +100,22 @@ export const KnowledgeView = () => {
     const knowledgeTabs = [
         { value: "data-sources", label: "Data Sources" },
         { value: "prompts", label: "Prompts" },
-        { value: "faq-review", label: "FAQ Review" },
+        { value: "faq-review", label: `FAQ Review (${faqPendingCount})` },
         // { value: "aiLogs", label: "AI Logs" },
         // { value: "settings", label: "Settings" }
     ];
     console.log("user", user)
     const handleTabChange = (value: TabType) => {
         setActiveTab(value);
+        router.push(`/knowledge?tab=${value}`);
     };
+
+    useEffect(() => {
+        const queryTab = searchParams.get('tab');
+        if (isValidTab(queryTab) && queryTab !== activeTab) {
+            setActiveTab(queryTab);
+        }
+    }, [activeTab, searchParams]);
 
     const dialogTitle = isKnowledge
         ? isView

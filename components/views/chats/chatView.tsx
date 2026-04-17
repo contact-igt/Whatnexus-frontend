@@ -15,7 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
 import { LeadSummarySidebar } from '../leadSummarySidebar';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 // Extracted Components
 
 // Extracted Components
@@ -131,6 +131,7 @@ export const ChatView = () => {
             assigned_admin_id: chat?.assigned_admin_id,
             assigned_agent_name: chat?.assigned_agent_name,
             is_ai_silenced: chat?.is_ai_silenced,
+            last_message_time: chat?.last_message_time,
         });
         setMessage("");
         setChatSummary(null);
@@ -154,7 +155,7 @@ export const ChatView = () => {
                 );
             });
         }
-    }, [selectedChat?.phone, chatList?.data]);
+    }, [chatList?.data, selectedChat?.phone, updateSeenMutate]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {
@@ -277,7 +278,8 @@ export const ChatView = () => {
                     selectedChat?.phone !== chatFromUrl.phone ||
                     selectedChat?.assigned_admin_id !== chatFromUrl.assigned_admin_id ||
                     selectedChat?.assigned_agent_name !== chatFromUrl.assigned_agent_name ||
-                    selectedChat?.name !== (chatFromUrl.name ?? chatFromUrl.phone)
+                    selectedChat?.name !== (chatFromUrl.name ?? chatFromUrl.phone) ||
+                    selectedChat?.last_message_time !== chatFromUrl.last_message_time
                 ) {
                     setSelectedChat({
                         phone: chatFromUrl.phone,
@@ -286,6 +288,7 @@ export const ChatView = () => {
                         assigned_admin_id: chatFromUrl.assigned_admin_id,
                         assigned_agent_name: chatFromUrl.assigned_agent_name,
                         is_ai_silenced: chatFromUrl.is_ai_silenced,
+                        last_message_time: chatFromUrl.last_message_time,
                     });
                 }
                 return;
@@ -300,7 +303,8 @@ export const ChatView = () => {
                     !arePhonesEqual(selectedChat?.phone, chatFromFiltered.phone) ||
                     selectedChat?.assigned_admin_id !== chatFromFiltered.assigned_admin_id ||
                     selectedChat?.assigned_agent_name !== chatFromFiltered.assigned_agent_name ||
-                    selectedChat?.name !== (chatFromFiltered.name ?? chatFromFiltered.phone)
+                    selectedChat?.name !== (chatFromFiltered.name ?? chatFromFiltered.phone) ||
+                    selectedChat?.last_message_time !== chatFromFiltered.last_message_time
                 ) {
                     setSelectedChat({
                         phone: chatFromFiltered.phone,
@@ -309,6 +313,7 @@ export const ChatView = () => {
                         assigned_admin_id: chatFromFiltered.assigned_admin_id,
                         assigned_agent_name: chatFromFiltered.assigned_agent_name,
                         is_ai_silenced: chatFromFiltered.is_ai_silenced,
+                        last_message_time: chatFromFiltered.last_message_time,
                     });
                 }
                 return;

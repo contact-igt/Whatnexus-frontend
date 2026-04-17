@@ -5,7 +5,7 @@ import { Briefcase, FileText, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useCreateSpecializationMutation, useUpdateSpecializationMutation } from '@/hooks/useSpecializationsQuery';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

@@ -8,6 +8,8 @@ const SOCKET_URL = (() => {
       return (process.env.NEXT_PUBLIC_SOCKET_NGROK_URL || "").trim();
     case "production":
       return (process.env.NEXT_PUBLIC_SOCKET_PRODUCTION_API_URL || "").trim();
+    case "stage":
+      return (process.env.NEXT_PUBLIC_SOCKET_STAGE_API_URL || "").trim();
     default:
       return (process.env.NEXT_PUBLIC_SOCKET_LOCALHOST_URL || "http://localhost:8000").trim();
   }

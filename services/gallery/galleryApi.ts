@@ -22,7 +22,27 @@ export interface MediaAsset {
   updatedAt?: string;
   media_url?: string;
   url?: string;
+  days_remaining?: number;
+  can_restore?: boolean;
 }
+
+export interface DeletedMediaAssetsResponse {
+  message: string;
+  data: {
+    items: (MediaAsset & { days_remaining: number; can_restore: boolean })[];
+    total: number;
+    page: number;
+    limit: number;
+  };
+}
+
+export const getDeletedGalleryItems = async (page = 1, limit = 20): Promise<DeletedMediaAssetsResponse> => {
+  return await _axios("get", "/whatsapp/gallery/deleted/list", null, "application/json", { page, limit });
+};
+
+export const hardDeleteMediaAsset = async (assetId: string): Promise<{ message: string }> => {
+  return await _axios("delete", `/whatsapp/gallery/${assetId}/permanent`);
+};
 
 export interface MediaAssetsResponse {
   success: boolean;
@@ -106,11 +126,11 @@ export const uploadMedia = async (
   const formData = new FormData();
   formData.append("file", file);
   formData.append("tenant_id", tenantId);
-  
+
   if (metadata?.tags) {
     formData.append("tags", JSON.stringify(metadata.tags));
   }
-  
+
   if (metadata?.folder) {
     formData.append("folder", metadata.folder);
   }

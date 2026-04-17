@@ -87,9 +87,11 @@ export function GalleryListRow({
 
   const assetId     = asset.media_asset_id || String(asset.id);
   const canDelete   = true;
-  const color       = TYPE_COLOR[asset.file_type] || "#94a3b8";
+  const fileType    = (asset.file_type || "").toLowerCase();
+  const isValidUrl  = (u: string | null | undefined) => !!u && (u.startsWith("http") || u.startsWith("data:"));
+  const color       = TYPE_COLOR[fileType] || "#94a3b8";
   const downloadUrl = asset.preview_url || asset.media_url || asset.url || "";
-  const hasThumb    = asset.file_type === "image" && !!asset.preview_url && !imgError;
+  const hasThumb    = fileType === "image" && isValidUrl(asset.preview_url) && !imgError;
 
   return (
     <div
@@ -197,7 +199,7 @@ export function GalleryListRow({
         onClick={(e) => e.stopPropagation()}
       >
         {!isDisabled && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+          <div className="flex items-center gap-1 transition-all duration-200">
             <button
               type="button"
               onClick={() => onPreview(asset)}

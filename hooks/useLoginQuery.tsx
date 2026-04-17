@@ -4,7 +4,7 @@ import { whatsappConfigApiData } from "@/services/whatsappConfiguration";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 
 const { login } = new authApis();

@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "sonner";
+import { Toaster } from "@/lib/toast";
+import { initializeNotificationSound } from "@/lib/notificationSound";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor } from "@/redux/store";
@@ -16,6 +17,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       },
     },
   }));
+
+  useEffect(() => {
+    initializeNotificationSound();
+  }, []);
 
   return (
     <Provider store={store}>

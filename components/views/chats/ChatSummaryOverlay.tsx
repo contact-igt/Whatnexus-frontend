@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Brain, Copy, Check } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface ChatSummaryOverlayProps {
     isDarkMode: boolean;

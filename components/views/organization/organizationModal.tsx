@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation, useValidateOpenAIKeyMutation } from "@/hooks/useTenantQuery";
 import { useGetAiPricingRulesQuery } from "@/hooks/useManagementQuery";
 import { Country, State, City } from 'country-state-city';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface OrganizationModalProps {
     isOpen: boolean;
@@ -28,7 +28,7 @@ export const OrganizationModal = ({
     mode,
     isDarkMode
 }: OrganizationModalProps) => {
-    const [formData, setFormData] = useState<Partial<Organization> & { input_model?: string; output_model?: string; openai_api_key?: string }>({
+    const [formData, setFormData] = useState<Partial<Organization> & { input_model?: string; output_model?: string; openai_api_key?: string; gstin?: string }>({
         company_name: '',
         owner_name: '',
         owner_email: '',
@@ -38,7 +38,7 @@ export const OrganizationModal = ({
         country: '',
         state: '',
         pincode: '',
-        subscriptionStatus: 'trial',
+        subscriptionStatus: 'invited',
         subscriptionPlan: 'basic',
         maxUsers: 10,
         adminName: '',
@@ -49,7 +49,8 @@ export const OrganizationModal = ({
         password: '',
         input_model: 'gpt-4o-mini',
         output_model: 'gpt-4o',
-        openai_api_key: ''
+        openai_api_key: '',
+        gstin: ''
     });
     // ISO codes used to drive cascading dropdowns
     const [countryIso, setCountryIso] = useState('');
@@ -88,6 +89,24 @@ export const OrganizationModal = ({
         }))
         : [];
 
+    const parseAiSettings = (value: unknown) => {
+        if (!value) return {};
+
+        if (typeof value === 'string') {
+            try {
+                return JSON.parse(value);
+            } catch {
+                return {};
+            }
+        }
+
+        if (typeof value === 'object') {
+            return value as Record<string, any>;
+        }
+
+        return {};
+    };
+
     useEffect(() => {
         if (organization && (mode === 'edit' || mode === 'view')) {
             let profileData = {};
@@ -124,6 +143,7 @@ export const OrganizationModal = ({
 
             // Normalize all API field aliases into formData keys
             const org = organization as any;
+            const aiSettings = parseAiSettings(org.ai_settings);
             setFormData({
                 ...org,
                 ...profileData,
@@ -143,22 +163,9 @@ export const OrganizationModal = ({
                 owner_country_code: org.owner_country_code || '+91',
                 owner_mobile: org.owner_mobile || '',
                 // AI Models - extract from ai_settings
-                input_model: (() => {
-                    try {
-                        const aiSettings = typeof org.ai_settings === 'string'
-                            ? JSON.parse(org.ai_settings)
-                            : org.ai_settings;
-                        return aiSettings?.input_model || 'gpt-4o-mini';
-                    } catch { return 'gpt-4o-mini'; }
-                })(),
-                output_model: (() => {
-                    try {
-                        const aiSettings = typeof org.ai_settings === 'string'
-                            ? JSON.parse(org.ai_settings)
-                            : org.ai_settings;
-                        return aiSettings?.output_model || 'gpt-4o';
-                    } catch { return 'gpt-4o'; }
-                })(),
+                input_model: aiSettings?.input_model || 'gpt-4o-mini',
+                output_model: aiSettings?.output_model || 'gpt-4o',
+                gstin: aiSettings?.gstin || '',
                 openai_api_key: '',
             });
         } else {
@@ -174,7 +181,7 @@ export const OrganizationModal = ({
                 country: '',
                 state: '',
                 pincode: '',
-                subscriptionStatus: 'trial',
+                subscriptionStatus: 'invited',
                 subscriptionPlan: 'basic',
                 maxUsers: 10,
                 adminName: '',
@@ -185,14 +192,24 @@ export const OrganizationModal = ({
                 password: '',
                 input_model: 'gpt-4o-mini',
                 output_model: 'gpt-4o',
-                openai_api_key: ''
+                openai_api_key: '',
+                gstin: ''
             });
         }
         setErrors({});
     }, [organization, mode, isOpen]);
 
-    const handleChange = (field: keyof Organization | 'input_model' | 'output_model' | 'openai_api_key', value: any) => {
-        const sanitizedValue = field === 'owner_mobile' ? value.replace(/\D/g, '') : value;
+    const handleChange = (field: keyof Organization | 'input_model' | 'output_model' | 'openai_api_key' | 'gstin', value: any) => {
+        let sanitizedValue = value;
+
+        if (field === 'owner_mobile') {
+            sanitizedValue = value.replace(/\D/g, '');
+        }
+
+        if (field === 'gstin') {
+            sanitizedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+        }
+
         setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
@@ -230,6 +247,10 @@ export const OrganizationModal = ({
             newErrors.openai_api_key = "Invalid format. OpenAI keys start with 'sk-'";
         }
 
+        if (formData.gstin?.trim() && !/^[0-9A-Z]{15}$/.test(formData.gstin.trim())) {
+            newErrors.gstin = "GSTIN must be 15 uppercase letters or numbers";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -258,11 +279,13 @@ export const OrganizationModal = ({
             ? State.getStatesOfCountry(countryIso).find(s => s.isoCode === formData.state)
             : undefined;
 
-        const { address, city, country, state, pincode, maxUsers, subscriptionPlan, profile, input_model, output_model, openai_api_key, ...rest } = formData;
+        const { address, city, country, state, pincode, maxUsers, subscriptionPlan, profile, input_model, output_model, openai_api_key, gstin, ...rest } = formData;
+        const normalizedGstin = gstin?.trim().toUpperCase() || '';
 
         const aiSettingsPayload: any = {
             input_model: input_model || 'gpt-4o-mini',
             output_model: output_model || 'gpt-4o',
+            gstin: normalizedGstin,
         };
         // Only include key in payload if user entered a new one
         if (rawKey) {
@@ -284,19 +307,19 @@ export const OrganizationModal = ({
             ai_settings: aiSettingsPayload,
         };
 
-            if (mode === 'create') {
-                createTenantMutate(submitData, {
-                    onSuccess: () => {
-                        onClose();
-                    }
-                });
-            } else if (mode === 'edit' && (organization?.id || organization?.tenant_id)) {
-                updateTenantMutate({ tenantId: organization.tenant_id, data: submitData }, {
-                    onSuccess: () => {
-                        onClose();
-                    }
-                });
-            }
+        if (mode === 'create') {
+            createTenantMutate(submitData, {
+                onSuccess: () => {
+                    onClose();
+                }
+            });
+        } else if (mode === 'edit' && (organization?.id || organization?.tenant_id)) {
+            updateTenantMutate({ tenantId: organization.tenant_id, data: submitData }, {
+                onSuccess: () => {
+                    onClose();
+                }
+            });
+        }
     };
 
     const isView = mode === 'view';
@@ -530,7 +553,23 @@ export const OrganizationModal = ({
                             onChange={(e) => handleChange('pincode', e.target.value)}
                             disabled={isView}
                         />
+
+                        <Input
+                            isDarkMode={isDarkMode}
+                            label="GSTIN"
+                            icon={ShieldCheck}
+                            placeholder="22AAAAA0000A1Z5"
+                            value={formData.gstin || ''}
+                            onChange={(e) => handleChange('gstin', e.target.value)}
+                            disabled={isView}
+                            error={errors.gstin}
+                            maxLength={15}
+                        />
                     </div>
+
+                    <p className={cn("text-[10px] ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                        State is used to decide whether recharges apply CGST/SGST or IGST. Add GSTIN if the organization is registered.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>

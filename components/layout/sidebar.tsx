@@ -105,7 +105,7 @@ export const Sidebar = () => {
                     />
                     <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Zap} label="Templates" route="/templates" onClick={() => handleActiveTab('/templates')} />
                     <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Megaphone} label="Campaign" route="/campaign" onClick={() => handleActiveTab('/campaign')} />
-                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" route="/knowledge" onClick={() => handleActiveTab('/knowledge')} />
+                    <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Database} label="Knowledge" route="/knowledge?tab=data-sources" onClick={() => handleActiveTab('/knowledge?tab=data-sources')} />
                 </RoleBasedWrapper>
 
                 {/* Management-only items */}

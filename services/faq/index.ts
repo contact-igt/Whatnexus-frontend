@@ -1,8 +1,31 @@
 import { _axios } from "@/helper/axios";
 
-export interface SaveFaqReviewData {
-  doctor_answer: string;
+export type FaqReviewStatus = "pending_review" | "published" | "deleted";
+
+export interface FaqReviewItem {
+  id: string;
+  question: string;
+  normalized_question?: string | null;
+  agent_category?: string | null;
+  agent_reason?: string | null;
+  doctor_answer?: string | null;
+  whatsapp_number?: string | null;
+  session_id?: string | null;
+  status: FaqReviewStatus;
   add_to_kb: boolean;
+  is_active: boolean;
+  creator_name?: string | null;
+  reviewed_by?: string | number | null;
+  answered_at?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface SaveFaqReviewData {
+  question?: string;
+  doctor_answer?: string;
+   add_to_kb: boolean;
+
 }
 
 export interface PublishFaqReviewData {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Eye, Edit2, Ban, Building2, Users, Calendar, CheckCircle, XCircle, Clock, MessageCircle, Hospital, Trash, RotateCcw, RefreshCcw } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Select } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/searchInput";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";

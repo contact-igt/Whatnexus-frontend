@@ -5,7 +5,7 @@ import { Template, TemplateCategory, TemplateFormData, TemplateStatus, TemplateT
 import { TemplateListPage } from './templateListPage';
 import { TemplateFormPage } from './templateFormPage';
 import { TemplatePreviewModal } from './templatePreviewModal';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation, useGetDeletedTemplatesQuery, useRestoreTemplateMutation } from '@/hooks/useTemplateQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
@@ -105,8 +105,14 @@ export const TemplateView = () => {
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
     const [editTemplateById, setEditTemplateById] = useState<Template | null>(null);
+    const [prefillData, setPrefillData] = useState<Partial<TemplateFormData> | undefined>(undefined);
+    const [formKey, setFormKey] = useState(0);
     const { data: templateData, isLoading: templateDataLoading } = useGetAllTemplateQuery();
-    const { data: templateDataById, isPending: getTemplateByIdLoading } = useGetTemplateByIdQuery(editTemplateById || previewTemplate?.template_id);
+    // Keep edit and preview as separate queries so they never share stale data.
+    // Previously both were combined with `||` which caused the preview modal to always
+    // show the last-edited template instead of the clicked one.
+    const { data: editTemplateDataById, isPending: getTemplateByIdLoading } = useGetTemplateByIdQuery(editTemplateById ?? null);
+    const { data: previewTemplateDataById } = useGetTemplateByIdQuery(previewTemplate?.template_id ?? null);
     const { mutate: createTemplateMutate, isPending: createTemplateLoading } = useCreateTemplateMutation();
     const { mutate: updateTemplateMutate, isPending: updateTemplateLoading } = useUpdateTemplateMutation();
     const { mutate: submitTemplateMutate, isPending: submitTemplateLoading } = useSubmitTemplateMutation();
@@ -121,11 +127,29 @@ export const TemplateView = () => {
         setSelectedTemplate(null);
         setEditTemplateById(null);
         setPreviewTemplate(null);
+        setPrefillData(undefined);
+        setFormKey(k => k + 1);
+        setViewMode('create');
+    };
+
+    const handleDuplicate = () => {
+        if (!initialData) return;
+        const dup: Partial<TemplateFormData> = {
+            ...initialData,
+            name: `copy_of_${initialData.name || 'template'}`,
+            status: undefined,
+            updated_at: undefined,
+            previous_content: '', // new template — no previous Meta submission
+        };
+        setPrefillData(dup);
+        setEditTemplateById(null);
+        setFormKey(k => k + 1);
         setViewMode('create');
     };
 
     const handleEdit = (template: any) => {
         setEditTemplateById(template?.template_id);
+        setFormKey(k => k + 1);
         setViewMode('edit');
     };
 
@@ -191,6 +215,8 @@ export const TemplateView = () => {
     const handleBack = () => {
         setViewMode('list');
         setSelectedTemplate(null);
+        setEditTemplateById(null);
+        setPrefillData(undefined);
     };
 
     const handleSave = (formData: TemplateFormData) => {
@@ -212,19 +238,21 @@ export const TemplateView = () => {
         }
     };
 
-    const selectedTemplateData = templateDataById?.data;
+    const selectedTemplateData = editTemplateDataById?.data;
     const initialData: TemplateFormData | undefined = useMemo(() => {
         if (!selectedTemplateData) return undefined;
         // Derive the correct template type from the header component when it's a media type.
         // The backend may store template_type as "text" even when there's an image/video/document header.
-        const headerComp = selectedTemplateData.components.find((c: any) => c.component_type === "header");
+        const headerComp = selectedTemplateData.components.find((c: any) =>
+            c.component_type?.toLowerCase() === "header" || c.type?.toLowerCase() === "header"
+        );
         const headerFormat = (headerComp?.header_format || '').toUpperCase(); // e.g. "IMAGE", "VIDEO", "DOCUMENT", "TEXT", ""
         const MEDIA_TYPES = ['IMAGE', 'VIDEO', 'DOCUMENT'];
 
         // If header has a media type, use it as the definitive templateType; otherwise fall back to backend value
         const derivedType = MEDIA_TYPES.includes(headerFormat)
             ? headerFormat  // e.g. "IMAGE"
-            : ((selectedTemplateData.template_type || selectedTemplateData.type || 'TEXT').toUpperCase());
+            : ((selectedTemplateData.template_type || 'TEXT').toUpperCase());
 
         const derivedHeaderType = headerFormat || 'NONE'; // "IMAGE" | "VIDEO" | "DOCUMENT" | "TEXT" | "NONE"
 
@@ -233,7 +261,9 @@ export const TemplateView = () => {
             if (!headerComp) return '';
             const MEDIA_TYPES = ['IMAGE', 'VIDEO', 'DOCUMENT'];
             if (MEDIA_TYPES.includes(headerFormat)) {
-                return (headerComp.media_url || headerComp.text_content || '');
+                // Prefer Cloudinary URL for real image preview; fall back to media_handle so
+                // the preview panel shows the "Gallery Media" placeholder for gallery-backed assets.
+                return (headerComp.media_url || headerComp.media_handle || headerComp.text_content || '');
             }
             return (headerComp.text_content || '');
         })();
@@ -246,31 +276,59 @@ export const TemplateView = () => {
             status: selectedTemplateData.status,
             headerType: derivedHeaderType as HeaderType,
             headerValue: derivedHeaderValue,
-            headerMediaAssetId: selectedTemplateData.media_asset_id || undefined,
-            headerMediaHandle: selectedTemplateData.media_handle || undefined,
+            headerMediaAssetId: selectedTemplateData.media_asset_id || headerComp?.media_asset_id || undefined,
+            headerMediaHandle: selectedTemplateData.media_handle || headerComp?.media_handle || undefined,
+            updated_at: selectedTemplateData.updated_at || undefined,
+            last_edited_at: selectedTemplateData.last_edited_at ?? null,
+            edit_period_start: selectedTemplateData.edit_period_start ?? null,
+            edit_count_30d: selectedTemplateData.edit_count_30d ?? 0,
 
             // Handle Content (Body)
-            content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),
+            content: (
+                selectedTemplateData.components.find((c: any) =>
+                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
+                )?.text_content ||
+                selectedTemplateData.components.find((c: any) =>
+                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
+                )?.text ||
+                ''
+            ),
 
             // Handle Footer
-            footer: (selectedTemplateData.components.find((c: any) => c.component_type === "footer")?.text_content || ''),
-            previous_content: (selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text_content || selectedTemplateData.components.find((c: any) => c.component_type === "body")?.text || ''),
+            footer: (
+                selectedTemplateData.components.find((c: any) =>
+                    c.component_type?.toLowerCase() === "footer" || c.type?.toLowerCase() === "footer"
+                )?.text_content || ''
+            ),
+            previous_content: (
+                selectedTemplateData.components.find((c: any) =>
+                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
+                )?.text_content ||
+                selectedTemplateData.components.find((c: any) =>
+                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
+                )?.text ||
+                ''
+            ),
             variables: selectedTemplateData.variables,
 
             // Handle Buttons
             ...((() => {
-                const buttonsComp = selectedTemplateData.components.find((c: any) => c.component_type === "buttons");
-                if (buttonsComp && buttonsComp.text_content) {
+                const buttonsComp = selectedTemplateData.components.find((c: any) =>
+                    c.component_type?.toLowerCase() === "buttons" || c.type?.toLowerCase() === "buttons"
+                );
+                const rawButtons = buttonsComp?.text_content || buttonsComp?.buttons || null;
+
+                if (buttonsComp && rawButtons) {
                     try {
-                        const buttons = typeof buttonsComp.text_content === 'string' ? JSON.parse(buttonsComp.text_content) : buttonsComp.text_content;
-                        const ctaButtons = buttons.filter((b: any) => ['URL', 'PHONE', 'COPY_CODE', 'PHONE_NUMBER', 'CATALOG', 'MPM'].includes(b.type));
+                        const buttons = typeof rawButtons === 'string' ? JSON.parse(rawButtons) : rawButtons;
+                        const ctaButtons = buttons.filter((b: any) => ['URL', 'PHONE', 'COPY_CODE', 'PHONE_NUMBER'].includes(b.type));
                         const quickReplies = buttons.filter((b: any) => b.type === 'QUICK_REPLY').map((b: any) => b.text || b.label);
 
                         // Normalize types
                         const normalizedCTA = ctaButtons.map((b: any) => ({
                             id: generateId(),
                             type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type,
-                            label: b.text || b.label || (b.type === 'CATALOG' ? 'View Catalog' : b.type === 'COPY_CODE' ? 'Copy Code' : 'Button'),
+                            label: b.text || b.label || (b.type === 'COPY_CODE' ? 'Copy Code' : 'Button'),
                             value: (() => {
                                 let val = b.url || b.phone_number || b.example || b.value || (b.type === 'URL' ? b.url : '');
                                 if ((b.type === 'PHONE_NUMBER' || b.type === 'PHONE') && val) {
@@ -341,12 +399,14 @@ export const TemplateView = () => {
 
         return (
             <TemplateFormPage
-                templateId={selectedTemplateData?.template_id}
-                initialData={initialData}
+                key={formKey}
+                templateId={viewMode !== 'create' ? selectedTemplateData?.template_id : undefined}
+                initialData={viewMode === 'create' ? prefillData : initialData}
                 onBack={handleBack}
                 onSave={handleSave}
                 isViewMode={viewMode === 'view'}
                 isSaving={createTemplateLoading || updateTemplateLoading}
+                onDuplicate={handleDuplicate}
             />
         );
     }
@@ -373,7 +433,7 @@ export const TemplateView = () => {
             {/* Preview Modal */}
             {previewTemplate && (
                 <TemplatePreviewModal
-                    template={templateDataById?.data || previewTemplate}
+                    template={previewTemplateDataById?.data || previewTemplate}
                     isDarkMode={isDarkMode}
                     onClose={handleClosePreview}
                 />

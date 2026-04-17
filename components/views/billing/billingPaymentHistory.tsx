@@ -7,7 +7,7 @@ import {
     XCircle, Clock, ArrowUpRight, FileDown, Search, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useGetPaymentHistoryQuery } from "@/hooks/useBillingQuery";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface BillingPaymentHistoryProps {
     isDarkMode: boolean;

@@ -1,6 +1,6 @@
 import { campaignService } from "@/services/campaign/campaign.service";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export const useSoftDeleteCampaignMutation = () => {
     const queryClient = useQueryClient();

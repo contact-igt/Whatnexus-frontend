@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useTemplates } from '@/hooks/useTemplates';
 import { useSyncAllTemplateMutation } from '@/hooks/useTemplateQuery';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 export interface ProcessedTemplate {
     id: string;

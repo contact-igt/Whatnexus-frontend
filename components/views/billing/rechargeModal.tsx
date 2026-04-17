@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCreatePaymentOrderMutation, useVerifyPaymentMutation } from "@/hooks/useBillingQuery";
+import { useCreatePaymentOrderMutation, useGetGstBreakdownQuery, useVerifyPaymentMutation } from "@/hooks/useBillingQuery";
 import { useRazorpay } from "@/hooks/useRazorpay";
-import { Wallet, Loader2, CreditCard, ChevronRight, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import { Wallet, Loader2, CreditCard, ChevronRight, CheckCircle2, ShieldCheck, Sparkles, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,10 +26,37 @@ interface RechargeModalProps {
 
 const PRESET_AMOUNTS = [500, 1000, 2000, 5000];
 
+/** Compute GST breakdown client-side for preview only.
+ *  The authoritative calculation always happens on the backend.
+ *  Formula: base = gross / (1 + rate/100), gst = gross - base (paise-accurate).
+ */
+function computeGstPreview(grossRupees: number, gstRate: number) {
+  if (!grossRupees || grossRupees <= 0) return null;
+  const grossPaise = Math.round(grossRupees * 100);
+  const divisor = 1 + gstRate / 100;
+  const basePaise = Math.round(grossPaise / divisor);
+  const gstPaise = grossPaise - basePaise;
+  return {
+    gross: (grossPaise / 100).toFixed(2),
+    base: (basePaise / 100).toFixed(2),
+    gst: (gstPaise / 100).toFixed(2),
+  };
+}
+
 export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProps) => {
   const [amount, setAmount] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth();
+  const { data: gstRes, refetch: refetchGstBreakdown } = useGetGstBreakdownQuery();
+  const currentGstRate = Number(gstRes?.gst?.current_rate ?? gstRes?.gst?.gst_rate ?? 18);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    refetchGstBreakdown();
+  }, [isOpen, refetchGstBreakdown]);
+
+  // Live GST breakdown preview (client-side estimate only — backend is authoritative)
+  const gstPreview = useMemo(() => computeGstPreview(parseFloat(amount), currentGstRate), [amount, currentGstRate]);
 
   const createOrderMutation = useCreatePaymentOrderMutation();
   const verifyPaymentMutation = useVerifyPaymentMutation();
@@ -77,11 +104,12 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
         order_id: order.id,
         handler: async (response: any) => {
           try {
+            // Do NOT send amount — backend takes it from the server-side pending record
+            // to prevent client-side amount tampering.
             await verifyPaymentMutation.mutateAsync({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              amount: order.amount
             });
             toast.success("Transaction Complete: Credits added to wallet.");
             onClose();
@@ -182,8 +210,41 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
             </div>
           </div>
 
+          {/* GST Breakdown Preview — shown when a valid amount is entered */}
+          <AnimatePresence>
+            {gstPreview && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  "rounded-[20px] border px-5 py-4 space-y-2 overflow-hidden",
+                  isDarkMode ? "bg-white/[0.03] border-white/10" : "bg-emerald-50/60 border-emerald-100"
+                )}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Info size={11} className="text-emerald-500 shrink-0" />
+                  <span className={cn("text-[9px] font-black uppercase tracking-[0.2em]", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                    GST Breakdown ({currentGstRate}% Inclusive)
+                  </span>
+                </div>
+                {[
+                  { label: "You Pay", value: `₹${gstPreview.gross}`, highlight: false },
+                  { label: "Wallet Credited", value: `₹${gstPreview.base}`, highlight: true },
+                  { label: `GST (${currentGstRate}%)`, value: `₹${gstPreview.gst}`, highlight: false },
+                ].map(({ label, value, highlight }) => (
+                  <div key={label} className="flex justify-between items-center">
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>{label}</span>
+                    <span className={cn("text-[11px] font-black tracking-tight", highlight ? "text-emerald-500" : isDarkMode ? "text-white/70" : "text-slate-700")}>{value}</span>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Benefits/Security Grid */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* <div className="grid grid-cols-2 gap-3">
             <div className={cn("p-4 rounded-[20px] border flex flex-col gap-2 transition-all duration-500", isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-100")}>
               <ShieldCheck size={14} className="text-emerald-500" />
               <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>Verified Channel</span>
@@ -192,7 +253,7 @@ export const RechargeModal = ({ isOpen, onClose, isDarkMode }: RechargeModalProp
               <Sparkles size={14} className="text-blue-500" />
               <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-40", isDarkMode ? "text-white" : "text-slate-500")}>Instant Credit</span>
             </div>
-          </div>
+          </div> */}
 
           <button
             onClick={handleRecharge}

@@ -1,6 +1,6 @@
 import { AppointmentApiData, CreateAppointmentDto, UpdateAppointmentStatusDto, UpdateAppointmentDto } from "@/services/appointment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 const appointmentApis = new AppointmentApiData();
 
