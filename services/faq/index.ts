@@ -21,8 +21,8 @@ export interface FaqReviewItem {
 }
 
 export interface SaveFaqReviewData {
-  doctor_answer: string;
-  add_to_kb: boolean;
+  question?: string;
+  doctor_answer?: string;
 }
 
 export interface PublishFaqReviewData {

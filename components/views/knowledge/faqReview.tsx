@@ -210,7 +210,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       return;
     }
     setAnswerErrors((prev) => ({ ...prev, [item.id]: "" }));
-    saveReview({ id: item.id, data: { doctor_answer: answer, add_to_kb: shouldAddToKb } });
+    saveReview({ id: item.id, data: { doctor_answer: answer } });
   };
 
   const handlePublish = (item: any) => {
