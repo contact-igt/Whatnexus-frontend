@@ -10,7 +10,10 @@ interface FaqPendingPreviewProps {
     isDarkMode?: boolean;
 }
 
-const getQuestionText = (question?: string, fallback?: string) => {
+const getQuestionText = (
+    question?: string | null,
+    fallback?: string | null,
+) => {
     const resolved = String(question || fallback || "").trim();
     return resolved || "Untitled FAQ question";
 };
