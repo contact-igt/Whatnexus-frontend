@@ -82,6 +82,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // ── Upload ──────────────────────────────────────────────────────────────────
   const [uploading, setUploading] = useState(false);
@@ -235,13 +236,20 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   const deleteAsset = async (assetId: string) => {
     try {
       await deleteMediaAsset(assetId, tenantId);
-      toast.success("Asset deleted.");
-      await loadMediaAssets();
+
       if (selectedAsset?.media_asset_id === assetId || String(selectedAsset?.id) === assetId) {
         setSelectedAsset(null);
       }
+      if (previewAsset?.media_asset_id === assetId || String(previewAsset?.id) === assetId) {
+        closeDrawer();
+      }
+
+      toast.success("Asset deleted.");
+
+      void loadMediaAssets();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Delete failed.");
+      throw e;
     }
   };
 
@@ -252,8 +260,13 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
 
   const confirmDelete = async () => {
     if (!confirmId) return;
-    await deleteAsset(confirmId);
-    setConfirmId(null);
+    setDeleting(true);
+    try {
+      await deleteAsset(confirmId);
+      setConfirmId(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const triggerUploadDialog = useCallback((event?: React.SyntheticEvent) => {
@@ -616,13 +629,17 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
       />
       <ConfirmationModal
         isOpen={!!confirmId}
-        onClose={() => setConfirmId(null)}
+        onClose={() => {
+          if (deleting) return;
+          setConfirmId(null);
+        }}
         onConfirm={confirmDelete}
         title="Delete Media Asset"
-        message="Are you sure you want to delete this asset? This action cannot be undone."
-        confirmText="Delete"
+        message="Are you sure you want to move this asset to trash? You can restore it later from the deleted tab."
+        confirmText="Move to Trash"
         variant="danger"
         isDarkMode={isDarkMode}
+        isLoading={deleting}
       />
     </>
     , document.body

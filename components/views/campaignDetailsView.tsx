@@ -23,7 +23,27 @@ interface CampaignDetailsViewProps {
     campaignId: string;
 }
 
-const getDeliveryUpdateMeta = (sentCount: number, deliveredCount: number, readCount: number, isDarkMode: boolean) => {
+const getRefreshStatusMeta = (
+    sentCount: number,
+    deliveredCount: number,
+    readCount: number,
+    failedCount: number,
+    failedErrorMessage: string | null,
+    isDarkMode: boolean
+) => {
+    if (failedCount > 0) {
+        return {
+            icon: <AlertTriangle size={13} strokeWidth={2.4} />,
+            label: `${failedCount.toLocaleString()} ${failedCount === 1 ? 'message failed' : 'messages failed'}`,
+            note: failedErrorMessage || 'Latest refresh detected delivery errors',
+            tone: isDarkMode
+                ? 'border-red-400/25 bg-red-500/12 text-red-300'
+                : 'border-red-200 bg-red-50 text-red-700',
+            noteTone: isDarkMode ? 'text-red-200/80' : 'text-red-600',
+            iconWrapTone: isDarkMode ? 'bg-red-500/15' : 'bg-red-100',
+        };
+    }
+
     if (readCount > 0) {
         return {
             icon: <CheckCheck size={13} strokeWidth={2.4} />,
@@ -32,6 +52,8 @@ const getDeliveryUpdateMeta = (sentCount: number, deliveredCount: number, readCo
             tone: isDarkMode
                 ? 'border-cyan-400/20 bg-cyan-500/10 text-cyan-300'
                 : 'border-cyan-200 bg-cyan-50 text-cyan-700',
+            noteTone: isDarkMode ? 'text-white/55' : 'text-slate-500',
+            iconWrapTone: isDarkMode ? 'bg-white/10' : 'bg-black/10',
         };
     }
 
@@ -43,6 +65,8 @@ const getDeliveryUpdateMeta = (sentCount: number, deliveredCount: number, readCo
             tone: isDarkMode
                 ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300'
                 : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+            noteTone: isDarkMode ? 'text-white/55' : 'text-slate-500',
+            iconWrapTone: isDarkMode ? 'bg-white/10' : 'bg-black/10',
         };
     }
 
@@ -54,6 +78,8 @@ const getDeliveryUpdateMeta = (sentCount: number, deliveredCount: number, readCo
             tone: isDarkMode
                 ? 'border-amber-400/20 bg-amber-500/10 text-amber-300'
                 : 'border-amber-200 bg-amber-50 text-amber-700',
+            noteTone: isDarkMode ? 'text-white/55' : 'text-slate-500',
+            iconWrapTone: isDarkMode ? 'bg-white/10' : 'bg-black/10',
         };
     }
 
@@ -70,7 +96,17 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
     const sentCount = stats?.total_sent ?? recipients.filter((recipient) => ['sent', 'delivered', 'read'].includes(recipient.status)).length;
     const deliveredCount = stats?.total_delivered ?? statistics?.delivered_count ?? recipients.filter((recipient) => ['delivered', 'read'].includes(recipient.status)).length;
     const readCount = stats?.total_opened ?? statistics?.read_count ?? recipients.filter((recipient) => recipient.status === 'read').length;
-    const deliveryUpdate = getDeliveryUpdateMeta(sentCount, deliveredCount, readCount, isDarkMode);
+    const failedRecipients = recipients.filter((recipient) => recipient.status === 'failed');
+    const failedCount = failedRecipients.length;
+    const failedErrorMessage = failedRecipients.find((recipient) => recipient.error_message?.trim())?.error_message?.trim() || null;
+    const refreshStatus = getRefreshStatusMeta(
+        sentCount,
+        deliveredCount,
+        readCount,
+        failedCount,
+        failedErrorMessage,
+        isDarkMode
+    );
 
     const handleExecuteCampaign = async () => {
         if (!campaign || !canExecuteCampaign(campaign.status)) return;
@@ -195,19 +231,19 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                         )}
                     </div>
 
-                    {deliveryUpdate && (
+                    {refreshStatus && (
                         <div className={cn(
                             'flex items-center gap-3 rounded-2xl border px-3.5 py-2 shadow-sm backdrop-blur-sm transition-all',
                             'delivery-update-indicator',
-                            deliveryUpdate.tone
+                            refreshStatus.tone
                         )}>
-                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-black/10 dark:bg-white/10 shrink-0">
-                                {deliveryUpdate.icon}
+                            <div className={cn('flex items-center justify-center w-6 h-6 rounded-full shrink-0', refreshStatus.iconWrapTone)}>
+                                {refreshStatus.icon}
                             </div>
                             <div className="flex flex-col leading-tight">
-                                <span className="text-[11px] font-semibold">{deliveryUpdate.label}</span>
-                                <span className={cn('text-[10px]', isDarkMode ? 'text-white/55' : 'text-slate-500')}>
-                                    {deliveryUpdate.note}
+                                <span className="text-[11px] font-semibold">{refreshStatus.label}</span>
+                                <span className={cn('text-[10px] line-clamp-2', refreshStatus.noteTone)}>
+                                    {refreshStatus.note}
                                 </span>
                             </div>
                         </div>

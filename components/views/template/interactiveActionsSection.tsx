@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { InteractiveActionType, CTAButton, CTAType } from './templateTypes';
-import { generateId } from './templateUtils';
+import { generateId, splitPhoneCTAValue } from './templateUtils';
 
 interface InteractiveActionsSectionProps {
     isDarkMode: boolean;
@@ -122,6 +122,8 @@ export const InteractiveActionsSection = ({
         : ['None', 'CTA', 'QuickReplies', 'All'];
 
     const renderCTAButtonFields = (button: CTAButton, index: number) => {
+        const parsedPhoneValue = button.type === 'PHONE' ? splitPhoneCTAValue(button.value) : null;
+
         // ─── Standard Buttons (URL, PHONE, COPY_CODE) ────────────────────────
         return (
             <div key={button.id} className={cn(
@@ -160,10 +162,9 @@ export const InteractiveActionsSection = ({
                                 <Select
                                     isDarkMode={isDarkMode}
                                     label="Code"
-                                    value={button.value.split(' ')[0] || '+91'}
+                                    value={parsedPhoneValue?.countryCode || '+91'}
                                     onChange={(val: string) => {
-                                        const parts = button.value.split(' ');
-                                        const num = parts.slice(1).join(' ');
+                                        const num = parsedPhoneValue?.phoneNumber || '';
                                         updateCTAButton(button.id, 'value', `${val} ${num}`);
                                     }}
                                     options={COUNTRY_CODES}
@@ -175,10 +176,9 @@ export const InteractiveActionsSection = ({
                                     isDarkMode={isDarkMode}
                                     label="Mobile Number"
                                     type="text"
-                                    value={button.value.split(' ').slice(1).join(' ') || ''}
+                                    value={parsedPhoneValue?.phoneNumber || ''}
                                     onChange={(e) => {
-                                        const parts = button.value.split(' ');
-                                        const cc = parts[0] || '';
+                                        const cc = parsedPhoneValue?.countryCode || '+91';
                                         updateCTAButton(button.id, 'value', `${cc} ${e.target.value}`);
                                     }}
                                     placeholder="e.g. 9876543210"

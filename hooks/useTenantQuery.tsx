@@ -108,6 +108,7 @@ export const useDeleteTenantMutation = () => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
             queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
             queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-tenants'] });
             toast.success(response?.data?.message || response?.message || 'Organization deleted successfully');
         },
         onError: (error: any) => {
@@ -118,11 +119,13 @@ export const useDeleteTenantMutation = () => {
 
 
 export const useResendInvitationMutation = () => {
+    const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (tenantUserId: string) => {
             return TenantApis.resendInvitation(tenantUserId);
         },
         onSuccess: (response: any) => {
+            queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
             toast.success(response?.data?.message || response?.message || 'Invitation resent successfully');
         },
         onError: (error: any) => {
@@ -142,6 +145,7 @@ export const usePermanentDeleteTenantMutation = () => {
             queryClient.invalidateQueries({ queryKey: ['tenants'] });
             queryClient.invalidateQueries({ queryKey: ['onboarded-tenants'] });
             queryClient.invalidateQueries({ queryKey: ['tenant-invitations'] });
+            queryClient.invalidateQueries({ queryKey: ['deleted-tenants'] });
             toast.success(response?.data?.message || response?.message || 'Organization deleted successfully');
         },
         onError: (error: any) => {

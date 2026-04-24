@@ -168,8 +168,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             setFormData(prev => ({
                 ...prev,
                 header_media_url: result.url,
-                media_handle: null,
-                media_asset_id: null
+                media_handle: result.media_handle || null,
+                media_asset_id: result.media_asset_id || null
             }));
             setSelectedGalleryHeaderAsset(null);
         } catch (err: any) {
@@ -323,7 +323,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
             case 2: // Template
                 if (!formData.template_id.trim()) {
-                    setError('Template ID is required');
+                    setError('Template is required');
                     return false;
                 }
 
@@ -1275,12 +1275,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 )}
                             </div>
 
-                            {/* Error Display */}
-                            {error && currentStep === 2 && (
-                                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                                    <p className="text-red-500 text-sm">{error}</p>
-                                </div>
-                            )}
+
                         </div>
                     )}
 

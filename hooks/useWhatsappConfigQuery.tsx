@@ -98,6 +98,23 @@ export const useSendTestWhatsAppConfigQuery = () => {
     })
 }
 
+export const useUpdateWhatsappAccountMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { waba_id?: string; phone_number_id?: string; whatsapp_number?: string; app_id?: string; access_token?: string }) => {
+            return whatsappConfigApis.updateWhatsappAccount(data);
+        },
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] });
+            toast.success(response?.data?.message || response?.message || 'WhatsApp account updated successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || 'Failed to update WhatsApp account');
+        },
+    });
+};
+
 export const useUpdateAccessTokenMutation = () => {
     const queryClient = useQueryClient();
 

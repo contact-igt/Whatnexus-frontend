@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Eye, EyeOff, Loader2, CheckCircle2, Shield, Phone, MessageCircle, Key, Edit, XCircle, Trash2, Building2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Shield, Phone, MessageCircle, Key, Edit, XCircle, Building2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
@@ -12,7 +12,7 @@ interface WhatsAppConnectionListProps {
     handleEditClick: (connection: any) => void;
     WhatsAppConnectionData: any;
     onTestConnection: () => void;
-    onSaveConfiguration: (connection: any) => void;
+    onSaveConfiguration: (fields: { waba_id: string; phone_number_id: string; whatsapp_number: string; app_id: string; access_token: string }) => void;
     testConnectionSuccess: boolean;
     isWebhookVerified: boolean;
     isAdmin: boolean;
@@ -31,49 +31,55 @@ export const WhatsappConnectionList = ({
     isAdmin
 }: WhatsAppConnectionListProps) => {
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [showAccessToken, setShowAccessToken] = useState<Record<string, boolean>>({});
-    const [editedTokens, setEditedTokens] = useState<Record<string, string>>({});
-    const [editedAppIds, setEditedAppIds] = useState<Record<string, string>>({});
+    const [editedFields, setEditedFields] = useState<Record<string, { waba_id: string; phone_number_id: string; whatsapp_number: string; app_id: string; access_token: string }>>({});
+
     const isEditing = editingId === WhatsAppConnectionData.data.id;
     const isActive = WhatsAppConnectionData.data.status === "active";
-    // Toggle is disabled if:
-    // 1. Status is not one of the valid ones
-    // 2. We're trying to activate (not currently active) BUT haven't tested successfully or verified webhook
-    const isToggleDisabled = 
+
+    const isToggleDisabled =
         !isAdmin ||
         !["verified", "active", "inactive"].includes(WhatsAppConnectionData.data.status) ||
         (!isActive && (!testConnectionSuccess || !isWebhookVerified));
-    const toggleAccessTokenVisibility = (id: string) => {
-        setShowAccessToken(prev => ({ ...prev, [id]: !prev[id] }));
-    };
 
     const handleEditMode = (connection: any) => {
         setEditingId(connection.id);
-        setEditedTokens(prev => ({ ...prev, [connection.id]: connection.access_token }));
-        setEditedAppIds(prev => ({ ...prev, [connection.id]: connection.app_id || '' }));
+        setEditedFields(prev => ({
+            ...prev,
+            [connection.id]: {
+                waba_id: connection.waba_id || '',
+                phone_number_id: connection.phone_number_id || '',
+                whatsapp_number: connection.whatsapp_number || '',
+                app_id: connection.app_id || '',
+                access_token: '', // always start empty — user enters new token to replace
+            }
+        }));
     };
 
     const handleCancelEdit = (id: string) => {
         setEditingId(null);
-        setEditedTokens(prev => {
-            const newTokens = { ...prev };
-            delete newTokens[id];
-            return newTokens;
-        });
-        setEditedAppIds(prev => {
-            const newAppIds = { ...prev };
-            delete newAppIds[id];
-            return newAppIds;
+        setEditedFields(prev => {
+            const updated = { ...prev };
+            delete updated[id];
+            return updated;
         });
     };
 
+    const handleFieldChange = (id: string, field: string, value: string) => {
+        setEditedFields(prev => ({
+            ...prev,
+            [id]: { ...prev[id], [field]: value }
+        }));
+    };
+
     const handleSave = (connection: any) => {
-        const updatedConnection = {
-            ...connection,
-            access_token: editedTokens[connection.id] || connection.access_token,
-            app_id: editedAppIds[connection.id] !== undefined ? editedAppIds[connection.id] : connection.app_id
-        };
-        onSaveConfiguration(updatedConnection);
+        const fields = editedFields[connection.id];
+        onSaveConfiguration({
+            waba_id: fields.waba_id,
+            phone_number_id: fields.phone_number_id,
+            whatsapp_number: fields.whatsapp_number,
+            app_id: fields.app_id,
+            access_token: fields.access_token,
+        });
         setEditingId(null);
     };
 
@@ -89,6 +95,8 @@ export const WhatsappConnectionList = ({
             </div>
         );
     }
+
+    const fields = editedFields[WhatsAppConnectionData.data.id];
 
     return (
         <div className="space-y-6">
@@ -153,8 +161,9 @@ export const WhatsappConnectionList = ({
                         isDarkMode={isDarkMode}
                         label="WhatsApp Business Account ID"
                         icon={Shield}
-                        value={WhatsAppConnectionData.data.waba_id || ''}
-                        disabled
+                        value={isEditing ? (fields?.waba_id ?? '') : (WhatsAppConnectionData.data.waba_id || '')}
+                        onChange={(e) => isEditing && handleFieldChange(WhatsAppConnectionData.data.id, 'waba_id', e.target.value)}
+                        disabled={!isEditing}
                         placeholder="WABA ID"
                     />
 
@@ -162,8 +171,9 @@ export const WhatsappConnectionList = ({
                         isDarkMode={isDarkMode}
                         label="Phone Number ID"
                         icon={Phone}
-                        value={WhatsAppConnectionData.data.phone_number_id || ''}
-                        disabled
+                        value={isEditing ? (fields?.phone_number_id ?? '') : (WhatsAppConnectionData.data.phone_number_id || '')}
+                        onChange={(e) => isEditing && handleFieldChange(WhatsAppConnectionData.data.id, 'phone_number_id', e.target.value)}
+                        disabled={!isEditing}
                         placeholder="Phone Number ID"
                     />
 
@@ -172,8 +182,9 @@ export const WhatsappConnectionList = ({
                             isDarkMode={isDarkMode}
                             label="WhatsApp Number"
                             icon={MessageCircle}
-                            value={WhatsAppConnectionData.data.whatsapp_number || ''}
-                            disabled
+                            value={isEditing ? (fields?.whatsapp_number ?? '') : (WhatsAppConnectionData.data.whatsapp_number || '')}
+                            onChange={(e) => isEditing && handleFieldChange(WhatsAppConnectionData.data.id, 'whatsapp_number', e.target.value)}
+                            disabled={!isEditing}
                             placeholder="WhatsApp Number"
                         />
                     </div>
@@ -183,44 +194,33 @@ export const WhatsappConnectionList = ({
                             isDarkMode={isDarkMode}
                             label="Meta App ID"
                             icon={Building2}
-                            value={isEditing ? (editedAppIds[WhatsAppConnectionData.data.id] || '') : (WhatsAppConnectionData.data.app_id || '')}
-                            onChange={(e) => {
-                                if (isEditing) {
-                                    setEditedAppIds(prev => ({ ...prev, [WhatsAppConnectionData.data.id]: e.target.value }));
-                                }
-                            }}
+                            value={isEditing ? (fields?.app_id ?? '') : (WhatsAppConnectionData.data.app_id || '')}
+                            onChange={(e) => isEditing && handleFieldChange(WhatsAppConnectionData.data.id, 'app_id', e.target.value)}
                             disabled={!isEditing}
                             placeholder="Meta App ID (Optional)"
                         />
                     </div>
 
-                    <div className="md:col-span-2 relative">
+                    <div className="md:col-span-2">
                         <Input
                             isDarkMode={isDarkMode}
                             label="Access Token"
                             icon={Key}
-                            type={showAccessToken[WhatsAppConnectionData.data.id] ? "text" : "password"}
-                            value={isEditing ? (editedTokens[WhatsAppConnectionData.data.id] || '') : (WhatsAppConnectionData.data.access_token || '')}
-                            onChange={(e) => {
-                                if (isEditing) {
-                                    setEditedTokens(prev => ({ ...prev, [WhatsAppConnectionData.data.id]: e.target.value }));
-                                }
-                            }}
+                            type={isEditing ? "password" : "text"}
+                            value={isEditing
+                                ? (fields?.access_token ?? '')
+                                : (WhatsAppConnectionData.data.has_access_token ? '••••••••••••••••••••' : '')
+                            }
+                            onChange={(e) => isEditing && handleFieldChange(WhatsAppConnectionData.data.id, 'access_token', e.target.value)}
                             disabled={!isEditing}
-                            placeholder="Access Token"
+                            placeholder={isEditing ? "Enter new access token (leave empty to keep current)" : "No token configured"}
+                            autoComplete="new-password"
                         />
-                        <button
-                            type="button"
-                            onClick={() => toggleAccessTokenVisibility(WhatsAppConnectionData.data.id)}
-                            className={cn(
-                                "absolute right-3 top-8 p-1.5 rounded-lg transition-colors",
-                                isDarkMode
-                                    ? "hover:bg-white/10 text-white/60 hover:text-white"
-                                    : "hover:bg-slate-100 text-slate-600 hover:text-slate-900"
-                            )}
-                        >
-                            {showAccessToken[WhatsAppConnectionData.data.id] ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
+                        {isEditing && (
+                            <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                Leave empty to keep current token. Enter a new token to replace it.
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -268,18 +268,6 @@ export const WhatsappConnectionList = ({
                             </>
                         ) : (
                             <>
-                                {/* <button
-                                    onClick={() => handleDeleteClick(WhatsAppConnectionData.data.id)}
-                                    className={cn(
-                                        "flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border",
-                                        isDarkMode
-                                            ? "bg-red-600/10 border-red-500/20 text-red-400 hover:bg-red-600/20"
-                                            : "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-                                    )}
-                                >
-                                    <Trash2 size={16} />
-                                    <span>Delete</span>
-                                </button> */}
                                 {isAdmin && (
                                     <button
                                         onClick={() => handleEditMode(WhatsAppConnectionData.data)}

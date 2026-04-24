@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useGetWhatsappConfigQuery, useSaveWhatsAppConfigMutation, useStatusWhatsAppConfigQuery, useTestWhatsAppConfigQuery, useUpdateAccessTokenMutation } from '@/hooks/useWhatsappConfigQuery';
+import { useGetWhatsappConfigQuery, useSaveWhatsAppConfigMutation, useStatusWhatsAppConfigQuery, useTestWhatsAppConfigQuery, useUpdateAccessTokenMutation, useUpdateWhatsappAccountMutation } from '@/hooks/useWhatsappConfigQuery';
 import { WhatsappConnectionList } from './whatsappConnectionList';
 import { TestMessageCard } from './testMessageCard';
 import { MetaVerificationCard } from './metaVerificationCard';
@@ -79,6 +79,7 @@ export const WhatsAppConnectionView = () => {
     const { mutate: testWhatsConfigMutate, isPending: isTestLoading } = useTestWhatsAppConfigQuery();
     const { mutate: updateWhatsappConfigMutate, isPending: isUpdateLoading } = useStatusWhatsAppConfigQuery();
     const { mutate: updateAccessTokenMutate, isPending: isTokenUpdateLoading } = useUpdateAccessTokenMutation();
+    const { mutate: updateWhatsappAccountMutate, isPending: isAccountUpdateLoading } = useUpdateWhatsappAccountMutation();
     const { isDarkMode } = useTheme();
 
     const [organization, setOrganization] = useState<Organization | null>(null);
@@ -133,12 +134,18 @@ export const WhatsAppConnectionView = () => {
         console.log('Edit clicked for connection:', connection.id);
     };
 
-    const handleSaveEdit = (connection: any) => {
-        if (!connection.access_token || connection.access_token.length < 50) {
+    const handleSaveEdit = (fields: { waba_id: string; phone_number_id: string; whatsapp_number: string; app_id: string; access_token: string }) => {
+        if (fields.access_token && fields.access_token.length < 50) {
             toast.error('Access token is too short. Please enter a valid token.');
             return;
         }
-        updateAccessTokenMutate({ access_token: connection.access_token });
+        const payload: Record<string, string> = {};
+        if (fields.waba_id) payload.waba_id = fields.waba_id;
+        if (fields.phone_number_id) payload.phone_number_id = fields.phone_number_id;
+        if (fields.whatsapp_number) payload.whatsapp_number = fields.whatsapp_number;
+        if (fields.app_id !== undefined) payload.app_id = fields.app_id;
+        if (fields.access_token) payload.access_token = fields.access_token;
+        updateWhatsappAccountMutate(payload);
     };
 
     const getStatusColor = () => {

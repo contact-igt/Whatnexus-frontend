@@ -27,6 +27,10 @@ export class whatsappConfigApiData {
         return await _axios("post", `/whatsapp/whatsapp-account/activate`)
     }
 
+    updateWhatsappAccount = async (data: { waba_id?: string; phone_number_id?: string; whatsapp_number?: string; app_id?: string; access_token?: string }) => {
+        return await _axios("put", `/whatsapp/whatsapp-account`, data);
+    }
+
     updateAccessToken = async (data: { access_token: string }) => {
         return await _axios("put", `/whatsapp/whatsapp-account/token`, data);
     }

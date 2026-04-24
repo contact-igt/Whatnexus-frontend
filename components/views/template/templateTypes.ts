@@ -49,6 +49,7 @@ export interface Template {
     components?: any[];
     media_asset_id?: string;
     media_handle?: string;
+    rejection_reason?: string | null;
     created_at: string;
     updated_at?: string;
     last_edited_at?: string | null;   // timestamp of last successful Meta edit
@@ -76,6 +77,7 @@ export interface TemplateFormData {
     headerMediaHandle?: string;
     headerMediaFileName?: string;
     status?: TemplateStatus; // Passed in edit mode to enforce Meta edit limitations
+    rejection_reason?: string | null; // Meta rejection reason, populated when status is 'rejected'
     updated_at?: string;
     last_edited_at?: string | null;    // for 24h cooldown
     edit_period_start?: string | null; // for 30-day window

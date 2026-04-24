@@ -97,6 +97,17 @@ export const validateCSVData = (
             return;
         }
 
+        // Check if CSV row has more variable columns than the template expects
+        const actualVariableCount = row.length - 2; // subtract country_code and mobile_number columns
+        if (templateVariableCount > 0 && actualVariableCount > templateVariableCount) {
+            errors.push({
+                field: `Row ${rowNumber}`,
+                message: `Too many variables: CSV has ${actualVariableCount} but template expects ${templateVariableCount}`,
+            });
+            invalidRows.push(rowNumber);
+            return;
+        }
+
         // Check for empty variables
         const hasEmptyVariables = dynamicVariables.some((v) => !v || !v.trim());
         if (hasEmptyVariables) {

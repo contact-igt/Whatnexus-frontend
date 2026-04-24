@@ -40,7 +40,7 @@ export class templateApiData {
     getDeletedTemplates = async () => {
         return await _axios("get", "/whatsapp/whatsapp-templates/deleted/list")
     }
-    uploadMedia = async (file: File, type: 'image' | 'video' | 'document'): Promise<{ url: string }> => {
+    uploadMedia = async (file: File, type: 'image' | 'video' | 'document'): Promise<{ url: string; media_handle?: string; media_asset_id?: string }> => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('type', type === 'document' ? 'raw' : type);

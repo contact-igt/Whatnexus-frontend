@@ -138,7 +138,7 @@ export function getStatusColor(status: TemplateStatus, isDarkMode: boolean): str
         approved: isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-100 text-emerald-600',
         rejected: isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-600',
         paused: isDarkMode ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-100 text-orange-600',
-        deleted: isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-100 text-gray-600',
+        deleted: isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-600',
     };
     return colors[status] || colors.draft;
 }
@@ -511,4 +511,124 @@ export function validateContentLanguageMatch(content: string, language: string):
     const result = validateLanguageMatch(language, content);
     console.log('[LanguageValidation] validateContentLanguageMatch:', { language, contentSnippet: content?.substring(0, 60), valid: result.valid, message: result.message });
     return result.valid ? null : (result.message ?? null);
+}
+
+const VARIABLE_CONTEXT_SUGGESTIONS: Array<{ pattern: RegExp; placeholder: string }> = [
+    // Percentage / discount — check before generic patterns (% symbol is a strong signal)
+    { pattern: /(%\s*(off|discount)?|(?:discount|percent|offer|rate)\s*(of)?)\s*$/i, placeholder: '20' },
+    { pattern: /\b(discount|percent|percentage|offer)\b/i, placeholder: '20' },
+    // Name / person
+    { pattern: /\b(name|patient|customer|client|recipient|person)\b/i, placeholder: 'John Doe' },
+    // Doctor / medical staff
+    { pattern: /\b(doctor|dr\.?|surgeon|provider|consultant)\b/i, placeholder: 'Dr. Sharma' },
+    // Product / plan
+    { pattern: /\b(product|plan|service|package|treatment|procedure)\b/i, placeholder: 'Premium Package' },
+    // Location / clinic
+    { pattern: /\b(hospital|clinic|center|centre|branch|location)\b/i, placeholder: 'City Care Clinic' },
+    // Date — "until", "valid", "expires" are strong date signals; check before time
+    { pattern: /\b(until|valid|expire|expiry|expires|deadline|due)\b/i, placeholder: '30 June 2025' },
+    { pattern: /\b(date|day|schedule|scheduled|appointment)\b/i, placeholder: '19 June 2025' },
+    // Time — use negative lookbehind to avoid matching "limited-time", "real-time", etc.
+    { pattern: /(?<![-\w])\b(time slot|time|slot|timing|hour)\b/i, placeholder: '10:30 AM' },
+    // Contact
+    { pattern: /\b(phone|mobile|contact|number|whatsapp)\b/i, placeholder: '+91 9876543210' },
+    { pattern: /\b(email|mail)\b/i, placeholder: 'john@example.com' },
+    // Auth codes
+    { pattern: /\b(code|otp|pin|verification)\b/i, placeholder: '123456' },
+    // Reference IDs
+    { pattern: /\b(order|booking|reference|ref|id|token)\b/i, placeholder: 'REF-2026-001' },
+    // Amounts
+    { pattern: /\b(amount|price|fee|total|bill|payment|cost)\b/i, placeholder: 'Rs. 1,500' },
+    // Links
+    { pattern: /\b(link|url|website)\b/i, placeholder: 'https://example.com' },
+];
+
+const DEFAULT_VARIABLE_PLACEHOLDERS = [
+    'John Doe',
+    'Premium Package',
+    '19 June 2025',
+    '10:30 AM',
+    'REF-2026-001',
+    'City Care Clinic',
+];
+
+export function suggestVariablePlaceholder(sourceText: string, variableKey: string): string {
+    if (!sourceText || !variableKey) {
+        return `Example for {{${variableKey}}}`;
+    }
+
+    const escapedKey = variableKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tokenRegex = new RegExp(`(.{0,50})\\{\\{${escapedKey}\\}\\}(.{0,50})`, 'i');
+    const match = sourceText.match(tokenRegex);
+    const prefix = (match?.[1] || '').trim();
+    const suffix = (match?.[2] || '').trim();
+
+    // Check suffix first for symbol-based signals (e.g. "% off" immediately after variable)
+    if (/^%/.test(suffix)) {
+        return '20';
+    }
+
+    // Build combined context for keyword matching
+    const context = `${prefix} ${suffix}`.replace(/\s+/g, ' ').trim();
+
+    for (const suggestion of VARIABLE_CONTEXT_SUGGESTIONS) {
+        if (suggestion.pattern.test(context)) {
+            return suggestion.placeholder;
+        }
+    }
+
+    const numericIndex = /^\d+$/.test(variableKey) ? parseInt(variableKey, 10) - 1 : -1;
+    if (numericIndex >= 0 && numericIndex < DEFAULT_VARIABLE_PLACEHOLDERS.length) {
+        return DEFAULT_VARIABLE_PLACEHOLDERS[numericIndex];
+    }
+
+    return `Example for {{${variableKey}}}`;
+}
+
+const KNOWN_PHONE_COUNTRY_CODES = [
+    '+971', '+966', '+880', '+234', '+91', '+44', '+65', '+61', '+92', '+62', '+60', '+63', '+84', '+27', '+20', '+55', '+52', '+33', '+49', '+39', '+34', '+86', '+81', '+82', '+7', '+1'
+].sort((a, b) => b.length - a.length);
+
+export function normalizePhoneCTAValue(value?: string | null): string {
+    if (!value) return '';
+
+    const compactValue = value.replace(/\s+/g, ' ').trim();
+    if (!compactValue) return '';
+
+    if (compactValue.includes(' ')) {
+        // Ensure country-code part always starts with '+'
+        return compactValue.startsWith('+') ? compactValue : '+' + compactValue;
+    }
+
+    if (!compactValue.startsWith('+')) {
+        // Try to split by known codes after prepending '+', else return as-is
+        const withPlus = '+' + compactValue;
+        const matched = KNOWN_PHONE_COUNTRY_CODES.find((code) => withPlus.startsWith(code));
+        if (matched) {
+            const local = withPlus.slice(matched.length).trim();
+            return local ? `${matched} ${local}` : matched;
+        }
+        return compactValue;
+    }
+
+    const matchedCode = KNOWN_PHONE_COUNTRY_CODES.find((code) => compactValue.startsWith(code));
+    if (!matchedCode) {
+        return compactValue;
+    }
+
+    const localNumber = compactValue.slice(matchedCode.length).trim();
+    return localNumber ? `${matchedCode} ${localNumber}` : matchedCode;
+}
+
+export function splitPhoneCTAValue(value?: string | null): { countryCode: string; phoneNumber: string } {
+    const normalized = normalizePhoneCTAValue(value);
+    if (!normalized) {
+        return { countryCode: '+91', phoneNumber: '' };
+    }
+
+    const [countryCode, ...phoneParts] = normalized.split(' ');
+    return {
+        countryCode: countryCode || '+91',
+        phoneNumber: phoneParts.join(' ').trim(),
+    };
 }

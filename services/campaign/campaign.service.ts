@@ -193,7 +193,7 @@ export class CampaignService {
     uploadMedia = async (
         file: File,
         type: "image" | "video" | "document"
-    ): Promise<{ url: string }> => {
+    ): Promise<{ url: string; media_handle?: string | null; media_asset_id?: string | null }> => {
         try {
             const formData = new FormData();
             formData.append("media", file);

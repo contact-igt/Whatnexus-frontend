@@ -11,7 +11,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Pagination } from '@/components/ui/pagination';
 import { Modal } from '@/components/ui/modal';
 
-type TabType = 'pending' | 'trash';
+type TabType = 'pending' | 'completed' | 'rejected' | 'trash';
 
 export const TenantInvitationsView = () => {
     const { isDarkMode } = useTheme();
@@ -33,9 +33,15 @@ export const TenantInvitationsView = () => {
 
     const pendingInvites = useMemo(() => {
         if (!invitationsData?.data) return [];
-        // Exclude completed, revoked — those tenants have finished onboarding
         return invitationsData.data.filter((inv: any) =>
-            inv.invitation_status !== 'completed' && inv.invitation_status !== 'revoked'
+            inv.invitation_status === 'pending' || inv.invitation_status === 'accepted'
+        );
+    }, [invitationsData]);
+
+    const rejectedInvites = useMemo(() => {
+        if (!invitationsData?.data) return [];
+        return invitationsData.data.filter((inv: any) =>
+            inv.invitation_status === 'revoked' || inv.invitation_status === 'expired'
         );
     }, [invitationsData]);
 
@@ -45,7 +51,7 @@ export const TenantInvitationsView = () => {
         return deletedData.data.filter((tenant: any) => tenant.tenant_status === 'invited');
     }, [deletedData]);
 
-    const displayData = activeTab === 'pending' ? pendingInvites : deletedInvites;
+    const displayData = activeTab === 'pending' ? pendingInvites : activeTab === 'rejected' ? rejectedInvites : deletedInvites;
 
     const filteredData = useMemo(() => {
         return displayData.filter((invite: any) =>
@@ -105,7 +111,7 @@ export const TenantInvitationsView = () => {
         }
     };
 
-    const isLoading = activeTab === 'pending' ? isInvitationsLoading : isDeletedLoading;
+    const isLoading = activeTab === 'pending' || activeTab === 'rejected' ? isInvitationsLoading : isDeletedLoading;
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -113,7 +119,19 @@ export const TenantInvitationsView = () => {
             case 'pending': return <Clock size={14} className="text-amber-500" />;
             case 'accepted': return <CheckCircle size={14} className="text-blue-400" />;
             case 'expired': return <XCircle size={14} className="text-red-500" />;
+            case 'revoked': return <XCircle size={14} className="text-red-500" />;
             default: return <Clock size={14} className="text-slate-400" />;
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'pending': return 'text-amber-500';
+            case 'accepted': return 'text-blue-400';
+            case 'revoked': return 'text-red-500';
+            case 'expired': return 'text-red-400';
+            case 'completed': return 'text-emerald-500';
+            default: return 'text-slate-500';
         }
     };
 
@@ -136,11 +154,13 @@ export const TenantInvitationsView = () => {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className={cn("text-3xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                            {activeTab === 'pending' ? 'Tenant Invitations' : 'Deleted Invitations'}
+                            {activeTab === 'pending' ? 'Tenant Invitations' : activeTab === 'rejected' ? 'Rejected Invitations' : 'Deleted Invitations'}
                         </h1>
                         <p className={cn("text-sm", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
                             {activeTab === 'pending'
                                 ? 'Track and manage pending invitations for new organizations.'
+                                : activeTab === 'rejected'
+                                ? 'Invitations that were declined or expired. You can resend them.'
                                 : 'List of soft-deleted invitations. You can restore or delete them forever.'}
                         </p>
                     </div>
@@ -161,6 +181,7 @@ export const TenantInvitationsView = () => {
                 <div className={cn("flex space-x-1 border-b", isDarkMode ? 'border-white/5' : 'border-slate-200')}>
                     {[
                         { id: 'pending', label: 'Pending', count: pendingInvites.length },
+                        { id: 'rejected', label: 'Rejected', count: rejectedInvites.length },
                         { id: 'trash', label: 'Trash', count: deletedInvites.length }
                     ].map((tab) => (
                         <button
@@ -201,8 +222,8 @@ export const TenantInvitationsView = () => {
                         <tr>
                             <TableHead align="left" isDarkMode={isDarkMode} width='300px'>Organization</TableHead>
                             <TableHead align="center" isDarkMode={isDarkMode}>Owner Email</TableHead>
-                            <TableHead align="center" isDarkMode={isDarkMode}>{activeTab === 'pending' ? 'Status' : 'Deleted Status'}</TableHead>
-                            <TableHead align="center" isDarkMode={isDarkMode}>{activeTab === 'pending' ? 'Invited At' : 'Deleted At'}</TableHead>
+                            <TableHead align="center" isDarkMode={isDarkMode}>{activeTab === 'trash' ? 'Deleted Status' : 'Status'}</TableHead>
+                            <TableHead align="center" isDarkMode={isDarkMode}>{activeTab === 'trash' ? 'Deleted At' : 'Invited At'}</TableHead>
                             <TableHead align="center" isDarkMode={isDarkMode}>Actions</TableHead>
                         </tr>
                     </TableHeader>
@@ -210,7 +231,7 @@ export const TenantInvitationsView = () => {
                         {currentInvites.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="py-10 text-center text-slate-500">
-                                    {activeTab === 'pending' ? 'No invitations found.' : 'No deleted invitations found.'}
+                                    {activeTab === 'pending' ? 'No invitations found.' : activeTab === 'rejected' ? 'No rejected invitations found.' : 'No deleted invitations found.'}
                                 </td>
                             </tr>
                         ) : (
@@ -233,18 +254,7 @@ export const TenantInvitationsView = () => {
                                     </TableCell>
                                     <TableCell align="center">{invite.owner_email}</TableCell>
                                     <TableCell align="center">
-                                        {activeTab === 'pending' ? (
-                                            <div className="flex items-center justify-center space-x-2">
-                                                {getStatusIcon(invite.invitation_status)}
-                                                <span className={cn(
-                                                    "text-xs font-semibold capitalize",
-                                                    invite.invitation_status === 'completed' ? 'text-emerald-500' :
-                                                        invite.invitation_status === 'pending' ? 'text-amber-500' : 'text-slate-500'
-                                                )}>
-                                                    {invite.invitation_status}
-                                                </span>
-                                            </div>
-                                        ) : (
+                                        {activeTab === 'trash' ? (
                                             <div className="flex flex-col items-center">
                                                 <span className="text-[10px] font-bold uppercase text-red-500/50">Deleted Invitation</span>
                                                 <span className={cn(
@@ -254,28 +264,22 @@ export const TenantInvitationsView = () => {
                                                     Pending Onboarding
                                                 </span>
                                             </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center space-x-2">
+                                                {getStatusIcon(invite.invitation_status)}
+                                                <span className={cn("text-xs font-semibold capitalize", getStatusColor(invite.invitation_status))}>
+                                                    {invite.invitation_status === 'revoked' ? 'Declined' : invite.invitation_status}
+                                                </span>
+                                            </div>
                                         )}
                                     </TableCell>
                                     <TableCell align="center">
                                         <span className="text-sm">
-                                            {activeTab === 'pending' ? formatDate(invite.invited_at) : formatDate(invite.deleted_at)}
+                                            {activeTab === 'trash' ? formatDate(invite.deleted_at) : formatDate(invite.invited_at)}
                                         </span>
                                     </TableCell>
                                     <TableCell align="center">
-                                        {activeTab === 'pending' ? (
-                                            <button
-                                                onClick={() => resendInviteMutate(invite.tenant_user_id)}
-                                                disabled={isResending || invite.invitation_status === 'completed'}
-                                                title="Resend Invitation"
-                                                className={cn(
-                                                    "p-2 rounded-lg transition-colors",
-                                                    isDarkMode ? "hover:bg-white/10 text-white/60" : "hover:bg-slate-100 text-slate-500",
-                                                    invite.invitation_status === 'completed' && "opacity-20 cursor-not-allowed"
-                                                )}
-                                            >
-                                                <RefreshCw size={16} className={cn(isResending && resendingUserId === invite.tenant_user_id && "animate-spin")} />
-                                            </button>
-                                        ) : (
+                                        {activeTab === 'trash' ? (
                                             <div className="flex items-center justify-center space-x-2">
                                                 <button
                                                     onClick={() => handleRestoreClick(invite)}
@@ -298,6 +302,19 @@ export const TenantInvitationsView = () => {
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => resendInviteMutate(invite.tenant_user_id)}
+                                                disabled={isResending || invite.invitation_status === 'completed'}
+                                                title="Resend Invitation"
+                                                className={cn(
+                                                    "p-2 rounded-lg transition-colors",
+                                                    isDarkMode ? "hover:bg-white/10 text-white/60" : "hover:bg-slate-100 text-slate-500",
+                                                    invite.invitation_status === 'completed' && "opacity-20 cursor-not-allowed"
+                                                )}
+                                            >
+                                                <RefreshCw size={16} className={cn(isResending && resendingUserId === invite.tenant_user_id && "animate-spin")} />
+                                            </button>
                                         )}
                                     </TableCell>
                                 </TableRow>
