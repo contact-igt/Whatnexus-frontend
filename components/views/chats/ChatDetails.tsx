@@ -57,7 +57,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
     const [editedName, setEditedName] = useState('');
     const { mutate: updateContactMutate, isPending: isUpdatingName } = useUpdateContactMutation();
     const lastActiveLabel = formatLastActiveConversation(selectedChat?.last_message_time);
-
+    console.log("selectedChat:", selectedChat)
     const handleEditName = () => {
         setEditedName(selectedChat?.name || '');
         setIsEditingName(true);
