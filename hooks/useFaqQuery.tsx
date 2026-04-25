@@ -1,4 +1,4 @@
-import { faqApiData, PublishFaqReviewData, SaveFaqReviewData, CreateFaqData, EditFaqKnowledgeEntryData } from "@/services/faq";
+import { faqApiData, PublishFaqReviewData, SaveFaqReviewData, CreateFaqData, EditFaqKnowledgeEntryData, FaqReviewsListResponse } from "@/services/faq";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { useEffect } from "react";
@@ -13,7 +13,7 @@ export const useFaqReviewsQuery = (
   status?: "pending_review" | "published",
   options?: FaqQueryOptions,
 ) => {
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error } = useQuery<FaqReviewsListResponse>({
     queryKey: ["faq-reviews", status ?? "all"],
     queryFn: () => FaqApis.getFaqReviews(status),
     enabled: options?.enabled ?? true,
@@ -182,8 +182,39 @@ export const useEditFaqKnowledgeEntryMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: EditFaqKnowledgeEntryData }) =>
       FaqApis.editFaqKnowledgeEntry(id, data),
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
+      queryClient.setQueriesData(
+        { queryKey: ["faq-knowledge-entries"] },
+        (oldData: any) => {
+          const entries = oldData?.data?.entries;
+          if (!Array.isArray(entries)) return oldData;
+
+          const updatedEntries = entries.map((entry: any) =>
+            String(entry?.id) === String(variables?.id)
+              ? {
+                  ...entry,
+                  ...(variables?.data?.question !== undefined
+                    ? { question: variables.data.question }
+                    : {}),
+                  ...(variables?.data?.answer !== undefined
+                    ? { answer: variables.data.answer }
+                    : {}),
+                }
+              : entry,
+          );
+
+          return {
+            ...oldData,
+            data: {
+              ...oldData.data,
+              entries: updatedEntries,
+            },
+          };
+        },
+      );
+
       queryClient.invalidateQueries({ queryKey: ["faq-knowledge-entries"] });
+      queryClient.refetchQueries({ queryKey: ["faq-knowledge-entries"] });
       queryClient.invalidateQueries({ queryKey: ["faq-master"] });
       queryClient.invalidateQueries({ queryKey: ["faq-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["knowledges"] });
@@ -204,8 +235,29 @@ export const useRemoveFaqKnowledgeEntryMutation = () => {
 
   return useMutation({
     mutationFn: (id: string) => FaqApis.removeFaqKnowledgeEntry(id),
-    onSuccess: () => {
+    onSuccess: (_response, removedId) => {
+      queryClient.setQueriesData(
+        { queryKey: ["faq-knowledge-entries"] },
+        (oldData: any) => {
+          const entries = oldData?.data?.entries;
+          if (!Array.isArray(entries)) return oldData;
+
+          const filteredEntries = entries.filter(
+            (entry: any) => String(entry?.id) !== String(removedId),
+          );
+
+          return {
+            ...oldData,
+            data: {
+              ...oldData.data,
+              entries: filteredEntries,
+            },
+          };
+        },
+      );
+
       queryClient.invalidateQueries({ queryKey: ["faq-knowledge-entries"] });
+      queryClient.refetchQueries({ queryKey: ["faq-knowledge-entries"] });
       queryClient.invalidateQueries({ queryKey: ["faq-master"] });
       queryClient.invalidateQueries({ queryKey: ["faq-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["knowledges"] });

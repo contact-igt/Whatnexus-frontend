@@ -24,6 +24,7 @@ import {
   useCreateFaqMutation,
   useEditFaqKnowledgeEntryMutation,
 } from "@/hooks/useFaqQuery";
+import type { FaqReviewItem } from "@/services/faq";
 import { CreateFaqModal } from "./CreateFaqModal";
 
 interface FaqReviewProps {
@@ -434,7 +435,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
               </p>
             </div>
           ) : (
-            currentReviews.map((item: any) => {
+            currentReviews.map((item: FaqReviewItem) => {
               const isExpanded = expandedId === item.id;
               const categoryConfig =
                 CATEGORY_CONFIG[
@@ -444,6 +445,12 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
               const currentAnswer = getAnswer(item);
               const currentAddToKb = getAddToKb(item);
               const answerError = answerErrors[item.id];
+              const creatorName =
+                (item.creator_name && String(item.creator_name).trim()) ||
+                (item.reviewed_by && !String(item.reviewed_by).includes("@")
+                  ? String(item.reviewed_by).trim()
+                  : "") ||
+                (item.status === "pending_review" ? "System" : "Admin");
 
               return (
                 <div
@@ -486,16 +493,14 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                             {categoryConfig.label}
                           </span>
                         )}
-                        {displayName && (
-                          <span
-                            className={cn(
-                              "text-xs font-medium",
-                              isDarkMode ? "text-white/50" : "text-slate-500"
-                            )}
-                          >
-                            {displayName}
-                          </span>
-                        )}
+                        <span
+                          className={cn(
+                            "text-xs",
+                            isDarkMode ? "text-white/40" : "text-slate-400"
+                          )}
+                        >
+                          {`Name: ${creatorName || "Unknown"}`}
+                        </span>
                         <span
                           className={cn(
                             "text-xs",

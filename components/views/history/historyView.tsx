@@ -26,9 +26,12 @@ import { HistoryMessageList } from './HistoryMessageList';
 import { HistoryDetails } from './HistoryDetails';
 import { ThemedLoader } from '@/components/ui/themedLoader';
 import { ChatSummaryOverlay } from '../chats/ChatSummaryOverlay';
+import { useDispatch } from 'react-redux';
+import { clearWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
 
 export const HistoryView = () => {
     const queryClient = useQueryClient();
+    const dispatch = useDispatch();
     const { data: tenantSettingsData } = useGetTenantSettingsQuery();
     const rawAiSettings = tenantSettingsData?.data?.ai_settings || {};
     const aiSettings = {
@@ -104,6 +107,7 @@ export const HistoryView = () => {
         const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
 
         if (hasUnreadUserMessages) {
+            dispatch(clearWhatsAppUnreadCount());
             updateSeenMutate(selectedChat?.phone);
             setFilteredChats((prev: any) => {
                 if (!prev) return prev;
@@ -112,7 +116,7 @@ export const HistoryView = () => {
                 );
             });
         }
-    }, [chatHistoryList?.data?.chats, selectedChat?.phone, updateSeenMutate]);
+    }, [chatHistoryList?.data?.chats, dispatch, selectedChat?.phone, updateSeenMutate]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {
