@@ -3,7 +3,7 @@ import { _axios } from "@/helper/axios";
 export type FaqReviewStatus = "pending_review" | "published" | "deleted";
 
 export interface FaqReviewItem {
-  id: string;
+  id: string | number;
   question: string;
   normalized_question?: string | null;
   agent_category?: string | null;
@@ -11,20 +11,22 @@ export interface FaqReviewItem {
   doctor_answer?: string | null;
   whatsapp_number?: string | null;
   session_id?: string | null;
-  status: FaqReviewStatus;
-  add_to_kb: boolean;
-  is_active: boolean;
+  status: FaqReviewStatus | string;
+  add_to_kb?: boolean;
+  is_active?: boolean;
   creator_name?: string | null;
   reviewed_by?: string | number | null;
   answered_at?: string | null;
   created_at: string;
   updated_at?: string | null;
+  deleted_at?: string | null;
+  knowledge_entry_id?: string | number | null;
 }
 
 export interface SaveFaqReviewData {
   question?: string;
   doctor_answer?: string;
-   add_to_kb: boolean;
+  add_to_kb: boolean;
 
 }
 
@@ -41,26 +43,6 @@ export interface CreateFaqData {
 export interface EditFaqKnowledgeEntryData {
   question?: string;
   answer?: string;
-}
-
-export interface FaqReviewItem {
-  id: string | number;
-  question: string;
-  normalized_question?: string;
-  agent_category?: string;
-  agent_reason?: string;
-  doctor_answer?: string;
-  status: "pending_review" | "published" | "deleted" | string;
-  add_to_kb?: boolean;
-  is_active?: boolean;
-  reviewed_by?: string | null;
-  creator_name?: string | null;
-  whatsapp_number?: string | null;
-  created_at: string;
-  updated_at?: string;
-  answered_at?: string | null;
-  deleted_at?: string | null;
-  knowledge_entry_id?: string | number | null;
 }
 
 export interface FaqReviewsListData {

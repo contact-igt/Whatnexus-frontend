@@ -8,7 +8,7 @@ import { DataSource } from './dataSource';
 import { useEffect, useState } from 'react';
 import { Loader2, Type, AlignLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { extractTextFromFile } from '@/utils/ocr';
 import { Drawer } from "@/components/ui/drawer";
 import { Modal } from "@/components/ui/modal";
@@ -54,8 +54,7 @@ const isFaqMasterLikeSource = (source: any) => {
 
 export const KnowledgeView = () => {
     const { isDarkMode } = useTheme();
-    const searchParams = useSearchParams();
-    const [activeTab, setActiveTab] = useState<TabType>(() => getInitialTab());
+    const searchParams = useSearchParams(); const router = useRouter(); const [activeTab, setActiveTab] = useState<TabType>(() => getInitialTab());
     const [uploading, setUploading] = useState(false);
     const { mutate: activatePromptMutate } = useActivatePromptMutation();
 
@@ -79,7 +78,7 @@ export const KnowledgeView = () => {
         prompt: "",
         text: ""
     });
-    const {user} = useAuth();
+    const { user } = useAuth();
     const normalizedRole = String(user?.role || '').toLowerCase();
     const canAccessFaqCounts = user?.user_type === 'tenant' && ['tenant_admin', 'staff', 'doctor'].includes(normalizedRole);
     const { data: faqCountsData } = useFaqCountsQuery({ enabled: canAccessFaqCounts });

@@ -217,7 +217,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
     }
     setAnswerErrors((prev) => ({ ...prev, [item.id]: "" }));
     saveReview({
-      id: item.id,
+      id: String(item.id),
       data: { doctor_answer: answer, add_to_kb: shouldAddToKb },
     });
   };
@@ -240,7 +240,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       return;
     }
     setAnswerErrors((prev) => ({ ...prev, [item.id]: "" }));
-    publishReview({ id: item.id, data: { doctor_answer: answer, add_to_kb: shouldAddToKb } });
+    publishReview({ id: String(item.id), data: { doctor_answer: answer, add_to_kb: shouldAddToKb } });
   };
 
   const handleCreateFaq = (data: { question: string; answer: string }) => {
@@ -420,7 +420,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
             </div>
           ) : (
             currentReviews.map((item: FaqReviewItem) => {
-              const isExpanded = expandedId === item.id;
+              const isExpanded = expandedId === String(item.id);
               const categoryConfig =
                 CATEGORY_CONFIG[
                 item.agent_category as keyof typeof CATEGORY_CONFIG
@@ -451,7 +451,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                     className="p-4 flex items-start justify-between cursor-pointer"
                     onClick={() =>
                       setExpandedId((prev) =>
-                        prev === item.id ? null : item.id
+                        prev === String(item.id) ? null : String(item.id)
                       )
                     }
                   >
@@ -514,7 +514,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                             checked={item.is_active ?? false}
                             onChange={() =>
                               toggleActive({
-                                id: item.id,
+                                id: String(item.id),
                                 isActive: !item.is_active,
                               })
                             }
@@ -539,7 +539,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteReview(item.id);
+                          deleteReview(String(item.id));
                         }}
                         className={cn(
                           "p-1.5 rounded-lg transition-colors",
