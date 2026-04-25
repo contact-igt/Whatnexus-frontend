@@ -51,7 +51,7 @@ export const ChatView = () => {
         isLoading: isChatsLoading,
         refetch: refetchChats,
     } = useGetAllLiveChatsQuery();
-
+    console.log("chatList", chatList)
     const [filteredChats, setFilteredChats] = useState<any[]>([]);
 
     useEffect(() => {
