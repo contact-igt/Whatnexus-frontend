@@ -153,6 +153,7 @@ export interface CampaignStatsResponse {
         total_clicked: number;
         open_rate: number;
         click_rate: number;
+        latest_failed_error?: string | null;
         status_counts?: {
             all: number;
             pending: number;
