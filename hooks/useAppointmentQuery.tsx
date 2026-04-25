@@ -11,6 +11,8 @@ export const useGetAllAppointmentsQuery = (params?: { search?: string; status?: 
     });
 };
 
+
+
 export const useGetContactAppointmentsQuery = (contactId: string) => {
     return useQuery({
         queryKey: ["appointments", "contact", contactId],
