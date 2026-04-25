@@ -72,10 +72,12 @@ export const TemplateListPage = ({
         { id: 'trash', label: 'Trash', count: deletedTemplates.length },
     ];
 
-    const currentTemplates = activeTab === 'trash' ? deletedTemplates : templates?.templates;
+    const currentTemplates: Template[] = activeTab === 'trash'
+        ? (Array.isArray(deletedTemplates) ? deletedTemplates : [])
+        : (Array.isArray(templates?.templates) ? templates.templates : []);
 
     const filteredTemplates = useMemo(() => {
-        return currentTemplates?.filter((template: any) => {
+        const filtered = currentTemplates.filter((template: any) => {
             // Tab filter
             if (activeTab === 'draft' && template?.status !== 'draft') return false;
             if (activeTab === 'pending' && template?.status !== 'pending') return false;
@@ -90,6 +92,13 @@ export const TemplateListPage = ({
             }
 
             return true;
+        });
+
+        // Newest first — sort by created_at descending
+        return filtered?.slice().sort((a: any, b: any) => {
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return bTime - aTime;
         });
     }, [currentTemplates, activeTab, searchQuery]);
 
@@ -151,14 +160,17 @@ export const TemplateListPage = ({
             align: 'center',
             headerAlign: 'center',
             width: 120,
-            renderCell: ({ row }) => (
-                <span className={cn(
-                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                    getStatusColor(row.status, isDarkMode)
-                )}>
-                    {row.status}
-                </span>
-            )
+            renderCell: ({ row }) => {
+                const status = (row.status || (activeTab === 'trash' ? 'deleted' : '')) as TemplateStatus;
+                return (
+                    <span className={cn(
+                        "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
+                        getStatusColor(status, isDarkMode)
+                    )}>
+                        {status || '—'}
+                    </span>
+                );
+            }
         },
         {
             field: 'template_type', // Type
@@ -197,14 +209,14 @@ export const TemplateListPage = ({
                     <ActionMenu
                         isDarkMode={isDarkMode}
                         isView={true}
-                        isEdit={['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
-                        isSubmitTemplate={['draft', 'paused', 'rejected'].includes(row?.status)}
+                        isEdit={activeTab !== 'trash' && ['draft', 'paused', 'rejected', 'approved'].includes(row?.status)}
+                        isSubmitTemplate={activeTab !== 'trash' && ['draft', 'paused', 'rejected'].includes(row?.status)}
                         onSubmitTemplate={() => { (row?.status === 'paused' || row?.status === 'rejected' || row?.status === 'approved') ? onResubmitTemplate(row?.template_id) : onSubmitTemplate(row?.template_id) }}
-                        isSyncTemplate={row?.status === 'pending'}
+                        isSyncTemplate={activeTab !== 'trash' && row?.status === 'pending'}
                         onSyncTemplate={() => onSyncTemplate(row?.template_id)}
                         onView={() => onView(row)}
                         onEdit={() => onEdit(row)}
-                        isDelete={['draft', 'paused', 'rejected', 'approved'].includes(row?.status) && row?.template_name !== 'hello_world'}
+                        isDelete={activeTab !== 'trash' && ['draft', 'paused', 'rejected', 'approved'].includes(row?.status) && row?.template_name !== 'hello_world'}
                         onDelete={() => handleActionClick(row.template_id, 'soft')}
                         isPermanentDelete={activeTab === 'trash' && user?.role === 'tenant_admin'}
                         onPermanentDelete={() => handleActionClick(row.template_id, 'permanent')}

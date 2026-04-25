@@ -24,6 +24,7 @@ import {
   useCreateFaqMutation,
   useEditFaqKnowledgeEntryMutation,
 } from "@/hooks/useFaqQuery";
+import type { FaqReviewItem } from "@/services/faq";
 import { CreateFaqModal } from "./CreateFaqModal";
 
 interface FaqReviewProps {
@@ -88,24 +89,13 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const getFaqDisplayName = (item: Record<string, unknown>) => {
-  const nameKeys = [
-    "creator_name",
-    "creatorName",
-    "reviewed_by",
-    "reviewedBy",
-    "name",
-    "user_name",
-    "userName",
-  ] as const;
-
-  for (const key of nameKeys) {
-    const value = item[key];
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
+const getFaqDisplayName = (item: FaqReviewItem) => {
+  if (item.creator_name?.trim()) {
+    return item.creator_name.trim();
   }
-
+  if (typeof item.reviewed_by === "string" && item.reviewed_by.trim()) {
+    return item.reviewed_by.trim();
+  }
   return "";
 };
 
@@ -130,7 +120,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
   const { mutate: deleteReview } = useDeleteFaqReviewMutation();
   const { mutate: toggleActive } = useToggleFaqActiveMutation();
 
-  const MOCK_REVIEWS = [
+  const MOCK_REVIEWS: FaqReviewItem[] = [
     {
       id: "mock-1",
       question: "What are your OPD timings on weekdays?",
@@ -139,11 +129,10 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       agent_reason: "Patient is asking about hospital operating hours — directly answerable from hospital info.",
       doctor_answer: "",
       whatsapp_number: "+91 98765 43210",
-      session_id: "sess_abc123",
       status: "pending_review",
       add_to_kb: false,
       is_active: false,
-      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      created_at: "2026-04-25T10:00:00.000Z",
     },
     {
       id: "mock-2",
@@ -153,11 +142,10 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       agent_reason: "Patient is requesting a specialist consultation — cannot be answered without doctor involvement.",
       doctor_answer: "",
       whatsapp_number: "+91 87654 32109",
-      session_id: "sess_def456",
       status: "pending_review",
       add_to_kb: true,
       is_active: false,
-      created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+      created_at: "2026-04-25T07:00:00.000Z",
     },
     {
       id: "mock-3",
@@ -167,11 +155,10 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       agent_reason: "General medical question outside this hospital's scope — no hospital-specific answer available.",
       doctor_answer: "",
       whatsapp_number: "+91 76543 21098",
-      session_id: "sess_ghi789",
       status: "pending_review",
       add_to_kb: false,
       is_active: false,
-      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: "2026-04-24T12:00:00.000Z",
     },
     {
       id: "mock-4",
@@ -181,11 +168,10 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       agent_reason: "Insurance tie-ups are hospital-specific — can be answered from hospital knowledge base.",
       doctor_answer: "Yes, we are empanelled with Apollo Munich for cashless treatment. Please carry your insurance card and a valid photo ID at the time of admission.",
       whatsapp_number: "+91 65432 10987",
-      session_id: "sess_jkl012",
       status: "published",
       add_to_kb: true,
       is_active: true,
-      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: "2026-04-23T12:00:00.000Z",
     },
     {
       id: "mock-5",
@@ -195,11 +181,10 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       agent_reason: "Appointment booking is a core hospital workflow — answerable from booking info.",
       doctor_answer: "You can book an appointment with Dr. Sharma via our website, by calling our front desk at +91 11 2345 6789, or by replying 'BOOK' in this chat.",
       whatsapp_number: "+91 54321 09876",
-      session_id: "sess_mno345",
       status: "published",
       add_to_kb: true,
       is_active: true,
-      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: "2026-04-22T12:00:00.000Z",
     },
   ];
 
@@ -215,12 +200,12 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
     return items.slice(start, start + FAQ_ITEMS_PER_PAGE);
   }, [allReviews, page]);
 
-  const getAnswer = (item: Record<string, unknown>) =>
-    (answers[item.id as string] ?? item.doctor_answer ?? "") as string;
-  const getAddToKb = (item: Record<string, unknown>) =>
-    (addToKb[item.id as string] ?? item.add_to_kb ?? false) as boolean;
+  const getAnswer = (item: FaqReviewItem) =>
+    answers[String(item.id)] ?? item.doctor_answer ?? "";
+  const getAddToKb = (item: FaqReviewItem) =>
+    addToKb[String(item.id)] ?? item.add_to_kb ?? false;
 
-  const handleSave = (item: any) => {
+  const handleSave = (item: FaqReviewItem) => {
     const answer = getAnswer(item);
     const shouldAddToKb = getAddToKb(item);
     if (shouldAddToKb && !answer.trim()) {
@@ -232,12 +217,12 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
     }
     setAnswerErrors((prev) => ({ ...prev, [item.id]: "" }));
     saveReview({
-      id: item.id,
+      id: String(item.id),
       data: { doctor_answer: answer, add_to_kb: shouldAddToKb },
     });
   };
 
-  const handlePublish = (item: any) => {
+  const handlePublish = (item: FaqReviewItem) => {
     const answer = getAnswer(item);
     const shouldAddToKb = getAddToKb(item);
     if (!answer.trim()) {
@@ -255,7 +240,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       return;
     }
     setAnswerErrors((prev) => ({ ...prev, [item.id]: "" }));
-    publishReview({ id: item.id, data: { doctor_answer: answer, add_to_kb: shouldAddToKb } });
+    publishReview({ id: String(item.id), data: { doctor_answer: answer, add_to_kb: shouldAddToKb } });
   };
 
   const handleCreateFaq = (data: { question: string; answer: string }) => {
@@ -273,7 +258,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
     });
   };
 
-  const handleUpdatePublishedAnswer = (item: any) => {
+  const handleUpdatePublishedAnswer = (item: FaqReviewItem) => {
     const answer = getAnswer(item);
     if (!answer.trim()) {
       setAnswerErrors((prev) => ({
@@ -368,8 +353,8 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                     ? "bg-white/10 text-white shadow"
                     : "bg-white text-slate-900 shadow-md"
                   : isDarkMode
-                  ? "text-white/50 hover:text-white/80"
-                  : "text-slate-500 hover:text-slate-700"
+                    ? "text-white/50 hover:text-white/80"
+                    : "text-slate-500 hover:text-slate-700"
               )}
             >
               {tab.label}
@@ -434,16 +419,22 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
               </p>
             </div>
           ) : (
-            currentReviews.map((item: any) => {
-              const isExpanded = expandedId === item.id;
+            currentReviews.map((item: FaqReviewItem) => {
+              const isExpanded = expandedId === String(item.id);
               const categoryConfig =
                 CATEGORY_CONFIG[
-                  item.agent_category as keyof typeof CATEGORY_CONFIG
+                item.agent_category as keyof typeof CATEGORY_CONFIG
                 ];
               const displayName = getFaqDisplayName(item);
               const currentAnswer = getAnswer(item);
               const currentAddToKb = getAddToKb(item);
               const answerError = answerErrors[item.id];
+              const creatorName =
+                (item.creator_name && String(item.creator_name).trim()) ||
+                (item.reviewed_by && !String(item.reviewed_by).includes("@")
+                  ? String(item.reviewed_by).trim()
+                  : "") ||
+                (item.status === "pending_review" ? "System" : "Admin");
 
               return (
                 <div
@@ -460,7 +451,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                     className="p-4 flex items-start justify-between cursor-pointer"
                     onClick={() =>
                       setExpandedId((prev) =>
-                        prev === item.id ? null : item.id
+                        prev === String(item.id) ? null : String(item.id)
                       )
                     }
                   >
@@ -486,16 +477,14 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                             {categoryConfig.label}
                           </span>
                         )}
-                        {displayName && (
-                          <span
-                            className={cn(
-                              "text-xs font-medium",
-                              isDarkMode ? "text-white/50" : "text-slate-500"
-                            )}
-                          >
-                            {displayName}
-                          </span>
-                        )}
+                        <span
+                          className={cn(
+                            "text-xs",
+                            isDarkMode ? "text-white/40" : "text-slate-400"
+                          )}
+                        >
+                          {`Name: ${creatorName || "Unknown"}`}
+                        </span>
                         <span
                           className={cn(
                             "text-xs",
@@ -525,7 +514,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                             checked={item.is_active ?? false}
                             onChange={() =>
                               toggleActive({
-                                id: item.id,
+                                id: String(item.id),
                                 isActive: !item.is_active,
                               })
                             }
@@ -550,7 +539,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteReview(item.id);
+                          deleteReview(String(item.id));
                         }}
                         className={cn(
                           "p-1.5 rounded-lg transition-colors",

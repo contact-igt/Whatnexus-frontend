@@ -3,7 +3,7 @@ import { _axios } from "@/helper/axios";
 export type FaqReviewStatus = "pending_review" | "published" | "deleted";
 
 export interface FaqReviewItem {
-  id: string;
+  id: string | number;
   question: string;
   normalized_question?: string | null;
   agent_category?: string | null;
@@ -11,20 +11,22 @@ export interface FaqReviewItem {
   doctor_answer?: string | null;
   whatsapp_number?: string | null;
   session_id?: string | null;
-  status: FaqReviewStatus;
-  add_to_kb: boolean;
-  is_active: boolean;
+  status: FaqReviewStatus | string;
+  add_to_kb?: boolean;
+  is_active?: boolean;
   creator_name?: string | null;
   reviewed_by?: string | number | null;
   answered_at?: string | null;
   created_at: string;
   updated_at?: string | null;
+  deleted_at?: string | null;
+  knowledge_entry_id?: string | number | null;
 }
 
 export interface SaveFaqReviewData {
   question?: string;
   doctor_answer?: string;
-   add_to_kb: boolean;
+  add_to_kb: boolean;
 
 }
 
@@ -43,8 +45,22 @@ export interface EditFaqKnowledgeEntryData {
   answer?: string;
 }
 
+export interface FaqReviewsListData {
+  reviews: FaqReviewItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface FaqReviewsListResponse {
+  message: string;
+  data: FaqReviewsListData;
+}
+
 export class faqApiData {
-  getFaqReviews = async (status?: "pending_review" | "published") => {
+  getFaqReviews = async (
+    status?: "pending_review" | "published",
+  ): Promise<FaqReviewsListResponse> => {
     const params = status ? `?status=${status}` : "";
     return await _axios("get", `/whatsapp/faq-reviews${params}`);
   };

@@ -27,6 +27,7 @@ export interface MediaAsset {
 }
 
 export interface DeletedMediaAssetsResponse {
+  success: boolean;
   message: string;
   data: {
     items: (MediaAsset & { days_remaining: number; can_restore: boolean })[];
@@ -40,9 +41,18 @@ export const getDeletedGalleryItems = async (page = 1, limit = 20): Promise<Dele
   return await _axios("get", "/whatsapp/gallery/deleted/list", null, "application/json", { page, limit });
 };
 
-export const hardDeleteMediaAsset = async (assetId: string): Promise<{ message: string }> => {
+export const hardDeleteMediaAsset = async (assetId: string): Promise<{ success: boolean; message: string }> => {
   return await _axios("delete", `/whatsapp/gallery/${assetId}/permanent`);
 };
+
+export interface RestoreMediaAssetResponse {
+  success: boolean;
+  message: string;
+  data: Pick<MediaAsset, "id" | "media_asset_id" | "file_name" | "file_type" | "preview_url"> & {
+    is_deleted?: boolean;
+    deleted_at?: string | null;
+  };
+}
 
 export interface MediaAssetsResponse {
   success: boolean;
@@ -180,9 +190,10 @@ export const restoreMediaAsset = async (
   assetId: string,
   // tenantId kept for API compatibility but backend reads it from JWT
   _tenantId?: string,
-): Promise<{ success: boolean; asset_id: string; file_name: string; preview_url: string | null; media_handle: string; message: string }> => {
-  return await _axios("post", `/whatsapp/gallery/${assetId}/restore`, null, "application/json");
+): Promise<RestoreMediaAssetResponse> => {
+  return await _axios("post", `/whatsapp/gallery/${assetId}/restore`);
 };
+
 
 /**
  * Update media asset tags

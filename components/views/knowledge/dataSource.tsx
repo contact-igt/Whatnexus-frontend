@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/ui/glassCard";
 import { KNOWLEDGE_SOURCES } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useActivateKnowledgeMutation, useDeletedKnowledgeList, useDeleteKnowledgeById, useGetKnowledgesQuery, useKnowledgeByIdQuery, useUpdateKnowledgeMutation, useUploadKnowledgeMutation } from '@/hooks/useUploadKnowledge';
-import { useFaqMasterSourceQuery, useFaqKnowledgeEntriesQuery, useEditFaqKnowledgeEntryMutation, useRemoveFaqKnowledgeEntryMutation } from '@/hooks/useFaqQuery';
+import { useFaqMasterSourceQuery } from '@/hooks/useFaqQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Pagination } from '@/components/ui/pagination';
 
@@ -87,11 +87,6 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
     const { mutate: activateKnowledgeMutate, isPending: isActivatePending } = useActivateKnowledgeMutation();
     const { mutate: updateKnowledgeMutate } = useUpdateKnowledgeMutation();
     const { data: faqMasterData, isLoading: isFaqMasterLoading } = useFaqMasterSourceQuery();
-    const { data: faqEntriesData, isLoading: isFaqEntriesLoading } = useFaqKnowledgeEntriesQuery();
-    const { mutate: editFaqEntry } = useEditFaqKnowledgeEntryMutation();
-    const { mutate: removeFaqEntry } = useRemoveFaqKnowledgeEntryMutation();
-    const [editingFaqEntry, setEditingFaqEntry] = useState<any>(null);
-    const [faqEntryDraft, setFaqEntryDraft] = useState<{ question: string; answer: string }>({ question: "", answer: "" });
     const faqMasterSource = faqMasterData?.data?.source ?? faqMasterData?.data ?? null;
     const faqPublishedCount = faqMasterData?.data?.published_count;
     const isFaqMasterActive = faqMasterSource?.status === "active";
@@ -689,76 +684,6 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                                 )}
                             </div>
 
-                            {/* Child FAQ entries */}
-                            {faqMasterSource && (
-                                <div className="mt-3 ml-14 space-y-2">
-                                    {isFaqEntriesLoading ? (
-                                        <p className={cn("text-xs", isDarkMode ? "text-white/30" : "text-slate-400")}>Loading entries…</p>
-                                    ) : (
-                                        (() => {
-                                            const entries: any[] = Array.isArray(faqEntriesData?.data?.entries)
-                                                ? faqEntriesData.data.entries
-                                                : [];
-                                            if (entries.length === 0) return null;
-                                            return entries.map((entry: any) => (
-                                                editingFaqEntry?.id === entry.id ? (
-                                                    <div key={entry.id} className={cn("p-3 rounded-lg border", isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-slate-200")}>
-                                                        <input
-                                                            className={cn("w-full text-xs rounded px-2 py-1 mb-1.5 border outline-none", isDarkMode ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-900")}
-                                                            value={faqEntryDraft.question}
-                                                            onChange={(e) => setFaqEntryDraft((d) => ({ ...d, question: e.target.value }))}
-                                                            placeholder="Question"
-                                                        />
-                                                        <textarea
-                                                            rows={3}
-                                                            className={cn("w-full text-xs rounded px-2 py-1 border outline-none resize-none", isDarkMode ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-900")}
-                                                            value={faqEntryDraft.answer}
-                                                            onChange={(e) => setFaqEntryDraft((d) => ({ ...d, answer: e.target.value }))}
-                                                            placeholder="Answer"
-                                                        />
-                                                        <div className="flex items-center space-x-2 mt-2">
-                                                            <button
-                                                                className="px-3 py-1 text-xs rounded bg-violet-600 text-white hover:bg-violet-700 transition-colors"
-                                                                onClick={() => {
-                                                                    editFaqEntry(
-                                                                        { id: String(entry.id), data: faqEntryDraft },
-                                                                        { onSuccess: () => setEditingFaqEntry(null) }
-                                                                    );
-                                                                }}
-                                                            >
-                                                                Save
-                                                            </button>
-                                                            <button
-                                                                className={cn("px-3 py-1 text-xs rounded transition-colors", isDarkMode ? "text-white/50 hover:text-white/80" : "text-slate-500 hover:text-slate-700")}
-                                                                onClick={() => setEditingFaqEntry(null)}
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div key={entry.id} className={cn("flex items-start justify-between gap-2 p-2.5 rounded-lg border", isDarkMode ? "bg-white/3 border-white/8 hover:bg-white/5" : "bg-white border-slate-100 hover:border-slate-200")}>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className={cn("text-xs font-medium truncate", isDarkMode ? "text-white/80" : "text-slate-700")}>{entry.question}</p>
-                                                            <p className={cn("text-xs mt-0.5 line-clamp-2", isDarkMode ? "text-white/40" : "text-slate-400")}>{entry.answer}</p>
-                                                        </div>
-                                                        <ActionMenu
-                                                            isDarkMode={isDarkMode}
-                                                            isEdit={true}
-                                                            isDelete={true}
-                                                            onEdit={() => {
-                                                                setEditingFaqEntry(entry);
-                                                                setFaqEntryDraft({ question: entry.question, answer: entry.answer });
-                                                            }}
-                                                            onDelete={() => removeFaqEntry(String(entry.id))}
-                                                        />
-                                                    </div>
-                                                )
-                                            ));
-                                        })()
-                                    )}
-                                </div>
-                            )}
                         </div>
                     )}
 

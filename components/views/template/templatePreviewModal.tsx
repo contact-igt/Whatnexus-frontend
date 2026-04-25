@@ -1,10 +1,10 @@
 "use client";
 
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Template, CTAButton } from './templateTypes';
 import { WhatsAppPreviewPanel } from './whatsappPreviewPanel';
-import { generateId } from './templateUtils';
+import { generateId, normalizePhoneCTAValue } from './templateUtils';
 
 interface TemplatePreviewModalProps {
     template: Template;
@@ -31,9 +31,28 @@ export const TemplatePreviewModal = ({
     const normalizedHeaderType = (headerComponent?.header_format || headerComponent?.format || 'NONE').toUpperCase();
     const normalizedHeaderValue =
         headerComponent?.media_url ||
+        headerComponent?.media_handle ||
         headerComponent?.text_content ||
         headerComponent?.text ||
         '';
+
+    // Resolve document filename: prefer asset_file_name from DB join, then parse from media_url
+    const resolvedFileName = (() => {
+        if (normalizedHeaderType !== 'DOCUMENT') return null;
+        if (headerComponent?.asset_file_name) return headerComponent.asset_file_name;
+        if (headerComponent?.file_name) return headerComponent.file_name;
+        const url = headerComponent?.media_url;
+        if (!url) return null;
+        try {
+            const raw = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
+            // Strip trailing R2 timestamp suffix e.g. "brochure_1774601904643" → "brochure"
+            const cleaned = raw.replace(/_\d{13,}$/, '');
+            return cleaned || null;
+        } catch {
+            return null;
+        }
+    })();
+
     const normalizedBodyText =
         bodyComponent?.text_content ||
         bodyComponent?.text ||
@@ -71,6 +90,9 @@ export const TemplatePreviewModal = ({
                     let val = b.url || b.phone_number || b.example || b.value || '';
                     if ((b.type?.toUpperCase() === 'PHONE_NUMBER' || b.type?.toUpperCase() === 'PHONE') && val && !val.startsWith('+')) {
                         val = '+' + val;
+                    }
+                    if (b.type?.toUpperCase() === 'PHONE_NUMBER' || b.type?.toUpperCase() === 'PHONE') {
+                        val = normalizePhoneCTAValue(val);
                     }
                     return val;
                 })()
@@ -116,6 +138,31 @@ export const TemplatePreviewModal = ({
 
                 {/* Preview Content */}
                 <div className="p-6">
+                    {/* Rejection Reason Banner */}
+                    {template?.status === 'rejected' && (
+                        <div className={cn(
+                            "rounded-xl p-3 border flex items-start gap-3 mb-4",
+                            isDarkMode
+                                ? 'bg-red-500/10 border-red-500/30'
+                                : 'bg-red-50 border-red-200'
+                        )}>
+                            <AlertCircle size={16} className={cn("shrink-0 mt-0.5", isDarkMode ? 'text-red-400' : 'text-red-600')} />
+                            <div className="min-w-0">
+                                <p className={cn("text-xs font-bold", isDarkMode ? 'text-red-300' : 'text-red-800')}>
+                                    Rejected by Meta
+                                </p>
+                                {template?.rejection_reason ? (
+                                    <p className={cn("text-xs mt-0.5", isDarkMode ? 'text-red-300/70' : 'text-red-700')}>
+                                        Reason: <strong>{template.rejection_reason}</strong>
+                                    </p>
+                                ) : (
+                                    <p className={cn("text-xs mt-0.5", isDarkMode ? 'text-red-300/70' : 'text-red-700')}>
+                                        No reason provided by Meta
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     <WhatsAppPreviewPanel
                         isDarkMode={isDarkMode}
                         templateType={normalizedTemplateType}
@@ -126,6 +173,7 @@ export const TemplatePreviewModal = ({
                         variables={template?.variables || {}}
                         ctaButtons={parsedCTAButtons}
                         quickReplies={parsedQuickReplies}
+                        fileName={resolvedFileName}
                         category={template?.category}
                     />
                 </div>

@@ -26,9 +26,12 @@ import { HistoryMessageList } from './HistoryMessageList';
 import { HistoryDetails } from './HistoryDetails';
 import { ThemedLoader } from '@/components/ui/themedLoader';
 import { ChatSummaryOverlay } from '../chats/ChatSummaryOverlay';
+import { useDispatch } from 'react-redux';
+import { clearWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
 
 export const HistoryView = () => {
     const queryClient = useQueryClient();
+    const dispatch = useDispatch();
     const { data: tenantSettingsData } = useGetTenantSettingsQuery();
     const rawAiSettings = tenantSettingsData?.data?.ai_settings || {};
     const aiSettings = {
@@ -43,7 +46,7 @@ export const HistoryView = () => {
         data: chatHistoryList,
         isLoading: isChatsLoading,
     } = useGetAllHistoryChatsQuery();
-
+    console.log("chatHistoryList:", chatHistoryList);
     const [filteredChats, setFilteredChats] = useState(chatHistoryList?.data?.chats);
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -89,6 +92,7 @@ export const HistoryView = () => {
             phone: chat?.phone,
             contact_id: chat?.contact_id,
             name: chat?.name ?? chat.phone,
+            last_message_time: chat?.last_message_time,
             assigned_admin_id: chat?.assigned_admin_id ?? null,
             assigned_agent_name: chat?.assigned_agent_name ?? null,
         });
@@ -104,6 +108,7 @@ export const HistoryView = () => {
         const hasUnreadUserMessages = currentChat && (currentChat.unread_count > 0 || currentChat.seen === "false");
 
         if (hasUnreadUserMessages) {
+            dispatch(clearWhatsAppUnreadCount());
             updateSeenMutate(selectedChat?.phone);
             setFilteredChats((prev: any) => {
                 if (!prev) return prev;
@@ -112,7 +117,7 @@ export const HistoryView = () => {
                 );
             });
         }
-    }, [chatHistoryList?.data?.chats, selectedChat?.phone, updateSeenMutate]);
+    }, [chatHistoryList?.data?.chats, dispatch, selectedChat?.phone, updateSeenMutate]);
 
     const groupMessagesByDate = (messages: any[] = []) => {
         return messages?.reduce((groups: any, msg: any) => {
@@ -145,12 +150,14 @@ export const HistoryView = () => {
                 contact_id: selectedChat?.contact_id,
                 template_id: template.id,
                 components: []
+            }, {
+                onSuccess: () => {
+                    setIsTemplateModalOpen(false);
+                }
             });
-            // Close template modal, keep chat open so template message appears via socket
-            setIsTemplateModalOpen(false);
         }
     };
-
+    console.log("selectedChat in HistoryView:", selectedChat);
     const handleSendWithVariables = (components: any[]) => {
         if (!selectedTemplateForVariables) return;
 
@@ -159,12 +166,14 @@ export const HistoryView = () => {
             contact_id: selectedChat?.contact_id,
             template_id: selectedTemplateForVariables.id,
             components: components
+        }, {
+            onSuccess: () => {
+                setIsVariableModalOpen(false);
+                setIsTemplateModalOpen(false);
+                setSelectedTemplateForVariables(null);
+                setSelectedChat(null);
+            }
         });
-        // Close modals, keep chat open so template message appears via socket
-        setIsVariableModalOpen(false);
-        setIsTemplateModalOpen(false);
-        setSelectedTemplateForVariables(null);
-        setSelectedChat(null);
     };
     console.log("selectedTemplateForVariables", selectedTemplateForVariables)
     useEffect(() => {
@@ -212,6 +221,7 @@ export const HistoryView = () => {
                     phone: chatFromUrl.phone,
                     contact_id: chatFromUrl.contact_id,
                     name: chatFromUrl.name ?? chatFromUrl.phone,
+                    last_message_time: chatFromUrl.last_message_time,
                 });
                 return;
             }

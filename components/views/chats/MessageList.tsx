@@ -472,7 +472,8 @@ export const MessageList: React.FC<MessageListProps> = ({
                                             "min-w-[60px] rounded-lg shadow-sm relative group overflow-hidden p-2",
                                             isOutgoing
                                                 ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
-                                                : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
+                                                : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]'),
+                                            msg.status === 'failed' && isOutgoing && 'border border-red-500/50 opacity-70'
                                         )}>
                                             <SenderIndicator
                                                 sender={msg.sender}
@@ -486,6 +487,10 @@ export const MessageList: React.FC<MessageListProps> = ({
                                                 "flex items-center justify-end space-x-1 opacity-60",
                                                 isTemplate ? "px-1 pb-0.5 pt-1" : ""
                                             )}>
+                                                {/* Show "Not delivered" for failed messages */}
+                                                {msg.status === 'failed' && isOutgoing && (
+                                                    <span className="text-[10px] text-red-500 mr-1">Not delivered</span>
+                                                )}
                                                 <span className="text-[10px]">
                                                     {formattedTime(msg.created_at || msg.timestamp)}
                                                 </span>

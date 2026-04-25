@@ -233,7 +233,10 @@ export const WhatsAppPreviewPanel = ({
     fileName = null,
     category
 }: WhatsAppPreviewPanelProps) => {
-    const isGalleryHandle = (value: string) => value.includes("::") && !value.startsWith('http') && !value.startsWith('data:');
+    const isGalleryHandle = (value: string) => !value.startsWith('http') && !value.startsWith('data:') && !value.startsWith('blob:') && !value.startsWith('/');
+    const processedHeaderValue = headerType === 'TEXT' && headerValue
+        ? replaceVariables(headerValue, variables)
+        : headerValue;
 
     // Replace variables and format text
     let processedContent = content;
@@ -255,7 +258,7 @@ export const WhatsAppPreviewPanel = ({
                         "text-base font-semibold leading-tight",
                         isDarkMode ? 'text-white' : 'text-slate-900'
                     )}>
-                        {headerValue}
+                        {processedHeaderValue}
                     </p>
                 </div>
             );
@@ -268,11 +271,11 @@ export const WhatsAppPreviewPanel = ({
             if (headerValue && !isGallery) {
                 const isActualVideo = isVideo || headerValue.startsWith('data:video') || headerValue.match(/\.(mp4|webm|ogg)$/i);
                 return (
-                    <div className="w-full bg-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-full max-h-52 rounded-t-xl bg-black flex items-center justify-center overflow-hidden">
                         {isActualVideo ? (
-                            <video src={headerValue} className="w-full max-h-52 object-cover rounded-t-xl" controls />
+                            <video src={headerValue} className="w-full h-full max-h-52 object-contain rounded-t-xl bg-black" controls />
                         ) : (
-                            <img src={headerValue} alt="Header media" className="w-full max-h-52 object-cover rounded-t-xl" />
+                            <img src={headerValue} alt="Header media" className="w-full h-full max-h-52 object-contain rounded-t-xl bg-black" />
                         )}
                     </div>
                 );

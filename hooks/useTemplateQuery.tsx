@@ -141,10 +141,20 @@ export const useSoftDeleteTemplateMutation = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['templates'] });
-            toast.success(data?.message || 'Template deleted successfully!');
+            queryClient.invalidateQueries({ queryKey: ['deletedTemplates'] });
+            toast.success(data?.message || 'Template moved to trash.');
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Template deletion failed!')
+            const errData = error?.response?.data;
+            const code = errData?.error_code;
+            const msg = errData?.message || 'Template deletion failed!';
+            if (code === 'TEMPLATE_IN_USE') {
+                toast.error(`Cannot delete: ${msg}`);
+            } else if (code === 'NOT_FOUND') {
+                toast.error('Template not found. It may have already been deleted.');
+            } else {
+                toast.error(msg);
+            }
         }
     })
 }
@@ -157,10 +167,18 @@ export const usePermanentDeleteTemplateMutation = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['templates'] });
-            toast.success(data?.message || 'Template deleted successfully!');
+            queryClient.invalidateQueries({ queryKey: ['deletedTemplates'] });
+            toast.success(data?.message || 'Template permanently deleted.');
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Template deletion failed!')
+            const errData = error?.response?.data;
+            const code = errData?.error_code;
+            const msg = errData?.message || 'Template deletion failed!';
+            if (code === 'NOT_FOUND') {
+                toast.error('Template not found. It may have already been removed.');
+            } else {
+                toast.error(msg);
+            }
         }
     })
 }
@@ -173,7 +191,8 @@ export const useRestoreTemplateMutation = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['templates'] });
-            toast.success(data?.message || 'Template restored successfully!');
+            queryClient.invalidateQueries({ queryKey: ['deletedTemplates'] });
+            toast.success(data?.message || 'Template restored. Syncing status with Meta…');
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Template restoration failed!')
@@ -182,10 +201,19 @@ export const useRestoreTemplateMutation = () => {
 }
 
 export const useGetTemplateByIdQuery = (template_id: any) => {
+    const queryClient = useQueryClient();
     return useQuery({
         queryKey: ['template', template_id],
         queryFn: () => templateApis.getTemplateById(template_id),
-        enabled: !!template_id
+        enabled: !!template_id,
+        initialData: () => {
+            if (!template_id) return undefined;
+            const listData = queryClient.getQueryData<any>(['templates']);
+            const found = listData?.data?.templates?.find((t: any) => t.template_id === template_id);
+            if (!found) return undefined;
+            return { data: found };
+        },
+        initialDataUpdatedAt: () => queryClient.getQueryState(['templates'])?.dataUpdatedAt,
     })
 }
 
@@ -203,9 +231,24 @@ export const useGenerateAiTemplateMutation = () => {
 export const useGetDeletedTemplatesQuery = () => {
     return useQuery({
         queryKey: ['deletedTemplates'],
-        queryFn: () => templateApis.getDeletedTemplates()
+        queryFn: () => templateApis.getDeletedTemplates(),
+        staleTime: 0,
     })
 }
+
+/** Normalize any API response shape into a flat Template array */
+export const normalizeDeletedTemplates = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.templates)) return payload.templates;
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.data)) return payload.data;
+    if (payload.data) {
+        if (Array.isArray(payload.data.templates)) return payload.data.templates;
+        if (Array.isArray(payload.data.items)) return payload.data.items;
+    }
+    return [];
+};
 
 export const useUploadTemplateMediaMutation = () => {
     return useMutation({

@@ -18,11 +18,14 @@ import { useGetAllSpecializationsQuery } from '@/hooks/useSpecializationsQuery';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
 import { Pagination } from '@/components/ui/pagination';
 import { Doctor } from '@/services/doctor';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 interface DoctorManagementProps {
     isDarkMode: boolean;
 }
 
 export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
+    const { user } = useAuth();
+    const isDoctor = user?.role === 'doctor';
     const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
     const [searchQuery, setSearchQuery] = useState('');
     const { data: specializationsData, isPending } = useGetAllSpecializationsQuery();
@@ -225,6 +228,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                 >
                     Active Doctors
                 </button>
+                {!isDoctor && (
                 <button
                     onClick={() => setActiveTab('trash')}
                     className={cn(
@@ -236,6 +240,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                 >
                     Trash ({deletedDoctors.length})
                 </button>
+                )}
             </div>
 
             {/* Search, Filter and Create */}
@@ -269,7 +274,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                         />
                     </div>
                 </div>
-                {activeTab === 'active' && (
+                {activeTab === 'active' && !isDoctor && (
                     <button
                         onClick={handleCreateDoctor}
                         className={cn(
@@ -413,57 +418,65 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                                                 >
                                                     <Eye size={16} />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleEditDoctor(doctor)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-all",
-                                                        isDarkMode
-                                                            ? 'hover:bg-white/10 text-white/60 hover:text-white'
-                                                            : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
-                                                    )}
-                                                    title="Edit"
-                                                >
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteDoctor(doctor)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-all",
-                                                        isDarkMode
-                                                            ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
-                                                            : 'hover:bg-red-50 text-red-600 hover:text-red-700'
-                                                    )}
-                                                    title="Trash"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                {!isDoctor && (
+                                                    <button
+                                                        onClick={() => handleEditDoctor(doctor)}
+                                                        className={cn(
+                                                            "p-2 rounded-lg transition-all",
+                                                            isDarkMode
+                                                                ? 'hover:bg-white/10 text-white/60 hover:text-white'
+                                                                : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
+                                                        )}
+                                                        title="Edit"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                )}
+                                                {!isDoctor && (
+                                                    <button
+                                                        onClick={() => handleDeleteDoctor(doctor)}
+                                                        className={cn(
+                                                            "p-2 rounded-lg transition-all",
+                                                            isDarkMode
+                                                                ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
+                                                                : 'hover:bg-red-50 text-red-600 hover:text-red-700'
+                                                        )}
+                                                        title="Trash"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
                                             </>
                                         ) : (
                                             <>
-                                                <button
-                                                    onClick={() => handleRestoreDoctor(doctor)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-all",
-                                                        isDarkMode
-                                                            ? 'hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300'
-                                                            : 'hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700'
-                                                    )}
-                                                    title="Restore"
-                                                >
-                                                    <RotateCcw size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handlePermanentDeleteDoctor(doctor)}
-                                                    className={cn(
-                                                        "p-2 rounded-lg transition-all",
-                                                        isDarkMode
-                                                            ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
-                                                            : 'hover:bg-red-50 text-red-600 hover:text-red-700'
-                                                    )}
-                                                    title="Permanently Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                {!isDoctor && (
+                                                    <button
+                                                        onClick={() => handleRestoreDoctor(doctor)}
+                                                        className={cn(
+                                                            "p-2 rounded-lg transition-all",
+                                                            isDarkMode
+                                                                ? 'hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300'
+                                                                : 'hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700'
+                                                        )}
+                                                        title="Restore"
+                                                    >
+                                                        <RotateCcw size={16} />
+                                                    </button>
+                                                )}
+                                                {!isDoctor && (
+                                                    <button
+                                                        onClick={() => handlePermanentDeleteDoctor(doctor)}
+                                                        className={cn(
+                                                            "p-2 rounded-lg transition-all",
+                                                            isDarkMode
+                                                                ? 'hover:bg-red-500/10 text-red-400 hover:text-red-300'
+                                                                : 'hover:bg-red-50 text-red-600 hover:text-red-700'
+                                                        )}
+                                                        title="Permanently Delete"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
                                             </>
                                         )}
                                     </div>

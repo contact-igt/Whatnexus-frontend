@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Save, Loader2, ImagePlus, Link2, Trash2, CheckCircle2, Eye, Clock, Copy } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, ImagePlus, Link2, Trash2, CheckCircle2, Eye, Clock, Copy, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { Select } from '@/components/ui/select';
@@ -19,7 +19,7 @@ import {
     OptimizationGoal,
     HeaderType
 } from './templateTypes';
-import { validateTemplateName, generateId, validateContentLanguageMatch, validateLanguageMatch } from './templateUtils';
+import { validateTemplateName, generateId, validateContentLanguageMatch, validateLanguageMatch, normalizePhoneCTAValue } from './templateUtils';
 import { WhatsAppPreviewPanel } from './whatsappPreviewPanel';
 import { VariableInputSection } from './variableInputSection';
 import { InteractiveActionsSection } from './interactiveActionsSection';
@@ -71,7 +71,12 @@ const templateSchema = z.object({
         .max(1024, "Content exceeds 1024 characters"),
     previous_content: z.string().optional(),
     footer: z.string().max(60, "Footer exceeds 60 characters").optional(),
-    variables: z.record(z.string(), z.string().min(1, "Sample value is required")),
+    variables: z.record(
+        z.string(),
+        z.string()
+            .min(1, "Sample value is required")
+            .max(50, "Sample value must be 50 characters or less")
+    ),
     interactiveActions: z.enum(['None', 'CTA', 'QuickReplies', 'Marketing', 'Authentication', 'All']),
     ctaButtons: z.array(
         z.object({
@@ -227,6 +232,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     // Meta allows edits for submitted templates, but with narrower restrictions than our original UI.
     const isSubmittedTemplate = !!templateId && initialData?.status !== 'draft';
     const isApprovedTemplate = initialData?.status === 'approved';
+    const isRejectedTemplate = initialData?.status === 'rejected';
+    const rejectionReason = initialData?.rejection_reason ?? null;
     const isDraft = initialData?.status === 'draft';
 
     // Meta rate limit: approved templates can only be edited once per 24 hours.
@@ -296,6 +303,9 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     const [selectedHeaderAsset, setSelectedHeaderAsset] = useState<SelectedHeaderAsset | null>(null);
     const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    // Stores media_handle + media_asset_id from a direct file upload (not gallery pick).
+    // Ensures the DB-persisted handle is used on submit instead of a costly re-upload.
+    const [directUploadHandle, setDirectUploadHandle] = useState<{ media_handle?: string; media_asset_id?: string } | null>(null);
 
     // Get language name from code (reverse of getLanguageCode)
     const getLanguageName = (code: string): string => {
@@ -347,6 +357,52 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         return {};
     };
 
+    const normalizeCTAButtons = (buttons?: CTAButton[]): CTAButton[] => {
+        return (buttons || []).map((button) => ({
+            ...button,
+            value: button.type === 'PHONE'
+                ? normalizePhoneCTAValue(button.value || '')
+                : (button.value || ''),
+        }));
+    };
+
+    const buildHeaderPreviewAsset = (input: {
+        mediaAssetId?: string;
+        mediaHandle?: string;
+        fileName?: string;
+        fileType?: HeaderType | string;
+        mediaUrl?: string;
+    }): MediaAsset | null => {
+        const normalizedType = (input.fileType || '').toLowerCase() as MediaAsset['file_type'];
+        if (!['image', 'video', 'document'].includes(normalizedType)) {
+            return null;
+        }
+
+        const fallbackFileName = input.fileName || `Template ${normalizedType}`;
+
+        return {
+            id: undefined,
+            media_asset_id: input.mediaAssetId || undefined,
+            tenant_id: '',
+            file_name: fallbackFileName,
+            file_type: normalizedType,
+            mime_type: '',
+            file_size: 0,
+            media_handle: input.mediaHandle || '',
+            preview_url: input.mediaUrl || null,
+            tags: [],
+            folder: '',
+            is_approved: true,
+            is_deleted: false,
+            templates_used: [],
+            campaigns_used: [],
+            created_at: '',
+            updated_at: '',
+            media_url: input.mediaUrl || undefined,
+            url: input.mediaUrl || undefined,
+        };
+    };
+
     const {
         register,
         handleSubmit,
@@ -372,7 +428,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             footer: initialData?.footer || '',
             variables: normalizeVariables(initialData?.variables),
             interactiveActions: initialData?.interactiveActions || 'None',
-            ctaButtons: (initialData?.ctaButtons || []).map(b => ({ ...b, value: b.value || '' })),
+            ctaButtons: normalizeCTAButtons(initialData?.ctaButtons),
             quickReplies: initialData?.quickReplies || [],
             carouselMediaType: (initialData?.carouselMediaType as any) || 'IMAGE',
             carouselCards: initialData?.carouselCards || [
@@ -387,6 +443,19 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             // Only reset if this is the first load of this specific template name
             // (prevents re-resetting during active editing if initialData reference changes)
             if (lastInitialDataNameRef.current !== initialData.name) {
+                const hasExistingMediaHeader = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes((initialData.headerType || '').toUpperCase());
+                const resolvedHeaderMediaUrl = (initialData.headerValue && isUrlLikeValue(initialData.headerValue)) ? initialData.headerValue : null;
+                const resolvedHeaderFileName = initialData.headerMediaFileName
+                    || (resolvedHeaderMediaUrl
+                        ? (() => {
+                            try {
+                                return decodeURIComponent(new URL(resolvedHeaderMediaUrl).pathname.split('/').pop() || '');
+                            } catch {
+                                return resolvedHeaderMediaUrl.split('/').pop() || '';
+                            }
+                        })()
+                        : `Template ${(initialData.headerType || 'document').toLowerCase()}`);
+
                 reset({
                     category: (initialData.category?.toUpperCase() as TemplateCategory) || 'UTILITY',
                     language: getLanguageName(initialData.language || '') || 'English',
@@ -399,7 +468,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     footer: initialData.footer || '',
                     variables: normalizeVariables(initialData.variables),
                     interactiveActions: initialData.interactiveActions || 'None',
-                    ctaButtons: (initialData.ctaButtons || []).map(b => ({ ...b, value: b.value || '' })),
+                    ctaButtons: normalizeCTAButtons(initialData.ctaButtons),
                     quickReplies: initialData.quickReplies || [],
                     carouselMediaType: (initialData.carouselMediaType as any) || 'IMAGE',
                     carouselCards: initialData.carouselCards || [
@@ -408,39 +477,36 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     ]
                 });
 
-                if (initialData.headerMediaHandle) {
+                if (hasExistingMediaHeader && (initialData.headerValue || initialData.headerMediaHandle || initialData.headerMediaAssetId || resolvedHeaderMediaUrl)) {
                     setSelectedHeaderAsset({
                         media_asset_id: initialData.headerMediaAssetId || '',
-                        media_handle: initialData.headerMediaHandle,
-                        file_name: initialData.headerMediaFileName || 'Gallery media',
+                        media_handle: initialData.headerMediaHandle || '',
+                        file_name: resolvedHeaderFileName || 'Gallery media',
                         file_type: ((initialData.headerType || 'DOCUMENT').toLowerCase() as MediaAsset['file_type']),
-                        // Restore preview URL if headerValue is a Cloudinary URL (not a gallery handle)
-                        preview_url: (initialData.headerValue && isUrlLikeValue(initialData.headerValue)) ? initialData.headerValue : null,
+                        preview_url: resolvedHeaderMediaUrl,
                     });
+
+                    setPreviewAsset(buildHeaderPreviewAsset({
+                        mediaAssetId: initialData.headerMediaAssetId,
+                        mediaHandle: initialData.headerMediaHandle,
+                        fileName: resolvedHeaderFileName,
+                        fileType: initialData.headerType,
+                        mediaUrl: resolvedHeaderMediaUrl || undefined,
+                    }));
                 } else {
                     setSelectedHeaderAsset(null);
+                    setPreviewAsset(null);
                 }
 
-                if (initialData.headerValue && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(initialData.headerType || '')) {
+                if (initialData.headerValue && hasExistingMediaHeader) {
                     dispatch(setUploadedMedia({
                         url: initialData.headerValue,
                         type: (initialData.headerType as string).toLowerCase() as any
                     }));
 
-                    // Extract filename from URL for DOCUMENT type so it displays correctly in edit/view mode
-                    if ((initialData.headerType || '').toUpperCase() === 'DOCUMENT' && initialData.headerValue) {
-                        try {
-                            const urlPath = new URL(initialData.headerValue).pathname;
-                            const raw = decodeURIComponent(urlPath.split('/').pop() || '') || 'Document.pdf';
-                            // Strip trailing Cloudinary timestamp and ensure extension
-                            const cleaned = raw.replace(/_\d{13,}$/, '');
-                            setUploadedFileName(/\.[a-zA-Z0-9]+$/.test(cleaned) ? cleaned : cleaned + '.pdf');
-                        } catch {
-                            // headerValue may not be a full URL (e.g. just a filename)
-                            const raw = initialData.headerValue.split('/').pop() || 'Document.pdf';
-                            const cleaned = raw.replace(/_\d{13,}$/, '');
-                            setUploadedFileName(/\.[a-zA-Z0-9]+$/.test(cleaned) ? cleaned : cleaned + '.pdf');
-                        }
+                    // Use the already-resolved filename (asset_file_name from DB has highest priority)
+                    if ((initialData.headerType || '').toUpperCase() === 'DOCUMENT') {
+                        setUploadedFileName(resolvedHeaderFileName || 'Document.pdf');
                     }
                 }
 
@@ -460,7 +526,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     }, [initialData, reset, getValues, dispatch, uploadedMediaUrl, uploadedMediaType, setValue, selectedHeaderAsset]);
 
     useEffect(() => {
-        if (!selectedHeaderAsset?.media_asset_id || selectedHeaderAsset.preview_url) return;
+        if (!selectedHeaderAsset?.media_asset_id) return;
 
         let isCancelled = false;
 
@@ -493,7 +559,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         return () => {
             isCancelled = true;
         };
-    }, [selectedHeaderAsset?.media_asset_id, selectedHeaderAsset?.preview_url]);
+    }, [selectedHeaderAsset?.media_asset_id]);
 
     // Cleanup uploaded media when unmounting or changing template type
     useEffect(() => {
@@ -596,16 +662,16 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     };
 
     // Derive a display-friendly filename:
-    // Priority: 1) freshly uploaded file name, 2) extracted from URL (edit/view mode), 3) null
-    const displayFileName = uploadedFileName || (() => {
+    // Priority: 1) freshly uploaded file name, 2) asset file_name from gallery/DB, 3) extracted from URL, 4) null
+    const displayFileName = uploadedFileName || selectedHeaderAsset?.file_name || (() => {
         if (headerValue && (headerType === 'DOCUMENT' || templateType === 'DOCUMENT')) {
             try {
                 const urlPath = new URL(headerValue).pathname;
                 const raw = decodeURIComponent(urlPath.split('/').pop() || '');
                 return raw ? cleanDocumentFileName(raw) : null;
             } catch {
-                const raw = headerValue.split('/').pop() || '';
-                return raw ? cleanDocumentFileName(raw) : null;
+                // headerValue is a Meta handle, not a URL — don't use it as a filename
+                return null;
             }
         }
         return null;
@@ -762,6 +828,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         setPreviewAsset(null);
         setIsPreviewOpen(false);
         setUploadedFileName(null);
+        setDirectUploadHandle(null);
         dispatch(clearUploadedMedia());
         onChange?.('');
         setValue('headerValue', '', { shouldValidate: true });
@@ -930,6 +997,15 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         delete payload.components.header.media_url;
                     }
                 }
+            } else if (directUploadHandle && normalizedHeaderType !== 'TEXT' && normalizedHeaderType !== 'LOCATION') {
+                // Direct file upload (not gallery): preserve handle/asset ID so they are stored
+                // in DB and reused on submit — avoids a costly and error-prone re-upload.
+                if (directUploadHandle.media_asset_id) {
+                    payload.components.header.media_asset_id = directUploadHandle.media_asset_id;
+                }
+                if (directUploadHandle.media_handle) {
+                    payload.components.header.media_handle = directUploadHandle.media_handle;
+                }
             }
 
             // Meta usually expects header variables if it's dynamic.
@@ -986,11 +1062,20 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         try {
             dispatch(setUploading(true));
             setSelectedHeaderAsset(null);
+            setDirectUploadHandle(null);
             setUploadedFileName(file.name); // Store local filename for display
             const response = await uploadMedia({ file, type });
             if (response?.url) {
                 dispatch(setUploadedMedia({ url: response.url, type }));
                 onChange(response.url); // update form state
+                // Persist the handle returned by the upload so the DB component row
+                // stores it — submit will then use the handle directly, no re-upload needed.
+                if (response.media_handle || response.media_asset_id) {
+                    setDirectUploadHandle({
+                        media_handle: response.media_handle,
+                        media_asset_id: response.media_asset_id,
+                    });
+                }
                 toast.success(`${type} uploaded successfully`);
             }
         } catch (error) {
@@ -1127,6 +1212,31 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                             Meta edits this 30-day period: <strong className={cn(editCount30d >= 8 ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : '')}>{editCount30d}/10</strong>
                             {editPeriodStart && <> &nbsp;·&nbsp; Resets on {periodResetDate}</>}
                         </span>
+                    </div>
+                )}
+                {/* Rejected template — show rejection reason prominently */}
+                {isRejectedTemplate && (
+                    <div className={cn(
+                        "rounded-2xl p-4 border flex items-start gap-3 mb-4",
+                        isDarkMode
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : 'bg-red-50 border-red-200'
+                    )}>
+                        <AlertCircle size={18} className={cn("shrink-0 mt-0.5", isDarkMode ? 'text-red-400' : 'text-red-600')} />
+                        <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm font-bold", isDarkMode ? 'text-red-300' : 'text-red-800')}>
+                                This template was rejected by Meta
+                            </p>
+                            {rejectionReason ? (
+                                <p className={cn("text-xs mt-1", isDarkMode ? 'text-red-300/70' : 'text-red-700')}>
+                                    Reason: <strong>{rejectionReason}</strong>. Please fix the content and resubmit.
+                                </p>
+                            ) : (
+                                <p className={cn("text-xs mt-1", isDarkMode ? 'text-red-300/70' : 'text-red-700')}>
+                                    No specific reason was provided by Meta. Review the template content and resubmit.
+                                </p>
+                            )}
+                        </div>
                     </div>
                 )}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1273,6 +1383,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             field.onChange(val);
                                             setValue('headerValue', '');
                                             setSelectedHeaderAsset(null);
+                                            setDirectUploadHandle(null);
                                             setUploadedFileName(null);
                                             dispatch(clearUploadedMedia());
                                             if (val === 'TEXT') {
@@ -1746,6 +1857,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         <VariableInputSection
                             isDarkMode={isDarkMode}
                             content={content}
+                            headerContent={headerType === 'TEXT' ? (headerValue || '') : ''}
                             variables={variables as Record<string, string>}
                             onVariablesChange={(vars) => setValue('variables', vars, { shouldValidate: !!errors.variables })}
                             variableErrors={errors.variables as any}

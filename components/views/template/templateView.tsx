@@ -6,10 +6,10 @@ import { TemplateListPage } from './templateListPage';
 import { TemplateFormPage } from './templateFormPage';
 import { TemplatePreviewModal } from './templatePreviewModal';
 import { toast } from '@/lib/toast';
-import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation, useGetDeletedTemplatesQuery, useRestoreTemplateMutation } from '@/hooks/useTemplateQuery';
+import { useCreateTemplateMutation, useGetAllTemplateQuery, useGetTemplateByIdQuery, usePermanentDeleteTemplateMutation, useResubmitTemplateMutation, useSoftDeleteTemplateMutation, useSubmitTemplateMutation, useSyncAllTemplateMutation, useSyncTemplateByIdMutation, useUpdateTemplateMutation, useGetDeletedTemplatesQuery, useRestoreTemplateMutation, normalizeDeletedTemplates } from '@/hooks/useTemplateQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { WhatsAppConnectionPlaceholder } from '../whatsappConfiguration/whatsappConnectionPlaceholder';
-import { generateId } from './templateUtils';
+import { generateId, normalizePhoneCTAValue } from './templateUtils';
 
 // const SAMPLE_TEMPLATES: Template[] = [
 //     {
@@ -167,7 +167,7 @@ export const TemplateView = () => {
                 toast.success('Template submitted successfully');
             },
             onError: (error: any) => {
-                toast.error(error.message);
+                toast.error(error?.response?.data?.message || error?.message || 'Template submission failed!');
             }
         });
     }
@@ -181,7 +181,7 @@ export const TemplateView = () => {
                 toast.success('Template synced successfully');
             },
             onError: (error: any) => {
-                toast.error(error.message);
+                toast.error(error?.response?.data?.message || error?.message || 'Template sync failed!');
             }
         });
     }
@@ -198,7 +198,16 @@ export const TemplateView = () => {
     }
 
     const handleRestore = (templateId: string) => {
-        restoreTemplateMutate(templateId);
+        restoreTemplateMutate(templateId, {
+            onSuccess: () => {
+                // Sync with Meta after restore to get the actual current status
+                // (approved / pending / draft — whatever Meta has for this template)
+                syncTemplateByIdMutate(templateId);
+            },
+            onError: (error: any) => {
+                toast.error(error?.response?.data?.message || error?.message || 'Template restoration failed!');
+            }
+        });
     }
 
     const handleSync = () => {
@@ -207,7 +216,7 @@ export const TemplateView = () => {
                 toast.success('Templates synced successfully');
             },
             onError: (error: any) => {
-                toast.error(error.message);
+                toast.error(error?.response?.data?.message || error?.message || 'Template sync failed!');
             }
         });
     };
@@ -261,9 +270,16 @@ export const TemplateView = () => {
             if (!headerComp) return '';
             const MEDIA_TYPES = ['IMAGE', 'VIDEO', 'DOCUMENT'];
             if (MEDIA_TYPES.includes(headerFormat)) {
-                // Prefer Cloudinary URL for real image preview; fall back to media_handle so
-                // the preview panel shows the "Gallery Media" placeholder for gallery-backed assets.
-                return (headerComp.media_url || headerComp.media_handle || headerComp.text_content || '');
+                // Prefer Cloudinary/direct URL; fall back to Meta's example.header_handle,
+                // then media_handle so the preview panel shows the placeholder for gallery assets.
+                return (
+                    headerComp.media_url ||
+                    headerComp.url ||
+                    headerComp.example?.header_handle?.[0] ||
+                    headerComp.media_handle ||
+                    headerComp.text_content ||
+                    ''
+                );
             }
             return (headerComp.text_content || '');
         })();
@@ -277,11 +293,13 @@ export const TemplateView = () => {
             headerType: derivedHeaderType as HeaderType,
             headerValue: derivedHeaderValue,
             headerMediaAssetId: selectedTemplateData.media_asset_id || headerComp?.media_asset_id || undefined,
-            headerMediaHandle: selectedTemplateData.media_handle || headerComp?.media_handle || undefined,
+            headerMediaHandle: selectedTemplateData.media_handle || headerComp?.media_handle || headerComp?.example?.header_handle?.[0] || undefined,
+            headerMediaFileName: selectedTemplateData.file_name || headerComp?.asset_file_name || headerComp?.file_name || headerComp?.filename || undefined,
             updated_at: selectedTemplateData.updated_at || undefined,
             last_edited_at: selectedTemplateData.last_edited_at ?? null,
             edit_period_start: selectedTemplateData.edit_period_start ?? null,
             edit_count_30d: selectedTemplateData.edit_count_30d ?? 0,
+            rejection_reason: selectedTemplateData.rejection_reason ?? null,
 
             // Handle Content (Body)
             content: (
@@ -321,22 +339,39 @@ export const TemplateView = () => {
                 if (buttonsComp && rawButtons) {
                     try {
                         const buttons = typeof rawButtons === 'string' ? JSON.parse(rawButtons) : rawButtons;
-                        const ctaButtons = buttons.filter((b: any) => ['URL', 'PHONE', 'COPY_CODE', 'PHONE_NUMBER'].includes(b.type));
-                        const quickReplies = buttons.filter((b: any) => b.type === 'QUICK_REPLY').map((b: any) => b.text || b.label);
+                        const ctaButtons = buttons.filter((b: any) =>
+                            ['URL', 'PHONE', 'COPY_CODE', 'PHONE_NUMBER'].includes((b.type || '').toUpperCase())
+                        );
+                        const quickReplies = buttons
+                            .filter((b: any) => (b.type || '').toUpperCase() === 'QUICK_REPLY')
+                            .map((b: any) => b.text || b.label);
 
                         // Normalize types
-                        const normalizedCTA = ctaButtons.map((b: any) => ({
-                            id: generateId(),
-                            type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type,
-                            label: b.text || b.label || (b.type === 'COPY_CODE' ? 'Copy Code' : 'Button'),
-                            value: (() => {
-                                let val = b.url || b.phone_number || b.example || b.value || (b.type === 'URL' ? b.url : '');
-                                if ((b.type === 'PHONE_NUMBER' || b.type === 'PHONE') && val) {
-                                    if (val && !val.startsWith('+')) val = '+' + val;
+                        const normalizedCTA = ctaButtons.map((b: any) => {
+                            const upperType = (b.type || '').toUpperCase();
+                            const isPhone = upperType === 'PHONE_NUMBER' || upperType === 'PHONE';
+                            const normalizedType = isPhone ? 'PHONE' : upperType;
+
+                            const value = (() => {
+                                // Collect raw value — cover all API field name variants
+                                let val = (isPhone
+                                    ? (b.phone_number || b.phoneNumber || b.phone || b.value || b.example || '')
+                                    : (b.url || b.value || b.example || '')) as string;
+
+                                if (isPhone && val) {
+                                    if (!val.startsWith('+')) val = '+' + val;
+                                    val = normalizePhoneCTAValue(val);
                                 }
                                 return val;
-                            })()
-                        }));
+                            })();
+
+                            return {
+                                id: generateId(),
+                                type: normalizedType,
+                                label: b.text || b.label || (upperType === 'COPY_CODE' ? 'Copy Code' : 'Button'),
+                                value,
+                            };
+                        });
 
                         return {
                             interactiveActions: (normalizedCTA.length > 0 && quickReplies.length > 0 ? 'All' : normalizedCTA.length > 0 ? 'CTA' : quickReplies.length > 0 ? 'QuickReplies' : 'None') as InteractiveActionType,
@@ -373,7 +408,9 @@ export const TemplateView = () => {
                                         id: generateId(),
                                         type: b.type === 'PHONE_NUMBER' ? 'PHONE' : b.type,
                                         label: b.text || b.label || 'Button',
-                                        value: b.url || b.phone_number || b.value || ''
+                                        value: (b.type === 'PHONE_NUMBER' || b.type === 'PHONE')
+                                            ? normalizePhoneCTAValue(b.url || b.phone_number || b.value || '')
+                                            : (b.url || b.phone_number || b.value || '')
                                     }))
                                 };
                             });
@@ -416,7 +453,7 @@ export const TemplateView = () => {
             <TemplateListPage
                 isDarkMode={isDarkMode}
                 templates={templateData?.data || []}
-                deletedTemplates={deletedTemplateData?.data || []}
+                deletedTemplates={normalizeDeletedTemplates(deletedTemplateData)}
                 onCreateNew={handleCreateNew}
                 onEdit={handleEdit}
                 isLoading={templateDataLoading || submitTemplateLoading || reSubmitTemplateLoading || syncTemplateLoading || softDeleteTemplateLoading || permanentDeleteTemplateLoading || syncAllTemplatesLoading || restoreTemplateLoading}

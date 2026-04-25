@@ -97,6 +97,17 @@ export const validateCSVData = (
             return;
         }
 
+        // Check if CSV row has more variable columns than the template expects
+        const actualVariableCount = row.length - 2; // subtract country_code and mobile_number columns
+        if (templateVariableCount > 0 && actualVariableCount > templateVariableCount) {
+            errors.push({
+                field: `Row ${rowNumber}`,
+                message: `Too many variables: CSV has ${actualVariableCount} but template expects ${templateVariableCount}`,
+            });
+            invalidRows.push(rowNumber);
+            return;
+        }
+
         // Check for empty variables
         const hasEmptyVariables = dynamicVariables.some((v) => !v || !v.trim());
         if (hasEmptyVariables) {
@@ -214,6 +225,7 @@ export const getRecipientStatusColor = (status: RecipientStatus): string => {
         case "pending":
             return "bg-slate-500/10 text-slate-500";
         case "failed":
+        case "permanently_failed":
             return "bg-red-500/10 text-red-500";
         default:
             return "bg-slate-500/10 text-slate-500";
@@ -265,15 +277,21 @@ export const isCampaignActive = (status: CampaignStatus): boolean => {
  * @returns true if campaign can be executed
  */
 export const canExecuteCampaign = (status: CampaignStatus): boolean => {
-    return status === "draft" || status === "scheduled" || status === "paused";
+    return status === "draft" || status === "scheduled";
 };
+
+interface CsvVariableDefinition {
+    variable_key?: string;
+    name?: string;
+    sample_value?: string;
+}
 
 /**
  * Generates CSV template for download
  * @param variableCount Number of dynamic variables
  * @returns CSV string
  */
-export const generateCSVTemplate = (variableArray: any[]): string => {
+export const generateCSVTemplate = (variableArray: CsvVariableDefinition[]): string => {
     const headers = ["country_code", "mobile_number"];
     variableArray.forEach((v, i) => {
         const key = v.variable_key || v.name || String(i + 1);
@@ -294,7 +312,7 @@ export const generateCSVTemplate = (variableArray: any[]): string => {
  * @param templateName Template name for filename
  */
 export const downloadCSVTemplate = (
-    variableArray: any[],
+    variableArray: CsvVariableDefinition[],
     templateName: string
 ): void => {
     const csv = generateCSVTemplate(variableArray);

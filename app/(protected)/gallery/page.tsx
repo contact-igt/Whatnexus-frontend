@@ -116,8 +116,8 @@ export default function GalleryPage() {
   // Hard delete handler for admins
   const hardDeleteAsset = async (assetId: string) => {
     try {
-      await hardDeleteMediaAsset(assetId);
-      toast.success('Asset permanently deleted.');
+      const response = await hardDeleteMediaAsset(assetId);
+      toast.success(response.message || 'Asset permanently deleted.');
       await loadAssets();
       await loadGlobalStats();
     } catch (e: any) {
@@ -143,6 +143,8 @@ export default function GalleryPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [restoreId, setRestoreId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const [globalStats, setGlobalStats] = useState({
     totalAssets: 0,
@@ -275,38 +277,71 @@ export default function GalleryPage() {
   };
 
   const confirmDelete = async () => {
-    if (!confirmId) return;
-    await deleteAsset(confirmId);
-    setConfirmId(null);
-  };
-
-  // ── Restore ────────────────────────────────────────────────────────────────
-  const restoreAsset = async (assetId: string) => {
-    if (!tenantId) return;
+    if (!confirmId || !tenantId) return;
+    const id = confirmId;
+    setIsDeleting(true);
     try {
-      await restoreMediaAsset(assetId);
-      toast.success('Asset restored successfully.');
-      await loadAssets();
-      await loadGlobalStats();
-    } catch (e: any) {
-      if (e?.response?.status === 410) {
-        toast.error('Restore window has expired — this asset can no longer be recovered.');
-      } else {
-        toast.error(e?.response?.data?.message || 'Restore failed.');
+      await deleteMediaAsset(id, tenantId);
+      setConfirmId(null);
+      toast.success('Deleted successfully.');
+      if (previewAsset?.media_asset_id === id || String(previewAsset?.id) === id) {
+        setDrawerOpen(false);
+        setTimeout(() => setPreviewAsset(null), 300);
       }
+      loadAssets();
+      loadGlobalStats();
+    } catch (e: any) {
+      setConfirmId(null);
+      const msg = e?.response?.data?.message || e?.message || 'Delete failed.';
+      const code = e?.response?.data?.error_code;
+      if (code === 'ASSET_IN_USE') {
+        toast.error(`Cannot delete: ${msg}`);
+      } else if (code === 'NOT_FOUND') {
+        toast.error('Asset not found. It may have already been deleted.');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
+  // ── Restore ────────────────────────────────────────────────────────────────
   const handleRestoreFromCard = (assetId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setRestoreId(assetId);
   };
 
   const confirmRestore = async () => {
-    if (!restoreId) return;
-    await restoreAsset(restoreId);
-    setRestoreId(null);
+    if (!restoreId || isRestoring) return;
+    const id = restoreId;
+    setIsRestoring(true);
+    try {
+      const response = await restoreMediaAsset(id);
+      // Close modal instantly — don't await background refreshes
+      setRestoreId(null);
+      toast.success(response.message || 'Asset restored successfully.');
+      loadAssets();
+      loadGlobalStats();
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const code = e?.response?.data?.error_code;
+      // Close modal on error too — toast surfaces the reason
+      setRestoreId(null);
+      if (status === 410 || code === 'RESTORE_EXPIRED') {
+        toast.error('Restore window has expired — this asset can no longer be recovered.');
+      } else if (status === 404 || code === 'NOT_FOUND') {
+        toast.error('Asset not found. It may have already been removed.');
+      } else if (status === 400 || code === 'INVALID_STATE') {
+        toast.error(e?.response?.data?.message || 'This asset cannot be restored in its current state.');
+      } else {
+        toast.error(e?.response?.data?.message || 'Restore failed.');
+      }
+    } finally {
+      setIsRestoring(false);
+    }
   };
+
 
   // ── Drawer ─────────────────────────────────────────────────────────────────
   const openDrawer = (asset: MediaAsset) => {
@@ -497,13 +532,13 @@ export default function GalleryPage() {
         </div>
 
         {/* ── Tabs ──────────────────────────────────────────────────────────── */}
-        <div className={cn("flex gap-1 border-b overflow-x-auto no-scrollbar", isDarkMode ? "border-white/[0.07]" : "border-slate-200")}>
+        <div className={cn("flex gap-1 border-b overflow-x-auto no-scrollbar mb-2", isDarkMode ? "border-white/[0.07]" : "border-slate-200")}>
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
               className={cn(
-                "px-4 py-2.5 text-sm font-semibold transition-all whitespace-nowrap border-b-2 -mb-px",
+                "px-4 py-2.5 text-sm font-semibold transition-all whitespace-nowrap border-b-2",
                 activeTab === tab.id
                   ? 'border-emerald-500 text-emerald-500'
                   : isDarkMode
@@ -558,8 +593,8 @@ export default function GalleryPage() {
                   isDisabled={false}
                   isDeleted={activeTab === 'deleted'}
                   isDarkMode={isDarkMode}
-                  onSelect={activeTab === 'deleted' ? () => { } : openDrawer}
-                  onPreview={activeTab === 'deleted' ? () => { } : openDrawer}
+                  onSelect={openDrawer}
+                  onPreview={openDrawer}
                   onDelete={handleDeleteFromCard}
                   onRestore={handleRestoreFromCard}
                 />
@@ -581,8 +616,8 @@ export default function GalleryPage() {
                     isDeleted={activeTab === 'deleted'}
                     isDarkMode={isDarkMode}
                     showCheckbox={false}
-                    onSelect={activeTab === 'deleted' ? () => { } : openDrawer}
-                    onPreview={activeTab === 'deleted' ? () => { } : openDrawer}
+                    onSelect={openDrawer}
+                    onPreview={openDrawer}
                     onDelete={handleDeleteFromCard}
                     onRestore={handleRestoreFromCard}
                   />
@@ -609,23 +644,26 @@ export default function GalleryPage() {
         {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
         <ConfirmationModal
           isOpen={!!confirmId}
-          onClose={() => setConfirmId(null)}
+          onClose={() => !isDeleting && setConfirmId(null)}
           onConfirm={confirmDelete}
           title="Move to Trash"
           message="This asset will be moved to trash and can be restored within 30 days."
           confirmText="Move to Trash"
           variant="danger"
+          isLoading={isDeleting}
           isDarkMode={isDarkMode}
         />
 
         {/* ── Restore Confirmation Modal ─────────────────────────────────────── */}
         <ConfirmationModal
           isOpen={!!restoreId}
-          onClose={() => setRestoreId(null)}
+          onClose={() => !isRestoring && setRestoreId(null)}
           onConfirm={confirmRestore}
           title="Restore Media Asset"
           message="Restore this asset? It will become visible in the gallery again."
           confirmText="Restore"
+          variant="success"
+          isLoading={isRestoring}
           isDarkMode={isDarkMode}
         />
 
@@ -636,7 +674,7 @@ export default function GalleryPage() {
           isDarkMode={isDarkMode}
           fromPicker={false}
           onClose={closeDrawer}
-          onDelete={deleteAsset}
+          onDelete={activeTab === 'deleted' ? undefined : deleteAsset}
         />
       </div>
     </PageTransition>

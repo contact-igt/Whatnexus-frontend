@@ -26,7 +26,7 @@ export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
     isUnclaiming,
 }) => {
     const lastActiveLabel = formatLastActiveConversation(selectedChat?.last_message_time);
-
+    console.log("selectedChat in HistoryDetails:", selectedChat);
     return (
         <div className={cn("w-1/4 min-w-[280px] border-l flex flex-col shrink-0", isDarkMode ? "bg-[#111b21] border-white/5" : "bg-white border-slate-200")}>
             <div className="p-4 flex flex-col items-center border-b space-y-3">

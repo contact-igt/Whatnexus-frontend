@@ -114,9 +114,13 @@ export function MediaPreviewDrawer({
   const confirmDelete = async () => {
     if (!asset || !onDelete) return;
     setDeleting(true);
-    await onDelete(asset.media_asset_id || String(asset.id));
-    setDeleting(false);
-    setShowConfirm(false);
+    try {
+      await onDelete(asset.media_asset_id || String(asset.id));
+      setShowConfirm(false);
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (!mounted) return null;
@@ -294,11 +298,14 @@ export function MediaPreviewDrawer({
       </div>
       <ConfirmationModal
         isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        onClose={() => {
+          if (deleting) return;
+          setShowConfirm(false);
+        }}
         onConfirm={confirmDelete}
         title="Delete Media Asset"
-        message="Are you sure you want to delete this asset? This action cannot be undone."
-        confirmText="Delete"
+        message="Are you sure you want to move this asset to trash? You can restore it later from the deleted tab."
+        confirmText="Move to Trash"
         isLoading={deleting}
         isDarkMode={isDarkMode}
       />

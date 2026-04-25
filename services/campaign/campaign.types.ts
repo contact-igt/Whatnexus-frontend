@@ -7,7 +7,8 @@
 export type CampaignType = 'immediate' | 'scheduled' | 'broadcast' | 'api';
 export type RecipientSource = 'csv' | 'group' | 'manual';
 export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused' | 'cancelled';
-export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'permanently_failed';
+export type RecipientDynamicVariables = string[] | string | Record<string, string> | null;
 
 // ============================================
 // REQUEST INTERFACES
@@ -115,10 +116,12 @@ export interface Recipient {
     id: number;
     mobile_number: string;
     status: RecipientStatus;
-    dynamic_variables: string[] | string; // API may return string or array
+    dynamic_variables: RecipientDynamicVariables;
     meta_message_id: string | null;
     sent_at?: string | null; // Backend might not return this explicitly in recipient model
     error_message?: string | null;
+    retry_count?: number | null;
+    next_retry_at?: string | null;
 }
 
 export interface CampaignDetails {
@@ -150,6 +153,15 @@ export interface CampaignStatsResponse {
         total_clicked: number;
         open_rate: number;
         click_rate: number;
+        latest_failed_error?: string | null;
+        status_counts?: {
+            all: number;
+            pending: number;
+            sent: number;
+            delivered: number;
+            read: number;
+            failed: number;
+        };
     };
 }
 

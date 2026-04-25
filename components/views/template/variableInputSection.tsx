@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react';
 import { Hash, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { extractVariables } from './templateUtils';
+import { extractVariables, suggestVariablePlaceholder } from './templateUtils';
+
+const VARIABLE_SAMPLE_MAX_LENGTH = 50;
 
 interface VariableInputSectionProps {
     isDarkMode: boolean;
     content: string;
+    headerContent?: string;
     variables: Record<string, string>;
     onVariablesChange: (variables: Record<string, string>) => void;
     variableErrors?: Record<string, any>;
@@ -18,18 +21,18 @@ interface VariableInputSectionProps {
 export const VariableInputSection = ({
     isDarkMode,
     content,
+    headerContent = '',
     variables,
     onVariablesChange,
     variableErrors,
     disabled
 }: VariableInputSectionProps) => {
     const [detectedVars, setDetectedVars] = useState<string[]>([]);
-    console.log("content1", content)
+
     useEffect(() => {
-        const vars = extractVariables(content);
+        const vars = extractVariables(`${headerContent || ''}\n${content || ''}`);
         setDetectedVars(vars);
 
-        // Initialize variables if not already set
         const newVariables = { ...variables };
         vars.forEach(varNum => {
             if (!newVariables[varNum]) {
@@ -37,7 +40,6 @@ export const VariableInputSection = ({
             }
         });
 
-        // Remove variables that are no longer in content
         Object.keys(newVariables).forEach(key => {
             if (!vars.includes(key)) {
                 delete newVariables[key];
@@ -47,12 +49,12 @@ export const VariableInputSection = ({
         if (JSON.stringify(newVariables) !== JSON.stringify(variables)) {
             onVariablesChange(newVariables);
         }
-    }, [content]);
+    }, [content, headerContent]);
 
     const handleVariableChange = (varNum: string, value: string) => {
         onVariablesChange({
             ...variables,
-            [varNum]: value
+            [varNum]: value.slice(0, VARIABLE_SAMPLE_MAX_LENGTH)
         });
     };
 
@@ -60,15 +62,8 @@ export const VariableInputSection = ({
         return null;
     }
 
-    const exampleValues: Record<string, string> = {
-        '1': 'John Doe',
-        '2': 'Product Name',
-        '3': '19th June 2025',
-        '4': '10 AM IST',
-        '5': 'Example Value',
-    };
-    console.log("variables", variables)
-    console.log("detectedVars", detectedVars)
+    const templateText = `${headerContent || ''}\n${content || ''}`;
+
     return (
         <div id="field-section-variables" className="space-y-4">
             <div className="flex items-center gap-2">
@@ -90,6 +85,8 @@ export const VariableInputSection = ({
 
             <div className="grid grid-cols-1 gap-4">
                 {detectedVars.map((varNum) => {
+                    const suggestion = suggestVariablePlaceholder(templateText, varNum);
+
                     return (
                         <div key={varNum}>
                             <div className="flex items-center gap-2 mb-2">
@@ -105,12 +102,18 @@ export const VariableInputSection = ({
                                 type="text"
                                 value={variables[varNum] || ''}
                                 onChange={(e) => handleVariableChange(varNum, e.target.value)}
-                                placeholder={exampleValues[varNum] || `Enter value for {{${varNum}}}`}
+                                placeholder={`e.g. ${suggestion}`}
+                                maxLength={VARIABLE_SAMPLE_MAX_LENGTH}
                                 error={variableErrors?.[varNum]?.message}
                                 disabled={disabled}
                             />
+                            <div className="flex items-center justify-end mt-1.5">
+                                <span className={cn("text-[10px] mr-1", isDarkMode ? 'text-white/35' : 'text-slate-500')}>
+                                    {(variables[varNum] || '').length}/{VARIABLE_SAMPLE_MAX_LENGTH}
+                                </span>
+                            </div>
                         </div>
-                    )
+                    );
                 })}
             </div>
         </div>

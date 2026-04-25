@@ -2,7 +2,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 
@@ -119,7 +119,7 @@ export const ConfirmationModal = ({
                             isDarkMode
                                 ? 'text-white/70 hover:bg-white/5 hover:text-white'
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-                            isLoading && 'opacity-50 cursor-not-allowed'
+                            isLoading && 'opacity-50 cursor-not-allowed pointer-events-none'
                         )}
                     >
                         {cancelText}
@@ -128,12 +128,13 @@ export const ConfirmationModal = ({
                         onClick={onConfirm}
                         disabled={isLoading}
                         className={cn(
-                            "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                            "px-4 py-2 rounded-lg text-sm font-medium transition-all inline-flex items-center justify-center gap-2 min-w-[148px]",
                             confirmButtonStyles[variant],
-                            isLoading && 'opacity-50 cursor-not-allowed'
+                            isLoading && 'opacity-70 cursor-not-allowed pointer-events-none'
                         )}
                     >
-                        {isLoading ? 'Processing...' : confirmText}
+                        {isLoading && <Loader2 size={16} className="animate-spin" />}
+                        <span>{isLoading ? 'Processing...' : confirmText}</span>
                     </button>
                 </div>
             </div>
