@@ -8,6 +8,7 @@ import type {
     CampaignDetailsResponse,
     ExecuteCampaignResponse,
     CampaignStatsResponse,
+    RecipientStatus,
 } from "./campaign.types";
 
 /**
@@ -88,6 +89,27 @@ export class CampaignService {
         return response;
     };
 
+    downloadRecipientsCsv = async (
+        campaignId: string,
+        recipientStatus?: RecipientStatus
+    ): Promise<{ blob: Blob; filename: string }> => {
+        const response = await _axios(
+            "get",
+            `/whatsapp/whatsapp-campaign/${campaignId}/export`,
+            undefined,
+            "application/json",
+            recipientStatus ? { recipient_status: recipientStatus } : undefined,
+            { responseType: "blob" }
+        );
+
+        const blob = response instanceof Blob ? response : new Blob([response], { type: "text/csv;charset=utf-8;" });
+        const safeStatus = recipientStatus || 'all';
+        return {
+            blob,
+            filename: `campaign-${campaignId}-${safeStatus}.csv`,
+        };
+    };
+
     /**
      * Manually trigger execution of a draft/scheduled campaign
      * @param campaignId Campaign ID to execute
@@ -106,6 +128,17 @@ export class CampaignService {
             console.error("Error executing campaign:", error);
             throw error;
         }
+    };
+
+    updateCampaignStatus = async (
+        campaignId: string,
+        status: 'paused' | 'active' | 'cancelled'
+    ): Promise<{ success: boolean; message: string }> => {
+        return await _axios(
+            "post",
+            `/whatsapp/whatsapp-campaign/${campaignId}/status`,
+            { status }
+        );
     };
     /**
      * Delete a campaign (Soft Delete)

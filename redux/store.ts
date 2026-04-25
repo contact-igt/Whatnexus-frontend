@@ -1,11 +1,30 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
-import storageSession from 'redux-persist/lib/storage/session';
+import createWebStorage from 'redux-persist/es/storage/createWebStorage';
 import authReducer from './slices/auth/authSlice';
 import templateReducer from './slices/template/templateSlice';
 import notificationsReducer from './slices/notifications/notificationsSlice';
 import { combineReducers } from 'redux';
+
+const createNoopStorage = () => ({
+  getItem() {
+    return Promise.resolve(null);
+  },
+  setItem(_key: string, value: string) {
+    return Promise.resolve(value);
+  },
+  removeItem() {
+    return Promise.resolve();
+  },
+});
+
+const storage = typeof window === 'undefined'
+  ? createNoopStorage()
+  : createWebStorage('local');
+
+const storageSession = typeof window === 'undefined'
+  ? createNoopStorage()
+  : createWebStorage('session');
 
 const persistConfig = {
   key: 'root',

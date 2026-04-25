@@ -12,9 +12,11 @@ interface UseCampaignDetailsReturn {
     campaign: CampaignDetails | null;
     recipients: Recipient[];
     loading: boolean;
+    isRefreshing: boolean;
     error: string | null;
     stats: CampaignStatsResponse["data"] | null;
-    refetch: () => Promise<void>;
+    lastUpdatedAt: string | null;
+    refetch: (options?: { manual?: boolean }) => Promise<void>;
     filters: {
         recipientStatus: RecipientStatus | undefined;
         setRecipientStatus: (status: RecipientStatus | undefined) => void;
@@ -35,15 +37,21 @@ export const useCampaignDetails = (
     const [campaign, setCampaign] = useState<CampaignDetails | null>(null);
     const [recipients, setRecipients] = useState<Recipient[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [stats, setStats] = useState<CampaignStatsResponse["data"] | null>(null);
+    const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
     const [recipientStatusFilter, setRecipientStatusFilter] = useState<
         RecipientStatus | undefined
     >(undefined);
 
-    const fetchCampaignDetails = useCallback(async () => {
+    const fetchCampaignDetails = useCallback(async (options?: { manual?: boolean }) => {
         try {
-            setLoading(true);
+            if (options?.manual) {
+                setIsRefreshing(true);
+            } else {
+                setLoading(true);
+            }
             setError(null);
 
             const params = recipientStatusFilter
@@ -54,22 +62,34 @@ export const useCampaignDetails = (
                 campaignId,
                 params
             );
-            const statsResponse = await campaignService.getCampaignStats(campaignId);
 
             setCampaign(response.data);
-            setRecipients(response.data.recipients);
-            setStats(statsResponse.data);
+            setRecipients(response.data.recipients || []);
+            setLastUpdatedAt(new Date().toISOString());
+
+            // Fetch stats separately so a stats failure doesn't break the whole page
+            try {
+                const statsResponse = await campaignService.getCampaignStats(campaignId);
+                setStats(statsResponse.data);
+            } catch (statsErr) {
+                console.warn("Failed to fetch campaign stats:", statsErr);
+                // Keep existing stats if available, or set null — page still works
+            }
         } catch (err) {
             console.error("Error fetching campaign details:", err);
             setError("Failed to load campaign details. Please try again.");
         } finally {
-            setLoading(false);
+            if (options?.manual) {
+                setIsRefreshing(false);
+            } else {
+                setLoading(false);
+            }
         }
     }, [campaignId, recipientStatusFilter]);
 
     // Initial fetch
     useEffect(() => {
-        fetchCampaignDetails();
+        Promise.resolve().then(() => fetchCampaignDetails());
     }, [fetchCampaignDetails]);
 
     // Auto-refresh for active campaigns
@@ -117,7 +137,7 @@ export const useCampaignDetails = (
             clearTimeout(timeoutId);
             clearInterval(intervalId);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoRefresh, campaign?.status, campaign?.scheduled_at]);
 
     const setRecipientStatus = useCallback(
@@ -131,8 +151,10 @@ export const useCampaignDetails = (
         campaign,
         recipients,
         loading,
+        isRefreshing,
         error,
         stats,
+        lastUpdatedAt,
         refetch: fetchCampaignDetails,
         filters: {
             recipientStatus: recipientStatusFilter,
