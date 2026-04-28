@@ -54,6 +54,16 @@ export class tenantUserApiData {
         return await _axios("get", `/tenant/user/profile`)
     }
 
+    // GET /api/whatsapp/tenant/user/preferences - Get logged-in tenant user preferences
+    getTenantUserPreferences = async () => {
+        return await _axios("get", `/tenant/user/preferences`)
+    }
+
+    // PUT /api/whatsapp/tenant/user/preferences - Update logged-in tenant user preferences
+    updateTenantUserPreferences = async (preferences: { theme?: "light" | "dark" }) => {
+        return await _axios("put", `/tenant/user/preferences`, { preferences })
+    }
+
     // PUT /api/whatsapp/tenant/user/profile - Update profile (and organization for tenant_admin)
     updateTenantProfile = async (data: any) => {
         return await _axios("put", `/tenant/user/profile`, data)

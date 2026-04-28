@@ -12,6 +12,7 @@ import { NoDataFound } from './noDataFound';
 
 interface LiveOperationsCenterProps {
     isDarkMode?: boolean;
+    canOpenInbox?: boolean;
     liveOpsData?: {
         hotLeads: HotLead[];
         metrics: { unassigned: number; escalated: number };
@@ -27,7 +28,7 @@ const agentColors = [
     { from: '#a855f7', to: '#c084fc', dot: '#c084fc' },
 ];
 
-export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOperationsCenterProps) => {
+export const LiveOperationsCenter = ({ isDarkMode = true, canOpenInbox = true, liveOpsData }: LiveOperationsCenterProps) => {
     const [bars, setBars] = useState(false);
     const [show, setShow] = useState(false);
     const t = tx(isDarkMode);
@@ -70,11 +71,13 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
             <div className="flex items-center justify-between mb-1">
                 <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Live Operations</h3>
                 <div className="flex items-center gap-3">
-                    <button onClick={() => router.push('/shared-inbox/live-chats')}
-                        className="px-2.5 py-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                        style={{ fontSize: '12px', fontWeight: 500, color: '#3b82f6' }}>
-                        Open Inbox
-                    </button>
+                    {canOpenInbox && (
+                        <button onClick={() => router.push('/shared-inbox/live-chats')}
+                            className="px-2.5 py-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            style={{ fontSize: '12px', fontWeight: 500, color: '#3b82f6' }}>
+                            Open Inbox
+                        </button>
+                    )}
                     <div className="flex items-center gap-1.5" style={{ color: '#ef4444' }}>
                         <div className="relative flex items-center justify-center px-1">
                             <div className="w-1.5 h-1.5 rounded-full absolute bg-current opacity-75 animate-ping" />
@@ -167,14 +170,18 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                 ) : topLead ? (
                     <div className="space-y-1.5">
                         {/* Primary hot lead */}
-                        <div onClick={() => router.push(topLead.phone ? `/shared-inbox/live-chats?phone=${topLead.phone}` : '/shared-inbox/live-chats')}
-                            className="p-3 rounded-lg flex items-center justify-between cursor-pointer transition-colors border"
+                        <div onClick={() => {
+                            if (!canOpenInbox) return;
+                            router.push(topLead.phone ? `/shared-inbox/live-chats?phone=${topLead.phone}` : '/shared-inbox/live-chats');
+                        }}
+                            className="p-3 rounded-lg flex items-center justify-between transition-colors border"
                             style={{
                                 ...glassInner(isDarkMode),
                                 background: isDarkMode ? 'rgba(249,115,22,0.04)' : '#fffbf5',
                                 borderColor: isDarkMode ? 'rgba(249,115,22,0.15)' : '#fed7aa',
                                 opacity: show ? 1 : 0,
                                 transition: 'opacity 0.4s ease 0.12s, background 0.15s ease',
+                                cursor: canOpenInbox ? 'pointer' : 'default',
                             }}>
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-xs relative"
@@ -200,11 +207,15 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                         {/* Secondary leads */}
                         {remainingLeads.map((lead, i) => (
                             <div key={i}
-                                onClick={() => router.push(lead.phone ? `/shared-inbox/live-chats?phone=${lead.phone}` : '/shared-inbox/live-chats')}
-                                className="px-3 py-2.5 rounded-lg flex items-center justify-between cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                                onClick={() => {
+                                    if (!canOpenInbox) return;
+                                    router.push(lead.phone ? `/shared-inbox/live-chats?phone=${lead.phone}` : '/shared-inbox/live-chats');
+                                }}
+                                className="px-3 py-2.5 rounded-lg flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
                                 style={{
                                     opacity: show ? 1 : 0,
                                     transition: `opacity 0.35s ease ${0.18 + i * 0.06}s`,
+                                    cursor: canOpenInbox ? 'pointer' : 'default',
                                 }}>
                                 <div className="flex items-center gap-2.5">
                                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-medium"

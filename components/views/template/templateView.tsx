@@ -97,9 +97,6 @@ type TemplateComponent = Record<string, any>;
 
 export const TemplateView = () => {
     const { user, whatsappApiDetails } = useAuth();
-    if (whatsappApiDetails?.status !== 'active') {
-        return <WhatsAppConnectionPlaceholder />;
-    }
     const { isDarkMode } = useTheme();
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     // const [templates, setTemplates] = useState<Template[]>(SAMPLE_TEMPLATES);
@@ -419,6 +416,10 @@ export const TemplateView = () => {
             })())
         };
     }, [selectedTemplateData]);
+
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
 
     // Render based on view mode
     if (viewMode === 'create' || viewMode === 'edit' || viewMode === 'view') {

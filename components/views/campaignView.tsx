@@ -33,10 +33,11 @@ type TabType = 'all' | 'draft' | 'scheduled' | 'active' | 'paused' | 'completed'
 
 export const CampaignView = memo(() => {
     const { whatsappApiDetails } = useAuth();
+    const { isDarkMode } = useTheme();
+
     if (whatsappApiDetails?.status !== 'active') {
         return <WhatsAppConnectionPlaceholder />;
     }
-    const { isDarkMode } = useTheme();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -105,7 +106,7 @@ export const CampaignView = memo(() => {
         { id: 'trash', label: 'Trash' },
     ];
 
-    const campaignsToDisplay = activeTab === 'trash' ? deletedCampaigns : campaigns;
+    const campaignsToDisplay = (activeTab === 'trash' ? deletedCampaigns : campaigns) ?? [];
 
     useEffect(() => {
         if (activeTab === 'trash' || activeTab === 'all') {
@@ -342,7 +343,7 @@ export const CampaignView = memo(() => {
                             </button>
                         )}
                     </div>
-                    <button
+                    {/* <button
                         onClick={() => refetch()}
                         disabled={loading}
                         className={cn(
@@ -355,7 +356,7 @@ export const CampaignView = memo(() => {
                     >
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                         Refresh
-                    </button>
+                    </button> */}
                 </div>
 
                 <div className="flex gap-2 border-b border-white/5 overflow-x-auto no-scrollbar">
@@ -394,40 +395,40 @@ export const CampaignView = memo(() => {
                 {!error && (
                     <GlassCard isDarkMode={isDarkMode} className="p-0 overflow-hidden overflow-x-auto">
                         <div className="hidden md:block">
-                        <DataTable
-                            columns={columns}
-                            data={campaignsToDisplay}
-                            isLoading={loading}
-                            isDarkMode={isDarkMode}
-                            onRowClick={(row) => handleCampaignClick(row.campaign_id)}
-                            emptyState={
-                                <div className="flex flex-col items-center justify-center py-16">
-                                    <div className={cn(
-                                        "w-16 h-16 rounded-full flex items-center justify-center",
-                                        isDarkMode ? 'bg-white/5' : 'bg-slate-100'
-                                    )}>
-                                        <Megaphone size={28} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
+                            <DataTable
+                                columns={columns}
+                                data={campaignsToDisplay}
+                                isLoading={loading}
+                                isDarkMode={isDarkMode}
+                                onRowClick={(row) => handleCampaignClick(row.campaign_id)}
+                                emptyState={
+                                    <div className="flex flex-col items-center justify-center py-16">
+                                        <div className={cn(
+                                            "w-16 h-16 rounded-full flex items-center justify-center",
+                                            isDarkMode ? 'bg-white/5' : 'bg-slate-100'
+                                        )}>
+                                            <Megaphone size={28} className={cn(isDarkMode ? 'text-white/20' : 'text-slate-300')} />
+                                        </div>
+                                        <div className="space-y-2 mt-4 text-center">
+                                            <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                                {searchQuery ? 'No campaigns match your search' : 'No campaigns yet'}
+                                            </p>
+                                            <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                                {searchQuery ? 'Try adjusting your search terms' : 'Launch your first campaign to get started'}
+                                            </p>
+                                        </div>
+                                        {!searchQuery && (
+                                            <button
+                                                onClick={() => setIsCreateModalOpen(true)}
+                                                className="mt-4 px-4 py-2 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-all flex items-center gap-2"
+                                            >
+                                                <Plus size={14} />
+                                                Create Campaign
+                                            </button>
+                                        )}
                                     </div>
-                                    <div className="space-y-2 mt-4 text-center">
-                                        <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
-                                            {searchQuery ? 'No campaigns match your search' : 'No campaigns yet'}
-                                        </p>
-                                        <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
-                                            {searchQuery ? 'Try adjusting your search terms' : 'Launch your first campaign to get started'}
-                                        </p>
-                                    </div>
-                                    {!searchQuery && (
-                                        <button
-                                            onClick={() => setIsCreateModalOpen(true)}
-                                            className="mt-4 px-4 py-2 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-all flex items-center gap-2"
-                                        >
-                                            <Plus size={14} />
-                                            Create Campaign
-                                        </button>
-                                    )}
-                                </div>
-                            }
-                        />
+                                }
+                            />
                         </div>
 
                         <div className="md:hidden space-y-3 p-4">

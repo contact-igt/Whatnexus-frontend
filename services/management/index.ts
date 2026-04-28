@@ -13,6 +13,9 @@ export interface UpdateManagementUserRequest {
     username?: string;
     country_code?: string;
     mobile?: string;
+    preferences?: {
+        theme?: "light" | "dark";
+    };
 }
 
 export interface ManagementUser {
@@ -53,6 +56,16 @@ export class managementApiData {
     // GET /api/whatsapp/management/profile - Get logged-in management user profile
     getManagementProfile = async () => {
         return await _axios("get", `/management/profile`)
+    }
+
+    // GET /api/whatsapp/management/preferences - Get logged-in management user preferences
+    getManagementPreferences = async () => {
+        return await _axios("get", `/management/preferences`)
+    }
+
+    // PUT /api/whatsapp/management/preferences - Update logged-in management user preferences
+    updateManagementPreferences = async (preferences: { theme?: "light" | "dark" }) => {
+        return await _axios("put", `/management/preferences`, { preferences })
     }
     getManagementDeletedList = async () => {
         return await _axios("get", `/management/deleted/list`)

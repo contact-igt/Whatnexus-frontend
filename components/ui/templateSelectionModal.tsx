@@ -322,7 +322,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                             key={template.id}
                                             onClick={() => setSelectedTemplate(template)}
                                             className={cn(
-                                                "p-6 rounded-2xl border-2 text-left transition-all relative group flex flex-col h-[220px]",
+                                                "p-6 rounded-2xl border-2 text-left transition-all relative group flex flex-col h-[220px] min-w-0 overflow-hidden",
                                                 selectedTemplate?.id === template.id
                                                     ? 'border-emerald-500 bg-emerald-500/5 shadow-2xl shadow-emerald-500/20 z-10'
                                                     : isDarkMode
@@ -343,7 +343,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                                     </div>
                                                 )}
                                             </div>
-                                            <h3 className={cn("text-sm font-bold mb-1.5 truncate pr-8", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                            <h3 className={cn("text-sm font-bold mb-1.5 pr-8 min-w-0 break-words line-clamp-2 leading-5", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                                 {template.name}
                                             </h3>
                                             <p className={cn("text-xs line-clamp-3 mb-6 flex-1 italic opacity-60 leading-relaxed", isDarkMode ? 'text-white/60' : 'text-slate-500')}>

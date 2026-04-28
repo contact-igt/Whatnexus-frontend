@@ -398,7 +398,7 @@ export const DashboardView = () => {
                                 accentColor="#f43f5e"
                                 isDarkMode={isDarkMode}
                             />
-                            <LiveOperationsCenter isDarkMode={isDarkMode} liveOpsData={dashboardData?.liveOperations} />
+                            <LiveOperationsCenter isDarkMode={isDarkMode} canOpenInbox={!isManagement} liveOpsData={dashboardData?.liveOperations} />
                         </section>
 
                         {/* 7. Appointments Today */}

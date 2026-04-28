@@ -61,7 +61,7 @@ export const whatsappConnectSchema = z.object({
 });
 
 export const WhatsAppConnectionView = () => {
-    const { register, handleSubmit, formState: { errors }, watch } = useForm<WhatsAppConfig>({
+    const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<WhatsAppConfig>({
         resolver: zodResolver(whatsappConnectSchema),
         defaultValues: {
             waba_id: '',
@@ -369,6 +369,10 @@ export const WhatsAppConnectionView = () => {
                                                     placeholder="Enter Whatsapp Number"
                                                     error={errors.whatsapp_number?.message}
                                                     required
+                                                    onChange={(e) => {
+                                                        const cleaned = e.target.value.replace(/[\s+]/g, '').slice(0, 12);
+                                                        setValue("whatsapp_number", cleaned, { shouldValidate: true });
+                                                    }}
                                                 />
                                             </div>
 

@@ -64,7 +64,20 @@ export const useCampaigns = (
 
             const response = await campaignService.getCampaignList(params);
 
-            setCampaigns(response.data.campaigns);
+            // Derive completed status on the client when all messages are delivered
+            const campaignsFromApi = response.data.campaigns || [];
+            const campaignsWithDerivedStatus = campaignsFromApi.map((c: any) => {
+                try {
+                    const total = Number(c.total_audience || c.total_audience_count || 0);
+                    const delivered = Number(c.delivered_count || 0);
+                    if (total > 0 && delivered >= total && c.status !== 'completed') {
+                        return { ...c, status: 'completed' };
+                    }
+                } catch { }
+                return c;
+            });
+
+            setCampaigns(campaignsWithDerivedStatus);
             setTotalPages(response.data.totalPages);
             setTotalCampaigns(response.data.totalItems);
         } catch (err) {
