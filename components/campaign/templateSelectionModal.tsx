@@ -362,7 +362,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                                         <FileText size={24} className="text-emerald-500" />
                                                     )}
                                                 </div>
-                                                <h3 className={cn("text-sm font-bold mb-1", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                                <h3 className={cn("text-sm font-bold mb-2 line-clamp-2 break-words", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                                     {template.name}
                                                 </h3>
                                                 <p className={cn("text-xs line-clamp-2", isDarkMode ? 'text-white/60' : 'text-slate-600')}>

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from 'react';
-import { Zap, Plus, X, Link, Phone, Copy, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Zap, Plus, X, Link, Phone, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -16,10 +15,16 @@ interface InteractiveActionsSectionProps {
     onCTAButtonsChange: (buttons: CTAButton[]) => void;
     quickReplies: string[];
     onQuickRepliesChange: (replies: string[]) => void;
-    ctaErrors?: any[];
+    ctaErrors?: CTAButtonError[];
     disabled?: boolean;
     isCarousel?: boolean;
+    isAuthMode?: boolean;
 }
+
+type CTAButtonError = {
+    label?: { message?: string };
+    value?: { message?: string };
+};
 
 const COUNTRY_CODES = [
     { value: '+91', label: '🇮🇳 India (+91)' },
@@ -61,7 +66,8 @@ export const InteractiveActionsSection = ({
     onQuickRepliesChange,
     ctaErrors = [],
     disabled = false,
-    isCarousel = false
+    isCarousel = false,
+    isAuthMode: isAuthModeProp,
 }: InteractiveActionsSectionProps) => {
 
     const addCTAButton = (type: CTAType) => {
@@ -86,7 +92,7 @@ export const InteractiveActionsSection = ({
         onCTAButtonsChange([...ctaButtons, newButton]);
     };
 
-    const updateCTAButton = (id: string, field: keyof CTAButton, value: any) => {
+    const updateCTAButton = (id: string, field: keyof CTAButton, value: string) => {
         onCTAButtonsChange(
             ctaButtons.map(btn => btn.id === id ? { ...btn, [field]: value } : btn)
         );
@@ -112,7 +118,16 @@ export const InteractiveActionsSection = ({
         onQuickRepliesChange(quickReplies.filter((_, i) => i !== index));
     };
 
-    const isAuthMode = actionType === 'Authentication';
+    const handleActionTypeChange = (type: InteractiveActionType) => {
+        onActionTypeChange(type);
+
+        if (type === 'None') {
+            onCTAButtonsChange([]);
+            onQuickRepliesChange([]);
+        }
+    };
+
+    const isAuthMode = isAuthModeProp !== undefined ? isAuthModeProp : actionType === 'Authentication';
     const showCTA = !isAuthMode && (actionType === 'CTA' || actionType === 'All');
     const showQuickReplies = !isAuthMode && !isCarousel && (actionType === 'QuickReplies' || actionType === 'All');
 
@@ -243,7 +258,7 @@ export const InteractiveActionsSection = ({
                         <button
                             key={type}
                             type="button"
-                            onClick={() => onActionTypeChange(type)}
+                            onClick={() => handleActionTypeChange(type)}
                             disabled={disabled}
                             className={cn(
                                 "py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all",
