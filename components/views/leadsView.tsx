@@ -25,6 +25,9 @@ import { useBulkUpdateLeadsMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { toast } from '@/lib/toast';
 import { socket } from '@/utils/socket';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
+import { LeadIntelligenceApiData } from '@/services/leadIntelligene';
+
+const leadIntelligenceApis = new LeadIntelligenceApiData();
 
 
 export const LeadsView = () => {
@@ -47,6 +50,7 @@ export const LeadsView = () => {
     });
 
     const [leadAssignmentFilter, setLeadAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+    const [refreshAllProgress, setRefreshAllProgress] = useState({ current: 0, total: 0, running: false });
 
     // Data Queries
     const { data: leadIntelligenceData, isLoading: isLoadingLeads, refetch: refetchLeads } = useLeadIntelligenceQuery();
@@ -91,19 +95,26 @@ export const LeadsView = () => {
     };
 
     const isLoading = activeTab === 'all' ? isLoadingLeads : isLoadingDeletedLeads;
-    const leads = activeTab === 'all' ? (leadIntelligenceData?.data?.leads || []) : (deletedLeadsData?.data?.leads || []);
+    const leads = activeTab === 'all' ? (leadIntelligenceData?.data?.leads || []) : (deletedLeadsData?.data?.items || []);
+
+    const normalizeHeatState = (state: string = '') => state.toLowerCase().replace('_', '');
+    const getLeadFinalScore = (lead: any) => Number(lead?.lead_score_final ?? lead?.score ?? 0);
+    const getLeadFinalHeatState = (lead: any) => lead?.lead_status_final || lead?.heat_state || 'cold';
 
     const filteredLeads = leads.filter((lead: any) => {
         const searchLower = searchQuery.toLowerCase();
         const { date, time } = formatMessageDate(lead?.last_user_message_at);
+        const finalHeatState = getLeadFinalHeatState(lead);
         const matchesSearch = searchQuery === '' || [
             lead?.name,
             lead?.phone,
             lead?.origin,
             lead?.source,
             lead?.heat_state,
+            finalHeatState,
             lead?.ai_summary,
             lead?.summary_status,
+            lead?.lead_score_reason_codes?.join?.(','),
             date,
             time
         ].some(val => val?.toString().toLowerCase().includes(searchLower));
@@ -111,9 +122,11 @@ export const LeadsView = () => {
         const matchesOrigin = filters.origin === 'all' || (lead?.origin || lead?.source) === filters.origin;
 
         let matchesScore = true;
-        if (filters.score > 0) matchesScore = lead?.score >= filters.score;
+        if (filters.score > 0) matchesScore = getLeadFinalScore(lead) >= filters.score;
 
-        const matchesHeatState = filters.heatState === 'all' || lead?.heat_state?.toLowerCase() === filters.heatState.toLowerCase();
+        const matchesHeatState =
+            filters.heatState === 'all' ||
+            normalizeHeatState(finalHeatState) === normalizeHeatState(filters.heatState);
 
         const matchesAssignment =
             filters.assignedTo === 'all' ||
@@ -403,24 +416,71 @@ export const LeadsView = () => {
             field: 'score',
             headerName: 'Neural Score',
             minWidth: 150,
-            renderCell: ({ row }) => (
-                <div className="flex flex-col justify-center items-start">
-                    <span className={cn("text-xs font-bold mb-1.5", row?.score > 80 ? 'text-emerald-500' : 'text-orange-500')}>{row?.score}</span>
-                    <div className={cn("h-1 w-12 rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-200')}>
-                        <div className={cn("h-full rounded-full transition-all duration-[2000ms] ease-out", row?.score > 80 ? 'bg-emerald-500' : 'bg-orange-500')} style={{ width: `${row?.score}%` }} />
+            renderCell: ({ row }) => {
+                const finalScore = Number(row?.lead_score_final ?? row?.score ?? 0);
+                const recencyScore = row?.lead_score_recency_component === null || row?.lead_score_recency_component === undefined
+                    ? null
+                    : Number(row.lead_score_recency_component);
+                const conversationScore = row?.lead_score_conversation_component === null || row?.lead_score_conversation_component === undefined
+                    ? null
+                    : Number(row.lead_score_conversation_component);
+                const interestScore = row?.lead_score_intent_interest_component === null || row?.lead_score_intent_interest_component === undefined
+                    ? null
+                    : Number(row.lead_score_intent_interest_component);
+                const reasonCodes = Array.isArray(row?.lead_score_reason_codes) ? row.lead_score_reason_codes : [];
+                const explanationNotes: string[] = [];
+
+                if (reasonCodes.includes('intent_negative_not_interested')) {
+                    explanationNotes.push('User marked not-interested.');
+                }
+                if (reasonCodes.some((code: string) => code.startsWith('intent_bonus_appointment_'))) {
+                    explanationNotes.push('Appointment intent bonus applied.');
+                }
+
+                const tooltip = [
+                    `Final: ${finalScore}/100`,
+                    `Recency (50%): ${recencyScore ?? 'pending'}`,
+                    `AI Score (35%): ${conversationScore ?? 'pending'}`,
+                    `Interest (15%): ${interestScore ?? 'pending'}`,
+                    ...explanationNotes,
+                    reasonCodes.length > 0 ? `Reason Codes: ${reasonCodes.join(', ')}` : 'No explainability signals yet'
+                ].join('\n');
+
+                const scoreTextClass = finalScore >= 80
+                    ? 'text-red-500'
+                    : finalScore >= 40
+                        ? 'text-orange-500'
+                        : 'text-blue-500';
+
+                const scoreBarClass = finalScore >= 80
+                    ? 'bg-red-500'
+                    : finalScore >= 40
+                        ? 'bg-orange-500'
+                        : 'bg-blue-500';
+
+                return (
+                    <div className="flex flex-col justify-center items-start" title={tooltip}>
+                        <span className={cn("text-xs font-bold mb-1.5", scoreTextClass)}>{finalScore}</span>
+
+                        <div className={cn("h-1 w-12 rounded-full overflow-hidden", isDarkMode ? 'bg-white/5' : 'bg-slate-200')}>
+                            <div className={cn("h-full rounded-full transition-all duration-[2000ms] ease-out", scoreBarClass)} style={{ width: `${finalScore}%` }} />
+                        </div>
                     </div>
-                </div>
-            )
+                );
+            }
         },
         {
             field: 'heat_state',
-            headerName: 'Heat State',
+            headerName: 'Lead Status',
             minWidth: 120,
-            renderCell: ({ row }) => (
-                <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(row.heat_state))}>
-                    {row?.heat_state}
-                </span>
-            )
+            renderCell: ({ row }) => {
+                const finalStatus = row?.lead_status_final || row?.heat_state;
+                return (
+                    <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(finalStatus))}>
+                        {finalStatus}
+                    </span>
+                );
+            }
         },
         {
             field: 'assigned_to',
@@ -730,7 +790,7 @@ export const LeadsView = () => {
                                     { value: 'cold', label: 'Cold' },
                                     { value: 'warm', label: 'Warm' },
                                     { value: 'hot', label: 'Hot' },
-                                    { value: 'super_cold', label: 'Super Cold' }
+                                    { value: 'supercold', label: 'Super Cold' }
                                 ]}
                                 value={filters.heatState}
                                 onChange={(val) => { setFilters(prev => ({ ...prev, heatState: val })); setSelectedLeadIds([]); }}
@@ -995,53 +1055,94 @@ export const LeadsView = () => {
                 )}
 
                 {/* Tabs */}
-                <div className="flex items-center space-x-1 border-b border-white/5">
-                    <button
-                        onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: 'all' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-all",
-                            activeTab === 'all' && filters.assignedTo === 'all'
-                                ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                        )}
-                    >
-                        All Leads
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: isAdmin ? 'assigned' : (user?.tenant_user_id || 'all') })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-all",
-                            activeTab === 'all' && (filters.assignedTo === (isAdmin ? 'assigned' : user?.tenant_user_id))
-                                ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                        )}
-                    >
-                        Assigned
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: 'unassigned' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-all",
-                            activeTab === 'all' && filters.assignedTo === 'unassigned'
-                                ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                        )}
-                    >
-                        Unassigned
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('trash'); setFilters(prev => ({ ...prev, assignedTo: 'all' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center space-x-2",
-                            activeTab === 'trash'
-                                ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                        )}
-                    >
-                        <Trash2 size={16} />
-                        <span>Trash</span>
-                    </button>
-                </div >
+                <div className="flex items-center justify-between border-b border-white/5">
+                    <div className="flex items-center space-x-1">
+                        <button
+                            onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: 'all' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium border-b-2 transition-all",
+                                activeTab === 'all' && filters.assignedTo === 'all'
+                                    ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                            )}
+                        >
+                            All Leads
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: isAdmin ? 'assigned' : (user?.tenant_user_id || 'all') })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium border-b-2 transition-all",
+                                activeTab === 'all' && (filters.assignedTo === (isAdmin ? 'assigned' : user?.tenant_user_id))
+                                    ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                            )}
+                        >
+                            Assigned
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('all'); setFilters(prev => ({ ...prev, assignedTo: 'unassigned' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium border-b-2 transition-all",
+                                activeTab === 'all' && filters.assignedTo === 'unassigned'
+                                    ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                            )}
+                        >
+                            Unassigned
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('trash'); setFilters(prev => ({ ...prev, assignedTo: 'all' })); setCurrentPage(1); setSearchQuery(''); setSelectedLeadIds([]); }}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center space-x-2",
+                                activeTab === 'trash'
+                                    ? (isDarkMode ? 'border-emerald-500 text-emerald-500' : 'border-emerald-500 text-emerald-600')
+                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                            )}
+                        >
+                            <Trash2 size={16} />
+                            <span>Trash</span>
+                        </button>
+                    </div>
+
+                    {/* Refresh All Summary Button */}
+                    {activeTab === 'all' && (
+                        <button
+                            onClick={async () => {
+                                const allLeads = leads.filter((l: any) => l?.lead_id);
+                                if (!allLeads.length) { toast.error("No leads to summarize"); return; }
+                                setRefreshAllProgress({ current: 0, total: allLeads.length, running: true });
+                                let successCount = 0;
+                                for (let i = 0; i < allLeads.length; i++) {
+                                    setRefreshAllProgress(prev => ({ ...prev, current: i + 1 }));
+                                    try {
+                                        await leadIntelligenceApis.getLeadSummary(allLeads[i].lead_id, undefined, undefined, undefined, true);
+                                        successCount++;
+                                    } catch (err) { /* skip failed */ }
+                                }
+                                setRefreshAllProgress({ current: 0, total: 0, running: false });
+                                refetchLeads();
+                                toast.success(`Refreshed ${successCount}/${allLeads.length} summaries`);
+                            }}
+                            disabled={refreshAllProgress.running}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all mr-2",
+                                refreshAllProgress.running
+                                    ? isDarkMode
+                                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-600"
+                                    : isDarkMode
+                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100 hover:border-emerald-300 shadow-sm"
+                            )}
+                        >
+                            <RefreshCw size={14} className={cn(refreshAllProgress.running && "animate-spin")} />
+                            {refreshAllProgress.running
+                                ? `${refreshAllProgress.current}/${refreshAllProgress.total}`
+                                : "Refresh All Summary"
+                            }
+                        </button>
+                    )}
+                </div>
 
                 <GlassCard isDarkMode={isDarkMode} className="flex flex-col min-h-0 overflow-hidden p-0">
                     <DataTable
@@ -1050,6 +1151,7 @@ export const LeadsView = () => {
                         data={currentLeads}
                         isLoading={isLoading}
                         isDarkMode={isDarkMode}
+                        onRowClick={(row: any) => handleViewDetails(row?.lead_id)}
                         getRowClassName={() => ''}
                         emptyState={
                             <div className="flex flex-col items-center justify-center text-center">

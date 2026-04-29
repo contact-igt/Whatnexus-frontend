@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   MessageCircle,
   CheckCircle2,
@@ -10,6 +11,7 @@ import {
   ChevronUp,
   Loader2,
   Plus,
+  ExternalLink,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
@@ -100,6 +102,7 @@ const getFaqDisplayName = (item: FaqReviewItem) => {
 };
 
 export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
+  const router = useRouter();
   const [filter, setFilter] = useState<FilterType>("pending_review");
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -220,6 +223,28 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
       id: String(item.id),
       data: { doctor_answer: answer, add_to_kb: shouldAddToKb },
     });
+  };
+
+  const handleGoToChat = (item: any) => {
+    // Navigate to chat with message highlight
+    const whatsappNumber = item.whatsapp_number || item.phone;
+    const wamid = item.wamid;
+
+    if (!whatsappNumber) {
+      console.error("No phone number found for this FAQ");
+      return;
+    }
+
+    if (!wamid) {
+      // If no wamid, still navigate to chat but without highlight
+      router.push(`/chats?phone=${encodeURIComponent(whatsappNumber)}`);
+      return;
+    }
+
+    // Navigate with highlight parameter
+    router.push(
+      `/chats?phone=${encodeURIComponent(whatsappNumber)}&highlight=${encodeURIComponent(wamid)}`
+    );
   };
 
   const handlePublish = (item: FaqReviewItem) => {
@@ -535,6 +560,23 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                             />
                           </div>
                         </label>
+                      )}
+                      {item.wamid && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGoToChat(item);
+                          }}
+                          className={cn(
+                            "p-1.5 rounded-lg transition-colors inline-flex items-center gap-1 text-xs",
+                            isDarkMode
+                              ? "text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10"
+                              : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                          )}
+                          title="Go to original chat message"
+                        >
+                          <ExternalLink size={14} />
+                        </button>
                       )}
                       <button
                         onClick={(e) => {

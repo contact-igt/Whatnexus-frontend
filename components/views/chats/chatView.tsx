@@ -88,6 +88,7 @@ export const ChatView = () => {
     const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchParams = useSearchParams();
     const phoneParam = searchParams.get('phone');
+    const highlightParam = searchParams.get('highlight'); // Message wamid to highlight
     const navigatingPhoneRef = useRef<string | null>(null);
 
     const isAdmin = user?.role === 'tenant_admin';
@@ -693,6 +694,7 @@ export const ChatView = () => {
                                     selectedChat={selectedChat}
                                     searchText={messageSearchText}
                                     isAiTyping={isAiTyping}
+                                    highlightWamid={highlightParam || undefined}
                                 />
 
                                 {/* Smart Suggestion Sticky Button */}

@@ -41,6 +41,40 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
 
     const isSummaryNew = lead.summary_status === 'new';
 
+    const finalScore = Number(lead?.lead_score_final ?? lead?.score ?? 0);
+    const recencyComponent = lead?.lead_score_recency_component === null || lead?.lead_score_recency_component === undefined
+        ? null
+        : Number(lead.lead_score_recency_component);
+    const intentComponent = lead?.lead_score_conversation_component === null || lead?.lead_score_conversation_component === undefined
+        ? null
+        : Number(lead.lead_score_conversation_component);
+    const interestComponent = lead?.lead_score_intent_interest_component === null || lead?.lead_score_intent_interest_component === undefined
+        ? null
+        : Number(lead.lead_score_intent_interest_component);
+    const finalStatus = lead?.lead_status_final || lead?.heat_state;
+    const scoreTextClass = finalScore >= 80
+        ? 'text-red-500'
+        : finalScore >= 40
+            ? 'text-orange-500'
+            : 'text-blue-500';
+    const scoreBarClass = finalScore >= 80
+        ? 'bg-gradient-to-r from-red-600 to-red-400'
+        : finalScore >= 40
+            ? 'bg-gradient-to-r from-orange-600 to-orange-400'
+            : 'bg-gradient-to-r from-blue-600 to-blue-400';
+    const reasonCodes = Array.isArray(lead?.lead_score_reason_codes)
+        ? lead.lead_score_reason_codes
+        : typeof lead?.lead_score_reason_codes === 'string'
+            ? (() => {
+                try {
+                    const parsed = JSON.parse(lead.lead_score_reason_codes);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            })()
+            : [];
+
     const { mutate: summarizeLead, isPending } = useSummarizeLeadMutation();
     const [copied, setCopied] = useState(false);
 
@@ -111,10 +145,17 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                                 <div className="flex items-center gap-3">
                                     <span className={cn(
                                         "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5",
-                                        getHeatStateStyles(lead.heat_state)
+                                        getHeatStateStyles(finalStatus)
                                     )}>
                                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                                        {lead.heat_state}
+                                        {finalStatus}
+                                    </span>
+
+                                    <span className={cn(
+                                        "text-[10px] font-semibold px-2.5 py-1 rounded-full border",
+                                        getHeatStateStyles(lead.heat_state)
+                                    )}>
+                                        Recency: {lead.heat_state}
                                     </span>
 
                                     {isSummaryNew && (
@@ -159,8 +200,8 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                                     Neural Score
                                 </span>
                                 <div className="flex items-baseline gap-1">
-                                    <span className={cn("text-5xl font-black tracking-tighter", lead.score > 80 ? 'text-emerald-500' : 'text-orange-500')}>
-                                        {lead.score}
+                                    <span className={cn("text-5xl font-black tracking-tighter", scoreTextClass)}>
+                                        {finalScore}
                                     </span>
                                     <span className={cn("text-sm font-bold opacity-50", isDarkMode ? "text-white" : "text-slate-600")}>/100</span>
                                 </div>
@@ -170,13 +211,45 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                                 <div
                                     className={cn(
                                         "h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden shadow-[0_0_15px_rgba(16,185,129,0.4)]",
-                                        lead.score > 80 ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : 'bg-gradient-to-r from-orange-600 to-orange-400'
+                                        scoreBarClass
                                     )}
-                                    style={{ width: `${lead.score}%` }}
+                                    style={{ width: `${finalScore}%` }}
                                 >
                                     <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]" style={{ backgroundImage: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)' }} />
                                 </div>
                             </div>
+
+                            <div className={cn("grid grid-cols-3 gap-3 mt-4", isDarkMode ? "text-white/70" : "text-slate-600")}>
+                                <div className="text-[11px] font-semibold uppercase tracking-wide">Recency (50%): {recencyComponent ?? 'Pending'}</div>
+                                <div className="text-[11px] font-semibold uppercase tracking-wide">AI Score (35%): {intentComponent ?? 'Pending'}</div>
+                                <div className="text-[11px] font-semibold uppercase tracking-wide">Interest (15%): {interestComponent ?? 'Pending'}</div>
+                            </div>
+                            {(recencyComponent === null || intentComponent === null || interestComponent === null) && (
+                                <div className={cn("text-[10px] mt-2 uppercase tracking-wide", isDarkMode ? "text-white/45" : "text-slate-500")}>
+                                    Signals will populate after the latest scoring cycle.
+                                </div>
+                            )}
+                            <div className={cn("text-[10px] mt-2 uppercase tracking-wide", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                Final score: 50% recency + 35% AI conversation + 15% interest, capped at 100.
+                            </div>
+
+                            {reasonCodes.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-4">
+                                    {reasonCodes.slice(0, 5).map((code: string) => (
+                                        <span
+                                            key={code}
+                                            className={cn(
+                                                "text-[9px] uppercase tracking-wide px-2 py-1 rounded-md border",
+                                                isDarkMode
+                                                    ? "bg-white/5 border-white/10 text-white/60"
+                                                    : "bg-slate-50 border-slate-200 text-slate-500"
+                                            )}
+                                        >
+                                            {code.replaceAll('_', ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

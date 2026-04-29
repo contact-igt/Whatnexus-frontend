@@ -5,7 +5,7 @@ export class LeadIntelligenceApiData {
     getAllLeadIntelligence = async () => {
         return await _axios("get", `/whatsapp/leads`);
     };
-    getLeadSummary = async (id: string, date?: string, startDate?: string, endDate?: string) => {
+    getLeadSummary = async (id: string, date?: string, startDate?: string, endDate?: string, force?: boolean) => {
         let url = `/whatsapp/leads-summary/${id}`;
         const params = new URLSearchParams();
 
@@ -16,6 +16,10 @@ export class LeadIntelligenceApiData {
         } else if (date) {
             params.append('date', date);
             params.append('mode', 'timeframe');
+        }
+
+        if (force) {
+            params.append('force', 'true');
         }
 
         const queryString = params.toString();

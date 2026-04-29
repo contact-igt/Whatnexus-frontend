@@ -460,6 +460,8 @@ export const OrganizationModal = ({
                         options={[
                             { value: 'hospital', label: 'Hospital' },
                             { value: 'clinic', label: 'Clinic' },
+                            { value: 'education', label: 'Education / Academy' },
+                            { value: 'law', label: 'Law Firm / Practice' },
                             { value: 'organization', label: 'Organization' }
                         ]}
                         disabled={isView}

@@ -44,7 +44,7 @@ export interface Organization {
     adminName: string;
     adminEmail: string;
     isActive: boolean;
-    type: 'hospital' | 'clinic';
+    type: 'hospital' | 'clinic' | 'education' | 'law' | 'organization';
     owner_country_code: string;
     profile?: any;
     password?: string;
