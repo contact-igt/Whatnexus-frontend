@@ -21,7 +21,7 @@ export interface FaqReviewItem {
   updated_at?: string | null;
   deleted_at?: string | null;
   knowledge_entry_id?: string | number | null;
-  wamid: string 
+  wamid?: string | null;
 }
 
 export interface SaveFaqReviewData {
