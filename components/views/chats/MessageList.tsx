@@ -389,6 +389,7 @@ interface MessageListProps {
     selectedChat: any;
     searchText?: string;
     isAiTyping?: boolean;
+    highlightWamid?: string;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -400,7 +401,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     bottomRef,
     selectedChat,
     searchText = "",
-    isAiTyping = false
+    isAiTyping = false,
+    highlightWamid
 }) => {
     return (
         <div className={cn(
