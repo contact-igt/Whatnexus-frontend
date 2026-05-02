@@ -116,7 +116,8 @@ export interface MessagingAnalyticsData {
 
 // ── Full dashboard data ────────────────────────────────────────────────────────
 export interface DashboardData {
-  period: string; // "7 Days" | "30 Days" | "All Time"
+  period: string;
+  isLiveMode: boolean; // true when endDate >= today (enables Live & Today KPIs + live sections)
 
   wabaInfo: {
     number: string;
@@ -129,40 +130,26 @@ export interface DashboardData {
     thirtyDayUnique: number;
   };
 
-  header: {
-    revenueToday: string;      // ₹ already in string — Rule 6
-    newLeadsToday: number;
-    resolvedToday: number;
-    messagesSentToday: number;
-    needsAttention: number;
-  };
-
   kpis: {
-    totalLeads: KpiItem;
-    newLeadsToday: KpiItem;
-    activeChats: KpiItem;
-    aiAutoResolved: KpiItem;    // value is already % — Rule 8
-    escalatedToAgent: KpiItem;  // value is a COUNT (not %)
-    appointmentsToday: KpiItem;
-  };
-
-  liveOperations: {
-    hotLeads: HotLead[];
-    metrics: { unassigned: number; escalated: number };
-    agentWorkload: AgentWorkload[];
+    // Always present (all date ranges)
+    totalLeads: KpiItem & { allTime: number };
+    aiAutoResolved: KpiItem;
+    totalCampaigns: number;
+    totalFaqs: KpiItem;
+    approvedTemplates: KpiItem;
+    // Period-filtered KPIs (always present, 0 when nothing in range)
+    knowledgeSources: KpiItem;
+    totalContacts: KpiItem;
+    totalGroups: KpiItem;
+    // Live & Today only (present when isLiveMode=true, absent otherwise)
+    newLeadsToday?: KpiItem;
+    activeChats?: KpiItem;
+    escalatedToAgent?: KpiItem;
+    appointmentsToday?: KpiItem;
   };
 
   campaigns: Campaign[];
 
-  recentActivity: ActivityEvent[];
-
-  agentPerformance: AgentPerformanceData;
-
-  followUps: FollowUpsData;
-
-  messagingAnalytics: MessagingAnalyticsData;
-
-  // New sections
   billingSummary: {
     totalSpent: number;
     marketing: number;
@@ -180,21 +167,21 @@ export interface DashboardData {
     specializations: number;
   };
 
-  knowledgeHealth: {
-    totalSources: number;
-    activeSources: number;
-    inactiveSources: number;
-    totalChunks: number;
-    sourceTypes: { type: string; count: number }[];
-  };
+  // Live-mode sections — null when isLiveMode=false
+  liveOperations: {
+    hotLeads: HotLead[];
+    metrics: { unassigned: number; escalated: number };
+    agentWorkload: AgentWorkload[];
+  } | null;
 
-  contactOverview: {
-    totalContacts: number;
-    blocked: number;
-    aiSilenced: number;
-    totalGroups: number;
-    avgGroupSize: number;
-  };
+  followUps: {
+    dueToday: number;
+    completedToday: number;
+    overdue: number;
+    upcomingToday: { name: string; time: string; type: string; contact: string }[];
+  } | null;
+
+  recentActivity: ActivityEvent[];
 }
 
 export interface DashboardResponse {
@@ -257,10 +244,11 @@ export interface ContactWeeklySummaryResponse {
 }
 
 export class DashboardApiData {
-  getDashboardData = async (tenantId: string, period: string = "30days") => {
+  getDashboardData = async (tenantId: string, startDate: string, endDate: string) => {
     return await _axios("get", "/whatsapp/dashboard", undefined, "application/json", {
       tenantId,
-      period,
+      startDate,
+      endDate,
     });
   };
 

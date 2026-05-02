@@ -48,7 +48,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             <main className="flex-1 flex flex-col min-w-0 relative z-10 overflow-hidden">
                 <WalletAnnouncementBar />
                 <Header />
-                <div className="flex-1 min-h-0 overflow-hidden relative">
+                <div className="flex-1 min-h-0 overflow-y-auto relative">
                     {children}
                 </div>
             </main>

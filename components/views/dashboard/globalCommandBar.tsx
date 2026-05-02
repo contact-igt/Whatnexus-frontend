@@ -8,12 +8,13 @@ import { META_TIER_CONFIG } from '@/components/layout/header';
 import { useDispatch } from 'react-redux';
 import { clearWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
 import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
+import { DashboardDateFilter, DateRange } from './dashboardDateFilter';
 
-interface GlobalCommandBarProps { 
+interface GlobalCommandBarProps {
     isDarkMode?: boolean;
     wabaInfo?: any;
-    period?: string;
-    setPeriod?: (p: string) => void;
+    dateRange?: DateRange;
+    onDateRangeChange?: (range: DateRange) => void;
     isManagement?: boolean;
     isFetching?: boolean;
 }
@@ -30,17 +31,11 @@ const qualityColor: Record<string, string> = {
     RED:    '#f43f5e',
 };
 
-const PERIOD_OPTIONS: { value: string; label: string }[] = [
-    { value: '7days',   label: '7 Days'  },
-    { value: '30days',  label: '30 Days' },
-    { value: 'alltime', label: 'All Time' },
-];
-
-export const GlobalCommandBar = ({ 
-    isDarkMode = true, 
+export const GlobalCommandBar = ({
+    isDarkMode = true,
     wabaInfo,
-    period = "30days",
-    setPeriod,
+    dateRange,
+    onDateRangeChange,
     isManagement = false,
     isFetching = false,
 }: GlobalCommandBarProps) => {
@@ -163,40 +158,17 @@ export const GlobalCommandBar = ({
                     })}
                 </div>
 
-                {/* Right: Period toggle + Alert bell + Refresh */}
+                {/* Right: Date filter + Alert bell */}
                 <div className="flex items-center gap-2.5">
-                    {/* Period toggle */}
-                    <div className="flex items-center gap-0.5 p-0.5 rounded-lg border" style={{
-                        background: isDarkMode ? '#18181b' : '#f4f4f5',
-                        borderColor: isDarkMode ? '#27272a' : '#e4e4e7'
-                    }}>
-                        {PERIOD_OPTIONS.map(({ value, label }) => {
-                            const isActive = period === value;
-                            const showSpinner = isActive && isFetching;
-                            return (
-                                <button
-                                    key={value}
-                                    onClick={() => setPeriod?.(value)}
-                                    className="rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5"
-                                    style={{
-                                        fontSize: '12px',
-                                        fontWeight: isActive ? 600 : 500,
-                                        ...(isActive
-                                            ? { background: '#10b981', color: '#ffffff', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }
-                                            : { color: t.secondary, background: 'transparent' })
-                                    }}
-                                >
-                                    {label}
-                                    {showSpinner && (
-                                        <span
-                                            className="w-1.5 h-1.5 rounded-full animate-pulse"
-                                            style={{ background: 'rgba(255,255,255,0.7)', flexShrink: 0 }}
-                                        />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    {/* Date range filter */}
+                    {dateRange && onDateRangeChange && (
+                        <DashboardDateFilter
+                            isDarkMode={isDarkMode}
+                            dateRange={dateRange}
+                            onDateRangeChange={onDateRangeChange}
+                            isFetching={isFetching}
+                        />
+                    )}
 
                     {/* Alert bell */}
                     {!isManagement && (

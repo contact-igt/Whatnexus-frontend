@@ -5,26 +5,22 @@ import { GlobalCommandBar } from './dashboard/globalCommandBar';
 import { ExecutiveKPILayer } from './dashboard/executiveKpiSnapshot';
 import { LiveOperationsCenter } from './dashboard/liveOperationsCenter';
 import { CampaignIntelligence } from './dashboard/campaignIntelligence';
-import { AgentPerformance } from './dashboard/agentPerformance';
 import { AppointmentsToday } from './dashboard/appointmentsToday';
-import { MessagingAnalytics } from './dashboard/messagingAnalytics';
 import { ActivityFeed } from './dashboard/activityFeed';
 import { MessagingLimitTracker } from './dashboard/messagingLimitTracker';
 import { BillingSummary } from './dashboard/billingSummary';
 import { DoctorOverview } from './dashboard/doctorOverview';
-import { KnowledgeHealth } from './dashboard/knowledgeHealth';
-import { FaqPendingPreview } from './dashboard/faqPendingPreview';
-import { ContactOverview } from './dashboard/contactOverview';
 import { tx } from './dashboard/glassStyles';
 import { WhatsAppConnectionPlaceholder } from './whatsappConfiguration/whatsappConnectionPlaceholder';
 import {
     BarChart3, Inbox, MessageCircle,
-    CalendarCheck, Activity, Layers3,
+    Activity, Layers3,
     RefreshCcw, AlertCircle, CreditCard,
-    Stethoscope, BookOpen, Users,
+    Stethoscope,
     ArrowRight, X, Settings
 } from 'lucide-react';
 import { useGetWhatsappDashboardQuery } from '@/hooks/useWhatsappDashboardQuery';
+import { DateRange, today, todayEnd, buildPresets, getActivePresetLabel } from './dashboard/dashboardDateFilter';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { ThemedLoader } from '@/components/ui/themedLoader';
 import { useRouter } from 'next/navigation';
@@ -70,9 +66,9 @@ export const DashboardView = () => {
     const { user } = useAuth();
     const router = useRouter();
     const isManagement = user?.role === 'super_admin' || user?.role === 'platform_admin';
-    const [period, setPeriod] = useState<string>("30days");
+    const [dateRange, setDateRange] = useState<DateRange>({ startDate: new Date(2000, 0, 1), endDate: todayEnd() });
     const [waBannerDismissed, setWaBannerDismissed] = useState(false);
-    const { data: dashboardResult, isLoading, isFetching, isError, refetch } = useGetWhatsappDashboardQuery(period);
+    const { data: dashboardResult, isLoading, isFetching, isError, refetch } = useGetWhatsappDashboardQuery(dateRange.startDate, dateRange.endDate);
     const [loaderDone, setLoaderDone] = useState(false);
 
     const dashboardData = dashboardResult?.data;
@@ -136,23 +132,49 @@ export const DashboardView = () => {
         );
     }
 
+    const dateLabel = getActivePresetLabel(dateRange, buildPresets());
+    // True when the selected range overlaps with today (end date >= today 00:00:00)
+    const includesInToday = dateRange.endDate >= today();
+    // True only when "Today" or "All Time" is selected
+    const shouldShowLiveData = dateLabel === 'Today' || dateLabel === 'All Time';
+
     return (
         <div
             className="relative h-full overflow-y-auto pb-32"
             style={{ background: isDarkMode ? '#09090b' : '#f8fafc' }}
         >
 
-            <div className="relative z-10 p-4 sm:p-6 sm:px-8 max-w-[1600px] mx-auto space-y-8">
+            <div className="relative z-10 p-4 sm:p-6 sm:px-8 max-w-[1600px] mx-auto space-y-8"
+                style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 0.25s ease', pointerEvents: isFetching ? 'none' : 'auto' }}
+            >
 
                 {/* 1. Command Bar */}
                 <GlobalCommandBar
                     isDarkMode={isDarkMode}
                     wabaInfo={dashboardData?.wabaInfo}
-                    period={period}
-                    setPeriod={setPeriod}
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
                     isManagement={isManagement}
                     isFetching={isFetching}
                 />
+
+                {/* 1a. Date Filter Status Indicator */}
+                {isFetching && (
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border animate-pulse"
+                        style={{
+                            background: isDarkMode ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.05)',
+                            borderColor: isDarkMode ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.2)',
+                        }}>
+                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                        <span style={{
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            color: isDarkMode ? '#60a5fa' : '#2563eb'
+                        }}>
+                            Updating dashboard data for {dateLabel}...
+                        </span>
+                    </div>
+                )}
 
                 {/* 1b. WhatsApp Not Connected Banner */}
                 {(() => {
@@ -322,7 +344,19 @@ export const DashboardView = () => {
                         accentColor="#10b981"
                         isDarkMode={isDarkMode}
                     />
-                    <ExecutiveKPILayer isDarkMode={isDarkMode} kpisData={dashboardData?.kpis} periodLabel={dashboardData?.period || '30 Days'} />
+                    <ExecutiveKPILayer
+                        isDarkMode={isDarkMode}
+                        kpisData={dashboardData?.kpis}
+                        periodLabel={dateLabel}
+                        includesInToday={includesInToday}
+                        extraKpis={{
+                            totalSources:      dashboardData?.kpis?.knowledgeSources?.value  ?? 0,
+                            totalFaqs:         dashboardData?.kpis?.totalFaqs?.value          ?? 0,
+                            totalContacts:     dashboardData?.kpis?.totalContacts?.value      ?? 0,
+                            totalGroups:       dashboardData?.kpis?.totalGroups?.value        ?? 0,
+                            approvedTemplates: dashboardData?.kpis?.approvedTemplates?.value  ?? 0,
+                        }}
+                    />
                 </section>
 
                 {/* Main 3/5 + 2/5 grid */}
@@ -331,57 +365,30 @@ export const DashboardView = () => {
                     {/* Left column (3/5) */}
                     <div className="xl:col-span-3 space-y-8">
 
-                        {/* 3. Campaigns + Agent Performance */}
+                        {/* 6. Live Operations — only when today is in range or All Time is selected */}
+                        {shouldShowLiveData && (
+                            <section>
+                                <SectionHeader
+                                    icon={<MessageCircle size={18} />}
+                                    title="Live Operations"
+                                    subtitle="Real-time chat queue & agent status"
+                                    accentColor="#f43f5e"
+                                    isDarkMode={isDarkMode}
+                                />
+                                <LiveOperationsCenter isDarkMode={isDarkMode} canOpenInbox={!isManagement} liveOpsData={dashboardData?.liveOperations} />
+                            </section>
+                        )}
+
+                        {/* 3. Campaign Intelligence — below Live Operations */}
                         <section>
                             <SectionHeader
                                 icon={<Inbox size={18} />}
-                                title={`Campaigns & Team Performance — ${dashboardData?.period || '30 Days'}`}
-                                subtitle="WhatsApp broadcast results and agent workload"
+                                title={`Campaign Intelligence — ${dateLabel}`}
+                                subtitle="WhatsApp broadcast results and delivery analytics"
                                 accentColor="#8b5cf6"
                                 isDarkMode={isDarkMode}
                             />
-                            <div className="flex flex-col gap-6">
-                                <CampaignIntelligence isDarkMode={isDarkMode} campaignsData={dashboardData?.campaigns} />
-                                <AgentPerformance isDarkMode={isDarkMode} agentData={dashboardData?.agentPerformance} />
-                            </div>
-                        </section>
-
-                        {/* 5. Messaging Analytics (full width in left col) */}
-                        <section>
-                            <SectionHeader
-                                icon={<CalendarCheck size={18} />}
-                                title={`Messaging Volume & Analytics — ${dashboardData?.period || '30 Days'}`}
-                                subtitle={`${dashboardData?.period || '30 Days'} period stats · chart: ${period === '7days' ? 'last 7 days' : period === 'alltime' ? 'all time' : 'last 30 days'}`}
-                                accentColor="#f59e0b"
-                                isDarkMode={isDarkMode}
-                            />
-                            <MessagingAnalytics isDarkMode={isDarkMode} messagingData={dashboardData?.messagingAnalytics} period={period} />
-                        </section>
-
-                        {/* Knowledge Base Health */}
-                        <section>
-                            <SectionHeader
-                                icon={<BookOpen size={18} />}
-                                title="Knowledge Base Health"
-                                subtitle="AI knowledge sources and training data"
-                                accentColor="#10b981"
-                                isDarkMode={isDarkMode}
-                            />
-                            <KnowledgeHealth isDarkMode={isDarkMode} knowledgeData={dashboardData?.knowledgeHealth} />
-                        </section>
-
-                        <FaqPendingPreview isDarkMode={isDarkMode} />
-
-                        {/* Contacts & Audience */}
-                        <section>
-                            <SectionHeader
-                                icon={<Users size={18} />}
-                                title="Contacts & Audience"
-                                subtitle="Contact base, groups and segments overview"
-                                accentColor="#f59e0b"
-                                isDarkMode={isDarkMode}
-                            />
-                            <ContactOverview isDarkMode={isDarkMode} contactData={dashboardData?.contactOverview} />
+                            <CampaignIntelligence isDarkMode={isDarkMode} campaignsData={dashboardData?.campaigns} />
                         </section>
 
                     </div>
@@ -389,33 +396,23 @@ export const DashboardView = () => {
                     {/* Right sidebar (2/5) */}
                     <div className="xl:col-span-2 space-y-6">
 
-                        {/* 6. Live Operations */}
-                        <section>
-                            <SectionHeader
-                                icon={<MessageCircle size={18} />}
-                                title="Live Operations"
-                                subtitle="Real-time chat queue & agent status"
-                                accentColor="#f43f5e"
-                                isDarkMode={isDarkMode}
-                            />
-                            <LiveOperationsCenter isDarkMode={isDarkMode} canOpenInbox={!isManagement} liveOpsData={dashboardData?.liveOperations} />
-                        </section>
-
-                        {/* 7. Appointments Today */}
-                        <section>
-                            <AppointmentsToday isDarkMode={isDarkMode} followUpsData={dashboardData?.followUps} />
-                        </section>
+                        {/* 7. Appointments Today — only when today is in range or All Time is selected */}
+                        {shouldShowLiveData && (
+                            <section>
+                                <AppointmentsToday isDarkMode={isDarkMode} followUpsData={dashboardData?.followUps} />
+                            </section>
+                        )}
 
                         {/* Billing & Spend */}
                         <section>
                             <SectionHeader
                                 icon={<CreditCard size={18} />}
-                                title={`Meta Billing — ${dashboardData?.period || '30 Days'}`}
+                                title={`Meta Billing — ${dateLabel}`}
                                 subtitle="Estimated spend on Meta conversation fees"
                                 accentColor="#8b5cf6"
                                 isDarkMode={isDarkMode}
                             />
-                            <BillingSummary isDarkMode={isDarkMode} billingData={dashboardData?.billingSummary} periodLabel={dashboardData?.period || '30 Days'} />
+                            <BillingSummary isDarkMode={isDarkMode} billingData={dashboardData?.billingSummary} periodLabel={dateLabel} />
                         </section>
 
                         {/* Doctor Overview */}
@@ -423,17 +420,19 @@ export const DashboardView = () => {
                             <DoctorOverview isDarkMode={isDarkMode} doctorData={dashboardData?.doctorOverview} />
                         </section>
 
-                        {/* 8. Recent Activity */}
-                        <section>
-                            <SectionHeader
-                                icon={<Activity size={18} />}
-                                title="Recent Activity"
-                                subtitle="Latest system events — live feed"
-                                accentColor="#a855f7"
-                                isDarkMode={isDarkMode}
-                            />
-                            <ActivityFeed isDarkMode={isDarkMode} recentActivity={dashboardData?.recentActivity} />
-                        </section>
+                        {/* 8. Recent Activity — only when today is in range or All Time is selected */}
+                        {shouldShowLiveData && (
+                            <section>
+                                <SectionHeader
+                                    icon={<Activity size={18} />}
+                                    title="Recent Activity"
+                                    subtitle="Latest system events — live feed"
+                                    accentColor="#a855f7"
+                                    isDarkMode={isDarkMode}
+                                />
+                                <ActivityFeed isDarkMode={isDarkMode} recentActivity={dashboardData?.recentActivity} />
+                            </section>
+                        )}
                     </div>
                 </div>
             </div>

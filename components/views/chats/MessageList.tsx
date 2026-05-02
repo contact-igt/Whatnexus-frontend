@@ -45,7 +45,7 @@ const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMod
 
     if (sender === 'admin') {
         return (
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-1.5 mb-3">
                 <div className={cn(
                     "w-5 h-5 rounded-full flex items-center justify-center",
                     isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
@@ -74,13 +74,49 @@ const extractMediaFromText = (message: string) => {
     return { type: match[1].toLowerCase(), url: url && url.length > 0 ? url : null };
 };
 
-// Extract buttons from template message format "[Button: text]"
+// Extract buttons from template message format "[Button: Label (value)]" or "[Button: Label | value]"
 const extractButtonsFromText = (message: string) => {
     const buttonRegex = /\[Button:\s*([^\]]+)\]/gi;
-    const buttons: string[] = [];
+    const buttons: Array<{ text: string; value?: string; type: 'url' | 'phone' | 'quick_reply' }> = [];
     let match;
     while ((match = buttonRegex.exec(message)) !== null) {
-        buttons.push(match[1].trim());
+        const fullText = match[1].trim();
+        let displayText: string;
+        let value: string | undefined;
+        let type: 'url' | 'phone' | 'quick_reply' = 'quick_reply';
+
+        // Pipe format: "Label | value" (frontend-generated)
+        if (fullText.includes('|')) {
+            const parts = fullText.split('|').map(p => p.trim());
+            displayText = parts[0];
+            value = parts[1];
+        }
+        // Parens format: "Label (value)" (backend templateRenderer format)
+        else {
+            const parensMatch = fullText.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+            if (parensMatch) {
+                displayText = parensMatch[1].trim();
+                value = parensMatch[2].trim();
+            } else {
+                displayText = fullText;
+                value = undefined;
+            }
+        }
+
+        // Determine type from value, then fall back to keyword matching on label
+        if (value) {
+            if (value.toLowerCase().startsWith('http') || value.includes('www.')) {
+                type = 'url';
+            } else if (value.startsWith('+') || /^\d{7,}$/.test(value.replace(/\s/g, ''))) {
+                type = 'phone';
+            }
+        }
+        if (type === 'quick_reply') {
+            if (/visit|view|website|link|shop|buy|book/i.test(displayText)) type = 'url';
+            else if (/call|phone/i.test(displayText)) type = 'phone';
+        }
+
+        buttons.push({ text: displayText, value, type });
     }
     return buttons;
 };
@@ -290,8 +326,8 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
                 {/* Body Text */}
                 {bodyText && (
                     <div className={cn(
-                        "text-[13.5px] whitespace-pre-wrap break-words",
-                        (effectiveType === "image" || effectiveType === "video" || effectiveType === "document") ? "px-1 pt-2 pb-0.5" : "px-1 py-0.5"
+                        "text-[13.5px] whitespace-pre-wrap break-words overflow-hidden leading-relaxed",
+                        (effectiveType === "image" || effectiveType === "video" || effectiveType === "document") ? "px-1 pt-2 pb-0.5" : "px-1 py-0"
                     )}>
                         {renderFormattedBody(bodyText)}
                     </div>
@@ -365,11 +401,11 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
 
             {/* Body text */}
             {bodyText ? (
-                <div className="text-[15px] whitespace-pre-wrap mb-1 px-1">
+                <div className="text-[15px] whitespace-pre-wrap break-words mb-1 px-1">
                     {renderFormattedBody(bodyText)}
                 </div>
             ) : effectiveType === "text" || (effectiveType === "template" && !embeddedMedia) ? (
-                <div className="text-[15px] whitespace-pre-wrap mb-1 px-1">
+                <div className="text-[15px] whitespace-pre-wrap break-words mb-1 px-1">
                     {renderFormattedBody(stripButtonsFromText(msg.message))}
                 </div>
             ) : null}
@@ -406,7 +442,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 }) => {
     return (
         <div className={cn(
-            "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative no-scrollbar",
+            "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative",
             isDarkMode ? "bg-[#0b141a]" : "bg-[#efeae2]"
         )}
             style={{
@@ -468,10 +504,10 @@ export const MessageList: React.FC<MessageListProps> = ({
 
                             return (
                                 <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
-                                    <div className={isTemplate ? "max-w-[340px] w-[340px]" : "max-w-[85%]"}>
+                                    <div className={isTemplate ? "w-full max-w-[320px]" : "max-w-[85%]"}>
                                         {/* Message Bubble */}
                                         <div className={cn(
-                                            "min-w-[60px] rounded-lg shadow-sm relative group overflow-hidden p-2",
+                                            "min-w-[60px] w-full rounded-lg shadow-sm relative group overflow-hidden p-2 break-words",
                                             isOutgoing
                                                 ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
                                                 : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]'),
@@ -483,7 +519,6 @@ export const MessageList: React.FC<MessageListProps> = ({
                                                 isDarkMode={isDarkMode}
                                                 isOutgoing={isOutgoing}
                                             />
-                                            {isTemplate && msg.sender !== 'user' && <div className="mb-3" />}
                                             <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
                                             <div className={cn(
                                                 "flex items-center justify-end space-x-1 opacity-60",
@@ -505,9 +540,8 @@ export const MessageList: React.FC<MessageListProps> = ({
                                         {/* Template CTA Buttons — separate cards below bubble (WhatsApp style) */}
                                         {isTemplate && msgTemplateButtons.length > 0 && (
                                             <div className="mt-1 space-y-1">
-                                                {msgTemplateButtons.map((btnText, btnIndex) => {
-                                                    const isUrl = btnText.toLowerCase().includes('http') || btnText.includes('(') || /visit|view|website|link|shop|buy|book/i.test(btnText);
-                                                    const isPhone = /call|phone|\+\d/i.test(btnText);
+                                                {msgTemplateButtons.map((btn, btnIndex) => {
+                                                    const Icon = btn.type === 'phone' ? Phone : btn.type === 'url' ? Link : Reply;
 
                                                     return (
                                                         <div
@@ -520,14 +554,8 @@ export const MessageList: React.FC<MessageListProps> = ({
                                                             )}
                                                         >
                                                             <div className="flex items-center justify-center gap-2">
-                                                                {isPhone ? (
-                                                                    <Phone size={14} />
-                                                                ) : isUrl ? (
-                                                                    <Link size={14} />
-                                                                ) : (
-                                                                    <Reply size={14} />
-                                                                )}
-                                                                <span>{btnText}</span>
+                                                                <Icon size={14} />
+                                                                <span>{btn.text}</span>
                                                             </div>
                                                         </div>
                                                     );

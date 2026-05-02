@@ -1,5 +1,5 @@
 import React from 'react';
-import { SearchX, MessageSquareText, Send, FileText, Download, User, Bot, UserCog } from 'lucide-react';
+import { SearchX, MessageSquareText, Send, FileText, Download, User, Bot, UserCog, Link, Phone, Reply } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from '../chats/ChatUtils';
 
@@ -7,7 +7,7 @@ import { MessageStatusTicks, formattedTime } from '../chats/ChatUtils';
 const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMode: boolean }> = ({ sender, senderName, isDarkMode }) => {
     if (sender === 'user') {
         return (
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-1.5 mb23">
                 <div className={cn(
                     "w-5 h-5 rounded-full flex items-center justify-center",
                     isDarkMode ? "bg-blue-500/20" : "bg-blue-100"
@@ -26,7 +26,7 @@ const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMod
 
     if (sender === 'bot') {
         return (
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-1.5 mb-2">
                 <div className={cn(
                     "w-5 h-5 rounded-full flex items-center justify-center",
                     isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
@@ -45,7 +45,7 @@ const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMod
 
     if (sender === 'admin') {
         return (
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-1.5 mb-2">
                 <div className={cn(
                     "w-5 h-5 rounded-full flex items-center justify-center",
                     isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
@@ -72,6 +72,44 @@ const extractMediaFromText = (message: string) => {
     if (!match) return null;
     const url = match[2]?.trim();
     return { type: match[1].toLowerCase(), url: url && url.length > 0 ? url : null };
+};
+
+// Check if a message is a template (has media prefix, buttons, or message_type=template)
+const isTemplateMessage = (msg: any): boolean => {
+    if (msg.message_type === 'template') return true;
+    if (!msg.message) return false;
+    return /^\[(VIDEO|IMAGE|DOCUMENT):?\s*[^\]]*\]/i.test(msg.message) || msg.message.includes('[Button:');
+};
+
+// Extract buttons from "[Button: Label (value)]" or "[Button: Label | value]" markers
+const extractButtonsFromText = (message: string) => {
+    const buttonRegex = /\[Button:\s*([^\]]+)\]/gi;
+    const buttons: Array<{ text: string; type: 'url' | 'phone' | 'quick_reply' }> = [];
+    let match;
+    while ((match = buttonRegex.exec(message)) !== null) {
+        const fullText = match[1].trim();
+        let displayText: string;
+        let value: string | undefined;
+        let type: 'url' | 'phone' | 'quick_reply' = 'quick_reply';
+        if (fullText.includes('|')) {
+            const parts = fullText.split('|').map((p: string) => p.trim());
+            displayText = parts[0]; value = parts[1];
+        } else {
+            const m = fullText.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+            if (m) { displayText = m[1].trim(); value = m[2].trim(); }
+            else { displayText = fullText; }
+        }
+        if (value) {
+            if (value.toLowerCase().startsWith('http') || value.includes('www.')) type = 'url';
+            else if (value.startsWith('+') || /^\d{7,}$/.test(value.replace(/\s/g, ''))) type = 'phone';
+        }
+        if (type === 'quick_reply') {
+            if (/visit|view|website|link|shop|buy|book/i.test(displayText)) type = 'url';
+            else if (/call|phone/i.test(displayText)) type = 'phone';
+        }
+        buttons.push({ text: displayText, type });
+    }
+    return buttons;
 };
 
 // Strip media prefix, buttons, and variable placeholders from message
@@ -110,7 +148,7 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
         <div className="flex-1 flex flex-col min-h-0 relative">
             {/* Messages Area with WhatsApp Background */}
             <div className={cn(
-                "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative no-scrollbar",
+                "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative",
                 isDarkMode ? "bg-[#0b141a]" : "bg-[#efeae2]"
             )}
                 style={{
@@ -163,15 +201,18 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                             </div>
                             {msgs.map((msg: any, msgIndex: number) => {
                                 const isOutgoing = msg.sender !== 'user';
+                                const isTemplate = isTemplateMessage(msg);
                                 const embeddedMedia = extractMediaFromText(msg.message);
                                 const effectiveType = embeddedMedia?.type || msg.message_type;
                                 const effectiveUrl = embeddedMedia?.url || (msg.media_url && !msg.media_url.startsWith("meta_media_id:") ? msg.media_url : null);
                                 const bodyText = cleanMessageText(msg.message);
+                                const templateButtons = isTemplate ? extractButtonsFromText(msg.message || '') : [];
 
                                 return (
                                     <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
+                                        <div className={isTemplate ? "w-full max-w-[320px]" : "max-w-[85%]"}>
                                         <div className={cn(
-                                            "max-w-[85%] min-w-[60px] p-2 rounded-lg shadow-sm relative group",
+                                            "min-w-[60px] w-full p-2 rounded-lg shadow-sm relative group overflow-hidden break-words",
                                             isOutgoing
                                                 ? (isDarkMode ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#d9fdd3] text-[#111b21]')
                                                 : (isDarkMode ? 'bg-[#202c33] text-[#e9edef]' : 'bg-white text-[#111b21]')
@@ -215,9 +256,9 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                                             {effectiveType === "audio" && effectiveUrl && (
                                                 <audio src={effectiveUrl} controls className="w-full max-w-xs mb-1" />
                                             )}
-                                            {/* Text body - show for ALL types including documents */}
+                                            {/* Text body */}
                                             {bodyText && (
-                                                <p className="text-[15px] leading-relaxed whitespace-pre-wrap mb-1 px-1">
+                                                <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words overflow-hidden mb-1 px-1">
                                                     {bodyText}
                                                 </p>
                                             )}
@@ -229,6 +270,32 @@ export const HistoryMessageList: React.FC<HistoryMessageListProps> = ({
                                                     <MessageStatusTicks status={msg.status} />
                                                 )}
                                             </div>
+                                        </div>
+
+                                        {/* Template CTA Buttons — separate cards below bubble */}
+                                        {isTemplate && templateButtons.length > 0 && (
+                                            <div className="mt-1 space-y-1">
+                                                {templateButtons.map((btn, btnIndex) => {
+                                                    const Icon = btn.type === 'phone' ? Phone : btn.type === 'url' ? Link : Reply;
+                                                    return (
+                                                        <div
+                                                            key={btnIndex}
+                                                            className={cn(
+                                                                "w-full py-2.5 px-4 rounded-lg text-[13px] font-medium text-center border cursor-default",
+                                                                isDarkMode
+                                                                    ? 'bg-[#1c2c33] text-emerald-400 border-emerald-500/20'
+                                                                    : 'bg-white text-emerald-700 border-emerald-300 shadow-sm'
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <Icon size={14} />
+                                                                <span>{btn.text}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                         </div>
                                     </div>
                                 );
