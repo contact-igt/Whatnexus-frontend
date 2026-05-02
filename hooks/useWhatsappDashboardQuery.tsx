@@ -4,21 +4,32 @@ import { useAuth } from "@/redux/selectors/auth/authSelector";
 
 const dashboardApis = new DashboardApiData();
 
-export const useGetWhatsappDashboardQuery = (period: string = "30days") => {
+function toISODate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+export const useGetWhatsappDashboardQuery = (startDate: Date, endDate: Date) => {
     const { user, token } = useAuth();
 
-    // Check if user and tenant_id exist
     const tenantId = user?.tenant_id;
+    const startStr = toISODate(startDate);
+    const endStr = toISODate(endDate);
 
     return useQuery({
-        queryKey: ['whatsapp-dashboard', tenantId, period],
+        queryKey: ['whatsapp-dashboard', tenantId, startStr, endStr],
         enabled: !!token && !!tenantId,
-        queryFn: () => dashboardApis.getDashboardData(tenantId as string, period),
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
-        // Keep the previous period's data visible while the new period fetch is in-flight.
-        // Without this, data becomes undefined on every filter change which causes
-        // wabaConnected to evaluate false → flashes WhatsAppConnectionPlaceholder.
+        queryFn: () => dashboardApis.getDashboardData(tenantId as string, startStr, endStr),
+        // staleTime: 30s allows quick filter changes to use cache
+        // while still keeping data reasonably fresh
+        staleTime: 30 * 1000,          // 30 seconds
+        refetchInterval: 5 * 60 * 1000,   // auto-refresh every 5 min
+        refetchOnMount: true,              // re-fetch on mount if stale
+        refetchOnWindowFocus: false,       // don't refetch on every window focus (reduces load)
+        // Keep previous data visible while new fetch is in-flight to avoid
+        // wabaConnected flashing false → WhatsAppConnectionPlaceholder.
         placeholderData: keepPreviousData,
     });
 };

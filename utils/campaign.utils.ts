@@ -13,8 +13,8 @@ import type {
  * @returns true if valid, false otherwise
  */
 export const validatePhoneNumber = (phone: string): boolean => {
-    // Standard E.164-like (10 to 15 digits)
-    const phoneRegex = /^\d{10,15}$/;
+    // Strict rule: either local 10 digits or country+number 12 digits
+    const phoneRegex = /^(?:\d{10}|\d{12})$/;
     return phoneRegex.test(phone);
 };
 
@@ -29,11 +29,31 @@ export const parseCSV = async (file: File): Promise<string[][]> => {
 
         reader.onload = (e) => {
             try {
-                const text = e.target?.result as string;
-                const lines = text.split("\n").filter((line) => line.trim());
-                const rows = lines.map((line) =>
-                    line.split(",").map((cell) => cell.trim())
-                );
+                let text = e.target?.result as string;
+                if (!text) return resolve([]);
+                // strip BOM if present
+                if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+                // support CRLF, LF, CR line endings
+                const lines = text.split(/\r\n|\n|\r/).filter((line) => line.trim());
+                const rows = lines.map((line) => {
+                    const cells: string[] = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const ch = line[i];
+                        if (ch === '"') {
+                            if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+                            else inQuotes = !inQuotes;
+                        } else if (ch === ',' && !inQuotes) {
+                            cells.push(current.trim());
+                            current = '';
+                        } else {
+                            current += ch;
+                        }
+                    }
+                    cells.push(current.trim());
+                    return cells;
+                });
                 resolve(rows);
             } catch (error) {
                 reject(error);
@@ -66,33 +86,23 @@ export const validateCSVData = (
         const localNumber = row[1];
         const dynamicVariables = row.slice(2, templateVariableCount + 2);
 
-        // Validate Country Code (1-4 digits)
-        if (!countryCode || !/^\d{1,4}$/.test(countryCode)) {
-            errors.push({
-                field: `Row ${rowNumber}`,
-                message: `Invalid country code: ${countryCode}. Must be 1-4 digits (e.g. 91)`,
-            });
+        // New rule: require country_code and mobile_number to be digits and their concatenation must be exactly 12 digits.
+        if (!countryCode || !/^\d+$/.test(countryCode)) {
+            errors.push({ field: `Row ${rowNumber}`, message: `Invalid country code: ${countryCode}. Must contain only digits.` });
             invalidRows.push(rowNumber);
             return;
         }
 
-        // Validate Local Phone Number (7-12 digits)
-        if (!localNumber || !/^\d{7,12}$/.test(localNumber)) {
-            errors.push({
-                field: `Row ${rowNumber}`,
-                message: `Invalid local number: ${localNumber}. Must be 7-12 digits`,
-            });
+        if (!localNumber || !/^\d+$/.test(localNumber)) {
+            errors.push({ field: `Row ${rowNumber}`, message: `Invalid local number: ${localNumber}. Must contain only digits.` });
             invalidRows.push(rowNumber);
             return;
         }
 
         const fullPhoneNumber = countryCode + localNumber;
-        // Validate full number length (10-15 digits)
-        if (fullPhoneNumber.length < 10 || fullPhoneNumber.length > 15) {
-            errors.push({
-                field: `Row ${rowNumber}`,
-                message: `Combined number ${fullPhoneNumber} is invalid. must be 10-15 digits total`,
-            });
+        // Enforce exact combined length of 12 digits (country code + local number)
+        if (fullPhoneNumber.length !== 12) {
+            errors.push({ field: `Row ${rowNumber}`, message: `Combined number ${fullPhoneNumber} is invalid — must be exactly 12 digits (country code + local number).` });
             invalidRows.push(rowNumber);
             return;
         }
@@ -132,6 +142,176 @@ export const validateCSVData = (
         validRows,
         invalidRows,
     };
+};
+
+/**
+ * Detailed row-level CSV validator that uses header mappings to template variables.
+ * Returns structured errors per row and parsed recipient objects keyed by variable_key.
+ */
+export const validateCSVRowsDetailed = (
+    rows: string[][],
+    headers: string[],
+    mappings: Record<string, string>,
+    variableDefs: CsvVariableDefinition[]
+): {
+    isValid: boolean;
+    validRows: Array<{ mobile_number: string; dynamic_variables: Record<string, string> }>;
+    errors: Array<{
+        rowIndex: number;
+        column?: string;
+        variableKey?: string;
+        value?: string;
+        message: string;
+    }>;
+} => {
+    const errors: Array<any> = [];
+    const validRows: Array<{ mobile_number: string; dynamic_variables: Record<string, string> }> = [];
+
+    const headerIndex: Record<string, number> = {};
+    headers.forEach((h, i) => (headerIndex[h] = i));
+
+    // Pre-check mappings: ensure each mapped header exists
+    Object.entries(mappings).forEach(([variableKey, headerName]) => {
+        if (!headerName) {
+            errors.push({ rowIndex: 0, variableKey, message: `Variable '${variableKey}' is not mapped to any CSV column` });
+        } else if (headerIndex[headerName] === undefined) {
+            errors.push({ rowIndex: 0, variableKey, message: `Mapped column '${headerName}' for '${variableKey}' not found in CSV headers` });
+        }
+    });
+
+    rows.forEach((row, idx) => {
+        const rowNumber = idx + 2; // account for header row
+
+        // phone columns: try to resolve using header names if present, else fallback to first two columns
+        let countryCode = '';
+        let mobileLocal = '';
+
+        if (headerIndex['country_code'] !== undefined) countryCode = (row[headerIndex['country_code']] || '').toString().trim();
+        if (headerIndex['mobile_number'] !== undefined) mobileLocal = (row[headerIndex['mobile_number']] || '').toString().trim();
+        if (!countryCode && row[0] !== undefined) countryCode = (row[0] || '').toString().trim();
+        if (!mobileLocal && row[1] !== undefined) mobileLocal = (row[1] || '').toString().trim();
+
+        if (!countryCode || !/^\d+$/.test(countryCode)) {
+            errors.push({ rowIndex: rowNumber, column: 'country_code', message: `Invalid or missing country code: '${countryCode}'` });
+            return;
+        }
+
+        if (!mobileLocal || !/^\d+$/.test(mobileLocal)) {
+            errors.push({ rowIndex: rowNumber, column: 'mobile_number', message: `Invalid or missing local mobile number: '${mobileLocal}'` });
+            return;
+        }
+
+        const fullNumber = `${countryCode}${mobileLocal}`;
+        if (fullNumber.length !== 12) {
+            errors.push({ rowIndex: rowNumber, column: 'mobile_number', message: `Combined phone '${fullNumber}' must be exactly 12 digits (country code + local number)` });
+            return;
+        }
+
+        // collect dynamic variables by variable_key
+        const dynamicVariables: Record<string, string> = {};
+        let rowHasError = false;
+
+        variableDefs.forEach((def) => {
+            const key = def.variable_key || def.name || '';
+            if (!key) return;
+            const mappedHeader = mappings[key];
+            if (!mappedHeader) {
+                errors.push({ rowIndex: rowNumber, variableKey: key, message: `Variable '${key}' is not mapped to any column` });
+                rowHasError = true;
+                return;
+            }
+            const colIdx = headerIndex[mappedHeader];
+            if (colIdx === undefined) {
+                errors.push({ rowIndex: rowNumber, variableKey: key, column: mappedHeader, message: `Mapped column '${mappedHeader}' not found` });
+                rowHasError = true;
+                return;
+            }
+            const value = (row[colIdx] || '').toString().trim();
+            // basic non-empty check
+            if (!value) {
+                errors.push({ rowIndex: rowNumber, variableKey: key, column: mappedHeader, value, message: `Empty value for variable '${key}'` });
+                rowHasError = true;
+                return;
+            }
+            // optional basic format checks (phone/email/date) by heuristic on key or header name
+            if (/phone|mobile|number/.test(key.toLowerCase()) || /phone|mobile|number/.test(mappedHeader.toLowerCase())) {
+                const digits = value.replace(/\D/g, '');
+                if (digits.length < 7 || digits.length > 15) {
+                    errors.push({ rowIndex: rowNumber, variableKey: key, column: mappedHeader, value, message: `Invalid phone value for '${key}': '${value}'` });
+                    rowHasError = true;
+                    return;
+                }
+            }
+            if (/email/.test(key.toLowerCase()) || /email/.test(mappedHeader.toLowerCase())) {
+                const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRe.test(value)) {
+                    errors.push({ rowIndex: rowNumber, variableKey: key, column: mappedHeader, value, message: `Invalid email for '${key}': '${value}'` });
+                    rowHasError = true;
+                    return;
+                }
+            }
+
+            dynamicVariables[key] = value;
+        });
+
+        if (!rowHasError) {
+            validRows.push({ mobile_number: fullNumber, dynamic_variables: dynamicVariables });
+        }
+    });
+
+    return { isValid: errors.length === 0, validRows, errors };
+};
+
+/**
+ * Validates CSV header row against required columns and expected variable columns.
+ * @param headers Array of header names (first row)
+ * @param expectedVariableColumns Optional array of expected variable column names (e.g., ['name','email'])
+ */
+export const validateCSVHeaders = (
+    headers: string[],
+    expectedVariableColumns: string[] = []
+): { isValid: boolean; errors: Array<{ field: string; message: string }> } => {
+    const errors: Array<{ field: string; message: string }> = [];
+
+    if (!headers || headers.length === 0) {
+        errors.push({ field: 'Header', message: 'CSV appears to be empty or missing a header row.' });
+        return { isValid: false, errors };
+    }
+
+    const normalized = headers.map(h => (h || '').toString().trim().toLowerCase());
+
+    // Required phone columns
+    const required = ['country_code', 'mobile_number'];
+    for (const req of required) {
+        if (!normalized.includes(req)) {
+            errors.push({ field: 'Header', message: `Missing required column: ${req}` });
+        }
+    }
+
+    // Check for duplicate header names
+    const seen: Record<string, number> = {};
+    normalized.forEach((h, idx) => {
+        if (!h) {
+            errors.push({ field: 'Header', message: `Empty header detected at column ${idx + 1}` });
+        }
+        seen[h] = (seen[h] || 0) + 1;
+    });
+    Object.keys(seen).forEach(k => {
+        if (k && seen[k] > 1) {
+            errors.push({ field: 'Header', message: `Duplicate header name: ${k}` });
+        }
+    });
+
+    // Check expected variable columns (if provided)
+    for (const expected of expectedVariableColumns) {
+        const key = (expected || '').toString().trim().toLowerCase();
+        if (!key) continue;
+        if (!normalized.includes(key)) {
+            errors.push({ field: 'Header', message: `Missing variable column: ${expected}` });
+        }
+    }
+
+    return { isValid: errors.length === 0, errors };
 };
 
 /**
@@ -204,6 +384,10 @@ export const getCampaignStatusColor = (status: CampaignStatus): string => {
             return "bg-amber-500/10 text-amber-500";
         case "draft":
             return "bg-slate-500/10 text-slate-500";
+        case "cancelled":
+            return "bg-orange-500/10 text-orange-500";
+        case "deleted":
+            return "bg-rose-500/10 text-rose-500";
         default:
             return "bg-slate-500/10 text-slate-500";
     }
@@ -283,8 +467,15 @@ export const canExecuteCampaign = (status: CampaignStatus): boolean => {
 interface CsvVariableDefinition {
     variable_key?: string;
     name?: string;
+    label?: string;
     sample_value?: string;
 }
+
+const normalizeCsvHeader = (value: string) =>
+    value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "value";
 
 /**
  * Generates CSV template for download
@@ -294,8 +485,8 @@ interface CsvVariableDefinition {
 export const generateCSVTemplate = (variableArray: CsvVariableDefinition[]): string => {
     const headers = ["country_code", "mobile_number"];
     variableArray.forEach((v, i) => {
-        const key = v.variable_key || v.name || String(i + 1);
-        headers.push(`variable_${key}`);
+        const rawLabel = v.name || v.label || v.variable_key || String(i + 1);
+        headers.push(normalizeCsvHeader(rawLabel));
     });
 
     const exampleRow = ["91", "6369441531"];

@@ -1,12 +1,10 @@
+"use client";
+
+import { useParams } from "next/navigation";
 import { CampaignDetailsView } from "@/components/views/campaignDetailsView";
 
-interface CampaignDetailsPageProps {
-    params: Promise<{
-        id: string;
-    }>;
-}
-
-export default async function CampaignDetailsPage({ params }: CampaignDetailsPageProps) {
-    const { id } = await params;
-    return <CampaignDetailsView campaignId={id} />;
+export default function CampaignDetailsPage() {
+    const params = useParams();
+    const campaignId = params?.id as string;
+    return <CampaignDetailsView campaignId={campaignId} />;
 }

@@ -5,7 +5,7 @@ export default function CampaignLoading() {
     const isDarkMode = true; // Default to dark mode for skeleton
 
     return (
-        <div className="h-full overflow-y-auto p-10 space-y-8 max-w-[1600px] mx-auto no-scrollbar pb-32">
+        <div className="h-full overflow-y-auto p-10 space-y-8 max-w-[1600px] mx-auto pb-32">
             {/* Header Skeleton */}
             <div className="flex justify-between items-end">
                 <div className="space-y-1">

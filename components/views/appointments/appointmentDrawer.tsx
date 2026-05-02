@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User, Phone, Calendar, Clock, FileText, Loader2, Stethoscope, Users, XCircle, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { sanitizePhoneInput } from "@/lib/phone";
 import {
     format, parseISO, addDays, isSameDay, startOfToday,
     startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -816,7 +817,7 @@ export const AppointmentDrawer = ({
                                                         type="tel"
                                                         disabled={isContactSelected}
                                                         value={formData.contact_number}
-                                                        onChange={(e) => handleChange('contact_number', e.target.value.replace(/\D/g, ''))}
+                                                        onChange={(e) => handleChange('contact_number', sanitizePhoneInput(e.target.value, true))}
                                                         maxLength={10}
                                                         className={cn(
                                                             "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",

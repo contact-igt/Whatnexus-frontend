@@ -93,12 +93,10 @@ import { generateId, normalizePhoneCTAValue } from './templateUtils';
 // ];
 
 type ViewMode = 'list' | 'create' | 'edit' | 'view';
+type TemplateComponent = Record<string, any>;
 
 export const TemplateView = () => {
     const { user, whatsappApiDetails } = useAuth();
-    if (whatsappApiDetails?.status !== 'active') {
-        return <WhatsAppConnectionPlaceholder />;
-    }
     const { isDarkMode } = useTheme();
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     // const [templates, setTemplates] = useState<Template[]>(SAMPLE_TEMPLATES);
@@ -250,11 +248,21 @@ export const TemplateView = () => {
     const selectedTemplateData = editTemplateDataById?.data;
     const initialData: TemplateFormData | undefined = useMemo(() => {
         if (!selectedTemplateData) return undefined;
+        const components: TemplateComponent[] = Array.isArray(selectedTemplateData.components) ? selectedTemplateData.components : [];
+        const findComponent = (componentType: string) => components.find((component) => {
+            const storedType = String(component.component_type || component.type || '').toLowerCase();
+            return storedType === componentType;
+        });
+        const getComponentText = (component?: TemplateComponent) => {
+            const value = component?.text_content || component?.text || component?.content || component?.body || component?.body_text;
+            return typeof value === 'string' ? value : '';
+        };
+
         // Derive the correct template type from the header component when it's a media type.
         // The backend may store template_type as "text" even when there's an image/video/document header.
-        const headerComp = selectedTemplateData.components.find((c: any) =>
-            c.component_type?.toLowerCase() === "header" || c.type?.toLowerCase() === "header"
-        );
+        const headerComp = findComponent("header");
+        const bodyComp = findComponent("body");
+        const footerComp = findComponent("footer");
         const headerFormat = (headerComp?.header_format || '').toUpperCase(); // e.g. "IMAGE", "VIDEO", "DOCUMENT", "TEXT", ""
         const MEDIA_TYPES = ['IMAGE', 'VIDEO', 'DOCUMENT'];
 
@@ -302,38 +310,16 @@ export const TemplateView = () => {
             rejection_reason: selectedTemplateData.rejection_reason ?? null,
 
             // Handle Content (Body)
-            content: (
-                selectedTemplateData.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
-                )?.text_content ||
-                selectedTemplateData.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
-                )?.text ||
-                ''
-            ),
+            content: getComponentText(bodyComp) || selectedTemplateData.content || selectedTemplateData.description || '',
 
             // Handle Footer
-            footer: (
-                selectedTemplateData.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === "footer" || c.type?.toLowerCase() === "footer"
-                )?.text_content || ''
-            ),
-            previous_content: (
-                selectedTemplateData.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
-                )?.text_content ||
-                selectedTemplateData.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === "body" || c.type?.toLowerCase() === "body"
-                )?.text ||
-                ''
-            ),
+            footer: getComponentText(footerComp),
+            previous_content: getComponentText(bodyComp) || selectedTemplateData.content || selectedTemplateData.description || '',
             variables: selectedTemplateData.variables,
 
             // Handle Buttons
             ...((() => {
-                const buttonsComp = selectedTemplateData.components.find((c: any) =>
-                    c.component_type?.toLowerCase() === "buttons" || c.type?.toLowerCase() === "buttons"
-                );
+                const buttonsComp = findComponent("buttons");
                 const rawButtons = buttonsComp?.text_content || buttonsComp?.buttons || null;
 
                 if (buttonsComp && rawButtons) {
@@ -387,7 +373,7 @@ export const TemplateView = () => {
 
             // Handle Carousel
             ...((() => {
-                const carouselComp = selectedTemplateData.components.find((c: any) => c.component_type === "carousel");
+                const carouselComp = findComponent("carousel");
                 if (carouselComp && carouselComp.text_content) {
                     try {
                         const carousel = typeof carouselComp.text_content === 'string' ? JSON.parse(carouselComp.text_content) : carouselComp.text_content;
@@ -430,6 +416,10 @@ export const TemplateView = () => {
             })())
         };
     }, [selectedTemplateData]);
+
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
 
     // Render based on view mode
     if (viewMode === 'create' || viewMode === 'edit' || viewMode === 'view') {

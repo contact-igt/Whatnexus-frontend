@@ -3,6 +3,10 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 interface TemplateState {
     uploadedMediaUrl: string;
     uploadedMediaType: 'image' | 'video' | 'document' | null;
+    uploadedMediaStatus: 'READY' | null;
+    uploadedMediaId: string | null;
+    uploadedMediaFileName: string | null;
+    uploadedMediaUploadTime: string | null;
     isUploading: boolean;
     carouselCards: Array<{
         id: string;
@@ -32,6 +36,10 @@ const savedMedia = getInitialMedia();
 const initialState: TemplateState = {
     uploadedMediaUrl: savedMedia.url,
     uploadedMediaType: savedMedia.type,
+    uploadedMediaStatus: null,
+    uploadedMediaId: null,
+    uploadedMediaFileName: null,
+    uploadedMediaUploadTime: null,
     isUploading: false,
     carouselCards: [
         { id: 'card-1', mediaType: 'IMAGE', mediaUrl: '', bodyText: '', buttons: [] },
@@ -43,9 +51,20 @@ const templateSlice = createSlice({
     name: 'template',
     initialState,
     reducers: {
-        setUploadedMedia: (state, action: PayloadAction<{ url: string; type: 'image' | 'video' | 'document' }>) => {
+        setUploadedMedia: (state, action: PayloadAction<{
+            url: string;
+            type: 'image' | 'video' | 'document';
+            mediaStatus?: 'READY' | null;
+            mediaId?: string | null;
+            fileName?: string | null;
+            uploadTime?: string | null;
+        }>) => {
             state.uploadedMediaUrl = action.payload.url;
             state.uploadedMediaType = action.payload.type;
+            state.uploadedMediaStatus = action.payload.mediaStatus ?? null;
+            state.uploadedMediaId = action.payload.mediaId ?? null;
+            state.uploadedMediaFileName = action.payload.fileName ?? null;
+            state.uploadedMediaUploadTime = action.payload.uploadTime ?? null;
             state.isUploading = false;
             if (typeof window !== 'undefined') {
                 localStorage.setItem('template_uploaded_media', JSON.stringify({ url: action.payload.url, type: action.payload.type }));
@@ -57,6 +76,10 @@ const templateSlice = createSlice({
         clearUploadedMedia: (state) => {
             state.uploadedMediaUrl = '';
             state.uploadedMediaType = null;
+            state.uploadedMediaStatus = null;
+            state.uploadedMediaId = null;
+            state.uploadedMediaFileName = null;
+            state.uploadedMediaUploadTime = null;
             state.isUploading = false;
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('template_uploaded_media');
@@ -85,10 +108,10 @@ const templateSlice = createSlice({
     },
 });
 
-export const { 
-    setUploadedMedia, 
-    setUploading, 
-    clearUploadedMedia, 
+export const {
+    setUploadedMedia,
+    setUploading,
+    clearUploadedMedia,
     updateCarouselCards,
     addCarouselCard,
     removeCarouselCard

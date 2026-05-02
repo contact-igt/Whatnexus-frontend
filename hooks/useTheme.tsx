@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState } from "react";
 
 export type Theme = "light" | "dark" | "system";
 
@@ -47,10 +47,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.add(isDarkMode ? "dark" : "light");
     }, [theme, mounted, isDarkMode]);
 
-    const setTheme = (newTheme: Theme) => {
+    const setTheme = useCallback((newTheme: Theme) => {
         setThemeState(newTheme);
         localStorage.setItem("theme", newTheme);
-    };
+    }, []);
 
     return (
         <ThemeContext.Provider value={{ theme, setTheme, isDarkMode, mounted }}>

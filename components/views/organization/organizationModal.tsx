@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation, useValidateOpenAIKeyMutation } from "@/hooks/useTenantQuery";
 import { useGetAiPricingRulesQuery } from "@/hooks/useManagementQuery";
 import { Country, State, City } from 'country-state-city';
+import { sanitizePhoneInput } from "@/lib/phone";
 import { toast } from '@/lib/toast';
 
 interface OrganizationModalProps {
@@ -203,7 +204,7 @@ export const OrganizationModal = ({
         let sanitizedValue = value;
 
         if (field === 'owner_mobile') {
-            sanitizedValue = value.replace(/\D/g, '');
+            sanitizedValue = sanitizePhoneInput(value, true);
         }
 
         if (field === 'gstin') {
@@ -235,8 +236,8 @@ export const OrganizationModal = ({
 
         if (!formData.owner_mobile?.trim()) {
             newErrors.owner_mobile = "Mobile number is required";
-        } else if (!/^\d{7,15}$/.test(formData.owner_mobile)) {
-            newErrors.owner_mobile = "Mobile number must be 7-15 digits";
+        } else if (!/^\d{10}$/.test(formData.owner_mobile)) {
+            newErrors.owner_mobile = "Mobile number must be 10 digits";
         }
 
         if (!formData.openai_api_key?.trim()) {
@@ -445,11 +446,12 @@ export const OrganizationModal = ({
                             placeholder="9876543210"
                             value={formData.owner_mobile}
                             wrapperClassName="col-span-2"
-                            onChange={(e) => handleChange('owner_mobile', e.target.value.replace(/\D/g, ''))}
+                            onChange={(e) => handleChange('owner_mobile', e.target.value)}
                             disabled={isView}
                             error={errors.owner_mobile}
                             required
-                            maxLength={15}
+                            maxLength={10}
+                            hasSeparateCountryCode
                         />
                     </div>
                     <Select
@@ -460,6 +462,8 @@ export const OrganizationModal = ({
                         options={[
                             { value: 'hospital', label: 'Hospital' },
                             { value: 'clinic', label: 'Clinic' },
+                            { value: 'education', label: 'Education / Academy' },
+                            { value: 'law', label: 'Law Firm / Practice' },
                             { value: 'organization', label: 'Organization' }
                         ]}
                         disabled={isView}

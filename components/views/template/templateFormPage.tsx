@@ -19,7 +19,7 @@ import {
     OptimizationGoal,
     HeaderType
 } from './templateTypes';
-import { validateTemplateName, generateId, validateContentLanguageMatch, validateLanguageMatch, normalizePhoneCTAValue } from './templateUtils';
+import { validateTemplateName, generateId, validateContentLanguageMatch, getGeneratedLanguageMismatchError, normalizePhoneCTAValue } from './templateUtils';
 import { WhatsAppPreviewPanel } from './whatsappPreviewPanel';
 import { VariableInputSection } from './variableInputSection';
 import { InteractiveActionsSection } from './interactiveActionsSection';
@@ -57,11 +57,59 @@ type SelectedHeaderAsset = {
     preview_url?: string | null; // Cloudinary URL for in-session preview
 };
 
+const MARKETING_INTENT_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
+    { label: 'offer', pattern: /\boffers?\b/i },
+    { label: 'discount', pattern: /\b(discount|coupon|voucher|cashback)\b/i },
+    { label: 'sale', pattern: /\b(sale|deal|promo|promotion)\b/i },
+    { label: 'purchase intent', pattern: /\b(buy|shop|order now|get it now|book now|subscribe|upgrade)\b/i },
+    { label: 'urgency', pattern: /\b(limited time|hurry|last chance|expires soon|exclusive)\b/i },
+    { label: 'free/prize', pattern: /\b(free|win|prize|gift|bonus)\b/i },
+    { label: 'savings', pattern: /\b(save|saving|savings|% off|percent off)\b/i },
+    { label: 'Arabic offer', pattern: /(عرض|خصم|مجاني|تخفيض|اشتر|تسوق|وفر|هدية|لفترة محدودة)/i },
+    { label: 'Hindi offer', pattern: /(ऑफर|छूट|मुफ्त|सेल|खरीद|बचत|जल्दी|उपहार)/i },
+];
+
+const getMarketingSignals = (content = '') => (
+    MARKETING_INTENT_PATTERNS
+        .filter(({ pattern }) => pattern.test(content))
+        .map(({ label }) => label)
+);
+
+const getCategoryContentValidationError = (
+    category: TemplateCategory,
+    content = '',
+    generatedCategory?: TemplateCategory | null,
+) => {
+    const trimmedContent = content.trim();
+    if (!trimmedContent || category === 'AUTHENTICATION') return undefined;
+
+    if (category === 'UTILITY') {
+        if (generatedCategory === 'MARKETING') {
+            return 'This body was generated as a Marketing template. Change category back to MARKETING or rewrite the body as a Utility notification.';
+        }
+
+        const foundSignals = getMarketingSignals(trimmedContent);
+        if (foundSignals.length > 0) {
+            return `Utility templates cannot contain marketing language (found: ${foundSignals.slice(0, 3).join(', ')}). Please change category to MARKETING or remove promotional text.`;
+        }
+    }
+
+    if (category === 'MARKETING') {
+        const strippedContent = trimmedContent.replace(/\{\{[^}]+\}\}/g, '').replace(/\s+/g, ' ').trim();
+        if (strippedContent.length < 5) {
+            return 'Marketing template body must contain meaningful promotional text — it cannot consist of only variable placeholders.';
+        }
+    }
+
+    return undefined;
+};
+
 const templateSchema = z.object({
     category: z.enum(['UTILITY', 'MARKETING', 'AUTHENTICATION']),
     language: z.string().min(1, "Language is required"),
     templateName: z.string()
         .min(1, "Template name is required")
+        .max(60, "Template name must be 60 characters or less")
         .regex(/^[a-z0-9_]+$/, "Name can only contain lowercase alphanumeric characters and underscores"),
     templateType: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION', 'CAROUSEL']),
     headerType: z.enum(['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION']),
@@ -137,19 +185,13 @@ const templateSchema = z.object({
         buttons: z.array(z.any())
     })).min(2, "At least 2 cards are required for a carousel template")
 }).superRefine((data, ctx) => {
-    // Utility Category Validation - No Marketing Language
-    if (data.category === 'UTILITY') {
-        const marketingKeywords = ['offer', 'discount', 'sale', 'buy', 'promo', 'free', 'limited', 'hurry', 'deal', 'shop', 'save', 'win', 'prize', 'get it now', 'order now'];
-        const contentLower = data.content.toLowerCase();
-        const foundKeywords = marketingKeywords.filter(word => contentLower.includes(word));
-
-        if (foundKeywords.length > 0) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: `Utility templates cannot contain marketing language (found: ${foundKeywords.slice(0, 3).join(', ')}). Please change category to MARKETING or remove promotional text.`,
-                path: ['content']
-            });
-        }
+    const categoryContentValidationError = getCategoryContentValidationError(data.category, data.content);
+    if (categoryContentValidationError) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: categoryContentValidationError,
+            path: ['content']
+        });
     }
 
     // Authentication Category Validation - Must have variables
@@ -179,25 +221,26 @@ const templateSchema = z.object({
         });
     }
 
-    // Language-content script mismatch validation
-    if (data.category !== 'AUTHENTICATION' && data.content?.trim()) {
-        const langError = validateContentLanguageMatch(data.content, data.language);
-        if (langError) {
+    // Header text constraints apply only when user explicitly chooses TEXT header mode.
+    if (data.templateType === 'TEXT' && data.headerType === 'TEXT') {
+        const headerText = data.headerValue?.trim() || '';
+        if (!headerText) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: langError,
-                path: ['content']
+                message: 'Header text is required when header type is TEXT.',
+                path: ['headerValue']
             });
+        } else if (headerText.length > 60) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: `Content does not match "${data.language}". Write body text in ${data.language} or change the language.`,
-                path: ['language']
+                message: 'Header text must be 60 characters or less',
+                path: ['headerValue']
             });
         }
     }
 
-    // Media Header Validation
-    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(data.templateType) && !data.headerValue) {
+    // For media template types, header must be a media URL/handle value.
+    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(data.templateType) && !data.headerValue?.trim()) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `Please upload a ${data.templateType.toLowerCase()} file for the header.`,
@@ -227,7 +270,12 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         neural_summary: rawAiSettings.neural_summary ?? true,
         content_generation: rawAiSettings.content_generation ?? true,
     };
-    const lastInitialDataNameRef = useRef<string | null | undefined>(null);
+    const lastInitialDataHydrationKeyRef = useRef<string | null>(null);
+    const generatedContentRef = useRef<{ content: string; category: TemplateCategory | null; language: string | null }>({
+        content: '',
+        category: null,
+        language: null,
+    });
 
     // Meta allows edits for submitted templates, but with narrower restrictions than our original UI.
     const isSubmittedTemplate = !!templateId && initialData?.status !== 'draft';
@@ -296,6 +344,10 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     const uploadedMediaUrl = useSelector((state: RootState) => state.template.uploadedMediaUrl);
     const uploadedMediaType = useSelector((state: RootState) => state.template.uploadedMediaType);
+    const uploadedMediaStatus = useSelector((state: RootState) => state.template.uploadedMediaStatus);
+    const uploadedMediaId = useSelector((state: RootState) => state.template.uploadedMediaId);
+    const uploadedMediaFileName = useSelector((state: RootState) => state.template.uploadedMediaFileName);
+    const uploadedMediaUploadTime = useSelector((state: RootState) => state.template.uploadedMediaUploadTime);
     const isMediaUploading = useSelector((state: RootState) => state.template.isUploading);
     const { mutateAsync: uploadMedia } = useUploadTemplateMediaMutation();
     const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -440,9 +492,19 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
     logger.debug("initialData", initialData)    // Update form when initialData changes (seed the form for editing)
     useEffect(() => {
         if (initialData) {
-            // Only reset if this is the first load of this specific template name
-            // (prevents re-resetting during active editing if initialData reference changes)
-            if (lastInitialDataNameRef.current !== initialData.name) {
+            const hydrationKey = [
+                templateId || 'new',
+                initialData.name || '',
+                initialData.content || '',
+                initialData.footer || '',
+                initialData.headerType || '',
+                initialData.headerValue || '',
+                initialData.updated_at || '',
+            ].join('|');
+
+            // Reset when the actual fetched template payload changes. The edit query can
+            // first hydrate from cached list data, then receive the full body component.
+            if (lastInitialDataHydrationKeyRef.current !== hydrationKey) {
                 const hasExistingMediaHeader = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes((initialData.headerType || '').toUpperCase());
                 const resolvedHeaderMediaUrl = (initialData.headerValue && isUrlLikeValue(initialData.headerValue)) ? initialData.headerValue : null;
                 const resolvedHeaderFileName = initialData.headerMediaFileName
@@ -510,7 +572,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                     }
                 }
 
-                lastInitialDataNameRef.current = initialData.name;
+                lastInitialDataHydrationKeyRef.current = hydrationKey;
             }
         } else if (uploadedMediaUrl && !selectedHeaderAsset) {
             // New template creation: Pull from Redux if form field is empty
@@ -523,7 +585,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                 }
             }
         }
-    }, [initialData, reset, getValues, dispatch, uploadedMediaUrl, uploadedMediaType, setValue, selectedHeaderAsset]);
+    }, [initialData, templateId, reset, getValues, dispatch, uploadedMediaUrl, uploadedMediaType, setValue, selectedHeaderAsset]);
 
     useEffect(() => {
         if (!selectedHeaderAsset?.media_asset_id) return;
@@ -607,7 +669,8 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         : (headerValue || '');
 
     // Language-content mismatch detection (real-time, debounced)
-    // validateContentLanguageMatch handles ALL cases: script mismatch, English↔non-English Latin, etc.
+    // Primary check: deterministic generated-language tracking (catches Latin-Latin mismatches like Afrikaans→Albanian).
+    // Secondary check: script/franc detection for manually typed content.
     const [debouncedMismatchError, setDebouncedMismatchError] = useState<string | null>(null);
     useEffect(() => {
         if (!content?.trim() || !language || category === 'AUTHENTICATION') {
@@ -615,26 +678,74 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             return;
         }
         const timer = setTimeout(() => {
+            const ref = generatedContentRef.current;
+            // Primary: was this exact body AI-generated for a different language?
+            if (ref.content && ref.language && ref.content === content.trim()) {
+                const genErr = getGeneratedLanguageMismatchError(ref.language, language);
+                if (genErr) {
+                    logger.debug('[LanguageValidation] Generated-language mismatch:', { generatedFor: ref.language, selected: language });
+                    setDebouncedMismatchError(genErr);
+                    return;
+                }
+            }
+            // Secondary: script-level / franc-based check for manually typed content
             const error = validateContentLanguageMatch(content, language);
             logger.debug('[LanguageValidation] Debounced check:', { language, contentLength: content.length, error });
             setDebouncedMismatchError(error);
-        }, 500);
+        }, 400);
         return () => clearTimeout(timer);
     }, [content, language, category]);
     const isLanguageMismatch = !!debouncedMismatchError;
+    const generatedCategoryForCurrentContent =
+        content && generatedContentRef.current.content === content
+            ? generatedContentRef.current.category
+            : null;
 
-    // Hard pre-check before form submission — blocks Save if language/content mismatch
+    const scrollToTemplateContent = () => {
+        const contentSection = document.getElementById('field-section-content');
+        contentSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    // Hard pre-check before form submission — blocks Save if category/content mismatch
     const handleSaveClick = () => {
         const currentContent = getValues('content');
         const currentLanguage = getValues('language');
         const currentCategory = getValues('category');
+        const generatedCategoryForSubmit =
+            currentContent && generatedContentRef.current.content === currentContent
+                ? generatedContentRef.current.category
+                : null;
+
+        const categoryValidationError = getCategoryContentValidationError(
+            currentCategory,
+            currentContent,
+            generatedCategoryForSubmit,
+        );
+        if (categoryValidationError) {
+            toast.error(categoryValidationError);
+            scrollToTemplateContent();
+            return;
+        }
 
         if (currentCategory !== 'AUTHENTICATION' && currentContent?.trim()) {
+            // Primary: deterministic generated-language check
+            const ref = generatedContentRef.current;
+            if (ref.content && ref.language && ref.content === currentContent.trim()) {
+                const genErr = getGeneratedLanguageMismatchError(ref.language, currentLanguage);
+                if (genErr) {
+                    toast.error(genErr);
+                    setDebouncedMismatchError(genErr);
+                    setTimeout(scrollToTemplateContent, 0);
+                    return;
+                }
+            }
+            // Secondary: script/franc check for manually typed content
             const mismatchError = validateContentLanguageMatch(currentContent, currentLanguage);
             logger.debug('[LanguageValidation] Save click check:', { currentLanguage, contentLength: currentContent.length, mismatchError });
             if (mismatchError) {
                 toast.error(mismatchError);
                 setDebouncedMismatchError(mismatchError);
+                setTimeout(scrollToTemplateContent, 0);
                 return;
             }
         }
@@ -677,23 +788,59 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         return null;
     })();
 
+    const formattedUploadedMediaTime = useMemo(() => {
+        if (!uploadedMediaUploadTime) return null;
+        const parsed = new Date(uploadedMediaUploadTime);
+        if (Number.isNaN(parsed.getTime())) return uploadedMediaUploadTime;
+        return parsed.toLocaleString();
+    }, [uploadedMediaUploadTime]);
+
     // Authentication mode — lock the form when AUTHENTICATION category is chosen
     const isAuthMode = category === 'AUTHENTICATION';
+
+    // Separate category-level body errors from pure content-format errors so they render
+    // as a standalone warning banner rather than a red border on the textarea.
+    // Covers: UTILITY with marketing keywords, MARKETING with no real text.
+    const categoryContentError = (() => {
+        const liveCategoryError = getCategoryContentValidationError(
+            category,
+            content,
+            generatedCategoryForCurrentContent,
+        );
+        if (liveCategoryError) return liveCategoryError;
+
+        const msg = errors.content?.message;
+        if (!msg) return undefined;
+        if (msg.startsWith('Utility templates cannot') || msg.startsWith('Marketing template body')) return msg;
+        return undefined;
+    })();
+    const contentFieldError = categoryContentError ? undefined : errors.content?.message;
     const AUTH_BODY_TEXT = 'Your verification code is {{1}}. For your security, do not share this code.';
     const AUTH_FOOTER_TEXT = 'This code expires in 10 minutes.';
 
     // Auto-configure form when switching to AUTHENTICATION category
     useEffect(() => {
         if (isAuthMode) {
+            // Lock format, clear any header, always force the required OTP body text
             setValue('templateType', 'TEXT');
             setValue('headerType', 'NONE');
+            setValue('headerValue', '');
+            setSelectedHeaderAsset(null);
+            setDirectUploadHandle(null);
+            setUploadedFileName(null);
             setValue('interactiveActions', 'Authentication');
-            if (!content || content === AUTH_BODY_TEXT.slice(0, 5)) {
-                setValue('content', AUTH_BODY_TEXT);
-            }
+            setValue('content', AUTH_BODY_TEXT);
             setValue('footer', AUTH_FOOTER_TEXT);
             setValue('variables', { '1': '123456' });
             dispatch(clearUploadedMedia());
+        } else {
+            // Switching away from AUTHENTICATION: clear all auth-specific values
+            const currentContent = getValues('content');
+            if (currentContent === AUTH_BODY_TEXT) setValue('content', '');
+            const currentFooter = getValues('footer');
+            if (currentFooter === AUTH_FOOTER_TEXT) setValue('footer', '');
+            const currentInteractiveActions = getValues('interactiveActions');
+            if (currentInteractiveActions === 'Authentication') setValue('interactiveActions', 'None');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthMode]);
@@ -751,6 +898,12 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             const data = await generateTemplate(payload);
 
             if (data?.data?.content) {
+                const generatedCategory = String(aiCategory || category || '').toUpperCase() as TemplateCategory;
+                generatedContentRef.current = {
+                    content: data.data.content,
+                    category: generatedCategory,
+                    language: currentLang,
+                };
                 setValue('content', data.data.content, { shouldValidate: true });
 
                 // Immediately validate language match after AI generation
@@ -872,6 +1025,17 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         }
 
         if (data.category !== 'AUTHENTICATION' && data.content?.trim()) {
+            // Primary: deterministic generated-language check
+            const ref = generatedContentRef.current;
+            if (ref.content && ref.language && ref.content === data.content.trim()) {
+                const genErr = getGeneratedLanguageMismatchError(ref.language, data.language);
+                if (genErr) {
+                    toast.error(genErr);
+                    setDebouncedMismatchError(genErr);
+                    return;
+                }
+            }
+            // Secondary: script/franc check for manually typed content
             const langValidationError = validateContentLanguageMatch(data.content, data.language);
             logger.debug('[LanguageValidation] onSubmit check:', { language: data.language, contentLength: data.content.length, langValidationError });
             if (langValidationError) {
@@ -1066,7 +1230,14 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             setUploadedFileName(file.name); // Store local filename for display
             const response = await uploadMedia({ file, type });
             if (response?.url) {
-                dispatch(setUploadedMedia({ url: response.url, type }));
+                dispatch(setUploadedMedia({
+                    url: response.url,
+                    type,
+                    mediaStatus: response.media_status || (response.media_id ? 'READY' : null),
+                    mediaId: response.media_id || response.media_handle || null,
+                    fileName: response.file_name || file.name,
+                    uploadTime: response.upload_time || new Date().toISOString(),
+                }));
                 onChange(response.url); // update form state
                 // Persist the handle returned by the upload so the DB component row
                 // stores it — submit will then use the handle directly, no re-upload needed.
@@ -1076,7 +1247,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         media_asset_id: response.media_asset_id,
                     });
                 }
-                toast.success(`${type} uploaded successfully`);
+                toast.success(`${type} uploaded successfully (READY)`);
             }
         } catch (error) {
             logger.error('Upload failed:', error);
@@ -1130,7 +1301,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                             )}
                             <button
                                 onClick={handleSaveClick}
-                                disabled={isSubmitting || isSaving || isLanguageMismatch || (isApprovedTemplate && isSaveBlocked)}
+                                disabled={isSubmitting || isSaving || (isApprovedTemplate && isSaveBlocked)}
                                 className="h-11 px-6 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {(isSubmitting || isSaving) ? (
@@ -1260,7 +1431,10 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                 label="Template Category"
                                                 required
                                                 value={field.value}
-                                                onChange={field.onChange}
+                                                onChange={(val: TemplateCategory) => {
+                                                    field.onChange(val);
+                                                    setTimeout(() => trigger('content'), 0);
+                                                }}
                                                 options={categories.map(cat => ({ value: cat, label: cat }))}
                                                 error={errors.category?.message}
                                                 disabled={isViewMode || isApprovedTemplate}
@@ -1293,20 +1467,6 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                     value={field.value}
                                                     onChange={(val: string) => {
                                                         field.onChange(val);
-                                                        // Validate existing body text against newly selected language
-                                                        const currentContent = getValues('content');
-                                                        if (currentContent?.trim() && getValues('category') !== 'AUTHENTICATION') {
-                                                            const result = validateLanguageMatch(val, currentContent);
-                                                            logger.debug('[LanguageValidation] Language changed:', { newLang: val, contentLength: currentContent.length, result });
-                                                            if (!result.valid && result.message) {
-                                                                toast.error(result.message);
-                                                                setDebouncedMismatchError(result.message);
-                                                            } else {
-                                                                setDebouncedMismatchError(null);
-                                                            }
-                                                        }
-                                                        // Re-validate entire form (superRefine cross-field validation)
-                                                        setTimeout(() => trigger(), 0);
                                                     }}
                                                     options={languages.map(lang => ({ value: lang, label: lang }))}
                                                     error={errors.language?.message}
@@ -1315,19 +1475,19 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             )
                                         }}
                                     />
-                                    {/* {isLanguageMismatch && !isAuthMode ? (
+                                    {isLanguageMismatch && !isAuthMode ? (
                                         <div className={cn(
-                                            "flex items-start gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border",
-                                            isDarkMode ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-red-50 border-red-200 text-red-600"
+                                            "flex items-start gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border",
+                                            isDarkMode ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-red-50 border-red-300 text-red-700"
                                         )}>
-                                            <span className="mt-0.5 shrink-0">⚠️</span>
+                                            <AlertCircle className="mt-0.5 shrink-0 w-3.5 h-3.5" />
                                             <span>{debouncedMismatchError}</span>
                                         </div>
                                     ) : (
                                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                             You will need to specify the language in which message template is submitted
                                         </p>
-                                    )} */}
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1349,19 +1509,43 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                             <Controller
                                 name="templateName"
                                 control={control}
-                                render={({ field }) => (
-                                    <Input
-                                        {...field}
-                                        isDarkMode={isDarkMode}
-                                        label="Template Name"
-                                        required
-                                        type="text"
-                                        placeholder="e.g. app_verification_code"
-                                        onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                                        error={errors.templateName?.message}
-                                        disabled={isViewMode || isSubmittedTemplate}
-                                    />
-                                )}
+                                render={({ field }) => {
+                                    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+                                        e.preventDefault();
+                                        const pastedText = e.clipboardData.getData('text');
+                                        // Sanitize and truncate to 60 characters
+                                        const sanitized = pastedText
+                                            .toLowerCase()
+                                            .replace(/[^a-z0-9_]/g, '_')
+                                            .slice(0, 60);
+                                        field.onChange(sanitized);
+                                    };
+
+                                    return (
+                                        <>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-sm font-semibold">Template Name</label>
+                                                <span className={cn(
+                                                    "text-xs font-medium",
+                                                    isDarkMode ? "text-white/40" : "text-slate-500"
+                                                )}>
+                                                    {templateName.length}/60
+                                                </span>
+                                            </div>
+                                            <Input
+                                                {...field}
+                                                isDarkMode={isDarkMode}
+                                                required
+                                                type="text"
+                                                placeholder="e.g. app_verification_code"
+                                                onChange={(e) => field.onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 60))}
+                                                onPaste={handlePaste}
+                                                error={errors.templateName?.message}
+                                                disabled={isViewMode || isSubmittedTemplate}
+                                            />
+                                        </>
+                                    );
+                                }}
                             />
                             <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 Name can only be in lowercase alphanumeric characters and underscores. Special characters and white-space are not allowed
@@ -1771,6 +1955,27 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                 </div>
                             )}
 
+                            {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(templateType) && uploadedMediaStatus === 'READY' && !selectedHeaderAsset && (
+                                <div className={cn(
+                                    "rounded-xl border px-3 py-2 mt-3 text-xs",
+                                    isDarkMode ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                )}>
+                                    <div className="flex items-center gap-2 font-semibold">
+                                        <CheckCircle2 size={14} />
+                                        <span>Media Status: READY</span>
+                                    </div>
+                                    <p className={cn("mt-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                        Media ID: {uploadedMediaId || directUploadHandle?.media_handle || 'N/A'}
+                                    </p>
+                                    <p className={cn(isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                        File Name: {uploadedMediaFileName || displayFileName || 'N/A'}
+                                    </p>
+                                    <p className={cn(isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                        Upload Time: {formattedUploadedMediaTime || 'N/A'}
+                                    </p>
+                                </div>
+                            )}
+
                             {/* {templateType === 'LOCATION' && (
                                 <div className="w-full">
                                     <h2 className={cn("text-xs font-bold tracking-wide mb-4", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
@@ -1801,6 +2006,19 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
                         {/* Template Content */}
                         <div id="field-section-content">
+                            {/* Category-level body error — rendered as a banner so it reads as a
+                                category/format mismatch, not a content-syntax error on the textarea */}
+                            {categoryContentError && (
+                                <div className={cn(
+                                    "flex items-start gap-2 px-3 py-2.5 rounded-xl border mb-3 text-xs font-semibold",
+                                    isDarkMode
+                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                                        : 'bg-amber-50 border-amber-300 text-amber-800'
+                                )}>
+                                    <span className="shrink-0 mt-0.5">⚠️</span>
+                                    <span>{categoryContentError}</span>
+                                </div>
+                            )}
                             <Controller
                                 name="content"
                                 control={control}
@@ -1814,12 +2032,12 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         rows={6}
                                         maxLength={1024}
                                         showCharCount
-                                        error={errors.content?.message}
+                                        error={contentFieldError}
                                         disabled={isViewMode || isAuthMode}
                                     />
                                 )}
                             />
-                            {/* {isLanguageMismatch && !isAuthMode && (
+                            {isLanguageMismatch && !isAuthMode && (
                                 <div className={cn(
                                     "flex items-start gap-2 mt-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold border",
                                     isDarkMode ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-red-50 border-red-300 text-red-700"
@@ -1827,7 +2045,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                     <span className="mt-0.5 shrink-0">🚫</span>
                                     <span>{debouncedMismatchError}</span>
                                 </div>
-                            )} */}
+                            )}
                             {isAuthMode ? (
                                 <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-violet-400/70' : 'text-violet-600')}>
                                     🔐 Body text is pre-filled with Meta's required OTP format. The <strong>{`{{1}}`}</strong> placeholder will be replaced with the generated OTP code at send time.
@@ -1880,7 +2098,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                         onChange={(e) => field.onChange(e.target.value.slice(0, 60))}
                                         maxLength={60}
                                         error={errors.footer?.message}
-                                        disabled={isViewMode}
+                                        disabled={isViewMode || isAuthMode}
                                     />
                                 )}
                             />
@@ -1913,6 +2131,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                 ctaErrors={errors.ctaButtons as any}
                                 disabled={isViewMode}
                                 isCarousel={templateType === 'CAROUSEL'}
+                                isAuthMode={isAuthMode}
                             />
                         </div>
                     </div>

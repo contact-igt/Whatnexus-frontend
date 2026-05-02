@@ -513,6 +513,20 @@ export function validateContentLanguageMatch(content: string, language: string):
     return result.valid ? null : (result.message ?? null);
 }
 
+/**
+ * Checks whether AI-generated content was produced for a different language than currently selected.
+ * This is a deterministic identity check — no NLP or word analysis involved.
+ * Returns an error message string if there is a mismatch, or null if everything is consistent.
+ */
+export function getGeneratedLanguageMismatchError(
+    generatedForLanguage: string | null,
+    currentLanguage: string,
+): string | null {
+    if (!generatedForLanguage || !currentLanguage) return null;
+    if (generatedForLanguage === currentLanguage) return null;
+    return `This body was generated for "${generatedForLanguage}" but "${currentLanguage}" is now selected. Regenerate the template for "${currentLanguage}" or change the language back to "${generatedForLanguage}".`;
+}
+
 const VARIABLE_CONTEXT_SUGGESTIONS: Array<{ pattern: RegExp; placeholder: string }> = [
     // Percentage / discount — check before generic patterns (% symbol is a strong signal)
     { pattern: /(%\s*(off|discount)?|(?:discount|percent|offer|rate)\s*(of)?)\s*$/i, placeholder: '20' },

@@ -45,13 +45,16 @@ export const getDateLabel = (dateStr: string) => {
 export const formatChatPreview = (message: string, messageType?: string): string => {
     if (!message) return '';
 
+    // Strip [Button: ...] markers (template CTA/quick-reply buttons stored inline)
+    let cleaned = message.replace(/\n?\[Button:[^\]]+\]/gi, '').trim();
+
     // Strip [TYPE: url] or [TYPE] markers from beginning of message
     const mediaMarkerRegex = /^\[(IMAGE|DOCUMENT|VIDEO|AUDIO|LOCATION)(?::\s*\S+)?\]\n?/i;
-    const match = message.match(mediaMarkerRegex);
+    const match = cleaned.match(mediaMarkerRegex);
 
     if (match) {
         const type = match[1].toUpperCase();
-        const rest = message.replace(mediaMarkerRegex, '').trim();
+        const rest = cleaned.replace(mediaMarkerRegex, '').trim();
         const labels: Record<string, string> = {
             IMAGE: '📷 Photo',
             DOCUMENT: '📄 Document',
@@ -74,11 +77,11 @@ export const formatChatPreview = (message: string, messageType?: string): string
             location: '📍 Location',
         };
         if (typeLabels[mt]) {
-            return message.trim() ? `${typeLabels[mt]}: ${message.trim()}` : typeLabels[mt];
+            return cleaned.trim() ? `${typeLabels[mt]}: ${cleaned.trim()}` : typeLabels[mt];
         }
     }
 
-    return message;
+    return cleaned;
 };
 
 export const formattedTime = (dateString: any) => {

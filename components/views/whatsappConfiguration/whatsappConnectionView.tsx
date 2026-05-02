@@ -36,16 +36,17 @@ export const whatsappConnectSchema = z.object({
         .min(8, "WABA ID is too short")
         .max(20, "WABA ID is too long"),
 
+
     phone_number_id: z
         .string()
         .regex(/^\d+$/, "Phone Number ID must contain only numbers")
         .min(8, "Phone Number ID is too short")
-        .max(20, "Phone Number ID is too long"),
+        .max(30, "Phone Number ID is too long"),
 
     whatsapp_number: z
         .string()
         .regex(/^\d+$/, "WhatsApp number must contain only numbers")
-        .min(10, "WhatsApp number must be at least 10 digits")
+        .min(7, "WhatsApp number is too short")
         .max(15, "WhatsApp number must be at most 15 digits"),
 
     access_token: z
@@ -61,7 +62,7 @@ export const whatsappConnectSchema = z.object({
 });
 
 export const WhatsAppConnectionView = () => {
-    const { register, handleSubmit, formState: { errors }, watch } = useForm<WhatsAppConfig>({
+    const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<WhatsAppConfig>({
         resolver: zodResolver(whatsappConnectSchema),
         defaultValues: {
             waba_id: '',
@@ -369,11 +370,17 @@ export const WhatsAppConnectionView = () => {
                                                     placeholder="Enter Whatsapp Number"
                                                     error={errors.whatsapp_number?.message}
                                                     required
+                                                    onChange={(e) => {
+                                                        const cleaned = e.target.value.replace(/[\s+]/g, '').slice(0, 15);
+                                                        // Avoid validating on every keystroke to prevent showing
+                                                        // "too short" errors while the user is still typing.
+                                                        setValue("whatsapp_number", cleaned, { shouldValidate: false });
+                                                    }}
                                                 />
                                             </div>
 
                                             <div className="md:col-span-2 relative mb-5">
-                                                 <Input
+                                                <Input
                                                     {...register("access_token")}
                                                     autoComplete='new-password'
                                                     isDarkMode={isDarkMode}

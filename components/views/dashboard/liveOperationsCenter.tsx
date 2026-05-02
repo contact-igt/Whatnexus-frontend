@@ -12,6 +12,7 @@ import { NoDataFound } from './noDataFound';
 
 interface LiveOperationsCenterProps {
     isDarkMode?: boolean;
+    canOpenInbox?: boolean;
     liveOpsData?: {
         hotLeads: HotLead[];
         metrics: { unassigned: number; escalated: number };
@@ -27,7 +28,7 @@ const agentColors = [
     { from: '#a855f7', to: '#c084fc', dot: '#c084fc' },
 ];
 
-export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOperationsCenterProps) => {
+export const LiveOperationsCenter = ({ isDarkMode = true, canOpenInbox = true, liveOpsData }: LiveOperationsCenterProps) => {
     const [bars, setBars] = useState(false);
     const [show, setShow] = useState(false);
     const t = tx(isDarkMode);
@@ -70,11 +71,13 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
             <div className="flex items-center justify-between mb-1">
                 <h3 style={{ fontSize: '15px', fontWeight: 600, color: t.primary }}>Live Operations</h3>
                 <div className="flex items-center gap-3">
-                    <button onClick={() => router.push('/shared-inbox/live-chats')}
-                        className="px-2.5 py-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                        style={{ fontSize: '12px', fontWeight: 500, color: '#3b82f6' }}>
-                        Open Inbox
-                    </button>
+                    {canOpenInbox && (
+                        <button onClick={() => router.push('/shared-inbox/live-chats')}
+                            className="px-2.5 py-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            style={{ fontSize: '12px', fontWeight: 500, color: '#3b82f6' }}>
+                            Open Inbox
+                        </button>
+                    )}
                     <div className="flex items-center gap-1.5" style={{ color: '#ef4444' }}>
                         <div className="relative flex items-center justify-center px-1">
                             <div className="w-1.5 h-1.5 rounded-full absolute bg-current opacity-75 animate-ping" />
@@ -94,7 +97,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                 ) : (
                     [
                         { icon: <MessagesSquare size={15} />, label: 'Active Chats', value: totalActive, color: '#3b82f6' },
-                        { icon: <Flame size={15} />, label: 'Hot Leads', value: hotCount, color: '#f97316' },
+                        { icon: <Flame size={15} />, label: 'Hot Leads', value: hotCount, color: '#ef4444' },
                         { icon: <Users size={15} />, label: 'Agents On', value: activeAgentCount, color: '#10b981' },
                     ].map((stat, i) => (
                         <div key={i} className="p-3 rounded-xl border flex flex-col gap-1.5 transition-all"
@@ -138,15 +141,15 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
             {/* ── Lead Queue ── */}
             <div className="space-y-2.5 mt-1">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2" style={{ color: isDarkMode ? '#f97316' : '#ea580c' }}>
+                    <div className="flex items-center gap-2" style={{ color: isDarkMode ? '#ef4444' : '#dc2626' }}>
                         <Flame size={14} className="fill-current" />
                         <span style={{ fontSize: '13px', fontWeight: 600 }}>Lead Queue</span>
                         {(hotCount + warmCount) > 0 && (
                             <span className="px-1.5 py-0.5 rounded-md" style={{
                                 fontSize: '11px', fontWeight: 600,
-                                background: isDarkMode ? 'rgba(249,115,22,0.1)' : '#fff7ed',
-                                border: isDarkMode ? '1px solid rgba(249,115,22,0.2)' : '1px solid #fed7aa',
-                                color: isDarkMode ? '#fdba74' : '#c2410c',
+                                background: isDarkMode ? 'rgba(239,68,68,0.1)' : '#fef2f2',
+                                border: isDarkMode ? '1px solid rgba(239,68,68,0.2)' : '1px solid #fca5a5',
+                                color: isDarkMode ? '#f87171' : '#b91c1c',
                             }}>
                                 {hotCount + warmCount}
                             </span>
@@ -154,7 +157,7 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                     </div>
                     {topLead && (
                         <span className="px-2 py-0.5 rounded-md"
-                            style={{ fontSize: '11px', fontWeight: 600, background: isDarkMode ? 'rgba(249,115,22,0.1)' : '#fff7ed', border: isDarkMode ? '1px solid rgba(249,115,22,0.2)' : '1px solid #fed7aa', color: isDarkMode ? '#fdba74' : '#c2410c' }}>
+                            style={{ fontSize: '11px', fontWeight: 600, background: isDarkMode ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: isDarkMode ? '1px solid rgba(239,68,68,0.2)' : '1px solid #fca5a5', color: isDarkMode ? '#f87171' : '#b91c1c' }}>
                             Top Score: {topLead.score}
                         </span>
                     )}
@@ -167,18 +170,22 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                 ) : topLead ? (
                     <div className="space-y-1.5">
                         {/* Primary hot lead */}
-                        <div onClick={() => router.push(topLead.phone ? `/shared-inbox/live-chats?phone=${topLead.phone}` : '/shared-inbox/live-chats')}
-                            className="p-3 rounded-lg flex items-center justify-between cursor-pointer transition-colors border"
+                        <div onClick={() => {
+                            if (!canOpenInbox) return;
+                            router.push(topLead.phone ? `/shared-inbox/live-chats?phone=${topLead.phone}` : '/shared-inbox/live-chats');
+                        }}
+                            className="p-3 rounded-lg flex items-center justify-between transition-colors border"
                             style={{
                                 ...glassInner(isDarkMode),
-                                background: isDarkMode ? 'rgba(249,115,22,0.04)' : '#fffbf5',
-                                borderColor: isDarkMode ? 'rgba(249,115,22,0.15)' : '#fed7aa',
+                                background: isDarkMode ? 'rgba(239,68,68,0.04)' : '#fef2f2',
+                                borderColor: isDarkMode ? 'rgba(239,68,68,0.15)' : '#fca5a5',
                                 opacity: show ? 1 : 0,
                                 transition: 'opacity 0.4s ease 0.12s, background 0.15s ease',
+                                cursor: canOpenInbox ? 'pointer' : 'default',
                             }}>
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-xs relative"
-                                    style={{ background: topLead.heatState === 'hot' ? '#f97316' : '#f59e0b' }}>
+                                    style={{ background: topLead.heatState === 'hot' ? '#ef4444' : '#f59e0b' }}>
                                     {topLead.name.split(' ').filter(n => n).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
                                     <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 flex items-center justify-center"
                                         style={{ borderColor: isDarkMode ? '#09090b' : '#ffffff', background: topLead.heatState === 'hot' ? '#ef4444' : '#f59e0b' }}>
@@ -190,32 +197,36 @@ export const LiveOperationsCenter = ({ isDarkMode = true, liveOpsData }: LiveOpe
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                         <span style={{ fontSize: '11px', color: t.secondary }}>{topLead.phone}</span>
                                         <span className="w-1 h-1 rounded-full" style={{ background: isDarkMode ? '#3f3f46' : '#d4d4d8' }} />
-                                        <span style={{ fontSize: '11px', color: '#f97316', fontWeight: 500 }}>{topLead.waiting} wait</span>
+                                        <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 500 }}>{topLead.waiting} wait</span>
                                     </div>
                                 </div>
                             </div>
-                            <ArrowUpRight size={14} style={{ color: '#f97316', opacity: 0.7 }} />
+                            <ArrowUpRight size={14} style={{ color: '#ef4444', opacity: 0.7 }} />
                         </div>
 
                         {/* Secondary leads */}
                         {remainingLeads.map((lead, i) => (
                             <div key={i}
-                                onClick={() => router.push(lead.phone ? `/shared-inbox/live-chats?phone=${lead.phone}` : '/shared-inbox/live-chats')}
-                                className="px-3 py-2.5 rounded-lg flex items-center justify-between cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                                onClick={() => {
+                                    if (!canOpenInbox) return;
+                                    router.push(lead.phone ? `/shared-inbox/live-chats?phone=${lead.phone}` : '/shared-inbox/live-chats');
+                                }}
+                                className="px-3 py-2.5 rounded-lg flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
                                 style={{
                                     opacity: show ? 1 : 0,
                                     transition: `opacity 0.35s ease ${0.18 + i * 0.06}s`,
+                                    cursor: canOpenInbox ? 'pointer' : 'default',
                                 }}>
                                 <div className="flex items-center gap-2.5">
                                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-medium"
-                                        style={{ fontSize: '10px', background: lead.heatState === 'hot' ? '#f97316' : '#f59e0b' }}>
+                                        style={{ fontSize: '10px', background: lead.heatState === 'hot' ? '#ef4444' : '#f59e0b' }}>
                                         {lead.name.split(' ').filter(n => n).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
                                     </div>
                                     <span className="truncate" style={{ fontSize: '12px', fontWeight: 500, color: t.primary, maxWidth: 120 }}>{lead.name}</span>
                                     <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
                                         style={{
-                                            background: lead.heatState === 'hot' ? (isDarkMode ? 'rgba(249,115,22,0.12)' : '#fff7ed') : (isDarkMode ? 'rgba(245,158,11,0.12)' : '#fffbeb'),
-                                            color: lead.heatState === 'hot' ? '#f97316' : '#d97706',
+                                            background: lead.heatState === 'hot' ? (isDarkMode ? 'rgba(239,68,68,0.12)' : '#fef2f2') : (isDarkMode ? 'rgba(245,158,11,0.12)' : '#fffbeb'),
+                                            color: lead.heatState === 'hot' ? '#ef4444' : '#d97706',
                                         }}>
                                         {lead.heatState === 'hot' ? 'HOT' : 'WARM'}
                                     </span>

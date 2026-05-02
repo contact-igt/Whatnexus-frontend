@@ -64,7 +64,20 @@ export const useCampaigns = (
 
             const response = await campaignService.getCampaignList(params);
 
-            setCampaigns(response.data.campaigns);
+            // Derive completed status on the client when all messages are delivered
+            const campaignsFromApi = response.data.campaigns || [];
+            const campaignsWithDerivedStatus = campaignsFromApi.map((c: any) => {
+                try {
+                    const total = Number(c.total_audience || c.total_audience_count || 0);
+                    const delivered = Number(c.delivered_count || 0);
+                    if (total > 0 && delivered >= total && c.status !== 'completed') {
+                        return { ...c, status: 'completed' };
+                    }
+                } catch { }
+                return c;
+            });
+
+            setCampaigns(campaignsWithDerivedStatus);
             setTotalPages(response.data.totalPages);
             setTotalCampaigns(response.data.totalItems);
         } catch (err) {
@@ -79,10 +92,17 @@ export const useCampaigns = (
         try {
             setLoading(true);
             const response = await campaignService.getDeletedCampaignList();
-            setDeletedCampaigns(response.data.campaigns);
+            // Lifecycle controller returns data.items; main list returns data.campaigns
+            const items = (response as any)?.data?.items ?? (response as any)?.data?.campaigns ?? [];
+            const normalizedItems = items.map((item: any) => ({
+                ...item,
+                status: item?.status || 'deleted',
+                createdAt: item?.createdAt || item?.created_at || null,
+                updatedAt: item?.updatedAt || item?.updated_at || null,
+            }));
+            setDeletedCampaigns(normalizedItems);
         } catch (err) {
             console.error("Error fetching deleted campaigns:", err);
-            // Optional: set specific error for deleted campaigns
         } finally {
             setLoading(false);
         }

@@ -49,14 +49,13 @@ export const GroupedSidebar = () => {
         }
     }
 
-    // Eagerly prefetch every sidebar route the moment the sidebar mounts.
-    // This downloads all route bundles upfront, making every first tab-click instant.
+    // Prefetch only the routes visible to the current user.
     useEffect(() => {
-        const allRoutes = [...tenantSidebarConfig, ...managementSidebarConfig]
-            .flatMap((group) => group.items.map((item) => item.route));
-        const unique = [...new Set(allRoutes)];
-        unique.forEach((route) => router.prefetch(route));
-    }, [router]);
+        const visibleRoutes = sidebarConfig
+            .flatMap((group) => filterItemsByRole(group.items).map((item) => item.route));
+        const uniqueRoutes = [...new Set(visibleRoutes)];
+        uniqueRoutes.forEach((route) => router.prefetch(route));
+    }, [router, sidebarConfig, user?.role, isLocalServer]);
 
 
     // Filter items based on user role (case-insensitive) and local environment requirement

@@ -75,6 +75,11 @@ const authSlice = createSlice({
         state.user.webhook_verified = action.payload;
       }
     },
+    updateUserPreferences: (state, action: PayloadAction<Record<string, any>>) => {
+      if (state.user) {
+        state.user.preferences = { ...(state.user.preferences || {}), ...action.payload };
+      }
+    },
     clearAuthData: (state) => {
       state.token = null;
       state.refreshToken = null;
@@ -95,5 +100,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setAuthData, clearAuthData, setWhatsAppApiDetails, setActiveTabData, setActivationToken, setCurrentStatusData, setActiveStatus, resetActiveStatus, updateUserData, updateWebhookStatus, setAccountError, clearAccountError } = authSlice.actions;
+export const { setAuthData, clearAuthData, setWhatsAppApiDetails, setActiveTabData, setActivationToken, setCurrentStatusData, setActiveStatus, resetActiveStatus, updateUserData, updateWebhookStatus, updateUserPreferences, setAccountError, clearAccountError } = authSlice.actions;
 export default authSlice.reducer;

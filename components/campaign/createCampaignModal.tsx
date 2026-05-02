@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin, Video, Eye } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
+import { sanitizePhoneInput } from "@/lib/phone";
 import { useTheme } from '@/hooks/useTheme';
 import { campaignService } from '@/services/campaign/campaign.service';
 import type {
@@ -12,7 +13,8 @@ import type {
     CSVRecipient,
     CreateCampaignRequest
 } from '@/services/campaign/campaign.types';
-import { parseCSV, validateCSVData, downloadCSVTemplate } from '@/utils/campaign.utils';
+import { parseCSV, validateCSVData, validateCSVHeaders, validateCSVRowsDetailed, downloadCSVTemplate } from '@/utils/campaign.utils';
+// import CSVColumnMapper from './csvColumnMapper';
 import { TemplateSelectionModal, ProcessedTemplate } from './templateSelectionModal';
 import { CSVPreviewModal } from './csvPreviewModal';
 import { useGetAllGroupsQuery } from '@/hooks/useContactGroupQuery';
@@ -66,6 +68,58 @@ const getCampaignTypeLabel = (campaignType: CampaignType) => {
     return campaignType;
 };
 
+const slugifyVariableLabel = (label: string) =>
+    label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'value';
+
+const prettifyVariableKey = (key: string) =>
+    key
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const inferVariableHintFromText = (content: string, variableKey: string) => {
+    const escapedKey = variableKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = content.match(new RegExp(`([^.!?\\n]{0,40})\\{\\{${escapedKey}\\}\\}([^.!?\\n]{0,40})`, 'i'));
+    const context = `${match?.[1] || ''} ${match?.[2] || ''}`.toLowerCase();
+
+    if (/\b(name|patient|customer|client|member|user)\b/.test(context)) return 'Customer name';
+    if (/\b(doctor|dr\.|specialist)\b/.test(context)) return 'Doctor name';
+    if (/\b(date|day|today|tomorrow|schedule)\b/.test(context)) return 'Date';
+    if (/\b(time|slot|hour|pm|am)\b/.test(context)) return 'Time';
+    if (/\b(phone|mobile|call|contact)\b/.test(context)) return 'Phone number';
+    if (/\b(city|location|address|branch|clinic)\b/.test(context)) return 'Location';
+    if (/\b(code|otp|verification)\b/.test(context)) return 'Verification code';
+    if (/\b(amount|price|fee|discount|offer)\b/.test(context)) return 'Offer details';
+    if (/\b(link|url|website|page)\b/.test(context)) return 'Link value';
+
+    return `Value ${variableKey}`;
+};
+
+const toLocalDateTimeInputValue = (value: string | null): string => {
+    if (!value) return '';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return '';
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const min = String(dt.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
+const getMinScheduleDateTime = () => {
+    const dt = new Date(Date.now() + 2 * 60 * 1000);
+    dt.setSeconds(0, 0);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const min = String(dt.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
 export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampaignModalProps) => {
     const { isDarkMode } = useTheme();
     const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -98,6 +152,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [csvFile, setCsvFile] = useState<File | null>(null);
     const [csvValidation, setCsvValidation] = useState<any>(null);
     const [csvRawData, setCsvRawData] = useState<CSVRecipient[]>([]);
+    const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+    const [csvParsedRows, setCsvParsedRows] = useState<string[][]>([]);
+    const [columnMappings, setColumnMappings] = useState<Record<string, string>>({});
 
     // Modal States
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -105,6 +162,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [templateVariableCount, setTemplateVariableCount] = useState(2);
     const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
     const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+    const [scheduledDateTime, setScheduledDateTime] = useState<string>('');
     const [manualPhoneInput, setManualPhoneInput] = useState('');
     const [manualCountryCode, setManualCountryCode] = useState('+91');
     const [manualInputError, setManualInputError] = useState('');
@@ -141,6 +199,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         }
         setIsGalleryOpen(false);
     };
+
+    useEffect(() => {
+        setScheduledDateTime(toLocalDateTimeInputValue(formData.scheduled_at));
+    }, [formData.scheduled_at]);
     // { [contactId]: { [varKey]: value } }
     const [groupMemberVariables, setGroupMemberVariables] = useState<Record<string, Record<string, string>>>({});
     const [selectedGroupMembers, setSelectedGroupMembers] = useState<any[]>([]);
@@ -230,6 +292,31 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [costEstimate, setCostEstimate] = useState<any>(null);
     const [isEstimatingCost, setIsEstimatingCost] = useState(false);
 
+    const variableDefinitions = (selectedTemplate?.variableArray || []).map((v: any, index: number) => {
+        const variableKey = String(v?.variable_key || index + 1);
+        const label =
+            v?.name ||
+            v?.label ||
+            inferVariableHintFromText(
+                `${selectedTemplate?.headerText || ''}\n${selectedTemplate?.bodyText || selectedTemplate?.description || ''}`,
+                variableKey
+            );
+
+        return {
+            ...v,
+            variable_key: variableKey,
+            label,
+            csvColumn: slugifyVariableLabel(label),
+            placeholder: v?.sample_value || `Enter ${label.toLowerCase()}`,
+        };
+    });
+
+    const buttonVariableDefinitions = (selectedTemplate?.buttonVariables || []).map((v: any, index: number) => ({
+        ...v,
+        label: v?.text ? `${v.text} link value` : `Button value ${index + 1}`,
+        placeholder: v?.sample_value || 'Enter dynamic URL part',
+    }));
+
     useEffect(() => {
         if (error) {
             setTimeout(() => {
@@ -245,6 +332,38 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
+            // Reset all form state when modal closes so reopening starts fresh
+            setCurrentStep(1);
+            setFormData({
+                campaign_name: '',
+                campaign_type: 'immediate',
+                scheduled_at: null,
+                template_id: '',
+                recipient_source: 'csv',
+                csv_data: null,
+                group_id: null,
+                manual_recipients: null,
+                location_params: { latitude: '', longitude: '', name: '', address: '' },
+                media_asset_id: null,
+                media_handle: null,
+                card_media_urls: {}
+            });
+            setCsvFile(null);
+            setCsvValidation(null);
+            setCsvRawData([]);
+            setCsvHeaders([]);
+            setCsvParsedRows([]);
+            setColumnMappings({});
+            setSelectedTemplate(null);
+            setVariableValues({});
+            setScheduledDateTime('');
+            setHeaderFileName(null);
+            setCardFileNames({});
+            setError(null);
+            setCostEstimate(null);
+            setSelectedGroupMembers([]);
+            setGroupMemberVariables({});
+            setSelectedGalleryHeaderAsset(null);
         }
         return () => {
             document.body.style.overflow = 'unset';
@@ -332,13 +451,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                     formData.recipient_source !== 'csv' &&
                     formData.recipient_source !== 'group') {
                     // Strictly validate all template variables are filled
-                    if (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0) {
-                        const missingVars = selectedTemplate.variableArray.filter(
+                    if (variableDefinitions.length > 0) {
+                        const missingVars = variableDefinitions.filter(
                             (v: any) => !variableValues[v.variable_key]?.trim()
                         );
 
                         if (missingVars.length > 0) {
-                            setError(`Please fill all template variables: ${missingVars.map(v => '{{' + v.variable_key + '}}').join(', ')}`);
+                            setError(`Please fill all template variables: ${missingVars.map(v => `${v.label} ({{${v.variable_key}}})`).join(', ')}`);
                             return false;
                         }
                     }
@@ -384,6 +503,14 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                         setError('The uploaded CSV has validation errors. Please fix them before proceeding.');
                         return false;
                     }
+                    // If template variables exist, ensure mappings are provided
+                    if (variableDefinitions.length > 0 && selectedTemplate?.category !== 'authentication') {
+                        const missingMappings = variableDefinitions.filter((v: any) => !columnMappings[v.variable_key]);
+                        if (missingMappings.length > 0) {
+                            setError('Please map all template variables to CSV columns before proceeding.');
+                            return false;
+                        }
+                    }
                     if (!formData.csv_data || formData.csv_data.length === 0) {
                         setError('No valid recipients found in the CSV');
                         return false;
@@ -393,13 +520,12 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                         setError('Please select a group');
                         return false;
                     }
-                    // If template has variables, ensure all members have all variables filled
-                    if (selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication') {
+                    if (variableDefinitions.length > 0 && selectedTemplate?.category !== 'authentication') {
                         for (const member of selectedGroupMembers) {
                             const memberVars = groupMemberVariables[member.contact?.contact_id || member.contact_id] || {};
-                            const missing = selectedTemplate.variableArray.filter((v: any) => !memberVars[v.variable_key]?.trim());
+                            const missing = variableDefinitions.filter((v: any) => !memberVars[v.variable_key]?.trim());
                             if (missing.length > 0) {
-                                setError(`Fill all variables for ${member.contact?.name || member.mobile_number || 'a member'}: ${missing.map((v: any) => '{{' + v.variable_key + '}}').join(', ')}`);
+                                setError(`Fill all variables for ${member.contact?.name || member.mobile_number || 'a member'}: ${missing.map((v: any) => `${v.label} ({{${v.variable_key}}})`).join(', ')}`);
                                 return false;
                             }
                         }
@@ -427,13 +553,42 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             const rows = await parseCSV(file);
 
             // Remove header row
+            const header = rows[0] || [];
             const dataRows = rows.slice(1);
 
-            // Validate using template variable count
-            const validation = validateCSVData(dataRows, templateVariableCount);
-            setCsvValidation(validation);
+            const headerTrimmed = header.map((h: string) => h.trim());
+            setCsvHeaders(headerTrimmed);
+            setCsvParsedRows(dataRows);
 
-            // Raw data for preview (unvalidated)
+            // Validate headers (required/duplicates) first
+            const expectedVarCols = variableDefinitions.map((v: any) => v.csvColumn).filter(Boolean);
+            const headerValidation = validateCSVHeaders(headerTrimmed, expectedVarCols);
+
+            // Attempt to auto-map headers to variables when possible (heuristic)
+            let autoMap: Record<string, string> = {};
+            if (headerTrimmed && headerTrimmed.length > 0 && variableDefinitions.length > 0) {
+                const lowerHeaders = headerTrimmed.map((h: string) => h.toLowerCase());
+                variableDefinitions.forEach((v: any) => {
+                    const target = (v.csvColumn || v.variable_key || '').toLowerCase();
+                    const idx = lowerHeaders.findIndex((h: string) => h === target || h.includes(target));
+                    if (idx !== -1) autoMap[v.variable_key] = headerTrimmed[idx];
+                });
+                // apply auto-map locally so detailed validator can use it
+                setColumnMappings(autoMap);
+            }
+
+            // Detailed per-row validation using mappings + variable defs
+            const detailed = validateCSVRowsDetailed(dataRows, headerTrimmed, autoMap, variableDefinitions);
+
+            // Also run the older simple validator for backward compatibility
+            const dataValidation = validateCSVData(dataRows, templateVariableCount);
+
+            // Merge header and detailed/data errors
+            const combinedErrors = [...(headerValidation.errors || []), ...(detailed.errors || []), ...(dataValidation.errors || [])];
+            const combinedIsValid = headerValidation.isValid && detailed.isValid && dataValidation.isValid;
+            setCsvValidation({ isValid: combinedIsValid, errors: combinedErrors, validRows: detailed.validRows || [] });
+
+            // Raw data for preview (include mapping info if available)
             const rawParsedData: CSVRecipient[] = dataRows.map(row => ({
                 mobile_number: (row[0] || '') + (row[1] || ''),
                 dynamic_variables: row.slice(2)
@@ -448,7 +603,39 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     };
 
     const handleCSVConfirm = (validData: CSVRecipient[]) => {
-        setFormData(prev => ({ ...prev, csv_data: validData }));
+        // Build a phone→index map from csvRawData for O(1) index lookup
+        const phoneToIndexMap: Record<string, number[]> = {};
+        csvRawData.forEach((r, i) => {
+            if (!phoneToIndexMap[r.mobile_number]) phoneToIndexMap[r.mobile_number] = [];
+            phoneToIndexMap[r.mobile_number].push(i);
+        });
+        const usedIndexCount: Record<string, number> = {};
+
+        const mappedData: CSVRecipient[] = validData.map((row) => {
+            // Pick the next unused parsed row index for this phone number
+            const indices = phoneToIndexMap[row.mobile_number] || [];
+            const useCount = usedIndexCount[row.mobile_number] || 0;
+            const rawIndex = indices[useCount] ?? indices[0] ?? -1;
+            usedIndexCount[row.mobile_number] = useCount + 1;
+            const orig = rawIndex >= 0 ? csvParsedRows[rawIndex] : [];
+
+            // If mappings exist, construct dynamic_variables in the variableDefinitions order
+            if (variableDefinitions.length > 0 && Object.keys(columnMappings || {}).length > 0) {
+                const vars = variableDefinitions.map((v: any) => {
+                    const mappedHeader = columnMappings[v.variable_key];
+                    if (!mappedHeader) return '';
+                    const colIndex = csvHeaders.findIndex(h => h === mappedHeader);
+                    const value = orig[colIndex] || '';
+                    return value;
+                });
+                return { mobile_number: row.mobile_number, dynamic_variables: vars };
+            }
+
+            // Fallback: use provided dynamic_variables
+            return row;
+        });
+
+        setFormData(prev => ({ ...prev, csv_data: mappedData }));
         setError(null);
     };
 
@@ -464,6 +651,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         setSelectedGalleryHeaderAsset(null);
         setTemplateVariableCount(template.variables);
         setSelectedTemplate(template);
+        // Reset CSV state so old validation doesn't carry over to the new template
+        setCsvFile(null);
+        setCsvValidation(null);
+        setCsvRawData([]);
+        setCsvHeaders([]);
+        setCsvParsedRows([]);
+        setColumnMappings({});
 
         // Initialize variable values
         const initialValues: Record<string, string> = {};
@@ -521,7 +715,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
             // Prepare variables structure (Body + Buttons)
             const getRecipientVariables = (vals: Record<string, string>) => {
-                const bodyVars = selectedTemplate?.variableArray?.map((v: any) => vals[v.variable_key] || '') || [];
+                const bodyVars = variableDefinitions.map((v: any) => vals[v.variable_key] || '') || [];
                 const buttonVars = selectedTemplate?.buttonVariables?.map((v: any) => ({
                     index: v.index,
                     parameters: [vals[v.variable_key] || '']
@@ -748,24 +942,38 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                             </div>
 
                             {formData.campaign_type === 'scheduled' && (
-                                <div>
-                                    <label className={cn("block text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                <div className={cn(
+                                    "rounded-2xl border p-4",
+                                    isDarkMode
+                                        ? 'bg-emerald-500/10 border-emerald-400/30'
+                                        : 'bg-emerald-50 border-emerald-200'
+                                )}>
+                                    <label className={cn("flex items-center gap-2 text-sm font-semibold mb-2", isDarkMode ? 'text-emerald-200' : 'text-emerald-800')}>
+                                        <CalendarIcon size={16} />
                                         Schedule Date & Time *
                                     </label>
+                                    <p className={cn("text-xs mb-3", isDarkMode ? 'text-emerald-200/70' : 'text-emerald-700/80')}>
+                                        Pick when this campaign should be sent.
+                                    </p>
                                     <input
                                         type="datetime-local"
-                                        value={formData.scheduled_at || ''}
-                                        min={(() => {
-                                            const d = new Date(Date.now() + 2 * 60 * 1000);
-                                            d.setSeconds(0, 0);
-                                            return d.toLocaleDateString('sv-SE') + 'T' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-                                        })()}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, scheduled_at: e.target.value }))}
+                                        value={scheduledDateTime}
+                                        min={getMinScheduleDateTime()}
+                                        style={{ colorScheme: isDarkMode ? 'dark' : 'light' }}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setScheduledDateTime(value);
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                scheduled_at: value || null,
+                                            }));
+                                            setError(null);
+                                        }}
                                         className={cn(
                                             "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
                                             isDarkMode
-                                                ? 'bg-white/5 border-white/10 text-white'
-                                                : 'bg-white border-slate-200 text-slate-900'
+                                                ? 'bg-black/20 border-emerald-400/30 text-white'
+                                                : 'bg-white border-emerald-300 text-slate-900'
                                         )}
                                     />
                                 </div>
@@ -908,9 +1116,10 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     if (part.match(/\{\{[\w]+\}\}/)) {
                                                         const key = part.replace(/[{}]/g, '');
                                                         const val = variableValues[key];
+                                                        const variableMeta = variableDefinitions.find((v: any) => v.variable_key === key);
                                                         return (
-                                                            <span key={i} className={cn("font-semibold px-1 rounded", val ? (isDarkMode ? "bg-white/20" : "bg-black/5") : "opacity-70")}>
-                                                                {val || part}
+                                                            <span key={i} className={cn("font-semibold px-1 rounded", val ? (isDarkMode ? "bg-white/20" : "bg-black/5") : (isDarkMode ? "bg-amber-500/10 text-amber-200" : "bg-amber-100 text-amber-800"))}>
+                                                                {val || `[${variableMeta?.label || prettifyVariableKey(key)}]`}
                                                             </span>
                                                         );
                                                     }
@@ -958,11 +1167,14 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                             </label>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {/* Body Variables */}
-                                                {selectedTemplate.variableArray?.map((v: any) => (
+                                                {variableDefinitions.map((v: any) => (
                                                     <div key={v.id || v.variable_key}>
                                                         <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
-                                                            Body Variable {'{{' + v.variable_key + '}}'}
+                                                            {v.label} {'{{' + v.variable_key + '}}'}
                                                         </label>
+                                                        <p className={cn("text-[11px] mb-1.5", isDarkMode ? 'text-white/35' : 'text-slate-400')}>
+                                                            Enter the value for {v.label.toLowerCase()}.
+                                                        </p>
                                                         <input
                                                             type="text"
                                                             value={variableValues[v.variable_key] || ''}
@@ -970,7 +1182,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                                 setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
                                                                 if (error) setError(null);
                                                             }}
-                                                            placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Value'}
+                                                            placeholder={v.sample_value ? `e.g. ${v.sample_value}` : v.placeholder}
                                                             className={cn(
                                                                 "w-full px-3 py-2 rounded-lg border text-sm outline-none transition-all",
                                                                 !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
@@ -984,11 +1196,14 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 ))}
 
                                                 {/* Button Variables */}
-                                                {selectedTemplate.buttonVariables?.map((v: any) => (
+                                                {buttonVariableDefinitions.map((v: any) => (
                                                     <div key={v.variable_key}>
                                                         <label className={cn("text-xs mb-1 block", isDarkMode ? 'text-white/60' : 'text-blue-400 font-semibold')}>
-                                                            Button Variable: {v.text} (URL)
+                                                            {v.label} ({'{{' + v.variable_key + '}}'})
                                                         </label>
+                                                        <p className={cn("text-[11px] mb-1.5", isDarkMode ? 'text-white/35' : 'text-slate-400')}>
+                                                            Add the dynamic part that should be inserted into this button URL.
+                                                        </p>
                                                         <input
                                                             type="text"
                                                             value={variableValues[v.variable_key] || ''}
@@ -996,7 +1211,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                                 setVariableValues(prev => ({ ...prev, [v.variable_key]: e.target.value }));
                                                                 if (error) setError(null);
                                                             }}
-                                                            placeholder={v.sample_value ? `e.g. ${v.sample_value}` : 'Dynamic URL part'}
+                                                            placeholder={v.sample_value ? `e.g. ${v.sample_value}` : v.placeholder}
                                                             className={cn(
                                                                 "w-full px-3 py-2 rounded-lg border border-blue-500/30 text-sm outline-none transition-all",
                                                                 !variableValues[v.variable_key]?.trim() && error?.includes(v.variable_key)
@@ -1013,8 +1228,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     )}
 
                                 {/* Info banner for CSV/Group — variables filled per-recipient in Step 3 */}
-                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 &&
-                                    selectedTemplate.category !== 'authentication' &&
+                                {variableDefinitions.length > 0 &&
+                                    selectedTemplate?.category !== 'authentication' &&
                                     (formData.recipient_source === 'csv' || formData.recipient_source === 'group') && (
                                         <div className={cn(
                                             "mt-4 p-3 rounded-xl border flex items-start gap-3",
@@ -1027,10 +1242,17 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 </p>
                                                 <p className={cn("text-xs mt-0.5", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
                                                     {formData.recipient_source === 'csv'
-                                                        ? `Columns: country_code, mobile_number, ${selectedTemplate.variableArray.map((v: any) => v.variable_key).join(', ')}`
-                                                        : `You'll fill ${selectedTemplate.variableArray.length} variable(s) for each group member in the next step.`
+                                                        ? `Columns: country_code, mobile_number, ${variableDefinitions.map((v: any) => v.csvColumn).join(', ')}`
+                                                        : `You'll fill ${variableDefinitions.length} variable(s) for each group member in the next step.`
                                                     }
                                                 </p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {variableDefinitions.map((v: any) => (
+                                                        <span key={v.variable_key} className={cn("text-[10px] px-2 py-1 rounded border", isDarkMode ? 'bg-white/5 border-white/10 text-white/60' : 'bg-white border-slate-200 text-slate-600')}>
+                                                            {v.csvColumn} {`{{${v.variable_key}}}`} ({v.label})
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -1144,7 +1366,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     ...prev,
                                                     location_params: { ...prev.location_params!, latitude: e.target.value }
                                                 }))}
-                                                placeholder="Latitude (e.g. 77.0797)"
+                                                placeholder="Latitude (e.g. 28.6139)"
                                                 step="any"
                                                 className={cn(
                                                     "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
@@ -1160,7 +1382,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                     ...prev,
                                                     location_params: { ...prev.location_params!, longitude: e.target.value }
                                                 }))}
-                                                placeholder="Longitude (e.g. 28.4968)"
+                                                placeholder="Longitude (e.g. 77.2090)"
                                                 step="any"
                                                 className={cn(
                                                     "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
@@ -1329,13 +1551,13 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                         <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20">2. mobile_number (10 digits)</span>
                                                     </div>
                                                 </div>
-                                                {selectedTemplate?.variableArray && selectedTemplate.variableArray.length > 0 && selectedTemplate.category !== 'authentication' && (
+                                                {variableDefinitions.length > 0 && selectedTemplate?.category !== 'authentication' && (
                                                     <div className="space-y-2">
                                                         <p className={cn("text-xs font-semibold", isDarkMode ? 'text-white/80' : 'text-slate-700')}>Template Variables (Required):</p>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {selectedTemplate.variableArray.map((v, i) => (
+                                                            {variableDefinitions.map((v, i) => (
                                                                 <span key={i} className="px-2 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-bold rounded border border-blue-500/20">
-                                                                    {i + 3}. {v.variable_key || v.name}
+                                                                    {i + 3}. {v.csvColumn} ({v.label})
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -1350,9 +1572,9 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 <div className="flex flex-wrap gap-2">
                                                     <span className="text-[10px] font-medium text-emerald-500 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10">✓ country_code</span>
                                                     <span className="text-[10px] font-medium text-emerald-500 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10">✓ mobile_number</span>
-                                                    {selectedTemplate?.variableArray?.map((v, i) => (
+                                                    {variableDefinitions.map((v, i) => (
                                                         <span key={i} className="text-[10px] font-medium text-emerald-500 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10">
-                                                            ✓ {v.variable_key || v.name}
+                                                            ✓ {v.csvColumn}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -1388,30 +1610,89 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
                                     {csvFile && (
                                         <div className={cn(
-                                            "p-4 rounded-xl",
+                                            "p-4 rounded-xl border",
                                             csvValidation?.isValid
-                                                ? 'bg-emerald-500/10 border border-emerald-500/20'
-                                                : 'bg-red-500/10 border border-red-500/20'
+                                                ? 'bg-emerald-500/10 border-emerald-500/20'
+                                                : 'bg-red-500/10 border-red-500/20'
                                         )}>
-                                            <p className={cn(
-                                                "text-sm font-semibold",
-                                                csvValidation?.isValid ? 'text-emerald-500' : 'text-red-500'
-                                            )}>
-                                                {csvFile.name}
-                                            </p>
+                                            {/* File name + status row */}
+                                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {csvValidation?.isValid
+                                                        ? <Check size={15} className="text-emerald-500 shrink-0" />
+                                                        : <AlertTriangle size={15} className="text-red-500 shrink-0" />
+                                                    }
+                                                    <p className={cn(
+                                                        "text-sm font-semibold truncate",
+                                                        csvValidation?.isValid ? 'text-emerald-500' : 'text-red-500'
+                                                    )}>
+                                                        {csvFile.name}
+                                                    </p>
+                                                </div>
+                                                {/* Always show a button to open/re-open the preview */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsCSVPreviewOpen(true)}
+                                                    className={cn(
+                                                        "shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                                                        csvValidation?.isValid
+                                                            ? isDarkMode ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                            : isDarkMode ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                                    )}
+                                                >
+                                                    {csvValidation?.isValid ? 'View Preview' : 'Fix in Preview'}
+                                                </button>
+                                            </div>
+
+                                            {/* Valid count or error summary */}
                                             {csvValidation && (
-                                                <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
+                                                <p className={cn("text-xs mt-1 ml-5", isDarkMode ? 'text-white/60' : 'text-slate-600')}>
                                                     {csvValidation.isValid
-                                                        ? `${csvValidation.validRows.length} valid recipients`
-                                                        : `${csvValidation.errors.length} errors found`
+                                                        ? `${csvValidation.validRows.length} valid recipient${csvValidation.validRows.length !== 1 ? 's' : ''} ready`
+                                                        : `${csvValidation.errors.length} error${csvValidation.errors.length !== 1 ? 's' : ''} found — ${csvValidation.validRows.length} valid, ${csvRawData.length - csvValidation.validRows.length} invalid`
                                                     }
                                                 </p>
+                                            )}
+
+                                            {/* Error list — capped at 3, rest summarised */}
+                                            {csvValidation && csvValidation.errors && csvValidation.errors.length > 0 && (
+                                                <div className={cn(
+                                                    "mt-3 p-3 rounded-lg border text-xs",
+                                                    isDarkMode ? 'bg-red-500/5 border-red-500/20 text-white/80' : 'bg-red-50 border-red-200 text-red-700'
+                                                )}>
+                                                    <div className="font-semibold mb-2">CSV Validation Errors</div>
+                                                    <ul className="space-y-1">
+                                                        {csvValidation.errors.slice(0, 3).map((err: any, idx: number) => (
+                                                            <li key={idx} className="flex gap-1.5">
+                                                                <span className="font-bold shrink-0">
+                                                                    {err.field || err.column || (err.rowIndex ? `Row ${err.rowIndex}` : null) || 'Error'}:
+                                                                </span>
+                                                                <span>{err.message}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                    {csvValidation.errors.length > 3 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setIsCSVPreviewOpen(true)}
+                                                            className={cn(
+                                                                "mt-2 text-xs font-semibold underline",
+                                                                isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'
+                                                            )}
+                                                        >
+                                                            +{csvValidation.errors.length - 3} more errors — open preview to fix all
+                                                        </button>
+                                                    )}
+                                                    <p className={cn("mt-2 text-[10px]", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                                        Use <strong>Auto-fix CSV</strong> or <strong>Skip invalid rows</strong> in the preview to resolve errors quickly.
+                                                    </p>
+                                                </div>
                                             )}
                                         </div>
                                     )}
 
                                     <button
-                                        onClick={() => downloadCSVTemplate(selectedTemplate?.variableArray || [], selectedTemplate?.name || 'template')}
+                                        onClick={() => downloadCSVTemplate(variableDefinitions, selectedTemplate?.name || 'template')}
                                         className={cn(
                                             "text-xs font-semibold underline",
                                             isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'
@@ -1424,9 +1705,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
                             {/* Group Selection */}
                             {formData.recipient_source === 'group' && (() => {
-                                const hasTemplateVars = selectedTemplate?.variableArray &&
-                                    selectedTemplate.variableArray.length > 0 &&
-                                    selectedTemplate.category !== 'authentication';
+                                const hasTemplateVars = variableDefinitions.length > 0 &&
+                                    selectedTemplate?.category !== 'authentication';
                                 const selectedGroup = groups.find(g => g.group_id === formData.group_id);
 
                                 return (
@@ -1501,17 +1781,17 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                                         <p className={cn("text-[10px]", isDarkMode ? 'text-white/40' : 'text-slate-400')}>{phone}</p>
                                                                     </div>
                                                                     {/* Completion badge */}
-                                                                    {selectedTemplate?.variableArray?.every((v: any) => memberVars[v.variable_key]?.trim()) && (
+                                                                    {variableDefinitions.every((v: any) => memberVars[v.variable_key]?.trim()) && (
                                                                         <span className="ml-auto text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">✓ Done</span>
                                                                     )}
                                                                 </div>
 
                                                                 {/* Variable Inputs */}
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                                    {selectedTemplate?.variableArray?.map((v: any) => (
+                                                                    {variableDefinitions.map((v: any) => (
                                                                         <div key={v.variable_key}>
                                                                             <label className={cn("text-[10px] font-semibold mb-1 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                                                                {'{{'}{v.variable_key}{'}}'}
+                                                                                {v.label} ({'{{'}{v.variable_key}{'}}'})
                                                                             </label>
                                                                             <input
                                                                                 type="text"
@@ -1523,7 +1803,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                                                     }));
                                                                                     setError(null);
                                                                                 }}
-                                                                                placeholder={v.sample_value ? `e.g. ${v.sample_value}` : `Value for ${name}`}
+                                                                                placeholder={v.sample_value ? `e.g. ${v.sample_value}` : `Enter ${v.label.toLowerCase()} for ${name}`}
                                                                                 className={cn(
                                                                                     "w-full px-3 py-2 rounded-lg border text-xs outline-none transition-all",
                                                                                     isDarkMode
@@ -1583,7 +1863,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 type="text"
                                                 value={manualPhoneInput}
                                                 onChange={(e) => {
-                                                    setManualPhoneInput(e.target.value.replace(/\D/g, '')); // Numbers only
+                                                    setManualPhoneInput(sanitizePhoneInput(e.target.value, true));
                                                     setManualInputError('');
                                                 }}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleAddManualRecipient()}
@@ -1876,6 +2156,75 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                 csvData={csvRawData}
                 fileName={csvFile?.name || ''}
                 validation={csvValidation || { isValid: false, validRows: [], errors: [] }}
+                expectedVariableColumns={variableDefinitions.map((v: any) => v.csvColumn).filter(Boolean)}
+                templateName={selectedTemplate?.name}
+                onDownloadTemplate={() => downloadCSVTemplate(variableDefinitions, selectedTemplate?.name || 'template')}
+                onAutoFix={async () => {
+                    // Auto-fix heuristic: trim cells and strip non-digits from phone columns
+                    const headerIndex: Record<string, number> = {};
+                    csvHeaders.forEach((h, i) => headerIndex[h] = i);
+
+                    const fixed = csvParsedRows.map((row) => {
+                        const r = row.map(cell => (cell || '').toString().trim());
+                        // phone cleanup
+                        const ccIdx = headerIndex['country_code'] !== undefined ? headerIndex['country_code'] : 0;
+                        const mnIdx = headerIndex['mobile_number'] !== undefined ? headerIndex['mobile_number'] : 1;
+                        if (r[ccIdx]) r[ccIdx] = (r[ccIdx] || '').replace(/\D/g, '');
+                        if (r[mnIdx]) r[mnIdx] = sanitizePhoneInput((r[mnIdx] || '').toString(), true);
+                        // trim variables
+                        for (let i = 2; i < r.length; i++) r[i] = (r[i] || '').toString().trim();
+                        return r;
+                    });
+
+                    setCsvParsedRows(fixed);
+
+                    // re-run validation using current columnMappings (or empty)
+                    const detailed = validateCSVRowsDetailed(fixed, csvHeaders, columnMappings, variableDefinitions);
+                    const dataValidation = validateCSVData(fixed, templateVariableCount);
+                    const headerValidation = validateCSVHeaders(csvHeaders, variableDefinitions.map((v: any) => v.csvColumn).filter(Boolean));
+                    const combinedErrors = [...(headerValidation.errors || []), ...(detailed.errors || []), ...(dataValidation.errors || [])];
+                    const combinedIsValid = headerValidation.isValid && detailed.isValid && dataValidation.isValid;
+                    setCsvRawData(fixed.map(row => ({ mobile_number: (row[0] || '') + (row[1] || ''), dynamic_variables: row.slice(2) })));
+                    setCsvValidation({ isValid: combinedIsValid, errors: combinedErrors, validRows: detailed.validRows || [] });
+                }}
+                onSkipErrors={async () => {
+                    if (!csvValidation) return;
+                    const validSet = new Set((csvValidation.validRows || []).map((r: any) => r.mobile_number));
+                    const filtered = csvParsedRows.filter(r => validSet.has(((r[0] || '') + (r[1] || ''))));
+                    setCsvParsedRows(filtered);
+                    setCsvRawData(filtered.map(row => ({ mobile_number: (row[0] || '') + (row[1] || ''), dynamic_variables: row.slice(2) })));
+
+                    const detailed = validateCSVRowsDetailed(filtered, csvHeaders, columnMappings, variableDefinitions);
+                    const headerValidation = validateCSVHeaders(csvHeaders, variableDefinitions.map((v: any) => v.csvColumn).filter(Boolean));
+                    const dataValidation = validateCSVData(filtered, templateVariableCount);
+                    const combinedErrors = [...(headerValidation.errors || []), ...(detailed.errors || []), ...(dataValidation.errors || [])];
+                    const combinedIsValid = headerValidation.isValid && detailed.isValid && dataValidation.isValid;
+                    setCsvValidation({ isValid: combinedIsValid, errors: combinedErrors, validRows: detailed.validRows || [] });
+                }}
+                onDownloadErrors={() => {
+                    if (!csvFile || !csvValidation || !csvValidation.errors) return;
+                    // Build CSV of errored rows with error message
+                    const errRows: string[][] = [];
+                    const headerRow = [...csvHeaders, 'error_message'];
+                    csvValidation.errors.forEach((err: any) => {
+                        const rowIdx = err.rowIndex && err.rowIndex > 1 ? err.rowIndex - 2 : null;
+                        if (rowIdx !== null && csvParsedRows[rowIdx]) {
+                            const base = csvParsedRows[rowIdx].slice();
+                            base.push(err.message || (err.field ? `${err.field}: ${err.message}` : 'Error'));
+                            errRows.push(base);
+                        }
+                    });
+                    const csvText = [headerRow.join(',')].concat(errRows.map(r => r.map(c => `"${(c || '').toString().replace(/"/g, '""')}"`).join(','))).join('\n');
+                    const blob = new Blob([csvText], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `csv_errors_${csvFile.name || 'errors'}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                }}
             />
 
             {/* Gallery Picker Modal */}

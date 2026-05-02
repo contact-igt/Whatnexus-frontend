@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { sanitizePhoneInput } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import { User, Mail, Phone, Calendar } from "lucide-react";
 import { CreateContactDto } from "@/types/contact";
@@ -152,10 +153,11 @@ export const AddContactDrawer = ({
                         type="tel"
                         placeholder="9876543210"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
+                        onChange={(e) => setFormData({ ...formData, phone: sanitizePhoneInput(e.target.value, true) })}
                         error={errors.phone}
                         icon={Phone}
                         maxLength={10}
+                        hasSeparateCountryCode
                         wrapperClassName="col-span-2"
                     />
                 </div>

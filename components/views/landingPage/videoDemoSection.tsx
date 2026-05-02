@@ -226,7 +226,7 @@ export const VideoDemoSection = () => {
                             <video
                                 ref={videoRef}
                                 className="w-full h-full object-cover"
-                                poster="/placeholder-video-thumbnail.jpg"
+                                poster="/image/neuralhub1.png"
                                 onPlay={() => setIsPlaying(true)}
                                 onPause={() => setIsPlaying(false)}
                                 onTimeUpdate={handleTimeUpdate}

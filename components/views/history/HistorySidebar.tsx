@@ -101,7 +101,7 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className={cn("text-sm font-bold truncate", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                    <span className={cn("text-sm font-bold truncate min-w-0 overflow-hidden", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                         {chat?.name || chat.phone}
                                     </span>
                                     <span className={cn("text-[10px] whitespace-nowrap ml-1 shrink-0",

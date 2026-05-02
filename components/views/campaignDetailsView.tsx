@@ -377,11 +377,11 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                             </div>
                         )}
 
-                        {lastUpdatedAt && (
+                        {/* {lastUpdatedAt && (
                             <p className={cn('text-[11px]', isDarkMode ? 'text-white/35' : 'text-slate-500')}>
                                 Last updated {formatCampaignDateTime(lastUpdatedAt)}
                             </p>
-                        )}
+                        )} */}
                     </div>
                 </div>
 
@@ -542,7 +542,7 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                                 Template ID
                             </p>
                             <p className={cn("text-sm font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                {campaign.template.template_id}
+                                {campaign.template?.template_id ?? '—'}
                             </p>
                         </div>
                         <div>
@@ -550,7 +550,7 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                                 Template Name
                             </p>
                             <p className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                {campaign.template.template_name}
+                                {campaign.template?.template_name ?? '—'}
                             </p>
                         </div>
                         <div>
@@ -558,7 +558,7 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                                 Category
                             </p>
                             <p className={cn("text-sm font-semibold capitalize", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                {campaign.template.category}
+                                {campaign.template?.category ?? '—'}
                             </p>
                         </div>
                     </div>

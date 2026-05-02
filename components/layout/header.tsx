@@ -12,11 +12,15 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { socket } from '@/utils/socket';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { updateUserData, updateUserPreferences } from '@/redux/slices/auth/authSlice';
+import { tenantUserApiData } from '@/services/tenantUser';
+import { managementApiData } from '@/services/management';
 import { MessagesApiData } from '@/services/messages';
 import { playNotificationSound } from '@/lib/notificationSound';
 import { clearWhatsAppUnreadCount, incrementWhatsAppUnreadCount, setWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
 import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
 import { FAQ_REVIEW_ROUTE, useFaqNotifications } from '@/hooks/useFaqNotifications';
+import { toast } from '@/lib/toast';
 
 export const META_TIER_CONFIG: Record<string, { name: string, limit: string | number, upgradeHint: string | null }> = {
     TIER_NOT_SET: {
@@ -92,6 +96,8 @@ const messagesApi = new MessagesApiData();
 export const Header = () => {
     const { user, whatsappApiDetails } = useAuth();
     const { setTheme, isDarkMode } = useTheme();
+    const tenantUserApi = new tenantUserApiData();
+    const managementApi = new managementApiData();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const queryClient = useQueryClient();
@@ -185,9 +191,43 @@ export const Header = () => {
     }, [dispatch, user?.tenant_id]);
 
     const toggleTheme = () => {
-        setTheme(isDarkMode ? "light" : "dark");
+        const newTheme = isDarkMode ? "light" : "dark";
+        const previousTheme = isDarkMode ? "dark" : "light";
+        const isManagementUser = user?.user_type === "management";
+        const userIdentifier = user?.tenant_user_id || user?.management_id;
+        const preferencesQueryKey = ["user-preferences", user?.user_type, userIdentifier];
+
+        setTheme(newTheme);
+        dispatch(updateUserPreferences({ theme: newTheme }));
+        queryClient.setQueryData(preferencesQueryKey, {
+            message: "User preferences updated successfully",
+            data: { theme: newTheme },
+        });
+
+        const persistThemeRequest = isManagementUser
+            ? managementApi.updateManagementPreferences({ theme: newTheme })
+            : tenantUserApi.updateTenantUserPreferences({ theme: newTheme });
+
+        persistThemeRequest
+            .then((response: any) => {
+                queryClient.setQueryData(preferencesQueryKey, {
+                    message: response?.message || "User preferences updated successfully",
+                    data: { theme: newTheme },
+                });
+            })
+            .catch((err: any) => {
+                setTheme(previousTheme);
+                dispatch(updateUserPreferences({ theme: previousTheme }));
+                queryClient.setQueryData(preferencesQueryKey, {
+                    message: "User preferences fetched successfully",
+                    data: { theme: previousTheme },
+                });
+                console.error("[theme] Failed to persist theme:", err);
+                toast.error(err?.response?.data?.message || "Failed to save theme preference");
+            });
     };
     const handleLogout = () => {
+        queryClient.removeQueries({ queryKey: ["user-preferences"] });
         dispatch(clearAuthData());
         router.replace('/login');
     };

@@ -47,6 +47,7 @@ const getApiBaseUrl = (): string => {
   if (env === "production") return (process.env.NEXT_PUBLIC_PRODUCTION_API_URL || "").trim();
   if (env === "development") return (process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL || "").trim();
   if (env === "stage") return (process.env.NEXT_PUBLIC_STAGE_API_URL || "").trim();
+  if (env === "local") return localhostUrl;
 
   if (isNgrokBrowserHost() && ngrokUrl) {
     return ngrokUrl;
@@ -67,17 +68,7 @@ export const _axios = async (
   params?: any,
   requestConfig: any = {}
 ) => {
-  const env = process.env.NEXT_PUBLIC_ENV;
-  const APIURL =
-    env === "ngrok" ? process.env.NEXT_PUBLIC_NGROK_URL :
-      env === "production"
-        ? process.env.NEXT_PUBLIC_PRODUCTION_API_URL
-        : env === "development"
-          ? process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL
-          : env === "stage"
-            ? process.env.NEXT_PUBLIC_STAGE_API_URL
-            : process.env.NEXT_PUBLIC_LOCALHOST_API_URL;
-
+  const APIURL = getApiBaseUrl();
   const endpoint = `${APIURL}${url}`;
   const state: RootState = store.getState();
   const activeTab = state?.auth?.activeTabData;
@@ -127,6 +118,10 @@ export const _axios = async (
     // Normalize billing guard errors: backend sends `reason` but frontend expects `message`
     if (err?.response?.data?.blocked && err?.response?.data?.reason && !err?.response?.data?.message) {
       err.response.data.message = err.response.data.reason;
+    }
+    // If the server rejects the token, clear auth state (handles parallel-request race with expired tokens)
+    if (err?.response?.status === 401) {
+      store.dispatch(clearAuthData());
     }
     // Detect account-level errors (deactivated / suspended / blocked) and store globally
     const errMsg: string = err?.response?.data?.message || '';

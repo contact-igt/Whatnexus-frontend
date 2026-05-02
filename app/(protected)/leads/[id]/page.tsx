@@ -1,18 +1,49 @@
 "use client";
 
+import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { LeadDetailsView } from "@/components/views/leadDetailsView";
-import { useLeadIntelligenceQuery, useGetLeadByIdQuery } from "@/hooks/useLeadIntelligenceQuery";
+import { useGetLeadByIdQuery } from "@/hooks/useLeadIntelligenceQuery";
 import { useTheme } from "@/hooks/useTheme";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { socket } from "@/utils/socket";
+import { useAuth } from "@/redux/selectors/auth/authSelector";
 
 export default function LeadDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const { isDarkMode } = useTheme();
     const leadId = params?.id as string;
-    const { data: leadDetailData, isLoading } = useGetLeadByIdQuery(leadId);
+    const { data: leadDetailData, isLoading, refetch } = useGetLeadByIdQuery(leadId);
+    const { user } = useAuth();
+
+    // Socket: real-time lead updates
+    useEffect(() => {
+        if (!user?.tenant_id) return;
+
+        if (!socket.connected) {
+            socket.connect();
+        } else {
+            // Already connected, emit join immediately
+            socket.emit('join-tenant', user.tenant_id);
+        }
+
+        const handleConnect = () => {
+            socket.emit('join-tenant', user.tenant_id);
+        };
+        socket.on('connect', handleConnect);
+
+        const handleLeadUpdated = () => {
+            refetch();
+        };
+        socket.on('lead-updated', handleLeadUpdated);
+
+        return () => {
+            socket.off('lead-updated', handleLeadUpdated);
+            socket.off('connect', handleConnect);
+        };
+    }, [user?.tenant_id, refetch]);
 
     const lead = leadDetailData?.data;
 

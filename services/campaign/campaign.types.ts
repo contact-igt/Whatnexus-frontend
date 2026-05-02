@@ -6,7 +6,7 @@
 
 export type CampaignType = 'immediate' | 'scheduled' | 'broadcast' | 'api';
 export type RecipientSource = 'csv' | 'group' | 'manual';
-export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused' | 'cancelled';
+export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused' | 'cancelled' | 'deleted';
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'permanently_failed';
 export type RecipientDynamicVariables = string[] | string | Record<string, string> | null;
 
@@ -97,9 +97,14 @@ export interface Campaign {
     replied_count: number;
     scheduled_at: string | null;
     header_media_url?: string | null;
-    createdAt: string; // API uses camelCase
-    updatedAt?: string; // API uses camelCase
+    createdAt: string;
+    updatedAt?: string;
     template: TemplateInfo;
+    // Soft-delete / trash fields (populated in Trash tab responses)
+    is_deleted?: boolean;
+    deleted_at?: string | null;
+    days_remaining?: number;
+    can_restore?: boolean;
 }
 
 export interface CampaignListResponse {

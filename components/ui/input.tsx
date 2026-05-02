@@ -2,6 +2,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { sanitizePhoneInput } from "@/lib/phone";
 import { LucideIcon } from "lucide-react";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -13,6 +14,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
     variant?: 'default' | 'secondary';
     wrapperClassName?: string;
+    hasSeparateCountryCode?: boolean;
 }
 
 export const Input = ({
@@ -24,6 +26,7 @@ export const Input = ({
     className,
     variant = 'default',
     wrapperClassName,
+    hasSeparateCountryCode = false,
     ...props
 }: InputProps) => {
     return (
@@ -50,17 +53,23 @@ export const Input = ({
                     autoComplete='new-password'
                     {...props}
                     onChange={(e) => {
-                        const isMobile = 
-                            props.name?.toLowerCase().includes('mobile') || 
-                            props.name?.toLowerCase().includes('phone') ||
-                            label?.toLowerCase().includes('mobile') ||
-                            label?.toLowerCase().includes('phone') ||
-                            props.type === 'number';
-                            
-                        if (isMobile) {
-                            e.target.value = e.target.value.replace(/\s+/g, '');
+                        const isPhoneLike =
+                            (props.type === 'tel' ||
+                                props.name?.toLowerCase().includes('mobile') ||
+                                props.name?.toLowerCase().includes('phone') ||
+                                props.name?.toLowerCase().includes('contact_number') ||
+                                label?.toLowerCase().includes('mobile') ||
+                                label?.toLowerCase().includes('phone') ||
+                                label?.toLowerCase().includes('contact number')) &&
+                            !label?.toLowerCase().includes('phone number id');
+
+                        if (isPhoneLike) {
+                            e.target.value = sanitizePhoneInput(
+                                e.target.value,
+                                hasSeparateCountryCode
+                            );
                         }
-                        
+
                         props.onChange?.(e);
                     }}
                     required={required}
