@@ -113,7 +113,7 @@ const templateSchema = z.object({
         .regex(/^[a-z0-9_]+$/, "Name can only contain lowercase alphanumeric characters and underscores"),
     templateType: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION', 'CAROUSEL']),
     headerType: z.enum(['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION']),
-    headerValue: z.string().max(60, "Header text must be 60 characters or less").optional(),
+    headerValue: z.string().optional(),
     content: z.string()
         .min(1, "Template content is required")
         .max(1024, "Content exceeds 1024 characters"),
@@ -221,8 +221,26 @@ const templateSchema = z.object({
         });
     }
 
-    // Media Header Validation
-    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(data.templateType) && !data.headerValue) {
+    // Header text constraints apply only when user explicitly chooses TEXT header mode.
+    if (data.templateType === 'TEXT' && data.headerType === 'TEXT') {
+        const headerText = data.headerValue?.trim() || '';
+        if (!headerText) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Header text is required when header type is TEXT.',
+                path: ['headerValue']
+            });
+        } else if (headerText.length > 60) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Header text must be 60 characters or less',
+                path: ['headerValue']
+            });
+        }
+    }
+
+    // For media template types, header must be a media URL/handle value.
+    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(data.templateType) && !data.headerValue?.trim()) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `Please upload a ${data.templateType.toLowerCase()} file for the header.`,
@@ -326,6 +344,10 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
 
     const uploadedMediaUrl = useSelector((state: RootState) => state.template.uploadedMediaUrl);
     const uploadedMediaType = useSelector((state: RootState) => state.template.uploadedMediaType);
+    const uploadedMediaStatus = useSelector((state: RootState) => state.template.uploadedMediaStatus);
+    const uploadedMediaId = useSelector((state: RootState) => state.template.uploadedMediaId);
+    const uploadedMediaFileName = useSelector((state: RootState) => state.template.uploadedMediaFileName);
+    const uploadedMediaUploadTime = useSelector((state: RootState) => state.template.uploadedMediaUploadTime);
     const isMediaUploading = useSelector((state: RootState) => state.template.isUploading);
     const { mutateAsync: uploadMedia } = useUploadTemplateMediaMutation();
     const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -766,6 +788,13 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
         return null;
     })();
 
+    const formattedUploadedMediaTime = useMemo(() => {
+        if (!uploadedMediaUploadTime) return null;
+        const parsed = new Date(uploadedMediaUploadTime);
+        if (Number.isNaN(parsed.getTime())) return uploadedMediaUploadTime;
+        return parsed.toLocaleString();
+    }, [uploadedMediaUploadTime]);
+
     // Authentication mode — lock the form when AUTHENTICATION category is chosen
     const isAuthMode = category === 'AUTHENTICATION';
 
@@ -1201,7 +1230,14 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
             setUploadedFileName(file.name); // Store local filename for display
             const response = await uploadMedia({ file, type });
             if (response?.url) {
-                dispatch(setUploadedMedia({ url: response.url, type }));
+                dispatch(setUploadedMedia({
+                    url: response.url,
+                    type,
+                    mediaStatus: response.media_status || (response.media_id ? 'READY' : null),
+                    mediaId: response.media_id || response.media_handle || null,
+                    fileName: response.file_name || file.name,
+                    uploadTime: response.upload_time || new Date().toISOString(),
+                }));
                 onChange(response.url); // update form state
                 // Persist the handle returned by the upload so the DB component row
                 // stores it — submit will then use the handle directly, no re-upload needed.
@@ -1211,7 +1247,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                         media_asset_id: response.media_asset_id,
                     });
                 }
-                toast.success(`${type} uploaded successfully`);
+                toast.success(`${type} uploaded successfully (READY)`);
             }
         } catch (error) {
             logger.error('Upload failed:', error);
@@ -1491,7 +1527,7 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                                 <label className="text-sm font-semibold">Template Name</label>
                                                 <span className={cn(
                                                     "text-xs font-medium",
-                                                                                isDarkMode ? "text-white/40" : "text-slate-500"
+                                                    isDarkMode ? "text-white/40" : "text-slate-500"
                                                 )}>
                                                     {templateName.length}/60
                                                 </span>
@@ -1916,6 +1952,27 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                             <p className="text-red-500 text-[10px] mt-1 ml-1 font-semibold">{errors.headerValue.message}</p>
                                         )}
                                     </div>
+                                </div>
+                            )}
+
+                            {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(templateType) && uploadedMediaStatus === 'READY' && !selectedHeaderAsset && (
+                                <div className={cn(
+                                    "rounded-xl border px-3 py-2 mt-3 text-xs",
+                                    isDarkMode ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                )}>
+                                    <div className="flex items-center gap-2 font-semibold">
+                                        <CheckCircle2 size={14} />
+                                        <span>Media Status: READY</span>
+                                    </div>
+                                    <p className={cn("mt-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                        Media ID: {uploadedMediaId || directUploadHandle?.media_handle || 'N/A'}
+                                    </p>
+                                    <p className={cn(isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                        File Name: {uploadedMediaFileName || displayFileName || 'N/A'}
+                                    </p>
+                                    <p className={cn(isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                        Upload Time: {formattedUploadedMediaTime || 'N/A'}
+                                    </p>
                                 </div>
                             )}
 

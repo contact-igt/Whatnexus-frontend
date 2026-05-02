@@ -32,12 +32,8 @@ import { socket } from '@/utils/socket';
 type TabType = 'all' | 'draft' | 'scheduled' | 'active' | 'paused' | 'completed' | 'failed' | 'trash';
 
 export const CampaignView = memo(() => {
-    const { whatsappApiDetails } = useAuth();
+    const { whatsappApiDetails, user } = useAuth();
     const { isDarkMode } = useTheme();
-
-    if (whatsappApiDetails?.status !== 'active') {
-        return <WhatsAppConnectionPlaceholder />;
-    }
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +58,6 @@ export const CampaignView = memo(() => {
     }, [activeTab, fetchDeletedCampaigns]);
 
     // Socket: real-time campaign delivery status updates
-    const { user } = useAuth();
     useEffect(() => {
         if (!user?.tenant_id) return;
 
@@ -278,7 +273,7 @@ export const CampaignView = memo(() => {
                         isDarkMode={isDarkMode}
                         isView={true}
                         onView={() => handleCampaignClick(row.campaign_id)}
-                        isDelete={['draft', 'scheduled', 'failed', 'completed'].includes(row.status) && activeTab !== 'trash'}
+                        isDelete={activeTab !== 'trash'}
                         onDelete={() => openConfirmation(row.campaign_id, 'delete')}
                         isExecute={['draft', 'scheduled'].includes(row.status) && activeTab !== 'trash'}
                         onExecute={() => handleExecuteCampaign(row.campaign_id)}
@@ -291,6 +286,10 @@ export const CampaignView = memo(() => {
             )
         }
     ], [isDarkMode, activeTab, router, handleExecuteCampaign, openConfirmation]);
+
+    if (whatsappApiDetails?.status !== 'active') {
+        return <WhatsAppConnectionPlaceholder />;
+    }
 
     return (
         <PageTransition>

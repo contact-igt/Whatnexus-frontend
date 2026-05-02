@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { sanitizePhoneInput } from "@/lib/phone";
 
 type TabType = 'single' | 'group' | 'csv';
 
@@ -284,9 +285,12 @@ export const LaunchCampaignModal = ({
                                     <Input
                                         isDarkMode={isDarkMode}
                                         label="Mobile Number"
+                                        type="tel"
                                         placeholder="Enter the Mobile Number"
                                         value={mobileNumber}
-                                        onChange={(e) => setMobileNumber(e.target.value)}
+                                        onChange={(e) => setMobileNumber(sanitizePhoneInput(e.target.value, true))}
+                                        maxLength={10}
+                                        hasSeparateCountryCode
                                         required
                                     />
                                 </div>

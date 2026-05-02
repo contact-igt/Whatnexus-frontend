@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useTheme } from '@/hooks/useTheme';
+import { sanitizePhoneInput } from "@/lib/phone";
 import { useRouter } from 'next/navigation';
 import { TemplateSelectionModal } from "@/components/ui/templateSelectionModal";
 import { CSVPreviewModal, CSVRow } from "@/components/ui/csvPreviewModal";
@@ -325,9 +326,12 @@ export const ComposeMessageView = () => {
                                     <Input
                                         isDarkMode={isDarkMode}
                                         label="Mobile Number"
+                                        type="tel"
                                         placeholder="Enter the Mobile Number"
                                         value={mobileNumber}
-                                        onChange={(e) => setMobileNumber(e.target.value)}
+                                        onChange={(e) => setMobileNumber(sanitizePhoneInput(e.target.value, true))}
+                                        maxLength={10}
+                                        hasSeparateCountryCode
                                         required
                                     />
                                 </div>

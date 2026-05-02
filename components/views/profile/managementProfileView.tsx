@@ -248,10 +248,13 @@ export default function ManagementProfileView() {
                                     isDarkMode={isDarkMode}
                                     label="Mobile Number"
                                     {...register('mobile')}
+                                    type="tel"
                                     icon={Phone}
                                     placeholder="Enter mobile number"
                                     disabled={isUpdating}
                                     error={errors.mobile?.message}
+                                    hasSeparateCountryCode
+                                    maxLength={10}
                                     wrapperClassName="col-span-2"
                                     required
                                 />

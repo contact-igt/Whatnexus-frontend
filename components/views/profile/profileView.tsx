@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { sanitizePhoneInput } from '@/lib/phone';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Mail, Phone, User, Briefcase, Award, Edit2, Save, X, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
@@ -206,7 +207,7 @@ export const ProfileView = () => {
                                             type="tel"
                                             value={formData.mobile}
                                             onChange={(e) => {
-                                                const val = e.target.value.replace(/\D/g, '');
+                                                const val = sanitizePhoneInput(e.target.value, true);
                                                 handleInputChange('mobile', val);
                                             }}
                                             maxLength={10}

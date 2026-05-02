@@ -287,8 +287,9 @@ export const TeamUserDrawer = ({
                                 isDarkMode={isDarkMode}
                                 label="Mobile Number"
                                 {...register('mobile')}
-                                onInput={(e) => { e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '') }}
+                                type="tel"
                                 maxLength={10}
+                                hasSeparateCountryCode
                                 icon={Phone}
                                 placeholder="10-digit mobile"
                                 disabled={isSaving}

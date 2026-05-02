@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin, Video, Eye, Clock } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Upload, Users, Calendar as CalendarIcon, AlertTriangle, Image as ImageIcon, FileText, MapPin, Video, Eye } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
+import { sanitizePhoneInput } from "@/lib/phone";
 import { useTheme } from '@/hooks/useTheme';
 import { campaignService } from '@/services/campaign/campaign.service';
 import type {
@@ -96,6 +97,29 @@ const inferVariableHintFromText = (content: string, variableKey: string) => {
     return `Value ${variableKey}`;
 };
 
+const toLocalDateTimeInputValue = (value: string | null): string => {
+    if (!value) return '';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return '';
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const min = String(dt.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
+const getMinScheduleDateTime = () => {
+    const dt = new Date(Date.now() + 2 * 60 * 1000);
+    dt.setSeconds(0, 0);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const min = String(dt.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
 export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampaignModalProps) => {
     const { isDarkMode } = useTheme();
     const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -138,8 +162,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     const [templateVariableCount, setTemplateVariableCount] = useState(2);
     const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
     const [variableValues, setVariableValues] = useState<Record<string, string>>({});
-    const [scheduledDate, setScheduledDate] = useState<string>('');
-    const [scheduledTime, setScheduledTime] = useState<string>('');
+    const [scheduledDateTime, setScheduledDateTime] = useState<string>('');
     const [manualPhoneInput, setManualPhoneInput] = useState('');
     const [manualCountryCode, setManualCountryCode] = useState('+91');
     const [manualInputError, setManualInputError] = useState('');
@@ -178,22 +201,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
     };
 
     useEffect(() => {
-        // Keep scheduledDate and scheduledTime in sync with formData.scheduled_at
-        if (formData.scheduled_at) {
-            const dt = new Date(formData.scheduled_at);
-            if (!isNaN(dt.getTime())) {
-                // Local date in YYYY-MM-DD
-                const localDate = dt.toLocaleDateString('sv-SE');
-                // Local time HH:MM
-                const hh = dt.getHours().toString().padStart(2, '0');
-                const mm = dt.getMinutes().toString().padStart(2, '0');
-                setScheduledDate(localDate);
-                setScheduledTime(`${hh}:${mm}`);
-                return;
-            }
-        }
-        setScheduledDate('');
-        setScheduledTime('');
+        setScheduledDateTime(toLocalDateTimeInputValue(formData.scheduled_at));
     }, [formData.scheduled_at]);
     // { [contactId]: { [varKey]: value } }
     const [groupMemberVariables, setGroupMemberVariables] = useState<Record<string, Record<string, string>>>({});
@@ -348,6 +356,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             setColumnMappings({});
             setSelectedTemplate(null);
             setVariableValues({});
+            setScheduledDateTime('');
             setHeaderFileName(null);
             setCardFileNames({});
             setError(null);
@@ -933,57 +942,40 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                             </div>
 
                             {formData.campaign_type === 'scheduled' && (
-                                <div>
-                                    <label className={cn("block text-sm font-semibold mb-2", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                <div className={cn(
+                                    "rounded-2xl border p-4",
+                                    isDarkMode
+                                        ? 'bg-emerald-500/10 border-emerald-400/30'
+                                        : 'bg-emerald-50 border-emerald-200'
+                                )}>
+                                    <label className={cn("flex items-center gap-2 text-sm font-semibold mb-2", isDarkMode ? 'text-emerald-200' : 'text-emerald-800')}>
+                                        <CalendarIcon size={16} />
                                         Schedule Date & Time *
                                     </label>
-                                    <div className="flex gap-3 items-center">
-                                        <div className={cn("flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer", scheduledDate ? (isDarkMode ? 'bg-emerald-800/20 border-emerald-500 text-emerald-200' : 'bg-emerald-50 border-emerald-300 text-emerald-700') : (isDarkMode ? 'bg-white/5 border-white/10 text-white/60' : 'bg-white border-slate-200 text-slate-600'))}>
-                                            <CalendarIcon size={16} />
-                                            <input
-                                                type="date"
-                                                value={scheduledDate}
-                                                min={(() => {
-                                                    const d = new Date(Date.now() + 2 * 60 * 1000);
-                                                    return d.toISOString().slice(0, 10);
-                                                })()}
-                                                onChange={(e) => {
-                                                    const newDate = e.target.value;
-                                                    setScheduledDate(newDate);
-                                                    if (newDate && scheduledTime) {
-                                                        setFormData(prev => ({ ...prev, scheduled_at: `${newDate}T${scheduledTime}` }));
-                                                    } else {
-                                                        setFormData(prev => ({ ...prev, scheduled_at: '' }));
-                                                    }
-                                                }}
-                                                className={cn(
-                                                    "bg-transparent text-sm outline-none",
-                                                    isDarkMode ? 'text-white' : 'text-slate-900'
-                                                )}
-                                            />
-                                        </div>
-
-                                        <div className={cn("flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer", scheduledTime ? (isDarkMode ? 'bg-emerald-800/20 border-emerald-500 text-emerald-200' : 'bg-emerald-50 border-emerald-300 text-emerald-700') : (isDarkMode ? 'bg-white/5 border-white/10 text-white/60' : 'bg-white border-slate-200 text-slate-600'))}>
-                                            <Clock size={16} />
-                                            <input
-                                                type="time"
-                                                value={scheduledTime}
-                                                onChange={(e) => {
-                                                    const newTime = e.target.value;
-                                                    setScheduledTime(newTime);
-                                                    if (scheduledDate && newTime) {
-                                                        setFormData(prev => ({ ...prev, scheduled_at: `${scheduledDate}T${newTime}` }));
-                                                    } else {
-                                                        setFormData(prev => ({ ...prev, scheduled_at: '' }));
-                                                    }
-                                                }}
-                                                className={cn(
-                                                    "bg-transparent text-sm outline-none",
-                                                    isDarkMode ? 'text-white' : 'text-slate-900'
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
+                                    <p className={cn("text-xs mb-3", isDarkMode ? 'text-emerald-200/70' : 'text-emerald-700/80')}>
+                                        Pick when this campaign should be sent.
+                                    </p>
+                                    <input
+                                        type="datetime-local"
+                                        value={scheduledDateTime}
+                                        min={getMinScheduleDateTime()}
+                                        style={{ colorScheme: isDarkMode ? 'dark' : 'light' }}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setScheduledDateTime(value);
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                scheduled_at: value || null,
+                                            }));
+                                            setError(null);
+                                        }}
+                                        className={cn(
+                                            "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all",
+                                            isDarkMode
+                                                ? 'bg-black/20 border-emerald-400/30 text-white'
+                                                : 'bg-white border-emerald-300 text-slate-900'
+                                        )}
+                                    />
                                 </div>
                             )}
                         </div>
@@ -1871,7 +1863,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                                 type="text"
                                                 value={manualPhoneInput}
                                                 onChange={(e) => {
-                                                    setManualPhoneInput(e.target.value.replace(/\D/g, '')); // Numbers only
+                                                    setManualPhoneInput(sanitizePhoneInput(e.target.value, true));
                                                     setManualInputError('');
                                                 }}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleAddManualRecipient()}
@@ -2178,7 +2170,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                         const ccIdx = headerIndex['country_code'] !== undefined ? headerIndex['country_code'] : 0;
                         const mnIdx = headerIndex['mobile_number'] !== undefined ? headerIndex['mobile_number'] : 1;
                         if (r[ccIdx]) r[ccIdx] = (r[ccIdx] || '').replace(/\D/g, '');
-                        if (r[mnIdx]) r[mnIdx] = (r[mnIdx] || '').replace(/\D/g, '');
+                        if (r[mnIdx]) r[mnIdx] = sanitizePhoneInput((r[mnIdx] || '').toString(), true);
                         // trim variables
                         for (let i = 2; i < r.length; i++) r[i] = (r[i] || '').toString().trim();
                         return r;

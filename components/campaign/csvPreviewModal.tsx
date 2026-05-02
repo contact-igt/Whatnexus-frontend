@@ -165,8 +165,8 @@ export const CSVPreviewModal = ({
                                 disabled={!canAutoFix}
                                 title={
                                     !onAutoFix ? 'Auto-fix not available'
-                                    : onlyHeaderErrors ? 'Cannot auto-fix missing header columns — re-download the template'
-                                    : 'Trim whitespace and fix phone number formatting'
+                                        : onlyHeaderErrors ? 'Cannot auto-fix missing header columns — re-download the template'
+                                            : 'Trim whitespace and fix phone number formatting'
                                 }
                                 className={cn(
                                     "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
@@ -186,9 +186,9 @@ export const CSVPreviewModal = ({
                                 disabled={!canSkip}
                                 title={
                                     !onSkipErrors ? 'Skip not available'
-                                    : validContacts === 0 ? 'No valid rows to keep after skipping'
-                                    : invalidContacts === 0 ? 'No invalid rows to skip'
-                                    : `Remove ${invalidContacts} invalid row${invalidContacts !== 1 ? 's' : ''}, keep ${validContacts} valid`
+                                        : validContacts === 0 ? 'No valid rows to keep after skipping'
+                                            : invalidContacts === 0 ? 'No invalid rows to skip'
+                                                : `Remove ${invalidContacts} invalid row${invalidContacts !== 1 ? 's' : ''}, keep ${validContacts} valid`
                                 }
                                 className={cn(
                                     "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
@@ -410,7 +410,7 @@ export const CSVPreviewModal = ({
                     if (hasPhoneErrors && !isErrorReportFile) {
                         fixSteps.push({
                             label: 'Invalid phone number format',
-                            detail: 'country_code must be 1–4 digits (e.g. 91). mobile_number must be 7–12 digits with no spaces or dashes. Use Auto-fix CSV to clean formatting automatically.',
+                            detail: 'country_code and mobile_number must be digits and their concatenation must total exactly 12 digits (e.g. country_code 91 + 10-digit mobile). Use Auto-fix CSV to clean formatting automatically.',
                             severity: 'warn',
                         });
                     }

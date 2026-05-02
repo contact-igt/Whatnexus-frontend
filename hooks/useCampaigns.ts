@@ -92,10 +92,17 @@ export const useCampaigns = (
         try {
             setLoading(true);
             const response = await campaignService.getDeletedCampaignList();
-            setDeletedCampaigns(response.data.campaigns);
+            // Lifecycle controller returns data.items; main list returns data.campaigns
+            const items = (response as any)?.data?.items ?? (response as any)?.data?.campaigns ?? [];
+            const normalizedItems = items.map((item: any) => ({
+                ...item,
+                status: item?.status || 'deleted',
+                createdAt: item?.createdAt || item?.created_at || null,
+                updatedAt: item?.updatedAt || item?.updated_at || null,
+            }));
+            setDeletedCampaigns(normalizedItems);
         } catch (err) {
             console.error("Error fetching deleted campaigns:", err);
-            // Optional: set specific error for deleted campaigns
         } finally {
             setLoading(false);
         }

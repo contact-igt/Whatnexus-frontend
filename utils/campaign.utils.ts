@@ -13,8 +13,8 @@ import type {
  * @returns true if valid, false otherwise
  */
 export const validatePhoneNumber = (phone: string): boolean => {
-    // Standard E.164-like (10 to 15 digits)
-    const phoneRegex = /^\d{10,15}$/;
+    // Strict rule: either local 10 digits or country+number 12 digits
+    const phoneRegex = /^(?:\d{10}|\d{12})$/;
     return phoneRegex.test(phone);
 };
 
@@ -86,33 +86,23 @@ export const validateCSVData = (
         const localNumber = row[1];
         const dynamicVariables = row.slice(2, templateVariableCount + 2);
 
-        // Validate Country Code (1-4 digits)
-        if (!countryCode || !/^\d{1,4}$/.test(countryCode)) {
-            errors.push({
-                field: `Row ${rowNumber}`,
-                message: `Invalid country code: ${countryCode}. Must be 1-4 digits (e.g. 91)`,
-            });
+        // New rule: require country_code and mobile_number to be digits and their concatenation must be exactly 12 digits.
+        if (!countryCode || !/^\d+$/.test(countryCode)) {
+            errors.push({ field: `Row ${rowNumber}`, message: `Invalid country code: ${countryCode}. Must contain only digits.` });
             invalidRows.push(rowNumber);
             return;
         }
 
-        // Validate Local Phone Number (7-12 digits)
-        if (!localNumber || !/^\d{7,12}$/.test(localNumber)) {
-            errors.push({
-                field: `Row ${rowNumber}`,
-                message: `Invalid local number: ${localNumber}. Must be 7-12 digits`,
-            });
+        if (!localNumber || !/^\d+$/.test(localNumber)) {
+            errors.push({ field: `Row ${rowNumber}`, message: `Invalid local number: ${localNumber}. Must contain only digits.` });
             invalidRows.push(rowNumber);
             return;
         }
 
         const fullPhoneNumber = countryCode + localNumber;
-        // Validate full number length (10-15 digits)
-        if (fullPhoneNumber.length < 10 || fullPhoneNumber.length > 15) {
-            errors.push({
-                field: `Row ${rowNumber}`,
-                message: `Combined number ${fullPhoneNumber} is invalid. must be 10-15 digits total`,
-            });
+        // Enforce exact combined length of 12 digits (country code + local number)
+        if (fullPhoneNumber.length !== 12) {
+            errors.push({ field: `Row ${rowNumber}`, message: `Combined number ${fullPhoneNumber} is invalid — must be exactly 12 digits (country code + local number).` });
             invalidRows.push(rowNumber);
             return;
         }
@@ -201,19 +191,19 @@ export const validateCSVRowsDetailed = (
         if (!countryCode && row[0] !== undefined) countryCode = (row[0] || '').toString().trim();
         if (!mobileLocal && row[1] !== undefined) mobileLocal = (row[1] || '').toString().trim();
 
-        if (!countryCode || !/^[0-9]{1,4}$/.test(countryCode)) {
+        if (!countryCode || !/^\d+$/.test(countryCode)) {
             errors.push({ rowIndex: rowNumber, column: 'country_code', message: `Invalid or missing country code: '${countryCode}'` });
             return;
         }
 
-        if (!mobileLocal || !/^[0-9]{7,12}$/.test(mobileLocal)) {
+        if (!mobileLocal || !/^\d+$/.test(mobileLocal)) {
             errors.push({ rowIndex: rowNumber, column: 'mobile_number', message: `Invalid or missing local mobile number: '${mobileLocal}'` });
             return;
         }
 
         const fullNumber = `${countryCode}${mobileLocal}`;
-        if (fullNumber.length < 10 || fullNumber.length > 15) {
-            errors.push({ rowIndex: rowNumber, column: 'mobile_number', message: `Combined phone '${fullNumber}' must be 10-15 digits` });
+        if (fullNumber.length !== 12) {
+            errors.push({ rowIndex: rowNumber, column: 'mobile_number', message: `Combined phone '${fullNumber}' must be exactly 12 digits (country code + local number)` });
             return;
         }
 
@@ -394,6 +384,10 @@ export const getCampaignStatusColor = (status: CampaignStatus): string => {
             return "bg-amber-500/10 text-amber-500";
         case "draft":
             return "bg-slate-500/10 text-slate-500";
+        case "cancelled":
+            return "bg-orange-500/10 text-orange-500";
+        case "deleted":
+            return "bg-rose-500/10 text-rose-500";
         default:
             return "bg-slate-500/10 text-slate-500";
     }

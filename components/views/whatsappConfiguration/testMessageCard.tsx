@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Send, Loader2, Phone, AlertCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { sanitizePhoneInput } from '@/lib/phone';
 import { toast } from '@/lib/toast';
 import { useSendTestWhatsAppConfigQuery, useTestWhatsAppConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 
@@ -217,9 +218,11 @@ export const TestMessageCard = ({ isDarkMode, isActive, whatsappNumber }: TestMe
                                 )}
                                 value={testPhoneNumber}
                                 maxLength={10}
+                                type="tel"
                                 disabled={isSendingMessage}
+                                hasSeparateCountryCode
                                 onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, '');
+                                    const val = sanitizePhoneInput(e.target.value, true);
                                     setTestPhoneNumber(val);
                                     if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
                                 }}

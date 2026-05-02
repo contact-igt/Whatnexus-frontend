@@ -38,6 +38,7 @@ const createFormSchema = z.object({
     role: z.enum(["platform_admin"], { message: "Role is required." }),
 });
 
+
 // Edit Form Schema
 const editFormSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
@@ -507,10 +508,13 @@ export const PlatformAdminsView = () => {
                             isDarkMode={isDarkMode}
                             label="Mobile Number"
                             {...createRegister('mobile')}
+                            type="tel"
                             icon={Phone}
                             placeholder="Enter mobile number"
                             disabled={createLoading}
                             error={createErrors.mobile?.message}
+                            maxLength={10}
+                            hasSeparateCountryCode
                             wrapperClassName="col-span-1 md:col-span-2"
                             required
                         />
@@ -729,10 +733,13 @@ export const PlatformAdminsView = () => {
                                 isDarkMode={isDarkMode}
                                 label="Mobile Number"
                                 {...editRegister('mobile')}
+                                type="tel"
                                 icon={Phone}
                                 placeholder="Enter mobile number"
                                 disabled={updateLoading}
                                 error={editErrors.mobile?.message}
+                                maxLength={10}
+                                hasSeparateCountryCode
                                 wrapperClassName="col-span-1 md:col-span-2"
                             />
                         </div>

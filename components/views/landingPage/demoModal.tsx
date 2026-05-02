@@ -7,6 +7,7 @@ import { z } from "zod";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, X, Send, CheckCircle2 } from 'lucide-react';
 import { GlassCard, Button } from './sharedComponents';
+import { sanitizePhoneInput } from '@/lib/phone';
 import { Select } from '@/components/ui/select';
 
 const requestDemoSchema = z.object({
@@ -187,7 +188,7 @@ export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                         placeholder="9876543210"
                                                         maxLength={10}
                                                         onChange={(e) => {
-                                                            const val = e.target.value.replace(/\D/g, '');
+                                                            const val = sanitizePhoneInput(e.target.value, true);
                                                             e.target.value = val;
                                                             register("mobile").onChange(e);
                                                         }}
