@@ -22,6 +22,10 @@ export interface FaqReviewItem {
   deleted_at?: string | null;
   knowledge_entry_id?: string | number | null;
   wamid?: string | null;
+  ask_count?: number;
+  similar_questions?: string | null;
+  potential_duplicate_of?: number | null;
+  match_similarity?: number | null;
 }
 
 export interface SaveFaqReviewData {

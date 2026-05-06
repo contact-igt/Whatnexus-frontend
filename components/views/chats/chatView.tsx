@@ -553,7 +553,7 @@ export const ChatView = () => {
     }, [user?.tenant_id]);
 
     useEffect(() => {
-        if (displayMessages.length > 0) {
+        if (displayMessages.length > 0 && !highlightParam) {
             setTimeout(() => {
                 bottomRef?.current?.scrollIntoView({
                     behavior: "auto",
@@ -561,7 +561,7 @@ export const ChatView = () => {
                 });
             }, 50);
         }
-    }, [displayMessages.length, selectedChat?.phone]);
+    }, [displayMessages.length, selectedChat?.phone, highlightParam]);
 
     useEffect(() => {
         if (newMessage.length > 0) {

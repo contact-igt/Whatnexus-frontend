@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { SearchX, MessageSquareText, FileText, Copy, Download, User, Bot, UserCog, Link, Phone, Reply } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
@@ -440,8 +440,58 @@ export const MessageList: React.FC<MessageListProps> = ({
     isAiTyping = false,
     highlightWamid
 }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearHighlight = useCallback((el: HTMLElement) => {
+        el.style.transition = 'background-color 0.6s ease, box-shadow 0.6s ease';
+        el.style.backgroundColor = '';
+        el.style.boxShadow = '';
+        el.style.borderRadius = '';
+    }, []);
+
+    useEffect(() => {
+        if (!highlightWamid || !containerRef.current) return;
+
+        // Delay to let React finish painting messages into the DOM
+        const timer = setTimeout(() => {
+            if (!containerRef.current) return;
+            const el = containerRef.current.querySelector<HTMLElement>(
+                `[data-wamid="${CSS.escape(highlightWamid)}"]`
+            );
+            if (!el) return;
+
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Phase 1: bright yellow flash
+            el.style.transition = 'none';
+            el.style.backgroundColor = 'rgba(253, 224, 71, 0.6)';
+            el.style.boxShadow = '0 0 0 3px rgb(234 179 8), 0 0 28px 6px rgba(253,224,71,0.45)';
+            el.style.borderRadius = '10px';
+
+            // Phase 2: soften after 400ms
+            const softenTimer = setTimeout(() => {
+                el.style.transition = 'background-color 0.5s ease, box-shadow 0.5s ease';
+                el.style.backgroundColor = 'rgba(253, 224, 71, 0.22)';
+                el.style.boxShadow = '0 0 0 2px rgb(250 204 21)';
+            }, 400);
+
+            // Phase 3: fade out fully after 3.5s
+            if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+            highlightTimerRef.current = setTimeout(() => {
+                clearTimeout(softenTimer);
+                clearHighlight(el);
+            }, 3500);
+        }, 250);
+
+        return () => {
+            clearTimeout(timer);
+            if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+        };
+    }, [highlightWamid, groupedEntries, clearHighlight]);
+
     return (
-        <div className={cn(
+        <div ref={containerRef} className={cn(
             "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative",
             isDarkMode ? "bg-[#0b141a]" : "bg-[#efeae2]"
         )}
@@ -503,7 +553,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                             const msgTemplateButtons = isTemplate ? extractButtonsFromText(msg.message || '') : [];
 
                             return (
-                                <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
+                                <div key={msg.id || msgIndex} data-wamid={msg.wamid || undefined} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
                                     <div className={isTemplate ? "w-full max-w-[320px]" : "max-w-[85%]"}>
                                         {/* Message Bubble */}
                                         <div className={cn(

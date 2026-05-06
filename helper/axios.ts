@@ -43,7 +43,7 @@ const getApiBaseUrl = (): string => {
   const localhostUrl = (process.env.NEXT_PUBLIC_LOCALHOST_API_URL || "").trim();
   const ngrokUrl = (process.env.NEXT_PUBLIC_NGROK_URL || "").trim();
 
-  if (env === "ngrok") return ngrokUrl;
+  if (env === "ngrok") return (process.env.NEXT_PUBLIC_NGROK_URL || "").trim();
   if (env === "production") return (process.env.NEXT_PUBLIC_PRODUCTION_API_URL || "").trim();
   if (env === "development") return (process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL || "").trim();
   if (env === "stage") return (process.env.NEXT_PUBLIC_STAGE_API_URL || "").trim();
