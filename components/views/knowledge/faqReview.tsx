@@ -123,73 +123,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
   const { mutate: deleteReview } = useDeleteFaqReviewMutation();
   const { mutate: toggleActive } = useToggleFaqActiveMutation();
 
-  const MOCK_REVIEWS: FaqReviewItem[] = [
-    {
-      id: "mock-1",
-      question: "What are your OPD timings on weekdays?",
-      normalized_question: "What are the outpatient department timings on weekdays?",
-      agent_category: "hospital_relevant_answerable",
-      agent_reason: "Patient is asking about hospital operating hours — directly answerable from hospital info.",
-      doctor_answer: "",
-      whatsapp_number: "+91 98765 43210",
-      status: "pending_review",
-      add_to_kb: false,
-      is_active: false,
-      created_at: "2026-04-25T10:00:00.000Z",
-    },
-    {
-      id: "mock-2",
-      question: "Can I get a second opinion on my MRI report from one of your neurologists?",
-      normalized_question: "Is a second opinion from a neurologist available for MRI reports?",
-      agent_category: "hospital_relevant_unanswerable",
-      agent_reason: "Patient is requesting a specialist consultation — cannot be answered without doctor involvement.",
-      doctor_answer: "",
-      whatsapp_number: "+91 87654 32109",
-      status: "pending_review",
-      add_to_kb: true,
-      is_active: false,
-      created_at: "2026-04-25T07:00:00.000Z",
-    },
-    {
-      id: "mock-3",
-      question: "What is the recommended dosage of metformin for Type 2 diabetes?",
-      normalized_question: "Metformin dosage for Type 2 diabetes management",
-      agent_category: "medical_but_outside_scope",
-      agent_reason: "General medical question outside this hospital's scope — no hospital-specific answer available.",
-      doctor_answer: "",
-      whatsapp_number: "+91 76543 21098",
-      status: "pending_review",
-      add_to_kb: false,
-      is_active: false,
-      created_at: "2026-04-24T12:00:00.000Z",
-    },
-    {
-      id: "mock-4",
-      question: "Do you offer cashless insurance for Apollo Munich?",
-      normalized_question: "Is cashless insurance available for Apollo Munich policyholders?",
-      agent_category: "hospital_relevant_answerable",
-      agent_reason: "Insurance tie-ups are hospital-specific — can be answered from hospital knowledge base.",
-      doctor_answer: "Yes, we are empanelled with Apollo Munich for cashless treatment. Please carry your insurance card and a valid photo ID at the time of admission.",
-      whatsapp_number: "+91 65432 10987",
-      status: "published",
-      add_to_kb: true,
-      is_active: true,
-      created_at: "2026-04-23T12:00:00.000Z",
-    },
-    {
-      id: "mock-5",
-      question: "How do I book an appointment with Dr. Sharma?",
-      normalized_question: "Procedure for booking an appointment with a specific doctor",
-      agent_category: "hospital_relevant_answerable",
-      agent_reason: "Appointment booking is a core hospital workflow — answerable from booking info.",
-      doctor_answer: "You can book an appointment with Dr. Sharma via our website, by calling our front desk at +91 11 2345 6789, or by replying 'BOOK' in this chat.",
-      whatsapp_number: "+91 54321 09876",
-      status: "published",
-      add_to_kb: true,
-      is_active: true,
-      created_at: "2026-04-22T12:00:00.000Z",
-    },
-  ];
+
 
   const pendingCount: number = countsData?.data?.pending_review ?? 0;
   const publishedCount: number = countsData?.data?.published ?? 0;
@@ -230,18 +164,22 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
     const whatsappNumber = item.whatsapp_number || item.phone;
     const wamid = item.wamid;
 
+    console.log('[Go to Chat] Item:', { whatsappNumber, wamid, item });
+
     if (!whatsappNumber) {
-      console.error("No phone number found for this FAQ");
+      console.error('[Go to Chat] No phone number found for this FAQ');
       return;
     }
 
-    if (!wamid) {
-      // If no wamid, still navigate to chat but without highlight
+    // Treat empty string same as null
+    if (!wamid || wamid === '') {
+      console.warn('[Go to Chat] No wamid, opening chat without highlight', { phone: whatsappNumber });
       router.push(`/chats?phone=${encodeURIComponent(whatsappNumber)}`);
       return;
     }
 
     // Navigate with highlight parameter
+    console.log('[Go to Chat] Navigating with highlight:', { phone: whatsappNumber, wamid });
     router.push(
       `/chats?phone=${encodeURIComponent(whatsappNumber)}&highlight=${encodeURIComponent(wamid)}`
     );
@@ -444,7 +382,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
               </p>
             </div>
           ) : (
-            currentReviews.map((item: FaqReviewItem) => {
+            currentReviews.flatMap((item: FaqReviewItem, idx: number) => {
               const isExpanded = expandedId === String(item.id);
               const categoryConfig =
                 CATEGORY_CONFIG[
@@ -461,16 +399,58 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                   : "") ||
                 (item.status === "pending_review" ? "System" : "Admin");
 
-              return (
+              // Priority tier header — detect tier change between consecutive items (2 tiers only)
+              const itemTier = filter === "pending_review"
+                ? ((item.ask_count ?? 1) > 1 ? 0 : 1)
+                : -1;
+              const prevItem = idx > 0 ? currentReviews[idx - 1] : null;
+              const prevTier = filter === "pending_review" && prevItem
+                ? ((prevItem.ask_count ?? 1) > 1 ? 0 : 1)
+                : -1;
+              const showTierHeader = itemTier !== -1 && itemTier !== prevTier;
+
+              const tierHeader = showTierHeader ? (
+                <div
+                  key={`tier-${item.id}`}
+                  className={cn("flex items-center gap-2 px-1 mb-2", idx > 0 && "mt-6")}
+                >
+                  <span className={cn(
+                    "w-2 h-2 rounded-full shrink-0",
+                    itemTier === 0 ? "bg-red-500" : "bg-emerald-500"
+                  )} />
+                  <span className={cn(
+                    "text-[11px] font-bold uppercase tracking-widest",
+                    itemTier === 0 ? (isDarkMode ? "text-red-400" : "text-red-600")
+                      : (isDarkMode ? "text-emerald-400" : "text-emerald-600")
+                  )}>
+                    {itemTier === 0 ? "High Priority" : "Valid FAQ"}
+                  </span>
+                  <div className={cn("flex-1 h-px",
+                    itemTier === 0 ? (isDarkMode ? "bg-red-500/20" : "bg-red-200")
+                      : (isDarkMode ? "bg-emerald-500/20" : "bg-emerald-200")
+                  )} />
+                </div>
+              ) : null;
+
+              const isHighPriority = (item.ask_count ?? 1) > 1;
+
+              const card = (
                 <div
                   key={item.id}
                   className={cn(
-                    "rounded-xl border transition-all",
+                    "rounded-xl border transition-all relative",
+                    isHighPriority && "border-l-4 border-l-red-500",
                     isDarkMode
                       ? "bg-white/5 border-white/10"
                       : "bg-slate-50 border-slate-200"
                   )}
                 >
+                  {/* Count circle — top-right for High Priority */}
+                  {isHighPriority && (
+                    <span className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10">
+                      {item.ask_count}
+                    </span>
+                  )}
                   {/* Card header — always visible */}
                   <div
                     className="p-4 flex items-start justify-between cursor-pointer"
@@ -502,14 +482,43 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                             {categoryConfig.label}
                           </span>
                         )}
-                        <span
-                          className={cn(
-                            "text-xs",
-                            isDarkMode ? "text-white/40" : "text-slate-400"
-                          )}
-                        >
-                          {`Name: ${creatorName || "Unknown"}`}
-                        </span>
+                        {item.wamid && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGoToChat(item);
+                            }}
+                            className={cn(
+                              "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border font-medium transition-colors",
+                              isDarkMode
+                                ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                                : "border-emerald-400/50 text-emerald-600 hover:bg-emerald-50"
+                            )}
+                          >
+                            <ExternalLink size={11} />
+                            Go to Chat
+                          </button>
+                        )}
+                        {(item.ask_count ?? 1) > 1 && (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-semibold border",
+                            isDarkMode
+                              ? "bg-red-500/10 border-red-500/30 text-red-400"
+                              : "bg-red-50 border-red-200 text-red-600"
+                          )}>
+                            Asked {item.ask_count} times
+                          </span>
+                        )}
+                        {isHighPriority && (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-bold border",
+                            isDarkMode
+                              ? "bg-red-500/10 border-red-500/30 text-red-400"
+                              : "bg-red-50 border-red-200 text-red-600"
+                          )}>
+                            High Priority
+                          </span>
+                        )}
                         <span
                           className={cn(
                             "text-xs",
@@ -561,23 +570,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                           </div>
                         </label>
                       )}
-                      {item.wamid && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleGoToChat(item);
-                          }}
-                          className={cn(
-                            "p-1.5 rounded-lg transition-colors inline-flex items-center gap-1 text-xs",
-                            isDarkMode
-                              ? "text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10"
-                              : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
-                          )}
-                          title="Go to original chat message"
-                        >
-                          <ExternalLink size={14} />
-                        </button>
-                      )}
+
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -628,6 +621,77 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                           AI reason: {item.agent_reason}
                         </p>
                       )}
+
+                      {(() => {
+                        try {
+                          const raw = JSON.parse(item.similar_questions ?? "[]");
+                          if (!Array.isArray(raw) || raw.length === 0) return null;
+                          // Handle both legacy string[] and new {question, similarity, merged_at, wamid, phone}[] formats
+                          const variants = raw.map((v: unknown) => {
+                            if (typeof v === "string") return { question: v, similarity: null, wamid: null, phone: null };
+                            if (v && typeof v === "object" && "question" in v) {
+                              const obj = v as { question: string; similarity?: number; wamid?: string; phone?: string };
+                              return { question: obj.question, similarity: obj.similarity ?? null, wamid: obj.wamid ?? null, phone: obj.phone ?? null };
+                            }
+                            return null;
+                          }).filter(Boolean) as { question: string; similarity: number | null; wamid: string | null; phone: string | null }[];
+
+                          return variants.length > 0 ? (
+                            <div className={cn(
+                              "mt-1 mb-2 px-2.5 py-2 rounded-lg border",
+                              isDarkMode ? "bg-red-500/5 border-red-500/15" : "bg-red-50 border-red-100"
+                            )}>
+                              <p className={cn(
+                                "text-[10px] font-semibold uppercase tracking-wider mb-1.5",
+                                isDarkMode ? "text-red-400/70" : "text-red-600/70"
+                              )}>Also asked as:</p>
+                              <ul className="space-y-1">
+                                {variants.map((v, i) => (
+                                  <li key={i} className="flex items-center gap-2 flex-wrap">
+                                    <span
+                                      className="text-xs italic px-1 py-0.5 rounded"
+                                      style={{ background: 'rgba(255, 235, 59, 0.15)', color: isDarkMode ? '#fff9c4' : '#5d4037' }}
+                                    >&quot;{v.question}&quot;</span>
+                                    {v.similarity != null && (
+                                      <span className={cn(
+                                        "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                                        isDarkMode ? "bg-white/5 text-white/30" : "bg-slate-100 text-slate-400"
+                                      )}>
+                                        {Math.round(v.similarity * 100)}% match
+                                      </span>
+                                    )}
+                                    {(v.phone || item.whatsapp_number) && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          console.log('[Variant Button] v.wamid:', v.wamid, 'v.phone:', v.phone, 'variant:', v);
+                                          // Build variant item object to pass to handleGoToChat
+                                          const variantItem = {
+                                            whatsapp_number: v.phone || item.whatsapp_number,
+                                            phone: v.phone || item.whatsapp_number,
+                                            wamid: v.wamid
+                                          };
+                                          console.log('[Variant Button] variantItem:', variantItem);
+                                          handleGoToChat(variantItem);
+                                        }}
+                                        className={cn(
+                                          "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium border transition-colors",
+                                          isDarkMode
+                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                                            : "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                                        )}
+                                      >
+                                        <ExternalLink size={10} />
+                                        Go to Chat
+                                      </button>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null;
+                        } catch { return null; }
+                      })()}
 
                       <div className="mt-3">
                         <label
@@ -771,6 +835,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                   )}
                 </div>
               );
+              return tierHeader ? [tierHeader, card] : [card];
             })
           )}
         </div>

@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react';
 import { Loader2, Type, AlignLeft } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useSearchParams, useRouter } from 'next/navigation';
-import { extractTextFromFile } from '@/utils/ocr';
 import { Drawer } from "@/components/ui/drawer";
 import { Modal } from "@/components/ui/modal";
 import { useDeletePromptMutation, usePromptByIdQuery, useUpdatePromptMutation, useGetPromptConfigurationQuery, useActivatePromptMutation, useDeletePromptPermanentById, useRestorePromptById } from '@/hooks/usePromptQuery';
@@ -317,6 +316,7 @@ export const KnowledgeView = () => {
         });
 
         if (validFiles.length === 0) return;
+        const { extractTextFromFile } = await import('@/utils/ocr');
         const newFiles = await Promise.all(validFiles.map(async (file) => {
             const text = await extractTextFromFile(file);
             return {

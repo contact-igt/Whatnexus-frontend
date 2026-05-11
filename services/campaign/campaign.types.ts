@@ -138,6 +138,8 @@ export interface CampaignDetails {
     delivered_count: number;
     read_count: number;
     replied_count: number;
+    sent_count?: number;
+    failed_count?: number;
     scheduled_at?: string | null;
     template: TemplateInfo;
     recipients: Recipient[];

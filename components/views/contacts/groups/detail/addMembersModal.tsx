@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { Search, User, Phone, Mail, CheckSquare, Square } from "lucide-react";
+import { formatFullPhone, isPlaceholderName } from "@/lib/phone";
 import { GroupMember } from "@/types/contactGroup";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -220,7 +221,7 @@ export const AddMembersModal = ({
                                     {contact.profile_pic ? (
                                         <img
                                             src={contact.profile_pic}
-                                            alt={contact.name || 'Patient'}
+                                            alt={!isPlaceholderName(contact.name) && contact.name ? contact.name : formatFullPhone(contact.country_code, contact.phone)}
                                             className="w-10 h-10 rounded-full object-cover"
                                         />
                                     ) : (
@@ -236,7 +237,7 @@ export const AddMembersModal = ({
                                             "text-sm font-medium truncate",
                                             isDarkMode ? 'text-white' : 'text-slate-900'
                                         )}>
-                                            {contact.name || 'Patient'}
+                                            {(!isPlaceholderName(contact.name) && contact.name) ? contact.name : formatFullPhone(contact.country_code, contact.phone)}
                                         </p>
                                         <div className="flex items-center space-x-3 mt-0.5">
                                             <div className="flex items-center space-x-1">
@@ -245,7 +246,7 @@ export const AddMembersModal = ({
                                                     "text-xs",
                                                     isDarkMode ? 'text-white/50' : 'text-slate-500'
                                                 )}>
-                                                    {contact.phone}
+                                                    {formatFullPhone(contact.country_code, contact.phone)}
                                                 </span>
                                             </div>
                                             {contact.email && (

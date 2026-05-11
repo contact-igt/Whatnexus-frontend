@@ -1,4 +1,5 @@
 import { _axios } from "@/helper/axios";
+import type { AxiosProgressEvent } from "axios";
 
 export interface MediaAsset {
   id?: number;
@@ -152,9 +153,9 @@ export const uploadMedia = async (
     "multipart/form-data",
     undefined,
     {
-      onUploadProgress: (event: ProgressEvent) => {
-        if (!event.total || !onProgress) return;
-        const percent = Math.round((event.loaded * 100) / event.total);
+      onUploadProgress: (event: AxiosProgressEvent) => {
+        if (!event?.total || !onProgress) return;
+        const percent = Math.round(((event.loaded ?? 0) * 100) / (event.total as number));
         onProgress(percent);
       },
     },

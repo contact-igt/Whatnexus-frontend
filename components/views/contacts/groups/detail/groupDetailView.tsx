@@ -54,6 +54,7 @@ export const GroupDetailView = () => {
         id: item.contact.contact_id,
         name: item.contact.name,
         phone: item.contact.phone,
+        country_code: item.contact.country_code,
         email: item.contact.email,
         profile_pic: item.contact.profile_pic
     }));
@@ -63,6 +64,7 @@ export const GroupDetailView = () => {
         id: contact.contact_id,
         name: contact.name,
         phone: contact.phone,
+        country_code: contact.country_code,
         email: contact.email,
         profile_pic: contact.profile_pic
     }));

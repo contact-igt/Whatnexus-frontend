@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Contact } from "@/types/contact";
+import { formatFullPhone, isPlaceholderName } from "@/lib/phone";
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { User, Phone } from "lucide-react";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
@@ -100,7 +101,7 @@ export const ContactList = ({
                         "text-sm font-medium",
                         isDarkMode ? 'text-white' : 'text-slate-900'
                     )}>
-                        {row.name || "Patient"}
+                        {(!isPlaceholderName(row.name) && row.name) ? row.name : formatFullPhone(row.country_code, row.phone)}
                     </span>
                 </div>
             )
@@ -116,7 +117,7 @@ export const ContactList = ({
                         "text-sm",
                         isDarkMode ? 'text-white/70' : 'text-slate-600'
                     )}>
-                        +{row.phone}
+                        {formatFullPhone(row.country_code, row.phone)}
                     </span>
                 </div>
             )
@@ -128,7 +129,7 @@ export const ContactList = ({
             align: 'center',
             headerAlign: 'center',
             renderCell: ({ row }) => (
-<ActionMenu
+                <ActionMenu
                     isDarkMode={isDarkMode}
                     isView={false}
                     isEdit={!isTrash && !isRestrictedRole}

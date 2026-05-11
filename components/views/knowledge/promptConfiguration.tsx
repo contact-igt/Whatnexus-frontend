@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { useGetPromptConfigurationQuery, useActivatePromptMutation, useCreatePromptMutation, useDeletedPromptList } from '@/hooks/usePromptQuery';
 import { toast } from "@/lib/toast";
-import { extractTextFromFile } from '@/utils/ocr';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Pagination } from '@/components/ui/pagination';
 
@@ -92,6 +91,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
         }
         setIsUploading(true);
         try {
+            const { extractTextFromFile } = await import('@/utils/ocr');
             const text = await extractTextFromFile(file);
             const fileData = {
                 name: file.name,

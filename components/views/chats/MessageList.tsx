@@ -1,7 +1,9 @@
-import React from 'react';
-import { SearchX, MessageSquareText, FileText, Copy, Download, User, Bot, UserCog, Link, Phone, Reply } from 'lucide-react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { SearchX, MessageSquareText, FileText, Copy, Download, User, Bot, UserCog, Link, Phone, Reply, Mic, Play, Pause } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { MessageStatusTicks, formattedTime } from './ChatUtils';
+import { getWebhookBaseURL } from '@/helper/axios';
+import { store } from '@/redux/store';
 
 // Sender icon component for message bubbles
 const SenderIndicator: React.FC<{ sender: string; senderName?: string; isDarkMode: boolean; isOutgoing: boolean }> = ({ sender, senderName, isDarkMode, isOutgoing }) => {
@@ -194,14 +196,162 @@ const handleDocumentDownload = async (url: string, filename: string) => {
     }
 };
 
-const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boolean }> = ({ msg, searchText, isDarkMode }) => {
+/**
+ * Resolve a media URL for display.
+ * - Real URLs (R2 / CDN) pass through unchanged.
+ * - "meta_media_id:{id}" values → full backend proxy URL.
+ *
+ * WHY token in URL:
+ *   <img>, <video>, <audio> are native browser elements — they cannot set custom
+ *   HTTP headers. Passing the JWT as ?token= is the only way to authenticate these
+ *   direct browser fetches. The backend reads it from the query param before the
+ *   authenticate middleware runs, identical to how presigned S3/R2 URLs work.
+ */
+const resolveMediaUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    if (url.startsWith("meta_media_id:")) {
+        const mediaId = url.replace("meta_media_id:", "");
+        const base = getWebhookBaseURL().replace(/\/$/, "");
+        const token = (store.getState() as any)?.auth?.token || "";
+        return `${base}/api/whatsapp/attachments/proxy?mediaId=${encodeURIComponent(mediaId)}&token=${encodeURIComponent(token)}`;
+    }
+    return url;
+};
+
+// 33-bar waveform pattern — mimics a real voice recording amplitude envelope
+const WAVE_H = [3,5,9,6,12,7,4,10,6,8,4,13,7,5,10,6,11,4,8,5,10,6,3,9,5,8,4,11,6,8,3,5,7];
+
+const CustomAudioPlayer: React.FC<{ src: string; isDarkMode: boolean; isOutgoing: boolean }> = ({
+    src, isDarkMode, isOutgoing,
+}) => {
+    const audioRef               = useRef<HTMLAudioElement>(null);
+    const [playing,  setPlaying] = useState(false);
+    const [current,  setCurrent] = useState(0);
+    const [dur,      setDur]     = useState(0);
+    const [err,      setErr]     = useState(false);
+
+    // Reset all state when src changes (e.g. meta_media_id → R2 URL after async download)
+    useEffect(() => {
+        setErr(false);
+        setPlaying(false);
+        setCurrent(0);
+        setDur(0);
+    }, [src]);
+
+    const fmt = (s: number) => {
+        if (!s || !isFinite(s)) return '0:00';
+        return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+    };
+
+    const toggle = () => {
+        const a = audioRef.current;
+        if (!a) return;
+        playing ? a.pause() : a.play().catch(() => setErr(true));
+    };
+
+    const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const t = +e.target.value;
+        if (audioRef.current) audioRef.current.currentTime = t;
+        setCurrent(t);
+    };
+
+    const pct         = dur > 0 ? (current / dur) * 100 : 0;
+    const displayTime = playing || current > 0 ? current : dur;
+
+    // Colours derived once for clarity
+    const playBtn  = isOutgoing ? 'bg-white/25 hover:bg-white/40' : isDarkMode ? 'bg-[#00a884] hover:bg-[#06cf9c]' : 'bg-[#00a884] hover:bg-[#009073]';
+    const barFill  = isOutgoing ? 'bg-white'      : 'bg-[#00a884]';
+    const barEmpty = isOutgoing ? 'bg-white/30'   : isDarkMode ? 'bg-white/20' : 'bg-black/15';
+    const timeCol  = isOutgoing ? 'text-white/65' : isDarkMode ? 'text-white/45' : 'text-black/40';
+    const micBg    = isOutgoing ? 'bg-white/20'   : isDarkMode ? 'bg-[#00a884]/25' : 'bg-[#00a884]/15';
+    const micCol   = isOutgoing ? 'text-white/90' : 'text-[#00a884]';
+
+    if (err) return (
+        <div className={cn('flex items-center gap-2 text-xs opacity-50', timeCol)}>
+            <Mic size={13} /><span>Audio unavailable</span>
+        </div>
+    );
+
+    return (
+        <div className="flex items-center gap-2 min-w-[220px] max-w-[260px] py-0.5">
+            <audio
+                ref={audioRef} src={src} preload="metadata"
+                onTimeUpdate={() => setCurrent(audioRef.current?.currentTime ?? 0)}
+                onLoadedMetadata={() => setDur(audioRef.current?.duration ?? 0)}
+                onEnded={() => { setPlaying(false); setCurrent(0); }}
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+                onError={() => setErr(true)}
+            />
+
+            {/* Mic avatar circle */}
+            <div className={cn('w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0', micBg)}>
+                <Mic size={16} className={micCol} />
+            </div>
+
+            {/* Waveform column — bars + time label */}
+            <div className="flex-1 flex flex-col gap-[5px]">
+                {/* Bars with invisible seek overlay */}
+                <div className="relative h-[22px]">
+                    <div className="flex items-center gap-[2.5px] h-full">
+                        {WAVE_H.map((h, i) => (
+                            <div
+                                key={i}
+                                style={{ height: `${h}px` }}
+                                className={cn(
+                                    'flex-1 rounded-full transition-colors duration-100',
+                                    (i / WAVE_H.length) * 100 < pct ? barFill : barEmpty,
+                                )}
+                            />
+                        ))}
+                    </div>
+                    {/* Invisible range — captures seek clicks/drags over waveform */}
+                    <input
+                        type="range" min={0} max={dur || 100} step={0.01} value={current}
+                        onChange={seek}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                </div>
+                {/* Time */}
+                <span className={cn('text-[11px] tabular-nums leading-none', timeCol)}>
+                    {fmt(displayTime)}
+                </span>
+            </div>
+
+            {/* Play / Pause button */}
+            <button
+                onClick={toggle}
+                className={cn(
+                    'w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95',
+                    playBtn,
+                )}
+            >
+                {playing
+                    ? <Pause size={16} fill="white" stroke="none" className="text-white" />
+                    : <Play  size={16} fill="white" stroke="none" className="text-white ml-0.5" />
+                }
+            </button>
+        </div>
+    );
+};
+
+const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boolean; isOutgoing: boolean }> = ({ msg, searchText, isDarkMode, isOutgoing }) => {
     const type = msg.message_type;
     const mediaUrl = msg.media_url;
+    // When the proxy URL fails to load (e.g. expired Meta media ID), fall back to the placeholder
+    const [mediaError, setMediaError] = useState(false);
+    // Reset error state if the URL changes (e.g. media-url-updated socket swaps meta_media_id → R2 URL)
+    const prevMediaUrlRef = useRef(mediaUrl);
+    if (prevMediaUrlRef.current !== mediaUrl) {
+        prevMediaUrlRef.current = mediaUrl;
+        if (mediaError) setMediaError(false);
+    }
 
     // Try to extract embedded media from message text (templates store media as "[VIDEO: url]\nBody text")
     const embeddedMedia = extractMediaFromText(msg.message);
     const effectiveType = embeddedMedia?.type || type;
-    const effectiveUrl = embeddedMedia?.url || (mediaUrl && !mediaUrl.startsWith("meta_media_id:") ? mediaUrl : null);
+    const rawUrl = resolveMediaUrl(embeddedMedia?.url || mediaUrl);
+    const effectiveUrl = mediaError ? null : rawUrl;
 
     // Extract buttons from message text
     const hasButtons = msg.message?.includes("[Button:");
@@ -263,6 +413,7 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
                             src={effectiveUrl}
                             alt="Template media"
                             className="w-full max-h-[220px] object-cover"
+                            onError={() => setMediaError(true)}
                         />
                     </div>
                 )}
@@ -282,6 +433,7 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
                             controls
                             className="w-full max-h-[220px] object-cover"
                             preload="metadata"
+                            onError={() => setMediaError(true)}
                         />
                     </div>
                 )}
@@ -347,23 +499,24 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
                     controls
                     className="rounded-lg max-w-full max-h-64 mb-1 w-full"
                     preload="metadata"
+                    onError={() => setMediaError(true)}
                 />
             )}
             {effectiveType === "video" && !effectiveUrl && (
                 <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
                     <span>🎬</span>
-                    <span className="opacity-70">Video</span>
+                    <span className="opacity-70">Video unavailable</span>
                 </div>
             )}
 
             {/* Image */}
             {effectiveType === "image" && effectiveUrl && (
-                <img src={effectiveUrl} alt="media" className="rounded-lg max-w-full max-h-64 mb-1 object-cover" />
+                <img src={effectiveUrl} alt="media" className="rounded-lg max-w-full max-h-64 mb-1 object-cover" onError={() => setMediaError(true)} />
             )}
             {effectiveType === "image" && !effectiveUrl && (
                 <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
                     <span>🖼️</span>
-                    <span className="opacity-70">Image</span>
+                    <span className="opacity-70">Image unavailable</span>
                 </div>
             )}
 
@@ -388,14 +541,14 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
                 </div>
             )}
 
-            {/* Audio */}
+            {/* Audio — WhatsApp-style custom player */}
             {effectiveType === "audio" && effectiveUrl && (
-                <audio src={effectiveUrl} controls className="w-full max-w-xs mb-1" />
+                <CustomAudioPlayer src={effectiveUrl} isDarkMode={isDarkMode} isOutgoing={isOutgoing} />
             )}
             {effectiveType === "audio" && !effectiveUrl && (
                 <div className={cn("flex items-center gap-2 mb-1 px-2 py-2 rounded-lg text-sm", isDarkMode ? "bg-white/10" : "bg-black/5")}>
-                    <span>🎵</span>
-                    <span className="opacity-70">Audio message</span>
+                    <Mic size={14} className="opacity-60 shrink-0" />
+                    <span className="opacity-70">Audio unavailable</span>
                 </div>
             )}
 
@@ -440,8 +593,58 @@ export const MessageList: React.FC<MessageListProps> = ({
     isAiTyping = false,
     highlightWamid
 }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearHighlight = useCallback((el: HTMLElement) => {
+        el.style.transition = 'background-color 0.6s ease, box-shadow 0.6s ease';
+        el.style.backgroundColor = '';
+        el.style.boxShadow = '';
+        el.style.borderRadius = '';
+    }, []);
+
+    useEffect(() => {
+        if (!highlightWamid || !containerRef.current) return;
+
+        // Delay to let React finish painting messages into the DOM
+        const timer = setTimeout(() => {
+            if (!containerRef.current) return;
+            const el = containerRef.current.querySelector<HTMLElement>(
+                `[data-wamid="${CSS.escape(highlightWamid)}"]`
+            );
+            if (!el) return;
+
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Phase 1: bright yellow flash
+            el.style.transition = 'none';
+            el.style.backgroundColor = 'rgba(253, 224, 71, 0.6)';
+            el.style.boxShadow = '0 0 0 3px rgb(234 179 8), 0 0 28px 6px rgba(253,224,71,0.45)';
+            el.style.borderRadius = '10px';
+
+            // Phase 2: soften after 400ms
+            const softenTimer = setTimeout(() => {
+                el.style.transition = 'background-color 0.5s ease, box-shadow 0.5s ease';
+                el.style.backgroundColor = 'rgba(253, 224, 71, 0.22)';
+                el.style.boxShadow = '0 0 0 2px rgb(250 204 21)';
+            }, 400);
+
+            // Phase 3: fade out fully after 3.5s
+            if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+            highlightTimerRef.current = setTimeout(() => {
+                clearTimeout(softenTimer);
+                clearHighlight(el);
+            }, 3500);
+        }, 250);
+
+        return () => {
+            clearTimeout(timer);
+            if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+        };
+    }, [highlightWamid, groupedEntries, clearHighlight]);
+
     return (
-        <div className={cn(
+        <div ref={containerRef} className={cn(
             "flex-1 overflow-y-auto px-10 py-4 space-y-2 relative",
             isDarkMode ? "bg-[#0b141a]" : "bg-[#efeae2]"
         )}
@@ -503,7 +706,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                             const msgTemplateButtons = isTemplate ? extractButtonsFromText(msg.message || '') : [];
 
                             return (
-                                <div key={msg.id || msgIndex} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
+                                <div key={msg.id || msgIndex} data-wamid={msg.wamid || undefined} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
                                     <div className={isTemplate ? "w-full max-w-[320px]" : "max-w-[85%]"}>
                                         {/* Message Bubble */}
                                         <div className={cn(
@@ -519,7 +722,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                                                 isDarkMode={isDarkMode}
                                                 isOutgoing={isOutgoing}
                                             />
-                                            <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} />
+                                            <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} isOutgoing={isOutgoing} />
                                             <div className={cn(
                                                 "flex items-center justify-end space-x-1 opacity-60",
                                                 isTemplate ? "px-1 pb-0.5 pt-1" : ""

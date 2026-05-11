@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   // reactCompiler: true,
+  transpilePackages: ['lamejs'],
 
   // experimental: {
     // Optimize package imports for better tree-shaking and faster builds
