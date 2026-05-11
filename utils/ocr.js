@@ -1,12 +1,23 @@
-"use client";
+let _pdfjsLib;
+let _tesseract;
 
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
-import { createWorker } from "tesseract.js";
+async function getPdfJs() {
+  if (!_pdfjsLib) {
+    _pdfjsLib = await import("pdfjs-dist/legacy/build/pdf");
+    _pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
+  }
+  return _pdfjsLib;
+}
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+async function getTesseract() {
+  if (!_tesseract) {
+    _tesseract = await import("tesseract.js");
+  }
+  return _tesseract;
+}
 
 export async function extractTextFromFile(file) {
   if (file.type.startsWith("image/")) {
@@ -21,6 +32,7 @@ export async function extractTextFromFile(file) {
 }
 
 async function imageOCR(file) {
+  const { createWorker } = await getTesseract();
   const worker = await createWorker("eng");
   const { data } = await worker.recognize(file);
   await worker.terminate();
@@ -29,6 +41,8 @@ async function imageOCR(file) {
 
 async function pdfOCR(file) {
   const buffer = await file.arrayBuffer();
+  const pdfjsLib = await getPdfJs();
+  const { createWorker } = await getTesseract();
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   const worker = await createWorker("eng");
   let fullText = "";
