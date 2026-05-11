@@ -125,7 +125,7 @@ axiosInstance.interceptors.request.use(
         }
       }
 
-      if (!config.headers) config.headers = {};
+      if (!config.headers) config.headers = {} as any;
 
       // Skip auth header when explicitly requested
       if (!config.headers["x-skip-auth"] && token) {
@@ -236,7 +236,7 @@ async function performTokenRefresh(refreshToken: string): Promise<string | null>
     // Keep current user info in store
     const currentUser = store.getState().auth.user;
     store.dispatch(
-      setAuthData({ token: accessToken, refreshToken: newRefreshToken, user: currentUser }),
+      setAuthData({ token: accessToken, refreshToken: newRefreshToken, user: currentUser as any }),
     );
     return accessToken;
   } catch (err) {
