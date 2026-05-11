@@ -2,7 +2,10 @@ import { _axios } from "@/helper/axios";
 
 export interface SendMessageData {
   phone: string;
-  message: string;
+  message?: string;
+  contact_id?: string;
+  name?: string;
+  phone_number_id?: string;
 }
 
 export class MessagesApiData {
@@ -24,7 +27,8 @@ export class MessagesApiData {
 
   };
 
-  addMessage = async (data: SendMessageData) => {
+  addMessage = async (data: SendMessageData | FormData) => {
+    // _axios auto-detects FormData and omits Content-Type so the browser sets the boundary
     return await _axios("post", "/whatsapp/chats/send", data);
   };
 

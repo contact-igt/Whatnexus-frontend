@@ -116,11 +116,11 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
     const [downloadingStatus, setDownloadingStatus] = useState<'all' | RecipientStatus | null>(null);
 
     const statistics = campaign ? calculateCampaignStatistics(campaign) : null;
-    // Use stats API for accurate counts instead of preview-limited recipients array
-    const sentCount = stats?.total_sent ?? recipients.filter((recipient) => ['sent', 'delivered', 'read'].includes(recipient.status)).length;
+    // Prefer backend-provided aggregates when available (added: sent_count, failed_count)
+    const sentCount = campaign?.sent_count ?? stats?.total_sent ?? recipients.filter((recipient) => ['sent', 'delivered', 'read'].includes(recipient.status)).length;
     const deliveredCount = stats?.total_delivered ?? statistics?.delivered_count ?? recipients.filter((recipient) => ['delivered', 'read'].includes(recipient.status)).length;
     const readCount = stats?.total_opened ?? statistics?.read_count ?? recipients.filter((recipient) => recipient.status === 'read').length;
-    const failedCount = stats?.status_counts?.failed ?? recipients.filter((recipient) => ['failed', 'permanently_failed'].includes(recipient.status)).length;
+    const failedCount = campaign?.failed_count ?? stats?.status_counts?.failed ?? recipients.filter((recipient) => ['failed', 'permanently_failed'].includes(recipient.status)).length;
     // Use backend-provided error message instead of deriving from 100-row preview
     const failedErrorMessage = stats?.latest_failed_error ?? recipients.find((recipient) => ['failed', 'permanently_failed'].includes(recipient.status) && recipient.error_message?.trim())?.error_message?.trim() ?? null;
     const statusCounts = stats?.status_counts;
@@ -359,23 +359,7 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                             )}
                         </div>
 
-                        {refreshStatus && (
-                            <div className={cn(
-                                'flex items-center gap-3 rounded-2xl border px-3.5 py-2 shadow-sm backdrop-blur-sm transition-all',
-                                'delivery-update-indicator',
-                                refreshStatus.tone
-                            )}>
-                                <div className={cn('flex items-center justify-center w-6 h-6 rounded-full shrink-0', refreshStatus.iconWrapTone)}>
-                                    {refreshStatus.icon}
-                                </div>
-                                <div className="flex flex-col leading-tight">
-                                    <span className="text-[11px] font-semibold">{refreshStatus.label}</span>
-                                    <span className={cn('text-[10px] line-clamp-2', refreshStatus.noteTone)}>
-                                        {refreshStatus.note}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                        {/* refreshStatus badge removed per UI request */}
 
                         {/* {lastUpdatedAt && (
                             <p className={cn('text-[11px]', isDarkMode ? 'text-white/35' : 'text-slate-500')}>
@@ -431,6 +415,50 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                             </p>
                         </GlassCard>
 
+                        {/* Sent */}
+                        <GlassCard isDarkMode={isDarkMode} className="p-6 bg-emerald-500/5 border-emerald-500/20">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                                    SENT
+                                </span>
+                                <Send size={16} className="text-emerald-500" />
+                            </div>
+                            <p className="text-3xl font-bold text-emerald-500">
+                                {Number(sentCount || 0).toLocaleString()}
+                            </p>
+                            <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                {Number(sentCount || 0).toLocaleString()} of {Number(totalAudienceCount || 0).toLocaleString()} total
+                            </p>
+                            <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-emerald-500 transition-all duration-500"
+                                    style={{ width: `${Math.min(100, Math.round(((sentCount || 0) / Math.max(1, totalAudienceCount)) * 100))}%` }}
+                                />
+                            </div>
+                        </GlassCard>
+
+                        {/* Failed */}
+                        <GlassCard isDarkMode={isDarkMode} className="p-6 bg-red-500/5 border-red-500/20">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
+                                    FAILED
+                                </span>
+                                <AlertTriangle size={16} className="text-red-500" />
+                            </div>
+                            <p className={cn("text-3xl font-bold", failedCount > 0 ? 'text-red-500' : (isDarkMode ? 'text-white/40' : 'text-slate-500'))}>
+                                {Number(failedCount || 0).toLocaleString()}
+                            </p>
+                            <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                {Number(failedCount || 0).toLocaleString()} permanently failed
+                            </p>
+                            <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                    className={cn('h-full transition-all duration-500', failedCount > 0 ? 'bg-red-500' : (isDarkMode ? 'bg-white/10' : 'bg-slate-300'))}
+                                    style={{ width: `${Math.min(100, Math.round(((failedCount || 0) / Math.max(1, totalAudienceCount)) * 100))}%` }}
+                                />
+                            </div>
+                        </GlassCard>
+
                         {/* Delivered */}
                         <GlassCard isDarkMode={isDarkMode} className="p-6 bg-emerald-500/5 border-emerald-500/20">
                             <div className="flex items-center justify-between mb-3">
@@ -464,6 +492,9 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                             <p className="text-3xl font-bold text-blue-500">
                                 {statistics.read_percentage}%
                             </p>
+                            <p className={cn("text-xs mt-1 font-medium", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                Open Rate: {stats?.open_rate ?? 0}%
+                            </p>
                             <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 {statistics.read_count.toLocaleString()} messages
                             </p>
@@ -486,6 +517,9 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                             <p className="text-3xl font-bold text-purple-500">
                                 {statistics.replied_percentage}%
                             </p>
+                            <p className={cn("text-xs mt-1 font-medium", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
+                                Click Rate: {stats?.click_rate ?? 0}%
+                            </p>
                             <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
                                 {statistics.replied_count.toLocaleString()} messages
                             </p>
@@ -495,38 +529,6 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                                     style={{ width: `${statistics.replied_percentage}%` }}
                                 />
                             </div>
-                        </GlassCard>
-
-                        {/* Open Rate */}
-                        <GlassCard isDarkMode={isDarkMode} className="p-6 bg-cyan-500/5 border-cyan-500/20">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-cyan-500">
-                                    Open Rate
-                                </span>
-                                <Eye size={16} className="text-cyan-500" />
-                            </div>
-                            <p className="text-3xl font-bold text-cyan-500">
-                                {stats?.open_rate ?? 0}%
-                            </p>
-                            <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                {stats?.total_opened ?? 0} opened
-                            </p>
-                        </GlassCard>
-
-                        {/* Click Rate */}
-                        <GlassCard isDarkMode={isDarkMode} className="p-6 bg-amber-500/5 border-amber-500/20">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-amber-500">
-                                    Click Rate
-                                </span>
-                                <MessageCircle size={16} className="text-amber-500" />
-                            </div>
-                            <p className="text-3xl font-bold text-amber-500">
-                                {stats?.click_rate ?? 0}%
-                            </p>
-                            <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                                {stats?.total_clicked ?? 0} clicked
-                            </p>
                         </GlassCard>
                     </div>
                 )}
@@ -602,7 +604,7 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left min-w-[900px]">
+                        <table className="w-full text-left">
                             <thead>
                                 <tr className={cn("text-[10px] font-bold uppercase tracking-wider border-b", isDarkMode ? 'text-white/30 border-white/5' : 'text-slate-400 border-slate-200')}>
                                     <th className="px-4 py-3">Mobile Number</th>

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { GroupMember } from "@/types/contactGroup";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TablePagination } from "@/components/ui/table";
 import { User, Mail, Phone, Search, X } from "lucide-react";
+import { formatFullPhone, isPlaceholderName } from "@/lib/phone";
 
 interface GroupMembersListProps {
     isDarkMode: boolean;
@@ -179,7 +180,7 @@ export const GroupMembersList = ({
                                                     "text-sm font-medium",
                                                     isDarkMode ? 'text-white' : 'text-slate-900'
                                                 )}>
-                                                    {member.name || "Patient"}
+                                                    {(!isPlaceholderName(member.name) && member.name) ? member.name : formatFullPhone(member.country_code, member.phone)}
                                                 </span>
                                             </div>
                                         </TableCell>
@@ -190,7 +191,7 @@ export const GroupMembersList = ({
                                                     "text-sm",
                                                     isDarkMode ? 'text-white/70' : 'text-slate-600'
                                                 )}>
-                                                    {member.phone}
+                                                    {formatFullPhone(member.country_code, member.phone)}
                                                 </span>
                                             </div>
                                         </TableCell>

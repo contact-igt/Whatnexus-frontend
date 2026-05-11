@@ -2,6 +2,7 @@ export interface GroupMemberContact {
     contact_id: string;
     name: string;
     phone: string;
+    country_code?: string;
     email?: string;
     profile_pic?: string | null;
 }
@@ -16,6 +17,7 @@ export interface GroupMember {
     id: string; // contact_id
     name: string;
     phone: string;
+    country_code?: string;
     email?: string;
     profile_pic?: string | null;
 }

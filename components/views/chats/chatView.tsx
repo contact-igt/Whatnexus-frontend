@@ -74,6 +74,7 @@ export const ChatView = () => {
     const [isSummarizing, setIsSummarizing] = useState(false);
     const { mutate: updateSeenMutate } = useUpdateSeenMutation();
     const [message, setMessage] = useState<string>("");
+    const [attachments, setAttachments] = useState<File[]>([]);
     const [isWeeklySummaryOpen, setIsWeeklySummaryOpen] = useState(false);
     const [isNeuralSummarySidebarOpen, setIsNeuralSummarySidebarOpen] = useState(false);
 
@@ -138,6 +139,7 @@ export const ChatView = () => {
             last_message_time: chat?.last_message_time,
         });
         setMessage("");
+        setAttachments([]);
         setChatSummary(null);
         router.replace(`?phone=${chat.phone}`, { scroll: false });
     };
@@ -175,18 +177,48 @@ export const ChatView = () => {
         }, {});
     };
 
-    const handleSendMessage = () => {
-        if (!message.trim() || isPending) return;
+    const handleVoiceSend = (file: File) => {
+        if (!selectedChat) return;
+        const fd = new FormData();
+        fd.append("phone", selectedChat.phone ?? "");
+        fd.append("contact_id", selectedChat.contact_id ?? "");
+        fd.append("name", selectedChat.name ?? selectedChat.phone ?? "");
+        fd.append("phone_number_id", whatsappApiDetails?.phone_number_id ?? "");
+        fd.append("files", file);
+        sendMessageMutate(fd as any);
+    };
 
-        const messageText = message.trim();
-        sendMessageMutate({
-            phone: selectedChat?.phone,
-            name: selectedChat?.name,
-            message: messageText,
-            contact_id: selectedChat?.contact_id,
-            phone_number_id: whatsappApiDetails?.phone_number_id
-        });
-        setMessage("");
+    const handleSendMessage = () => {
+        const hasText = message.trim().length > 0;
+        const hasFiles = attachments.length > 0;
+        if ((!hasText && !hasFiles) || isPending) return;
+
+        if (hasFiles) {
+            // Send one WhatsApp message per file (WhatsApp supports one media per message)
+            attachments.forEach((file, idx) => {
+                const fd = new FormData();
+                fd.append("phone", selectedChat?.phone ?? "");
+                fd.append("contact_id", selectedChat?.contact_id ?? "");
+                fd.append("name", selectedChat?.name ?? selectedChat?.phone ?? "");
+                fd.append("phone_number_id", whatsappApiDetails?.phone_number_id ?? "");
+                // Caption only on the first file if the admin also typed a message
+                if (idx === 0 && hasText) fd.append("message", message.trim());
+                fd.append("files", file);
+                sendMessageMutate(fd as any);
+            });
+            setAttachments([]);
+            setMessage("");
+        } else {
+            // Text-only path — unchanged behaviour
+            sendMessageMutate({
+                phone: selectedChat?.phone,
+                name: selectedChat?.name,
+                message: message.trim(),
+                contact_id: selectedChat?.contact_id,
+                phone_number_id: whatsappApiDetails?.phone_number_id,
+            });
+            setMessage("");
+        }
     }
 
     useEffect(() => {
@@ -525,9 +557,25 @@ export const ChatView = () => {
             });
         };
 
+        // Swap meta_media_id placeholder with permanent R2 URL once async download completes
+        const handleMediaUrlUpdated = (data: { messageId: number; media_url: string }) => {
+            setNewMessage(prev =>
+                prev.map(m =>
+                    m.id === data.messageId
+                        ? { ...m, media_url: data.media_url }
+                        : m
+                )
+            );
+            // Also invalidate the persisted query so history refreshes on next mount
+            if (selectedChatRef.current?.phone) {
+                queryClient.invalidateQueries({ queryKey: ["messages", selectedChatRef.current.phone] });
+            }
+        };
+
         // Register listeners first
         socket.on("connect", handleConnect);
         socket.on("new-message", handleIncomingMessage);
+        socket.on("media-url-updated", handleMediaUrlUpdated);
         socket.on("ai-typing", handleAiTyping);
         socket.on("message-status-update", handleMessageStatusUpdate);
         socket.on("chat-assignment-updated", handleChatAssignment);
@@ -544,6 +592,7 @@ export const ChatView = () => {
         return () => {
             socket.off("connect", handleConnect);
             socket.off("new-message", handleIncomingMessage);
+            socket.off("media-url-updated", handleMediaUrlUpdated);
             socket.off("ai-typing", handleAiTyping);
             socket.off("message-status-update", handleMessageStatusUpdate);
             socket.off("chat-assignment-updated", handleChatAssignment);
@@ -744,6 +793,9 @@ export const ChatView = () => {
                                 handleInputChange={handleInputChange}
                                 handleSendMessage={handleSendMessage}
                                 isPending={isPending}
+                                attachments={attachments}
+                                onAttachmentsChange={setAttachments}
+                                onVoiceSend={handleVoiceSend}
                             />
                         </>
                     ) : (
