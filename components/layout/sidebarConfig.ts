@@ -29,7 +29,8 @@ import {
     Landmark,
     UserPlus,
     DollarSign,
-    Image
+    Image,
+    BookOpen
 
 } from 'lucide-react';
 
@@ -159,6 +160,13 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Doctors",
                 route: "/doctors",
                 icon: Stethoscope,
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Courses",
+                route: "/courses",
+                icon: BookOpen,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }
