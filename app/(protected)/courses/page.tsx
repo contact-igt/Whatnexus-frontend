@@ -207,14 +207,14 @@ const SESSIONS: Session[] = [
 ];
 
 const T = {
-  bg:      "#0D1117",
+  bg:      "#000000",
   card:    "#000000",
-  input:   "#0D1117",
-  border:  "#1F2937",
-  borderH: "#374151",
-  text:    "#F9FAFB",
-  sub:     "#9CA3AF",
-  muted:   "#6B7280",
+  input:   "rgba(255,255,255,0.05)",
+  border:  "rgba(255,255,255,0.10)",
+  borderH: "rgba(255,255,255,0.16)",
+  text:    "#FFFFFF",
+  sub:     "rgba(255,255,255,0.60)",
+  muted:   "rgba(255,255,255,0.45)",
   green:   "#059669",
   greenL:  "#10B981",
   greenV:  "#34D399",
@@ -228,36 +228,36 @@ const T = {
 ══════════════════════════════════════════════════════════════ */
 const inputStyle: React.CSSProperties = {
   background: T.input, border: `1px solid ${T.borderH}`,
-  borderRadius: 8, color: T.text, padding: "10px 12px",
-  fontSize: 13, width: "100%", outline: "none", boxSizing: "border-box",
+  borderRadius: 12, color: T.text, padding: "10px 14px",
+  fontSize: 14, width: "100%", outline: "none", boxSizing: "border-box",
 };
 const selectStyle: React.CSSProperties = {
   background: T.input, border: `1px solid ${T.borderH}`,
-  borderRadius: 8, color: T.text, padding: "10px 12px",
-  fontSize: 13, outline: "none",
+  borderRadius: 12, color: T.text, padding: "10px 14px",
+  fontSize: 14, outline: "none",
 };
 const drawerFieldStyle: React.CSSProperties = {
-  background: "#0A101A",
-  border: "1px solid #243246",
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
   color: T.text,
-  padding: "12px 14px",
+  padding: "10px 14px",
   fontSize: 14,
   width: "100%",
   outline: "none",
-  minHeight: 46,
+  minHeight: 42,
   boxSizing: "border-box",
 };
 const drawerLabelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: 13,
+  fontSize: 12,
   fontWeight: 600,
-  color: "#E5E7EB",
+  color: "rgba(255,255,255,0.70)",
   marginBottom: 8,
 };
 const drawerSectionTitleStyle: React.CSSProperties = {
-  fontSize: 24,
-  fontWeight: 700,
+  fontSize: 14,
+  fontWeight: 600,
   color: T.text,
   margin: "0 0 14px",
 };
@@ -278,7 +278,7 @@ const btnGhost: React.CSSProperties = {
 const iconBtnStyle = (danger = false): React.CSSProperties => ({
   border: "none", borderRadius: 6, width: 28, height: 28,
   cursor: "pointer", display: "flex", alignItems: "center",
-  justifyContent: "center", background: "rgba(0,0,0,0.45)",
+  justifyContent: "center", background: "rgba(255,255,255,0.06)",
   color: danger ? T.redT : "#fff",
 });
 
@@ -316,7 +316,7 @@ function SkeletonCard() {
       </div>
       <div style={{ padding: 16 }}>
         {[60, 90, 70].map((w, i) => (
-          <div key={i} style={{ height: 10, borderRadius: 6, background: "#1F2937", marginBottom: 12, width: `${w}%` }} />
+          <div key={i} style={{ height: 10, borderRadius: 6, background: "rgba(255,255,255,0.10)", marginBottom: 12, width: `${w}%` }} />
         ))}
       </div>
     </div>
@@ -333,14 +333,15 @@ function Modal({
   maxWidth?: number;
 }) {
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", animation: "fadeIn 0.3s ease-out" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.60)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 99999, display: "flex", animation: "fadeIn 0.3s ease-out" }}>
       <div onClick={e => e.stopPropagation()} className="right-drawer" style={{ 
         position: "absolute", 
         right: 0, 
         top: 0, 
         height: "100vh", 
-        background: T.card, 
+        background: "#000000", 
         borderLeft: `1px solid ${T.borderH}`,
+        boxShadow: "0 25px 80px rgba(0,0,0,0.45)",
         width: "100%",
         maxWidth,
         overflowY: "auto",
@@ -365,7 +366,7 @@ function ModalHeader({
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22, gap: 12 }}>
       <div>
-        <span style={{ fontSize: 35, fontWeight: 700, lineHeight: 1.2 }}>{title}</span>
+        <span style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.2 }}>{title}</span>
         {subtitle && <p style={{ margin: "8px 0 0", fontSize: 14, color: T.sub }}>{subtitle}</p>}
       </div>
       <button onClick={onClose} style={{ background: "none", border: "none", color: T.sub, cursor: "pointer", display: "flex", padding: 4 }}>
@@ -562,7 +563,7 @@ function MentorForm({ initial, onSave, onClose, loading }: {
   return (
     <>
       <ModalHeader title={initial?.id ? "Edit Mentor" : "Add Mentor"} onClose={onClose} />
-      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#0D1117", borderRadius: 10, border: `1px solid ${T.border}`, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: T.input, borderRadius: 10, border: `1px solid ${T.border}`, marginBottom: 20 }}>
         <div style={{ width: 52, height: 52, borderRadius: "50%", background: f.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18, color: "#fff", flexShrink: 0 }}>
           {getInitials(f.name)}
         </div>
@@ -752,10 +753,10 @@ export default function CoursesPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; }
-        select option { background: #111827; color: #F9FAFB; }
+        select option { background: #000000; color: #F9FAFB; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.20); border-radius: 3px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -822,7 +823,7 @@ export default function CoursesPage() {
                       borderRadius: "6px 6px 0 0", transition: "all 0.15s",
                     }}>
                     {st}
-                    <span style={{ background: tab === st ? T.green : "#1F2937", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 10, marginLeft: 6, fontWeight: 700 }}>
+                    <span style={{ background: tab === st ? T.green : "rgba(255,255,255,0.14)", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 10, marginLeft: 6, fontWeight: 700 }}>
                       {tabCount(st)}
                     </span>
                   </button>
@@ -933,7 +934,7 @@ export default function CoursesPage() {
                                 <span>Completion</span>
                                 <span style={{ fontWeight: 700, color: T.greenL }}>{course.completion ?? 0}%</span>
                               </div>
-                              <div style={{ height: 5, background: "#1F2937", borderRadius: 99, overflow: "hidden" }}>
+                              <div style={{ height: 5, background: "rgba(255,255,255,0.12)", borderRadius: 99, overflow: "hidden" }}>
                                 <div style={{ height: "100%", width: `${course.completion ?? 0}%`, background: `linear-gradient(90deg,${T.green},${T.greenV})`, borderRadius: 99, transition: "width 0.4s" }} />
                               </div>
                             </div>
@@ -977,7 +978,7 @@ export default function CoursesPage() {
                         borderRadius: "6px 6px 0 0", transition: "all 0.15s",
                       }}>
                       {t}
-                      <span style={{ background: sessionTab === t ? T.green : "#1F2937", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 10, marginLeft: 6, fontWeight: 700 }}>
+                      <span style={{ background: sessionTab === t ? T.green : "rgba(255,255,255,0.14)", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 10, marginLeft: 6, fontWeight: 700 }}>
                         {sessionTabCount(t)}
                       </span>
                     </button>
@@ -1069,7 +1070,7 @@ export default function CoursesPage() {
 
                           {/* Meeting link row (upcoming only) */}
                           {session.tab === "Upcoming" && (
-                            <div style={{ marginBottom: 16, padding: "9px 12px", background: "#0D1117", borderRadius: 8, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+                            <div style={{ marginBottom: 16, padding: "9px 12px", background: T.input, borderRadius: 8, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
                               <Icon.ExternalLink style={{ color: T.muted, flexShrink: 0 }} />
                               {showLink ? (
                                 <a href={session.meetingLink} target="_blank" rel="noopener noreferrer"
@@ -1140,7 +1141,7 @@ export default function CoursesPage() {
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} style={{ ...cardStyle, padding: 20 }}>
                       {[50, 70, 100].map((w, j) => (
-                        <div key={j} style={{ height: 12, borderRadius: 6, background: "#1F2937", marginBottom: 12, width: `${w}%` }} />
+                        <div key={j} style={{ height: 12, borderRadius: 6, background: "rgba(255,255,255,0.10)", marginBottom: 12, width: `${w}%` }} />
                       ))}
                     </div>
                   ))}
@@ -1163,11 +1164,11 @@ export default function CoursesPage() {
                       >
                         <div style={{ position: "absolute", top: 14, right: 14, display: "flex", gap: 6 }}>
                           <button onClick={() => setMentorModal({ type: "edit", mentor })}
-                            style={{ ...iconBtnStyle(), background: "#1F2937", color: T.sub }} title="Edit">
+                            style={{ ...iconBtnStyle(), background: "rgba(255,255,255,0.06)", color: T.sub }} title="Edit">
                             <Icon.Pencil />
                           </button>
                           <button onClick={() => setMentorModal({ type: "delete", mentor })}
-                            style={{ ...iconBtnStyle(true), background: "#1F2937" }} title="Delete">
+                            style={{ ...iconBtnStyle(true), background: "rgba(255,255,255,0.06)" }} title="Delete">
                             <Icon.Trash />
                           </button>
                         </div>
@@ -1183,11 +1184,11 @@ export default function CoursesPage() {
                         </div>
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          <div style={{ background: "#0D1117", borderRadius: 8, padding: "10px 14px", textAlign: "center" }}>
+                          <div style={{ background: T.input, borderRadius: 8, padding: "10px 14px", textAlign: "center" }}>
                             <div style={{ fontSize: 22, fontWeight: 700 }}>{assignedCount}</div>
                             <div style={{ fontSize: 10, color: T.muted, marginTop: 2 }}>Courses</div>
                           </div>
-                          <div style={{ background: "#0D1117", borderRadius: 8, padding: "10px 14px", textAlign: "center" }}>
+                          <div style={{ background: T.input, borderRadius: 8, padding: "10px 14px", textAlign: "center" }}>
                             <div style={{ fontSize: 18, fontWeight: 700, color: T.yellow, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
                               <Icon.Star style={{ color: T.yellow }} />{mentor.rating}
                             </div>
