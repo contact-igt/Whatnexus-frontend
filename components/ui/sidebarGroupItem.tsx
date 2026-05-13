@@ -11,6 +11,7 @@ interface SidebarGroupItemProps {
     onClick?: () => void;
     label: string;
     route: string;
+    matchMode?: 'exact' | 'prefix';
     isDarkMode?: boolean;
     isExpanded?: boolean;
     isDisabled?: boolean;
@@ -21,6 +22,7 @@ interface SidebarGroupItemProps {
 export const SidebarGroupItem = ({
     icon: Icon,
     route,
+    matchMode = 'prefix',
     onClick,
     label,
     isDarkMode = true,
@@ -30,7 +32,9 @@ export const SidebarGroupItem = ({
     notificationCount = 0,
 }: SidebarGroupItemProps) => {
     const pathname = usePathname();
-    const active = pathname === route || pathname.startsWith(route + "/");
+    const active = matchMode === 'exact'
+        ? pathname === route
+        : pathname === route || pathname.startsWith(route + "/");
     const hasNotificationCount = !isDisabled && notificationCount > 0;
 
     const handleClick = (e: React.MouseEvent) => {

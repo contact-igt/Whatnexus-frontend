@@ -285,6 +285,7 @@ export const GroupedSidebar = () => {
                                                 icon={item.icon}
                                                 label={item.label}
                                                 route={item.route}
+                                                matchMode={item.matchMode}
                                                 onClick={() => handleActiveTab(item.route)}
                                                 isDarkMode={isDarkMode}
                                                 isExpanded={isExpanded}

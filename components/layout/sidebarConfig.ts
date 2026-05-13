@@ -30,7 +30,8 @@ import {
     UserPlus,
     DollarSign,
     Image,
-    BookOpen
+    BookOpen,
+    Video
 
 } from 'lucide-react';
 
@@ -41,6 +42,7 @@ export interface SidebarItem {
     requiresWhatsApp?: boolean;
     requiresLocal?: boolean;
     roles?: string[];
+    matchMode?: 'exact' | 'prefix';
 }
 
 export interface SidebarGroup {
@@ -150,23 +152,41 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         groupLabel: "Team Management",
         items: [
             {
-                label: "Agent Matrix",
-                route: "/team",
-                icon: Users2,
-                requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
-            },
-            {
                 label: "Doctors",
                 route: "/doctors",
                 icon: Stethoscope,
                 requiresWhatsApp: false,
+                matchMode: 'exact',
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             },
             {
                 label: "Courses",
                 route: "/courses",
                 icon: BookOpen,
+                requiresWhatsApp: false,
+                matchMode: 'exact',
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Sessions",
+                route: "/courses/sessions",
+                icon: Video,
+                requiresWhatsApp: false,
+                matchMode: 'exact',
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Mentors",
+                route: "/courses/mentors",
+                icon: UserCircle,
+                requiresWhatsApp: false,
+                matchMode: 'exact',
+                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Agent Matrix",
+                route: "/team",
+                icon: Users2,
                 requiresWhatsApp: false,
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
             }

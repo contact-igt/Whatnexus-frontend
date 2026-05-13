@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import type {
   Course,
   Mentor,
@@ -235,6 +236,31 @@ const selectStyle: React.CSSProperties = {
   borderRadius: 8, color: T.text, padding: "10px 12px",
   fontSize: 13, outline: "none",
 };
+const drawerFieldStyle: React.CSSProperties = {
+  background: "#0A101A",
+  border: "1px solid #243246",
+  borderRadius: 12,
+  color: T.text,
+  padding: "12px 14px",
+  fontSize: 14,
+  width: "100%",
+  outline: "none",
+  minHeight: 46,
+  boxSizing: "border-box",
+};
+const drawerLabelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "#E5E7EB",
+  marginBottom: 8,
+};
+const drawerSectionTitleStyle: React.CSSProperties = {
+  fontSize: 24,
+  fontWeight: 700,
+  color: T.text,
+  margin: "0 0 14px",
+};
 const cardStyle: React.CSSProperties = {
   background: T.card, border: `1px solid ${T.border}`, borderRadius: 14,
 };
@@ -297,7 +323,15 @@ function SkeletonCard() {
   );
 }
 
-function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+function Modal({
+  onClose,
+  children,
+  maxWidth = 480,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+  maxWidth?: number;
+}) {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", animation: "fadeIn 0.3s ease-out" }}>
       <div onClick={e => e.stopPropagation()} className="right-drawer" style={{ 
@@ -308,9 +342,9 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
         background: T.card, 
         borderLeft: `1px solid ${T.borderH}`,
         width: "100%",
-        maxWidth: 480,
+        maxWidth,
         overflowY: "auto",
-        padding: 28,
+        padding: 26,
         animation: "slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
         {children}
@@ -319,10 +353,21 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
   );
 }
 
-function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
+function ModalHeader({
+  title,
+  subtitle,
+  onClose,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+}) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
-      <span style={{ fontSize: 17, fontWeight: 700 }}>{title}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22, gap: 12 }}>
+      <div>
+        <span style={{ fontSize: 35, fontWeight: 700, lineHeight: 1.2 }}>{title}</span>
+        {subtitle && <p style={{ margin: "8px 0 0", fontSize: 14, color: T.sub }}>{subtitle}</p>}
+      </div>
       <button onClick={onClose} style={{ background: "none", border: "none", color: T.sub, cursor: "pointer", display: "flex", padding: 4 }}>
         <Icon.X />
       </button>
@@ -363,45 +408,136 @@ function CourseForm({ initial, mentors, onSave, onClose, loading }: {
 
   return (
     <>
-      <ModalHeader title={initial?.id ? "Edit Course" : "Add Course"} onClose={onClose} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <input placeholder="Course Title *" style={inputStyle} value={f.title} onChange={e => upd("title", e.target.value)} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <select style={selectStyle} value={f.category} onChange={e => upd("category", e.target.value as Category)}>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-          </select>
-          <select style={selectStyle} value={f.level} onChange={e => upd("level", e.target.value as Level)}>
-            {LEVELS.map(l => <option key={l}>{l}</option>)}
-          </select>
+      <ModalHeader
+        title={initial?.id ? "Edit Course" : "Add Course"}
+        subtitle={initial?.id ? "Update course details and enrollment links." : "Add a new course to your catalog."}
+        onClose={onClose}
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div>
+          <h3 style={drawerSectionTitleStyle}>Basic Information</h3>
+          <div style={{ display: "grid", gap: 14 }}>
+            <div>
+              <label style={drawerLabelStyle}>Course Title <span style={{ color: T.redT }}>*</span></label>
+              <input
+                placeholder="Enter course title"
+                style={drawerFieldStyle}
+                value={f.title}
+                onChange={e => upd("title", e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={drawerLabelStyle}>Category <span style={{ color: T.redT }}>*</span></label>
+                <select style={drawerFieldStyle} value={f.category} onChange={e => upd("category", e.target.value as Category)}>
+                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={drawerLabelStyle}>Level <span style={{ color: T.redT }}>*</span></label>
+                <select style={drawerFieldStyle} value={f.level} onChange={e => upd("level", e.target.value as Level)}>
+                  {LEVELS.map(l => <option key={l}>{l}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={drawerLabelStyle}>Mentor</label>
+              <select style={drawerFieldStyle} value={f.mentorId} onChange={e => upd("mentorId", e.target.value)}>
+                <option value="">No mentor assigned</option>
+                {mentors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={drawerLabelStyle}>Lessons <span style={{ color: T.redT }}>*</span></label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  style={drawerFieldStyle}
+                  value={f.lessons}
+                  onChange={e => upd("lessons", e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <label style={drawerLabelStyle}>Duration <span style={{ color: T.redT }}>*</span></label>
+                <input
+                  placeholder="e.g. 4h 30m"
+                  style={drawerFieldStyle}
+                  value={f.duration}
+                  onChange={e => upd("duration", e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={drawerLabelStyle}>Price (INR)</label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  style={drawerFieldStyle}
+                  value={f.price}
+                  onChange={e => upd("price", e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={drawerLabelStyle}>Status <span style={{ color: T.redT }}>*</span></label>
+              <select style={drawerFieldStyle} value={f.status} onChange={e => upd("status", e.target.value as Status)}>
+                {STATUSES.map(st => <option key={st}>{st}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={drawerLabelStyle}>Registration URL</label>
+                <input
+                  placeholder="https://example.com/register"
+                  style={drawerFieldStyle}
+                  value={f.registrationLink}
+                  onChange={e => upd("registrationLink", e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={drawerLabelStyle}>Meeting / Join URL</label>
+                <input
+                  placeholder="https://meet.example.com/session"
+                  style={drawerFieldStyle}
+                  value={f.meetingLink}
+                  onChange={e => upd("meetingLink", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={drawerLabelStyle}>Description</label>
+              <textarea
+                placeholder="Add a short course description"
+                style={{ ...drawerFieldStyle, minHeight: 112, resize: "vertical" }}
+                value={f.description}
+                onChange={e => upd("description", e.target.value)}
+              />
+            </div>
+          </div>
         </div>
-        <select style={selectStyle} value={f.mentorId} onChange={e => upd("mentorId", e.target.value)}>
-          <option value="">— No Mentor —</option>
-          {mentors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <input placeholder="Lessons *" type="number" style={inputStyle} value={f.lessons}
-            onChange={e => upd("lessons", e.target.value === "" ? "" : Number(e.target.value))} />
-          <input placeholder="e.g. 4h 30m *" style={inputStyle} value={f.duration} onChange={e => upd("duration", e.target.value)} />
-          <input placeholder="Price ₹" type="number" style={inputStyle} value={f.price}
-            onChange={e => upd("price", e.target.value === "" ? "" : Number(e.target.value))} />
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 18, borderTop: `1px solid ${T.border}` }}>
+          <button
+            onClick={onClose}
+            style={{ ...btnGhost, borderRadius: 10, borderColor: T.borderH, color: "#D1D5DB" }}
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!valid || loading}
+            onClick={() => onSave({ ...f, lessons: Number(f.lessons) || 0, price: Number(f.price) || 0, registrationLink: f.registrationLink || undefined, meetingLink: f.meetingLink || undefined })}
+            style={{ ...btnGreen, borderRadius: 10, padding: "10px 20px", opacity: valid && !loading ? 1 : 0.4 }}
+          >
+            {loading && <Icon.Spinner />}
+            {loading ? "Saving…" : "Save Course"}
+          </button>
         </div>
-        <select style={selectStyle} value={f.status} onChange={e => upd("status", e.target.value as Status)}>
-          {STATUSES.map(st => <option key={st}>{st}</option>)}
-        </select>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <input placeholder="Registration URL (optional)" style={inputStyle} value={f.registrationLink}
-            onChange={e => upd("registrationLink", e.target.value)} />
-          <input placeholder="Meeting / Join URL (optional)" style={inputStyle} value={f.meetingLink}
-            onChange={e => upd("meetingLink", e.target.value)} />
-        </div>
-        <textarea placeholder="Description" style={{ ...inputStyle, height: 80, resize: "vertical" }}
-          value={f.description} onChange={e => upd("description", e.target.value)} />
-        <button disabled={!valid || loading}
-          onClick={() => onSave({ ...f, lessons: Number(f.lessons) || 0, price: Number(f.price) || 0, registrationLink: f.registrationLink || undefined, meetingLink: f.meetingLink || undefined })}
-          style={{ ...btnGreen, opacity: valid && !loading ? 1 : 0.4 }}>
-          {loading && <Icon.Spinner />}
-          {loading ? "Saving…" : "Save Course"}
-        </button>
       </div>
     </>
   );
@@ -508,6 +644,8 @@ type MentorModal =
   | { type: "delete"; mentor: Mentor };
 
 export default function CoursesPage() {
+  const pathname = usePathname();
+
   /* ── Data ── */
   const { data: coursesRes, isLoading: coursesLoading, isError: coursesError } = useGetAllCoursesQuery();
   const { data: mentorsRes, isLoading: mentorsLoading }                         = useGetAllMentorsQuery();
@@ -523,7 +661,12 @@ export default function CoursesPage() {
   const deleteMentor = useDeleteMentorMutation();
 
   /* ── UI State ── */
-  const [view,        setView]        = useState<ViewType>("courses");
+  const view: ViewType =
+    pathname === "/courses/sessions" || pathname.startsWith("/courses/sessions/")
+      ? "webinars"
+      : pathname === "/courses/mentors" || pathname.startsWith("/courses/mentors/")
+        ? "mentors"
+        : "courses";
   const [tab,         setTab]         = useState<Status>("Active");
   const [search,      setSearch]      = useState("");
   const [catFilter,   setCat]         = useState<"All" | Category>("All");
@@ -629,29 +772,23 @@ export default function CoursesPage() {
           {/* ── Top Nav ── */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
             <div>
-              <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: "-0.02em" }}>Course Management</h1>
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: T.sub }}>Manage courses, mentors and enrollments</p>
+              <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: "-0.02em" }}>
+                {view === "courses" ? "Course Management" : view === "webinars" ? "Sessions Management" : "Mentor Management"}
+              </h1>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: T.sub }}>
+                {view === "courses"
+                  ? "Manage courses and enrollment metrics"
+                  : view === "webinars"
+                    ? "Manage sessions, registrations, and recordings"
+                    : "Manage mentors and course assignments"}
+              </p>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {([
-                { key: "courses"  as ViewType, label: "Courses",  navIcon: <Icon.BookOpen width={15} height={15} /> },
-                { key: "webinars" as ViewType, label: "Sessions", navIcon: <Icon.Video   width={15} height={15} /> },
-                { key: "mentors"  as ViewType, label: "Mentors",  navIcon: <Icon.Users   width={15} height={15} /> },
-              ]).map(({ key, label, navIcon }) => (
-                <button key={key} onClick={() => setView(key)} style={{
-                  ...btnGhost,
-                  background:  view === key ? "rgba(5,150,105,0.15)" : "transparent",
-                  color:       view === key ? T.greenL : T.sub,
-                  borderColor: view === key ? T.green  : T.border,
-                  fontWeight: 600, display: "flex", alignItems: "center", gap: 6,
-                }}>
-                  {navIcon}
-                  {label}
-                  {key === "webinars" && liveSessions.length > 0 && (
-                    <span style={{ background: "#DC2626", color: "#fff", borderRadius: 99, padding: "1px 6px", fontSize: 9, fontWeight: 700 }}>LIVE</span>
-                  )}
-                </button>
-              ))}
+            <div style={{ ...btnGhost, display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
+              {view === "courses" ? <Icon.BookOpen width={15} height={15} /> : view === "webinars" ? <Icon.Video width={15} height={15} /> : <Icon.Users width={15} height={15} />}
+              {view === "courses" ? "Courses" : view === "webinars" ? "Sessions" : "Mentors"}
+              {view === "webinars" && liveSessions.length > 0 && (
+                <span style={{ background: "#DC2626", color: "#fff", borderRadius: 99, padding: "1px 6px", fontSize: 9, fontWeight: 700 }}>LIVE</span>
+              )}
             </div>
           </div>
 
@@ -1070,12 +1207,12 @@ export default function CoursesPage() {
 
       {/* ════════ COURSE MODALS ════════ */}
       {courseModal?.type === "add" && (
-        <Modal onClose={() => setCourseModal(null)}>
+        <Modal onClose={() => setCourseModal(null)} maxWidth={760}>
           <CourseForm mentors={mentors} onSave={handleSaveCourse} onClose={() => setCourseModal(null)} loading={createCourse.isPending} />
         </Modal>
       )}
       {courseModal?.type === "edit" && (
-        <Modal onClose={() => setCourseModal(null)}>
+        <Modal onClose={() => setCourseModal(null)} maxWidth={760}>
           <CourseForm initial={courseModal.course} mentors={mentors} onSave={handleSaveCourse} onClose={() => setCourseModal(null)} loading={updateCourse.isPending} />
         </Modal>
       )}
