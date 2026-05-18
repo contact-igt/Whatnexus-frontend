@@ -39,7 +39,7 @@ export const ContactList = ({
     isTrash = false
 }: ContactListProps) => {
     const { user } = useAuth();
-    const isRestrictedRole = ['staff', 'agent', 'doctor'].includes(user?.role || '');
+    const isRestrictedRole = ['staff', 'doctor'].includes(user?.role || '');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 7;
 

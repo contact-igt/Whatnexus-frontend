@@ -310,7 +310,6 @@ export const TeamUserDrawer = ({
                                     isDarkMode={isDarkMode}
                                     options={[
                                         { value: 'staff', label: 'Staff' },
-                                        { value: 'agent', label: 'Agent' },
                                         { value: 'tenant_admin', label: 'Node Controller (Admin)' }
                                     ]}
                                     disabled={isSaving}

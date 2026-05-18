@@ -59,7 +59,7 @@ export const Sidebar = () => {
                 <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={LayoutDashboard} label="Neural Hub" route="/dashboard" onClick={() => handleActiveTab('/dashboard')} />
 
                 {/* Tenant-only items */}
-                <RoleBasedWrapper allowedRoles={['tenant_admin', 'staff', 'doctor', 'agent']}>
+                <RoleBasedWrapper allowedRoles={['tenant_admin', 'staff', 'doctor']}>
                     <FloatingDockItem isExpanded={isExpanded} isDarkMode={isDarkMode} icon={Users} label="Lead Pool" route="/leads" onClick={() => handleActiveTab('/leads')} />
                     <FloatingDockDropdown
                         isExpanded={isExpanded}

@@ -32,7 +32,7 @@ const inviteFormSchema = z.object({
     email: z.string().email({ message: "Invalid email address." }),
     country_code: z.string().min(2, { message: "Country code must be at least 2 characters." }),
     mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }),
-    role: z.enum(["staff", "agent"], { message: "Role is required." }),
+    role: z.enum(["staff"], { message: "Role is required." }),
 });
 
 // Edit Form Schema
@@ -40,7 +40,7 @@ const editFormSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
     country_code: z.string().min(2, { message: "Country code must be at least 2 characters." }).optional(),
     mobile: z.string().regex(/^[0-9]{10}$/, { message: "Phone number must be 10 digits." }).optional(),
-    role: z.enum(["staff", "agent"], { message: "Role is required." }).optional(),
+    role: z.enum(["staff"], { message: "Role is required." }).optional(),
 });
 
 type InviteFormData = z.infer<typeof inviteFormSchema>;

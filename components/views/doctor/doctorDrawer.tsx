@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { User, Phone, Mail, Clock, Loader2, Plus, Trash2, Check, MinusCircle, XCircle, CheckCircle } from 'lucide-react';
+import { User, Phone, Mail, Loader2, Plus, Trash2, Check, MinusCircle, XCircle, CheckCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Drawer } from "@/components/ui/drawer";
 import { Select } from "@/components/ui/select";
@@ -47,6 +47,119 @@ interface DoctorDrawerProps {
 }
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const SLOT_DURATION_PRESETS = [15, 30, 45, 60];
+const DEFAULT_SLOT_DURATION = 15;
+
+type AvailabilitySlot = { start: string; end: string };
+type AvailabilityDay = {
+    enabled: boolean;
+    slotDuration: number;
+    slots: AvailabilitySlot[];
+};
+
+type AvailabilityValidation = {
+    rowErrors: Record<string, string>;
+    dayErrors: Record<string, string>;
+    hasErrors: boolean;
+};
+
+const defaultAvailabilityDay = (enabled = false): AvailabilityDay => ({
+    enabled,
+    slotDuration: DEFAULT_SLOT_DURATION,
+    slots: [],
+});
+
+const timeToMinutes = (time?: string) => {
+    const match = String(time || '').match(/^(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+};
+
+const minutesToTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+};
+
+const addMinutesToTime = (time: string, minutes: number) => {
+    const start = timeToMinutes(time);
+    if (start === null) return '';
+    return minutesToTime(start + minutes);
+};
+
+const validateAvailabilityMap = (map: Record<string, AvailabilityDay>): AvailabilityValidation => {
+    const rowErrors: Record<string, string> = {};
+    const dayErrors: Record<string, string> = {};
+
+    for (const day of DAYS_OF_WEEK) {
+        const dayData = map[day] || defaultAvailabilityDay(false);
+        const duration = Number(dayData.slotDuration);
+
+        if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
+            dayErrors[day] = 'Slot duration must be an integer between 5 and 480 minutes.';
+        }
+
+        if (!dayData.enabled) continue;
+
+        if (!dayData.slots.length) {
+            dayErrors[day] = dayErrors[day] || 'Add at least one slot or disable this day.';
+            continue;
+        }
+
+        const indexedSlots = dayData.slots.map((slot, index) => ({
+            ...slot,
+            index,
+            startMinutes: timeToMinutes(slot.start),
+            endMinutes: timeToMinutes(slot.end),
+        }));
+
+        for (const slot of indexedSlots) {
+            const key = `${day}:${slot.index}`;
+            if (slot.startMinutes === null || slot.endMinutes === null) {
+                rowErrors[key] = 'Enter a valid time.';
+            } else if (slot.endMinutes > 1439) {
+                rowErrors[key] = 'End time cannot exceed 23:59.';
+            } else if (slot.endMinutes <= slot.startMinutes) {
+                rowErrors[key] = 'End time must be after start time.';
+            }
+        }
+
+        const sorted = indexedSlots
+            .filter(slot => slot.startMinutes !== null && slot.endMinutes !== null)
+            .sort((a, b) => (a.startMinutes || 0) - (b.startMinutes || 0));
+
+        for (let index = 1; index < sorted.length; index += 1) {
+            const previous = sorted[index - 1];
+            const current = sorted[index];
+            if ((current.startMinutes || 0) < (previous.endMinutes || 0)) {
+                rowErrors[`${day}:${previous.index}`] = 'This slot overlaps another slot.';
+                rowErrors[`${day}:${current.index}`] = 'This slot overlaps another slot.';
+            }
+        }
+    }
+
+    return {
+        rowErrors,
+        dayErrors,
+        hasErrors: Object.keys(rowErrors).length > 0 || Object.keys(dayErrors).length > 0,
+    };
+};
+
+const sortedSlots = (slots: AvailabilitySlot[]) =>
+    [...slots].sort((a, b) => (timeToMinutes(a.start) || 0) - (timeToMinutes(b.start) || 0));
+
+const getSlotDurationMinutes = (
+    slot: AvailabilitySlot,
+    fallbackDuration = DEFAULT_SLOT_DURATION,
+) => {
+    const start = timeToMinutes(slot.start);
+    const end = timeToMinutes(slot.end);
+    if (start === null || end === null || end <= start) return fallbackDuration;
+    return end - start;
+};
 
 export const DoctorDrawer = ({
     isOpen,
@@ -78,7 +191,8 @@ export const DoctorDrawer = ({
 
     const formData = watch() as DoctorFormValues;
 
-    const [availabilityMap, setAvailabilityMap] = useState<Record<string, { enabled: boolean; slots: Array<{ start: string; end: string }> }>>({});
+    const [availabilityMap, setAvailabilityMap] = useState<Record<string, AvailabilityDay>>({});
+    const [customDurationDrafts, setCustomDurationDrafts] = useState<Record<string, string>>({});
 
     const createDoctorMutation = useCreateDoctorMutation();
     const updateDoctorMutation = useUpdateDoctorMutation();
@@ -161,7 +275,22 @@ export const DoctorDrawer = ({
             });
 
             // Convert availability to map
-            const availMap: Record<string, any> = {};
+            const availMap: Record<string, AvailabilityDay> = {};
+
+            const availabilityDays = Array.isArray((doctor as any).availabilityDays)
+                ? (doctor as any).availabilityDays
+                : [];
+
+            availabilityDays.forEach((daySetting: any) => {
+                const dayRaw = daySetting.day_of_week || daySetting.day;
+                if (!dayRaw) return;
+                const day = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1).toLowerCase();
+                availMap[day] = {
+                    enabled: Boolean(daySetting.enabled),
+                    slotDuration: Number(daySetting.slotDuration ?? daySetting.slot_duration ?? DEFAULT_SLOT_DURATION),
+                    slots: [],
+                };
+            });
 
             if (Array.isArray(doctor.availability)) {
                 doctor.availability.forEach((slot: any) => {
@@ -169,8 +298,14 @@ export const DoctorDrawer = ({
                     if (dayRaw) {
                         const day = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1).toLowerCase();
                         if (!availMap[day]) {
-                            availMap[day] = { enabled: true, slots: [] };
+                            availMap[day] = {
+                                enabled: Boolean(slot.enabled ?? true),
+                                slotDuration: Number(slot.slotDuration ?? slot.slot_duration ?? DEFAULT_SLOT_DURATION),
+                                slots: [],
+                            };
                         }
+                        availMap[day].enabled = Boolean(slot.enabled ?? true);
+                        availMap[day].slotDuration = Number(slot.slotDuration ?? slot.slot_duration ?? availMap[day].slotDuration ?? DEFAULT_SLOT_DURATION);
                         availMap[day].slots.push({ start: slot.start_time, end: slot.end_time });
                     }
                 });
@@ -179,6 +314,7 @@ export const DoctorDrawer = ({
                     const dayData = (doctor.availability as any)[day];
                     availMap[day] = {
                         enabled: dayData.enabled || false,
+                        slotDuration: Number(dayData.slotDuration ?? dayData.slot_duration ?? DEFAULT_SLOT_DURATION),
                         slots: dayData.slots || []
                     };
                 });
@@ -211,32 +347,47 @@ export const DoctorDrawer = ({
     // ^ Removed specializationsList from dependencies to avoid unwanted resets
 
     const handleDayToggle = (day: string) => {
-        const dayData = availabilityMap[day] || { enabled: false, slots: [] };
+        const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
+        const nextEnabled = !dayData.enabled;
+        const firstSlot = {
+            start: '09:00',
+            end: addMinutesToTime('09:00', dayData.slotDuration || DEFAULT_SLOT_DURATION),
+        };
         setAvailabilityMap({
             ...availabilityMap,
             [day]: {
                 ...dayData,
-                enabled: !dayData.enabled,
-                slots: !dayData.enabled && dayData.slots.length === 0
-                    ? [{ start: '09:00', end: '17:00' }]
+                enabled: nextEnabled,
+                slots: nextEnabled && dayData.slots.length === 0
+                    ? [firstSlot]
                     : dayData.slots
             }
         });
     };
 
     const handleAddTimeSlot = (day: string) => {
-        const dayData = availabilityMap[day] || { enabled: true, slots: [] };
+        const dayData = availabilityMap[day] || defaultAvailabilityDay(true);
+        const start = dayData.slots.length
+            ? dayData.slots[dayData.slots.length - 1].end
+            : '09:00';
         setAvailabilityMap({
             ...availabilityMap,
             [day]: {
                 ...dayData,
-                slots: [...dayData.slots, { start: '09:00', end: '17:00' }]
+                enabled: true,
+                slots: [
+                    ...dayData.slots,
+                    {
+                        start,
+                        end: addMinutesToTime(start, dayData.slotDuration || DEFAULT_SLOT_DURATION),
+                    },
+                ],
             }
         });
     };
 
     const handleRemoveTimeSlot = (day: string, index: number) => {
-        const dayData = availabilityMap[day] || { enabled: true, slots: [] };
+        const dayData = availabilityMap[day] || defaultAvailabilityDay(true);
         setAvailabilityMap({
             ...availabilityMap,
             [day]: {
@@ -246,10 +397,16 @@ export const DoctorDrawer = ({
         });
     };
 
-    const handleTimeSlotChange = (day: string, index: number, field: 'start' | 'end', value: string) => {
-        const dayData = availabilityMap[day] || { enabled: true, slots: [] };
+    const handleTimeSlotChange = (day: string, index: number, value: string) => {
+        const dayData = availabilityMap[day] || defaultAvailabilityDay(true);
         const updatedSlots = dayData.slots.map((slot, i) =>
-            i === index ? { ...slot, [field]: value } : slot
+            i === index
+                ? {
+                    ...slot,
+                    start: value,
+                    end: addMinutesToTime(value, dayData.slotDuration || DEFAULT_SLOT_DURATION),
+                }
+                : slot
         );
         setAvailabilityMap({
             ...availabilityMap,
@@ -258,6 +415,73 @@ export const DoctorDrawer = ({
                 slots: updatedSlots
             }
         });
+    };
+
+    const handleEndTimeSlotChange = (day: string, index: number, value: string) => {
+        const dayData = availabilityMap[day] || defaultAvailabilityDay(true);
+        const updatedSlots = dayData.slots.map((slot, i) =>
+            i === index
+                ? {
+                    ...slot,
+                    end: value,
+                }
+                : slot
+        );
+        setAvailabilityMap({
+            ...availabilityMap,
+            [day]: {
+                ...dayData,
+                slots: updatedSlots
+            }
+        });
+    };
+
+    const applyDurationChange = (day: string, duration: number) => {
+        const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
+        setAvailabilityMap({
+            ...availabilityMap,
+            [day]: {
+                ...dayData,
+                slotDuration: duration,
+                slots: dayData.slots.map(slot => ({
+                    ...slot,
+                    end: addMinutesToTime(slot.start, duration),
+                })),
+            },
+        });
+        setCustomDurationDrafts((drafts) => ({
+            ...drafts,
+            [day]: SLOT_DURATION_PRESETS.includes(duration) ? '' : String(duration),
+        }));
+    };
+
+    const requestDurationChange = (day: string, duration: number) => {
+        if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
+            const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
+            setAvailabilityMap({
+                ...availabilityMap,
+                [day]: { ...dayData, slotDuration: duration },
+            });
+            return;
+        }
+
+        applyDurationChange(day, duration);
+    };
+
+    const handlePresetDurationClick = (day: string, duration: number) => {
+        setCustomDurationDrafts((drafts) => ({ ...drafts, [day]: '' }));
+        requestDurationChange(day, duration);
+    };
+
+    const handleCustomDurationChange = (day: string, value: string) => {
+        const digits = value.replace(/\D/g, '').slice(0, 3);
+        setCustomDurationDrafts((drafts) => ({ ...drafts, [day]: digits }));
+    };
+
+    const applyCustomDurationDraft = (day: string) => {
+        const draftValue = customDurationDrafts[day];
+        if (!draftValue) return;
+        requestDurationChange(day, Number(draftValue));
     };
 
     const handleAddSpec = () => {
@@ -301,19 +525,31 @@ export const DoctorDrawer = ({
     };
 
     const onSubmit = async (data: DoctorFormValues) => {
+        const validation = validateAvailabilityMap(availabilityMap);
+        if (validation.hasErrors) {
+            toast.error(
+                Object.values(validation.dayErrors)[0] ||
+                Object.values(validation.rowErrors)[0] ||
+                'Please fix availability errors before saving.',
+            );
+            return;
+        }
+
         // Convert availability map to API format (lowercase day names for backend ENUM)
-        const availability = Object.keys(availabilityMap)
-            .filter(day => availabilityMap[day].enabled && availabilityMap[day].slots.length > 0)
-            .map(day => ({
+        const availability = DAYS_OF_WEEK.map(day => {
+            const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
+            return {
                 day: day.toLowerCase(),
-                slots: availabilityMap[day].slots
-                    .filter(slot => slot.start && slot.end && slot.start < slot.end)
-                    .map(slot => ({
+                enabled: dayData.enabled,
+                slotDuration: Number(dayData.slotDuration || DEFAULT_SLOT_DURATION),
+                slots: dayData.enabled
+                    ? sortedSlots(dayData.slots).map(slot => ({
                         start_time: slot.start,
                         end_time: slot.end
                     }))
-            }))
-            .filter(day => day.slots.length > 0);
+                    : [],
+            };
+        });
 
         const apiData: any = {
             ...data,
@@ -341,6 +577,7 @@ export const DoctorDrawer = ({
     const isEdit = mode === 'edit';
     const isCreate = mode === 'create';
     const isSaving = createDoctorMutation.isPending || updateDoctorMutation.isPending;
+    const availabilityValidation = validateAvailabilityMap(availabilityMap);
 
     const dialogTitle = isCreate ? 'Add New Doctor' : isEdit ? 'Edit Doctor' : 'Doctor Details';
     const dialogDescription = isCreate
@@ -531,6 +768,9 @@ export const DoctorDrawer = ({
                                                 <div className="flex justify-between items-center mb-2">
                                                     <span className={cn("font-medium text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
                                                         {day}
+                                                    </span>
+                                                    <span className={cn("text-[11px]", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                                        {dayData.slotDuration || DEFAULT_SLOT_DURATION}m slots
                                                     </span>
                                                 </div>
                                                 <div className="space-y-1">
@@ -847,7 +1087,8 @@ export const DoctorDrawer = ({
                                 </h3>
                                 <div className="space-y-3">
                                     {DAYS_OF_WEEK.map((day) => {
-                                        const dayData = availabilityMap[day] || { enabled: false, slots: [] };
+                                        const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
+                                        const dayError = availabilityValidation.dayErrors[day];
                                         return (
                                             <div
                                                 key={day}
@@ -901,53 +1142,132 @@ export const DoctorDrawer = ({
                                                         </button>
                                                     )}
                                                 </div>
+                                                <div className={cn(
+                                                    "mt-3 rounded-lg border p-3",
+                                                    !dayData.enabled && "opacity-50 pointer-events-none",
+                                                    isDarkMode ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
+                                                )}>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={cn("text-xs font-semibold mr-1", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                                            Slot duration
+                                                        </span>
+                                                        {SLOT_DURATION_PRESETS.map(duration => (
+                                                            <button
+                                                                key={duration}
+                                                                type="button"
+                                                                disabled={isView || !dayData.enabled}
+                                                                onClick={() => handlePresetDurationClick(day, duration)}
+                                                                className={cn(
+                                                                    "px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors",
+                                                                    dayData.slotDuration === duration
+                                                                        ? (isDarkMode ? "bg-emerald-500/20 border-emerald-500 text-emerald-300" : "bg-emerald-50 border-emerald-300 text-emerald-700")
+                                                                        : (isDarkMode ? "border-white/10 text-white/60 hover:bg-white/5" : "border-slate-200 text-slate-600 hover:bg-slate-50")
+                                                                )}
+                                                            >
+                                                                {duration}m
+                                                            </button>
+                                                        ))}
+                                                        <input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                            disabled={isView || !dayData.enabled}
+                                                            maxLength={3}
+                                                            value={
+                                                                customDurationDrafts[day] ??
+                                                                (SLOT_DURATION_PRESETS.includes(dayData.slotDuration) ? '' : String(dayData.slotDuration || ''))
+                                                            }
+                                                            onChange={(e) => handleCustomDurationChange(day, e.target.value)}
+                                                            onBlur={() => applyCustomDurationDraft(day)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    applyCustomDurationDraft(day);
+                                                                    e.currentTarget.blur();
+                                                                }
+                                                            }}
+                                                            placeholder="Custom"
+                                                            className={cn(
+                                                                "w-24 px-3 py-1 rounded-md text-xs border outline-none",
+                                                                isDarkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-slate-200 text-slate-900"
+                                                            )}
+                                                        />
+                                                        <span className={cn("text-xs", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                                                            minutes
+                                                        </span>
+                                                    </div>
+                                                    {dayError && (
+                                                        <p className="text-xs text-red-500 mt-2">{dayError}</p>
+                                                    )}
+                                                </div>
                                                 {dayData.enabled && (
                                                     <div className="space-y-2 pl-9 mt-3">
-                                                        {dayData.slots.map((slot: any, index: number) => (
-                                                            <div key={index} className="flex items-center space-x-2">
-                                                                <input
-                                                                    type="time"
-                                                                    disabled={isView}
-                                                                    value={slot.start}
-                                                                    onChange={(e) => handleTimeSlotChange(day, index, 'start', e.target.value)}
-                                                                    className={cn(
-                                                                        "flex-1 px-3 py-2 rounded-lg text-sm border",
-                                                                        isView && "opacity-60 cursor-not-allowed",
-                                                                        isDarkMode
-                                                                            ? 'bg-white/5 border-white/10 text-white'
-                                                                            : 'bg-white border-slate-200 text-slate-900'
-                                                                    )}
-                                                                />
-                                                                <span className={cn(isDarkMode ? "text-white/40" : "text-slate-400")}>to</span>
-                                                                <input
-                                                                    type="time"
-                                                                    disabled={isView}
-                                                                    value={slot.end}
-                                                                    onChange={(e) => handleTimeSlotChange(day, index, 'end', e.target.value)}
-                                                                    className={cn(
-                                                                        "flex-1 px-3 py-2 rounded-lg text-sm border",
-                                                                        isView && "opacity-60 cursor-not-allowed",
-                                                                        isDarkMode
-                                                                            ? 'bg-white/5 border-white/10 text-white'
-                                                                            : 'bg-white border-slate-200 text-slate-900'
-                                                                    )}
-                                                                />
-                                                                {!isView && dayData.slots.length > 1 && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleRemoveTimeSlot(day, index)}
-                                                                        className={cn(
-                                                                            "p-2 rounded-lg",
-                                                                            isDarkMode
-                                                                                ? 'hover:bg-red-500/10 text-red-400'
-                                                                                : 'hover:bg-red-50 text-red-600'
+                                                        <div className={cn("grid grid-cols-[1fr_1fr_80px_36px] gap-2 text-[11px] font-semibold", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                                            <span>Start time</span>
+                                                            <span>End time</span>
+                                                            <span>Duration</span>
+                                                            <span />
+                                                        </div>
+                                                        {dayData.slots.map((slot: any, index: number) => {
+                                                            const rowError = availabilityValidation.rowErrors[`${day}:${index}`];
+                                                            return (
+                                                                <div key={index} className="space-y-1">
+                                                                    <div className="grid grid-cols-[1fr_1fr_80px_36px] gap-2 items-center">
+                                                                        <input
+                                                                            type="time"
+                                                                            disabled={isView}
+                                                                            value={slot.start}
+                                                                            onChange={(e) => handleTimeSlotChange(day, index, e.target.value)}
+                                                                            className={cn(
+                                                                                "px-3 py-2 rounded-lg text-sm border",
+                                                                                rowError && "border-red-500",
+                                                                                isView && "opacity-60 cursor-not-allowed",
+                                                                                isDarkMode
+                                                                                    ? 'bg-white/5 border-white/10 text-white'
+                                                                                    : 'bg-white border-slate-200 text-slate-900'
+                                                                            )}
+                                                                        />
+                                                                        <input
+                                                                            type="time"
+                                                                            disabled={isView}
+                                                                            value={slot.end}
+                                                                            onChange={(e) => handleEndTimeSlotChange(day, index, e.target.value)}
+                                                                            className={cn(
+                                                                                "px-3 py-2 rounded-lg text-sm border",
+                                                                                rowError && "border-red-500",
+                                                                                isView && "opacity-60 cursor-not-allowed",
+                                                                                isDarkMode
+                                                                                    ? 'bg-white/5 border-white/10 text-white'
+                                                                                    : 'bg-white border-slate-200 text-slate-900'
+                                                                            )}
+                                                                        />
+                                                                        <span className={cn(
+                                                                            "px-2 py-2 rounded-lg text-xs font-semibold text-center border",
+                                                                            isDarkMode ? "bg-white/5 border-white/10 text-white/70" : "bg-slate-100 border-slate-200 text-slate-600"
+                                                                        )}>
+                                                                            {getSlotDurationMinutes(slot, dayData.slotDuration)}m
+                                                                        </span>
+                                                                        {!isView && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleRemoveTimeSlot(day, index)}
+                                                                                className={cn(
+                                                                                    "p-2 rounded-lg",
+                                                                                    isDarkMode
+                                                                                        ? 'hover:bg-red-500/10 text-red-400'
+                                                                                        : 'hover:bg-red-50 text-red-600'
+                                                                                )}
+                                                                            >
+                                                                                <Trash2 size={14} />
+                                                                            </button>
                                                                         )}
-                                                                    >
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        ))}
+                                                                    </div>
+                                                                    {rowError && (
+                                                                        <p className="text-xs text-red-500">{rowError}</p>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </div>

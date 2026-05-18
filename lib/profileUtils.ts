@@ -5,7 +5,7 @@
  */
 export const getProfileRoute = (role: string): string => {
     const managementRoles = ['super_admin', 'platform_admin'];
-    const tenantRoles = ['staff', 'agent', 'doctor', 'tenant_admin'];
+    const tenantRoles = ['staff', 'doctor', 'tenant_admin'];
 
     if (managementRoles.includes(role)) {
         return '/management/profile';
@@ -32,5 +32,5 @@ export const isManagementUser = (role: string): boolean => {
  * @returns true if tenant user, false otherwise
  */
 export const isTenantUser = (role: string): boolean => {
-    return ['staff', 'agent', 'doctor', 'tenant_admin'].includes(role);
+    return ['staff', 'doctor', 'tenant_admin'].includes(role);
 };

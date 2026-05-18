@@ -242,7 +242,6 @@ export const AppointmentDrawer = ({
         if (availabilities.length === 0) return [];
 
         const allSlots = [];
-        const duration = activeDoctor.consultation_duration || 15;
 
         // Helper to convert 24h time to AM/PM format (e.g., "09:30" -> "09:30 AM")
         const to12HourFormat = (hour: number, min: number) => {
@@ -252,37 +251,22 @@ export const AppointmentDrawer = ({
         };
 
         for (const availability of availabilities) {
-            let [currentHour, currentMin] = availability.start_time.split(':').map(Number);
+            const [currentHour, currentMin] = availability.start_time.split(':').map(Number);
             const [endHour, endMin] = availability.end_time.split(':').map(Number);
+            const startTimeStr = to12HourFormat(currentHour, currentMin);
+            const endTimeStr = to12HourFormat(endHour, endMin);
 
-            while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-                // Generate time in AM/PM format to match backend storage
-                const startTimeStr = to12HourFormat(currentHour, currentMin);
+            // Doctor availability rows are concrete slots; do not subdivide them.
+            const isBooked = doctorAppointments?.data?.some((appt: any) => {
+                const apptTime = appt.appointment_time || '';
+                return apptTime === startTimeStr && appt.status !== 'Cancelled';
+            });
 
-                let nextMin = currentMin + duration;
-                let nextHour = currentHour;
-                if (nextMin >= 60) {
-                    nextHour += Math.floor(nextMin / 60);
-                    nextMin %= 60;
-                }
-                const endTimeStr = to12HourFormat(nextHour, nextMin);
-
-                // Check if slot overlaps with any existing non-cancelled appointment
-                // Backend stores time in AM/PM format, so compare directly
-                const isBooked = doctorAppointments?.data?.some((appt: any) => {
-                    const apptTime = appt.appointment_time || '';
-                    return apptTime === startTimeStr && appt.status !== 'Cancelled';
-                });
-
-                allSlots.push({
-                    time: startTimeStr,
-                    label: `${startTimeStr} - ${endTimeStr}`,
-                    isAvailable: !isBooked
-                });
-
-                currentHour = nextHour;
-                currentMin = nextMin;
-            }
+            allSlots.push({
+                time: startTimeStr,
+                label: `${startTimeStr} - ${endTimeStr}`,
+                isAvailable: !isBooked
+            });
         }
         return allSlots.sort((a, b) => a.time.localeCompare(b.time));
     };

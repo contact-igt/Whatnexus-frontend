@@ -13,9 +13,16 @@ export interface Doctor {
     availability?: {
         [key: string]: {
             enabled: boolean;
+            slotDuration?: number;
             slots: { start: string; end: string }[];
         };
-    } | { day_of_week: string; start_time: string; end_time: string }[];
+    } | { day_of_week: string; start_time: string; end_time: string; slot_duration?: number; slotDuration?: number; enabled?: boolean }[];
+    availabilityDays?: Array<{
+        day_of_week: string;
+        enabled: boolean;
+        slot_duration?: number;
+        slotDuration?: number;
+    }>;
     consultation_duration?: number;
     appointment_count?: number;
     bio?: string;
@@ -39,6 +46,8 @@ export interface CreateDoctorDto {
     specializations?: string[];
     availability?: Array<{
         day: string;
+        enabled?: boolean;
+        slotDuration?: number;
         slots: Array<{
             start_time: string;
             end_time: string;
@@ -61,6 +70,8 @@ export interface UpdateDoctorDto {
     specializations?: string[];
     availability?: Array<{
         day: string;
+        enabled?: boolean;
+        slotDuration?: number;
         slots: Array<{
             start_time: string;
             end_time: string;

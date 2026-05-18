@@ -5,14 +5,14 @@ export interface CreateTenantUserRequest {
     email: string;
     country_code: string;
     mobile: string;
-    role: "doctor" | "staff" | "agent";
+    role: "doctor" | "staff";
 }
 
 export interface UpdateTenantUserRequest {
     username?: string;
     country_code?: string;
     mobile?: string;
-    role?: "doctor" | "staff" | "agent";
+    role?: "doctor" | "staff";
 }
 
 export interface TenantUserLoginRequest {
