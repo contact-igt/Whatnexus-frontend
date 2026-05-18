@@ -345,14 +345,16 @@ export const _axios = async (
       store.dispatch(setAccountError(errMsg));
     }
 
-    // Log detailed debug info
+    // Log detailed debug info (include request for CORS/network issues)
     console.error("Axios error:", {
       message: err?.message,
       method,
       url: endpoint,
       status: err?.response?.status,
       response: err?.response?.data,
-      headers: err?.response?.headers,
+      responseHeaders: err?.response?.headers,
+      request: err?.request,
+      errorJSON: typeof err?.toJSON === "function" ? err.toJSON() : undefined,
       config: err?.config,
     });
 

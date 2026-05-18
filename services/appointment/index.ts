@@ -7,6 +7,7 @@ export interface CreateAppointmentDto {
     appointment_date: string;
     appointment_time: string;
     contact_id?: string;
+    lead_id?: string;
     doctor_id?: string;
     status?: string;
     notes?: string;
@@ -33,13 +34,37 @@ export interface UpdateAppointmentDto {
     email?: string;
 }
 
+export interface CreateAppointmentOutcomeDto {
+    appointment_id: string;
+    notes: string;
+    follow_up_required: boolean;
+    follow_up_date?: string | null;
+    follow_up_type?: "Call" | "Visit" | "WhatsApp" | null;
+}
+
+export interface CompleteWithOutcomeDto {
+    appointment_id: string;
+    notes: string;
+    follow_up_required: boolean;
+    follow_up_date?: string | null;
+    follow_up_type?: "Call" | "Visit" | "WhatsApp" | null;
+}
+
+export interface NoShowWithActionDto {
+    appointment_id: string;
+    action: "follow_up" | "close";
+    follow_up_date?: string | null;
+    follow_up_type?: "Call" | "WhatsApp" | null;
+}
+
 export class AppointmentApiData {
-    getAllAppointments = async (params?: { search?: string; status?: string; date?: string; doctor_id?: string }) => {
+    getAllAppointments = async (params?: { search?: string; status?: string; date?: string; doctor_id?: string; lead_id?: string }) => {
         const query = new URLSearchParams();
         if (params?.search) query.set("search", params.search);
         if (params?.status) query.set("status", params.status);
         if (params?.date) query.set("date", params.date);
         if (params?.doctor_id) query.set("doctor_id", params.doctor_id);
+        if (params?.lead_id) query.set("lead_id", params.lead_id);
         const qs = query.toString();
         return await _axios("get", `/whatsapp/appointment${qs ? `?${qs}` : ""}`);
     };
@@ -70,5 +95,17 @@ export class AppointmentApiData {
 
     deleteAppointment = async (appointmentId: string) => {
         return await _axios("delete", `/whatsapp/appointment/${appointmentId}`);
+    };
+
+    createAppointmentOutcome = async (data: CreateAppointmentOutcomeDto) => {
+        return await _axios("post", "/whatsapp/appointment-outcome", data);
+    };
+
+    completeWithOutcome = async (data: CompleteWithOutcomeDto) => {
+        return await _axios("post", "/whatsapp/appointment/complete-with-outcome", data);
+    };
+
+    noShowWithAction = async (data: NoShowWithActionDto) => {
+        return await _axios("post", "/whatsapp/appointment/noshow-with-action", data);
     };
 }

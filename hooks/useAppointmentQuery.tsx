@@ -1,13 +1,14 @@
-import { AppointmentApiData, CreateAppointmentDto, UpdateAppointmentStatusDto, UpdateAppointmentDto } from "@/services/appointment";
+import { AppointmentApiData, CompleteWithOutcomeDto, CreateAppointmentDto, CreateAppointmentOutcomeDto, NoShowWithActionDto, UpdateAppointmentStatusDto, UpdateAppointmentDto } from "@/services/appointment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 
 const appointmentApis = new AppointmentApiData();
 
-export const useGetAllAppointmentsQuery = (params?: { search?: string; status?: string; date?: string; doctor_id?: string }) => {
+export const useGetAllAppointmentsQuery = (params?: { search?: string; status?: string; date?: string; doctor_id?: string; lead_id?: string }) => {
     return useQuery({
         queryKey: ["appointments", params],
         queryFn: () => appointmentApis.getAllAppointments(params),
+        staleTime: 30 * 1000,
     });
 };
 
@@ -27,6 +28,7 @@ export const useCreateAppointmentMutation = () => {
         mutationFn: (data: CreateAppointmentDto) => appointmentApis.createAppointment(data),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Appointment created successfully!");
         },
         onError: (error: any) => {
@@ -42,6 +44,7 @@ export const useUpdateAppointmentStatusMutation = () => {
             appointmentApis.updateAppointmentStatus(appointmentId, data),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Status updated successfully.");
         },
         onError: (error: any) => {
@@ -73,6 +76,7 @@ export const useUpdateAppointmentMutation = () => {
             appointmentApis.updateAppointment(appointmentId, data),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Appointment updated successfully.");
         },
         onError: (error: any) => {
@@ -87,10 +91,56 @@ export const useDeleteAppointmentMutation = () => {
         mutationFn: (appointmentId: string) => appointmentApis.deleteAppointment(appointmentId),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Appointment cancelled and removed from list.");
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || "Failed to delete appointment.");
+        },
+    });
+};
+
+export const useCreateAppointmentOutcomeMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: CreateAppointmentOutcomeDto) => appointmentApis.createAppointmentOutcome(data),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
+            toast.success(data?.message || "Visit outcome saved successfully.");
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to save visit outcome.");
+        },
+    });
+};
+
+export const useCompleteWithOutcomeMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: CompleteWithOutcomeDto) => appointmentApis.completeWithOutcome(data),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
+            toast.success(data?.message || "Appointment completed successfully.");
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to complete appointment.");
+        },
+    });
+};
+
+export const useNoShowWithActionMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: NoShowWithActionDto) => appointmentApis.noShowWithAction(data),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
+            toast.success(data?.message || "No-show handled successfully.");
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to handle no-show.");
         },
     });
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Eye, Edit2, Ban, Building2, Users, Calendar, CheckCircle, XCircle, Clock, MessageCircle, Hospital, Trash, RotateCcw, RefreshCcw } from 'lucide-react';
+import { Plus, Eye, Edit2, Ban, Building2, Users, Calendar, CheckCircle, XCircle, Clock, MessageCircle, Trash, RotateCcw, RefreshCcw } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { Select } from "@/components/ui/select";
@@ -44,7 +44,7 @@ export interface Organization {
     adminName: string;
     adminEmail: string;
     isActive: boolean;
-    type: 'hospital' | 'clinic' | 'education' | 'law' | 'organization';
+    industry_type?: 'general' | 'healthcare' | 'education';
     owner_country_code: string;
     profile?: any;
     password?: string;
@@ -188,6 +188,9 @@ export const OrganizationView = () => {
     const handleNavigateToWhatsApp = (org: Organization) => {
         console.log("Navigate to WhatsApp", org.tenant_id)
         router.push(`/whatsapp-settings?tenantId=${org.tenant_id}`);
+    }
+    const handleManageAccess = (org: Organization) => {
+        router.push(`/management/tenant-access?tenantId=${org.tenant_id}`);
     }
     const handleDeleteClick = (org: Organization) => {
         setOrgToDelete(org);
@@ -347,7 +350,7 @@ export const OrganizationView = () => {
                                 <tr>
                                     <TableHead align="left" isDarkMode={isDarkMode} width='280px'>Organization</TableHead>
                                     <TableHead align="center" isDarkMode={isDarkMode}>Owner</TableHead>
-                                    <TableHead align="center" isDarkMode={isDarkMode}>Type</TableHead>
+                                    <TableHead align="center" isDarkMode={isDarkMode}>Industry Type</TableHead>
                                     <TableHead align="center" isDarkMode={isDarkMode}>Plan</TableHead>
                                     <TableHead align="center" isDarkMode={isDarkMode}>Status</TableHead>
                                     <TableHead align="center" isDarkMode={isDarkMode}>Max Users</TableHead>
@@ -369,14 +372,14 @@ export const OrganizationView = () => {
                                                         "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
                                                         isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
                                                     )}>
-                                                        {org.type == "hospital" ? <Hospital className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} /> : <Building2 className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} />}
+                                                        <Building2 className={cn(isDarkMode ? "text-emerald-400" : "text-emerald-700")} size={20} />
                                                     </div>
                                                     <div className='text-start'>
                                                         <p className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
                                                             {org.company_name}
                                                         </p>
                                                         <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                                            {org.type || 'clinic'}
+                                                            {org.industry_type || 'general'}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -398,7 +401,7 @@ export const OrganizationView = () => {
                                                 "px-2 py-1 rounded-md text-xs font-medium capitalize",
                                                 isDarkMode ? "bg-white/5 text-white/60" : "bg-slate-100 text-slate-600"
                                             )}>
-                                                {org.type || '-'}
+                                                {org.industry_type || '-'}
                                             </span>
                                         </TableCell>
                                         <TableCell align="center">
@@ -441,19 +444,33 @@ export const OrganizationView = () => {
 
                                         <TableCell align="center">
                                             {activeTab === 'active' ? (
-                                                <ActionMenu
-                                                    isDarkMode={isDarkMode}
-                                                    isView={true}
-                                                    isEdit={true}
-                                                    isDelete={true}
-                                                    isActivate={org.status !== 'active'}
-                                                    onActivate={() => handleActivateClick(org)}
-                                                    isDeactivate={org.status === 'active'}
-                                                    onDeactivate={() => handleDeactivateClick(org)}
-                                                    onView={() => handleOpenModal('view', org)}
-                                                    onEdit={() => handleOpenModal('edit', org)}
-                                                    onDelete={() => handleDeleteClick(org)}
-                                                />
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => handleManageAccess(org)}
+                                                        className={cn(
+                                                            "px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors",
+                                                            isDarkMode
+                                                                ? "bg-white/5 text-white/80 hover:bg-white/10"
+                                                                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                                        )}
+                                                        title="Manage Access"
+                                                    >
+                                                        Manage Access
+                                                    </button>
+                                                    <ActionMenu
+                                                        isDarkMode={isDarkMode}
+                                                        isView={true}
+                                                        isEdit={true}
+                                                        isDelete={true}
+                                                        isActivate={org.status !== 'active'}
+                                                        onActivate={() => handleActivateClick(org)}
+                                                        isDeactivate={org.status === 'active'}
+                                                        onDeactivate={() => handleDeactivateClick(org)}
+                                                        onView={() => handleOpenModal('view', org)}
+                                                        onEdit={() => handleOpenModal('edit', org)}
+                                                        onDelete={() => handleDeleteClick(org)}
+                                                    />
+                                                </div>
                                             ) : (
                                                 <div className="flex items-center justify-center space-x-2">
                                                     <button

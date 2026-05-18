@@ -13,11 +13,13 @@ import { SidebarGroupItem } from '@/components/ui/sidebarGroupItem';
 import { useGetWhatsappConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 import { useFaqNotifications } from '@/hooks/useFaqNotifications';
 import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
+import { useFeatureAccess } from '@/redux/selectors/featureAccess/featureAccessSelector';
 import Link from 'next/link';
 
 export const GroupedSidebar = () => {
     const { user, whatsappApiDetails } = useAuth();
     const { unreadCount } = useNotifications();
+    const { enabled_features } = useFeatureAccess();
     const { pendingCount: faqPendingCount, canAccessFaqNotifications } = useFaqNotifications();
     useGetWhatsappConfigQuery();
     const { isDarkMode } = useTheme();
@@ -55,12 +57,16 @@ export const GroupedSidebar = () => {
             .flatMap((group) => filterItemsByRole(group.items).map((item) => item.route));
         const uniqueRoutes = [...new Set(visibleRoutes)];
         uniqueRoutes.forEach((route) => router.prefetch(route));
-    }, [router, sidebarConfig, user?.role, isLocalServer]);
+    }, [router, sidebarConfig, user?.role, isLocalServer, enabled_features, isManagement]);
 
 
     // Filter items based on user role (case-insensitive) and local environment requirement
     const filterItemsByRole = (items: SidebarGroup['items']) => {
         return items.filter(item => {
+            if (!isManagement && item.featureKey && !enabled_features.includes(item.featureKey)) {
+                return false;
+            }
+
             // Filter out items that require local environment when not in local mode
             if (item.requiresLocal && !isLocalServer) return false;
 

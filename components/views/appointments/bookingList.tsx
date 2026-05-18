@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Eye, Edit2, Clock, Phone, Calendar as CalendarIcon, Trash2, AlertTriangle, Stethoscope, User, Hash } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, Plus, Calendar as CalendarIcon, AlertTriangle, Stethoscope, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
 import { AppointmentDrawer } from './appointmentDrawer';
-import { useGetAllAppointmentsQuery, useDeleteAppointmentMutation } from '@/hooks/useAppointmentQuery';
+import { VisitOutcomeDrawer } from './VisitOutcomeDrawer';
+import { NoShowDrawer } from './NoShowDrawer';
+import { useGetAllAppointmentsQuery, useDeleteAppointmentMutation, useUpdateAppointmentStatusMutation, useCompleteWithOutcomeMutation, useNoShowWithActionMutation } from '@/hooks/useAppointmentQuery';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
+import { ActionMenu } from '@/components/ui/actionMenu';
 
 interface BookingListProps {
     isDarkMode: boolean;
@@ -19,6 +22,7 @@ export interface Appointment {
     country_code?: string;
     contact_number: string;
     contact_id?: string;
+    lead_id?: string;
     age?: number;
     appointment_date: string;
     appointment_time: string;
@@ -32,12 +36,32 @@ export interface Appointment {
 }
 
 export const BookingList = ({ isDarkMode }: BookingListProps) => {
+    const getIsoDate = (date: Date) => format(date, 'yyyy-MM-dd');
+    const getDateLabel = (dateValue: string) => {
+        const today = getIsoDate(new Date());
+        const tomorrow = getIsoDate(addDays(new Date(), 1));
+        if (dateValue === today) return 'Today';
+        if (dateValue === tomorrow) return 'Tomorrow';
+        const parsed = parseISO(dateValue);
+        if (isNaN(parsed.getTime())) return 'Custom Date';
+        return format(parsed, 'dd MMM yyyy');
+    };
+    const dateMenuRef = useRef<HTMLDivElement | null>(null);
+    const todayDate = useMemo(() => getIsoDate(new Date()), []);
+    const tomorrowDate = useMemo(() => getIsoDate(addDays(new Date(), 1)), []);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [selectedDate, setSelectedDate] = useState<string>(getIsoDate(new Date()));
+    const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
+    const [calendarMonth, setCalendarMonth] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    const [completionAppointment, setCompletionAppointment] = useState<Appointment | null>(null);
+    const [noShowAppointment, setNoShowAppointment] = useState<Appointment | null>(null);
     const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
     const [deleteConfirm, setDeleteConfirm] = useState<Appointment | null>(null);
+    const [isOutcomeDrawerOpen, setIsOutcomeDrawerOpen] = useState(false);
+    const [isNoShowDrawerOpen, setIsNoShowDrawerOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
     // Debounce search
@@ -46,10 +70,13 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const { data, isLoading, refetch } = useGetAllAppointmentsQuery({ search: debouncedSearch });
+    const { data, isLoading } = useGetAllAppointmentsQuery({ search: debouncedSearch, date: selectedDate });
     const { mutate: deleteAppointment, isPending: isDeleting } = useDeleteAppointmentMutation();
+    const { mutate: updateAppointmentStatus, isPending: isStatusUpdating } = useUpdateAppointmentStatusMutation();
+    const { mutate: completeWithOutcome, isPending: isCompletingWithOutcome } = useCompleteWithOutcomeMutation();
+    const { mutate: noShowWithAction, isPending: isHandlingNoShow } = useNoShowWithActionMutation();
 
-    const allAppointments: Appointment[] = data?.data || [];
+    const allAppointments: Appointment[] = useMemo(() => data?.data || [], [data?.data]);
 
     // Status counts for filter pills
     const statusCounts = useMemo(() => {
@@ -76,8 +103,112 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
     }, [appointments, currentPage]);
 
     useEffect(() => {
+        const handleOutsideClick = (event: MouseEvent) => {
+            if (!dateMenuRef.current) return;
+            if (dateMenuRef.current.contains(event.target as Node)) return;
+            // Don't close if a date input inside the menu is focused (native picker may be open)
+            const dateInput = dateMenuRef.current.querySelector('input[type="date"]');
+            if (dateInput === document.activeElement) return;
+            setIsDateMenuOpen(false);
+        };
+
+        if (isDateMenuOpen) {
+            document.addEventListener('mousedown', handleOutsideClick);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+        };
+    }, [isDateMenuOpen]);
+
+    const dateFilterLabel = getDateLabel(selectedDate);
+
+    const handleSelectToday = () => {
+        setSelectedDate(todayDate);
+        setCalendarMonth(new Date());
         setCurrentPage(1);
-    }, [statusFilter, debouncedSearch]);
+        setIsDateMenuOpen(false);
+    };
+
+    const handleSelectTomorrow = () => {
+        setSelectedDate(tomorrowDate);
+        setCalendarMonth(addDays(new Date(), 1));
+        setCurrentPage(1);
+        setIsDateMenuOpen(false);
+    };
+
+    const handleCalendarDateSelect = (dateStr: string) => {
+        setSelectedDate(dateStr);
+        setCurrentPage(1);
+        setIsDateMenuOpen(false);
+    };
+
+    const renderDateCalendar = () => {
+        const monthStart = startOfMonth(calendarMonth);
+        const monthEnd = endOfMonth(monthStart);
+        const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+        const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+        const days = eachDayOfInterval({ start: calStart, end: calEnd });
+        const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+        return (
+            <div>
+                <div className="flex items-center justify-between mb-3 px-1">
+                    <button
+                        type="button"
+                        onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                        className={cn("p-1.5 rounded-lg transition-colors", isDarkMode ? "hover:bg-white/10 text-white/60 hover:text-white" : "hover:bg-slate-100 text-slate-500")}
+                    >
+                        <ChevronLeft size={14} />
+                    </button>
+                    <span className={cn("text-xs font-bold", isDarkMode ? "text-white" : "text-slate-800")}>
+                        {format(calendarMonth, 'MMMM yyyy')}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                        className={cn("p-1.5 rounded-lg transition-colors", isDarkMode ? "hover:bg-white/10 text-white/60 hover:text-white" : "hover:bg-slate-100 text-slate-500")}
+                    >
+                        <ChevronRight size={14} />
+                    </button>
+                </div>
+                <div className="grid grid-cols-7 mb-1.5">
+                    {weekDays.map(day => (
+                        <div key={day} className={cn("text-center text-[9px] font-bold uppercase tracking-wide", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                            {day}
+                        </div>
+                    ))}
+                </div>
+                <div className="grid grid-cols-7 gap-y-1">
+                    {days.map(day => {
+                        const dateStr = format(day, 'yyyy-MM-dd');
+                        const isSelected = selectedDate === dateStr;
+                        const isToday = isSameDay(day, new Date());
+                        const isCurrentMonth = isSameMonth(day, calendarMonth);
+
+                        return (
+                            <button
+                                key={dateStr}
+                                type="button"
+                                onClick={() => handleCalendarDateSelect(dateStr)}
+                                className={cn(
+                                    "h-7 w-7 mx-auto flex items-center justify-center text-[11px] rounded-lg transition-all",
+                                    !isCurrentMonth && "opacity-20 pointer-events-none",
+                                    isSelected
+                                        ? "bg-emerald-500 text-white font-bold shadow shadow-emerald-500/30"
+                                        : isToday
+                                            ? (isDarkMode ? "border border-emerald-500/50 text-emerald-400 font-semibold" : "border border-emerald-300 text-emerald-700 font-semibold")
+                                            : (isDarkMode ? "text-white/70 hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")
+                                )}
+                            >
+                                {format(day, 'd')}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
 
     const handleCreateAppointment = () => {
         setSelectedAppointment(null);
@@ -102,15 +233,75 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         deleteAppointment(deleteConfirm.appointment_id, {
             onSuccess: () => {
                 setDeleteConfirm(null);
-                refetch();
             },
         });
     };
 
+    const handleLifecycleStatusUpdate = (
+        appointmentId: string,
+        status: 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed' | 'Noshow',
+    ) => {
+        updateAppointmentStatus(
+            {
+                appointmentId,
+                data: { status },
+            }
+        );
+    };
+
+    const handleOpenCompletionDrawer = (appointment: Appointment) => {
+        setCompletionAppointment(appointment);
+        setIsOutcomeDrawerOpen(true);
+    };
+
+    const handleOutcomeSave = (payload: {
+        appointment_id: string;
+        notes: string;
+        follow_up_required: boolean;
+        follow_up_date?: string | null;
+        follow_up_type?: "Call" | "Visit" | "WhatsApp" | null;
+    }) => {
+        completeWithOutcome(payload, {
+            onSuccess: () => {
+                setIsOutcomeDrawerOpen(false);
+                setCompletionAppointment(null);
+            },
+        });
+    };
+
+    const handleOpenNoShowDrawer = (appointment: Appointment) => {
+        setNoShowAppointment(appointment);
+        setIsNoShowDrawerOpen(true);
+    };
+
+    const handleNoShowSave = (payload: {
+        appointment_id: string;
+        mode: "follow_up" | "close";
+        follow_up_date?: string | null;
+        follow_up_type?: "Call" | "WhatsApp" | null;
+    }) => {
+        noShowWithAction(
+            {
+                appointment_id: payload.appointment_id,
+                action: payload.mode,
+                follow_up_date: payload.follow_up_date || null,
+                follow_up_type: payload.follow_up_type || null,
+            },
+            {
+                onSuccess: () => {
+                    setIsNoShowDrawerOpen(false);
+                    setNoShowAppointment(null);
+                },
+            },
+        );
+    };
+
     const handleSaveAppointment = () => {
         setIsModalOpen(false);
-        refetch();
     };
+
+    const shouldShowPrimaryPending = (status: Appointment['status']) => status === 'Pending';
+    const shouldShowPrimaryConfirmed = (status: Appointment['status']) => status === 'Confirmed';
 
     const statusConfig: Record<string, { color: string; bg: string; border: string; accent: string; dot: string }> = {
         confirmed: { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', accent: 'bg-emerald-500', dot: 'bg-emerald-500' },
@@ -155,7 +346,10 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                             type="text"
                             placeholder="Search by name, phone, doctor..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className={cn(
                                 "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none",
                                 isDarkMode
@@ -163,6 +357,75 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                     : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500/30 focus:ring-2 focus:ring-emerald-500/10'
                             )}
                         />
+                    </div>
+                    <div className="relative" ref={dateMenuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setIsDateMenuOpen((prev) => !prev)}
+                            className={cn(
+                                "px-3.5 py-2.5 rounded-xl text-sm border transition-all flex items-center gap-2 min-w-[160px] justify-between",
+                                isDarkMode
+                                    ? "bg-[#111615] border-white/10 text-white hover:border-emerald-500/40"
+                                    : "bg-white border-slate-200 text-slate-700 hover:border-emerald-500/40",
+                                isDateMenuOpen && (isDarkMode ? "border-emerald-500/40" : "border-emerald-500/40")
+                            )}
+                        >
+                            <span className="inline-flex items-center gap-2">
+                                <CalendarIcon size={15} className={isDarkMode ? "text-emerald-400/90" : "text-emerald-600"} />
+                                <span className="font-medium">{dateFilterLabel}</span>
+                            </span>
+                            <ChevronRight size={14} className={cn("transition-transform", isDarkMode ? "text-white/30" : "text-slate-400", isDateMenuOpen && "rotate-90")} />
+                        </button>
+
+                        {isDateMenuOpen && (
+                            <div
+                                className={cn(
+                                    "absolute right-0 mt-2 z-30 w-72 rounded-2xl border shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150",
+                                    isDarkMode ? "bg-[#0f1412] border-white/10" : "bg-white border-slate-200"
+                                )}
+                            >
+                                {/* Preset quick-select buttons */}
+                                <div className={cn("p-3 border-b", isDarkMode ? "border-white/5" : "border-slate-100")}>
+                                    <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-2", isDarkMode ? "text-white/30" : "text-slate-400")}>Quick Select</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleSelectToday}
+                                            className={cn(
+                                                "px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all border",
+                                                selectedDate === todayDate
+                                                    ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                                                    : isDarkMode
+                                                        ? "text-white/60 hover:text-white border-white/8 hover:bg-white/5"
+                                                        : "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
+                                            )}
+                                        >
+                                            Today
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleSelectTomorrow}
+                                            className={cn(
+                                                "px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all border",
+                                                selectedDate === tomorrowDate
+                                                    ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                                                    : isDarkMode
+                                                        ? "text-white/60 hover:text-white border-white/8 hover:bg-white/5"
+                                                        : "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
+                                            )}
+                                        >
+                                            Tomorrow
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Calendar */}
+                                <div className="p-3">
+                                    <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-3", isDarkMode ? "text-white/30" : "text-slate-400")}>Pick a Date</p>
+                                    {renderDateCalendar()}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <button
                         onClick={handleCreateAppointment}
@@ -182,7 +445,10 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                         return (
                             <button
                                 key={f.key}
-                                onClick={() => setStatusFilter(f.key)}
+                                onClick={() => {
+                                    setStatusFilter(f.key);
+                                    setCurrentPage(1);
+                                }}
                                 className={cn(
                                     "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border",
                                     isActive
@@ -218,20 +484,32 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                 )}>
                     <CalendarIcon className="mx-auto mb-3 opacity-40" size={40} />
                     <p className="text-base font-semibold">
-                        {statusFilter !== 'all' ? `No ${statusFilter} appointments` : 'No appointments found'}
+                        {debouncedSearch.trim() && statusFilter !== 'all'
+                            ? 'No results match search and filter'
+                            : debouncedSearch.trim()
+                                ? 'No results found'
+                                : statusFilter !== 'all'
+                                    ? 'No appointments match this status'
+                                    : 'No appointments for selected date'}
                     </p>
                     <p className="text-xs mt-1 opacity-60">
-                        {statusFilter !== 'all' ? 'Try a different filter' : 'Create your first appointment to get started'}
+                        {debouncedSearch.trim() && statusFilter !== 'all'
+                            ? 'Try clearing the search or changing the status filter'
+                            : debouncedSearch.trim()
+                                ? 'Try a different search term'
+                                : statusFilter !== 'all'
+                                    ? 'Try changing the status filter'
+                                    : 'Try another date'}
                     </p>
                 </div>
             ) : (
                 <div className={cn(
-                    "rounded-xl border overflow-hidden",
+                    "rounded-xl border overflow-visible",
                     isDarkMode ? "border-white/5" : "border-slate-200"
                 )}>
                     {/* Table Header */}
                     <div className={cn(
-                        "grid grid-cols-[1fr_1fr_140px_100px_110px_100px] gap-3 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider",
+                        "grid grid-cols-[1fr_1fr_140px_100px_110px_220px] gap-3 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider",
                         isDarkMode ? "bg-white/[0.02] text-white/30 border-b border-white/5" : "bg-slate-50 text-slate-400 border-b border-slate-200"
                     )}>
                         <span>Patient</span>
@@ -249,7 +527,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                             <div
                                 key={appointment.appointment_id}
                                 className={cn(
-                                    "grid grid-cols-[1fr_1fr_140px_100px_110px_100px] gap-3 px-4 py-3 items-center transition-colors group",
+                                    "grid grid-cols-[1fr_1fr_140px_100px_110px_220px] gap-3 px-4 py-3 items-center transition-colors group",
                                     index < currentAppointments.length - 1 && (isDarkMode ? "border-b border-white/[0.03]" : "border-b border-slate-100"),
                                     isDarkMode ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/80"
                                 )}
@@ -263,19 +541,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                         {appointment.patient_name?.charAt(0) || 'P'}
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className={cn("text-sm font-semibold truncate capitalize", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                {appointment.patient_name}
-                                            </p>
-                                            {appointment.token_number && (
-                                                <span className={cn(
-                                                    "text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0",
-                                                    isDarkMode ? "bg-white/5 text-white/30" : "bg-slate-100 text-slate-400"
-                                                )}>
-                                                    #{appointment.token_number}
-                                                </span>
-                                            )}
-                                        </div>
+                                        <p className={cn("text-sm font-semibold truncate capitalize", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            {appointment.patient_name}
+                                        </p>
                                         <p className={cn("text-xs truncate", isDarkMode ? "text-white/30" : "text-slate-400")}>
                                             {appointment.contact_number
                                                 ? (appointment.country_code ? `${appointment.country_code} ${appointment.contact_number}` : appointment.contact_number)
@@ -294,7 +562,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                             </span>
                                         </div>
                                     ) : (
-                                        <span className={cn("text-xs", isDarkMode ? "text-white/20" : "text-slate-300")}>—</span>
+                                        <span className={cn("text-xs", isDarkMode ? "text-white/20" : "text-slate-300")}>-</span>
                                     )}
                                 </div>
 
@@ -302,18 +570,18 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                 <div className={cn("text-sm", isDarkMode ? "text-white/50" : "text-slate-500")}>
                                     {(() => {
                                         try {
-                                            if (!appointment.appointment_date) return '—';
+                                            if (!appointment.appointment_date) return '-';
                                             const date = parseISO(appointment.appointment_date);
-                                            return isNaN(date.getTime()) ? '—' : format(date, 'dd MMM yyyy');
+                                            return isNaN(date.getTime()) ? '-' : format(date, 'dd MMM yyyy');
                                         } catch {
-                                            return '—';
+                                            return '-';
                                         }
                                     })()}
                                 </div>
 
                                 {/* Time */}
                                 <div className={cn("text-sm font-medium", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                    {appointment.appointment_time || '—'}
+                                    {appointment.appointment_time || '-'}
                                 </div>
 
                                 {/* Status */}
@@ -326,43 +594,80 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                 </span>
 
                                 {/* Actions */}
-                                <div className="flex items-center justify-end gap-1">
-                                    <button
-                                        onClick={() => handleViewAppointment(appointment)}
-                                        className={cn(
-                                            "p-2 rounded-lg transition-all",
-                                            isDarkMode
-                                                ? 'text-white/20 hover:text-white hover:bg-white/5'
-                                                : 'text-slate-300 hover:text-slate-700 hover:bg-slate-100'
-                                        )}
-                                        title="View"
-                                    >
-                                        <Eye size={15} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleEditAppointment(appointment)}
-                                        className={cn(
-                                            "p-2 rounded-lg transition-all",
-                                            isDarkMode
-                                                ? 'text-white/20 hover:text-white hover:bg-white/5'
-                                                : 'text-slate-300 hover:text-slate-700 hover:bg-slate-100'
-                                        )}
-                                        title="Edit"
-                                    >
-                                        <Edit2 size={15} />
-                                    </button>
-                                    <button
-                                        onClick={() => setDeleteConfirm(appointment)}
-                                        className={cn(
-                                            "p-2 rounded-lg transition-all",
-                                            isDarkMode
-                                                ? 'text-white/20 hover:text-red-400 hover:bg-red-500/10'
-                                                : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
-                                        )}
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={15} />
-                                    </button>
+                                <div className="flex items-center justify-end gap-2 flex-nowrap whitespace-nowrap">
+                                    {shouldShowPrimaryPending(appointment.status) && (
+                                        <>
+                                            <button
+                                                onClick={() => handleLifecycleStatusUpdate(appointment.appointment_id, 'Confirmed')}
+                                                disabled={isStatusUpdating}
+                                                className={cn(
+                                                    "px-2.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all border",
+                                                    isDarkMode
+                                                        ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                                                        : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                                )}
+                                                title="Confirm Appointment"
+                                            >
+                                                Confirm
+                                            </button>
+                                            <button
+                                                onClick={() => handleLifecycleStatusUpdate(appointment.appointment_id, 'Cancelled')}
+                                                disabled={isStatusUpdating}
+                                                className={cn(
+                                                    "px-2.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all border",
+                                                    isDarkMode
+                                                        ? "border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                                        : "border-red-200 text-red-700 hover:bg-red-50"
+                                                )}
+                                                title="Cancel Appointment"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {shouldShowPrimaryConfirmed(appointment.status) && (
+                                        <>
+                                            <button
+                                                onClick={() => handleOpenCompletionDrawer(appointment)}
+                                                disabled={isStatusUpdating || isCompletingWithOutcome}
+                                                className={cn(
+                                                    "px-2.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all border",
+                                                    isDarkMode
+                                                        ? "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                                                        : "border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                )}
+                                                title="Mark Completed"
+                                            >
+                                                Complete
+                                            </button>
+                                            <button
+                                                onClick={() => handleOpenNoShowDrawer(appointment)}
+                                                disabled={isStatusUpdating || isHandlingNoShow}
+                                                className={cn(
+                                                    "px-2.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all border",
+                                                    isDarkMode
+                                                        ? "border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                                                        : "border-orange-200 text-orange-700 hover:bg-orange-50"
+                                                )}
+                                                title="Mark No Show"
+                                            >
+                                                No Show
+                                            </button>
+                                        </>
+                                    )}
+
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <ActionMenu
+                                            isDarkMode={isDarkMode}
+                                            isView={true}
+                                            isEdit={true}
+                                            isDelete={shouldShowPrimaryPending(appointment.status) || shouldShowPrimaryConfirmed(appointment.status)}
+                                            onView={() => handleViewAppointment(appointment)}
+                                            onEdit={() => handleEditAppointment(appointment)}
+                                            onDelete={() => setDeleteConfirm(appointment)}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -390,6 +695,30 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                 appointment={selectedAppointment}
                 mode={modalMode}
                 isDarkMode={isDarkMode}
+            />
+
+            <VisitOutcomeDrawer
+                isOpen={isOutcomeDrawerOpen}
+                onClose={() => {
+                    setIsOutcomeDrawerOpen(false);
+                    setCompletionAppointment(null);
+                }}
+                onSave={handleOutcomeSave}
+                appointment={completionAppointment}
+                isDarkMode={isDarkMode}
+                isSaving={isCompletingWithOutcome || isStatusUpdating}
+            />
+
+            <NoShowDrawer
+                isOpen={isNoShowDrawerOpen}
+                onClose={() => {
+                    setIsNoShowDrawerOpen(false);
+                    setNoShowAppointment(null);
+                }}
+                onSave={handleNoShowSave}
+                appointment={noShowAppointment}
+                isDarkMode={isDarkMode}
+                isSaving={isHandlingNoShow || isStatusUpdating}
             />
 
             {/* Delete Confirmation Modal */}

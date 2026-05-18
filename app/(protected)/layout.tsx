@@ -6,18 +6,21 @@ import { useFaqRealtimeUpdates } from "@/hooks/useFaqNotifications";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import FeatureProtectedRoute from "@/routes/FeatureProtectedRoute";
 import { AccountStatusOverlay } from "@/components/ui/accountStatusOverlay";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { tenantUserApiData } from "@/services/tenantUser";
 import { managementApiData } from "@/services/management";
+import { useTenantFeaturesQuery } from "@/hooks/useTenantFeaturesQuery";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
     const { isDarkMode, setTheme } = useTheme();
     const { user } = useAuth();
     const tenantUserApi = new tenantUserApiData();
     const managementApi = new managementApiData();
+    useTenantFeaturesQuery();
     useFaqRealtimeUpdates();
 
     const { data: preferencesData } = useQuery({
@@ -49,7 +52,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 <WalletAnnouncementBar />
                 <Header />
                 <div className="flex-1 min-h-0 overflow-y-auto relative">
-                    {children}
+                    <FeatureProtectedRoute>
+                        {children}
+                    </FeatureProtectedRoute>
                 </div>
             </main>
         </div>
