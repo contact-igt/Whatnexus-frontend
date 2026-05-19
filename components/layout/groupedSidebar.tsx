@@ -232,7 +232,28 @@ export const GroupedSidebar = ({
             return a.groupLabel.localeCompare(b.groupLabel);
         });
 
-        return mappedGroups;
+        // Guard against duplicate menu items coming from dynamic navigation
+        // (for example multiple modules resolving to the same route).
+        const seenRoutes = new Set<string>();
+        const seenLabels = new Set<string>();
+        const dedupedGroups = mappedGroups
+            .map((group) => ({
+                ...group,
+                items: group.items.filter((item) => {
+                    const normalizedRoute = normalizeRoute(item.route);
+                    const normalizedLabel = item.label.trim().toLowerCase();
+
+                    if (seenRoutes.has(normalizedRoute)) return false;
+                    if (seenLabels.has(normalizedLabel)) return false;
+
+                    seenRoutes.add(normalizedRoute);
+                    seenLabels.add(normalizedLabel);
+                    return true;
+                }),
+            }))
+            .filter((group) => group.items.length > 0);
+
+        return dedupedGroups;
     }, [industry_type, tenantDynamicNavigationData, staticRouteMeta]);
 
     const hasValidDynamicNavigation =
