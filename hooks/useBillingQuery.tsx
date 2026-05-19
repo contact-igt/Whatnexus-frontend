@@ -1,14 +1,16 @@
 import { billingApiData, BillingLedgerParams } from "@/services/billing";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
+import { useSelector } from "react-redux";
 
 const billingApis = new billingApiData();
 
 export const useGetBillingKpiQuery = (startDate?: string, endDate?: string) => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['billing-kpi', startDate, endDate],
+        queryKey: ['billing-kpi', tenantId, startDate, endDate],
         queryFn: () => billingApis.getBillingKpi(startDate, endDate),
         enabled: !!token && !isManagement,
     });
@@ -17,8 +19,9 @@ export const useGetBillingKpiQuery = (startDate?: string, endDate?: string) => {
 export const useGetBillingLedgerQuery = (params?: BillingLedgerParams & { startDate?: string; endDate?: string }) => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['billing-ledger', params],
+        queryKey: ['billing-ledger', tenantId, params],
         queryFn: () => billingApis.getBillingLedger(params),
         enabled: !!token && !isManagement,
         placeholderData: (previousData) => previousData // Keeps old data on screen while paginating
@@ -28,8 +31,9 @@ export const useGetBillingLedgerQuery = (params?: BillingLedgerParams & { startD
 export const useGetBillingSpendChartQuery = (startDate?: string, endDate?: string) => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['billing-spend-chart', startDate, endDate],
+        queryKey: ['billing-spend-chart', tenantId, startDate, endDate],
         queryFn: () => billingApis.getBillingSpendChart(startDate, endDate),
         enabled: !!token && !isManagement,
     });
@@ -38,8 +42,9 @@ export const useGetBillingSpendChartQuery = (startDate?: string, endDate?: strin
 export const useGetGstBreakdownQuery = () => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['gst-breakdown'],
+        queryKey: ['gst-breakdown', tenantId],
         queryFn: () => billingApis.getGstBreakdown(),
         enabled: !!token && !isManagement,
         staleTime: 5 * 60 * 1000,
@@ -49,16 +54,18 @@ export const useGetGstBreakdownQuery = () => {
 export const useGetWalletBalanceQuery = () => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['wallet-balance'],
+        queryKey: ['wallet-balance', tenantId],
         queryFn: () => billingApis.getWalletBalance(),
         enabled: !!token && !isManagement,
     });
 };
 
 export const useGetWalletTransactionsQuery = (params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['wallet-transactions', params],
+        queryKey: ['wallet-transactions', tenantId, params],
         queryFn: () => billingApis.getWalletTransactions(params)
     });
 };
@@ -85,8 +92,9 @@ export const useVerifyPaymentMutation = () => {
 };
 
 export const useGetPaymentHistoryQuery = (params?: { page?: number; limit?: number }) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['payment-history', params],
+        queryKey: ['payment-history', tenantId, params],
         queryFn: () => billingApis.getPaymentHistory(params)
     });
 };
@@ -111,8 +119,9 @@ export const useUpdatePricingMutation = () => {
 export const useGetBillingTemplateStatsQuery = (startDate?: string, endDate?: string) => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['billing-template-stats', startDate, endDate],
+        queryKey: ['billing-template-stats', tenantId, startDate, endDate],
         queryFn: () => billingApis.getBillingTemplateStats(startDate, endDate),
         enabled: !!token && !isManagement,
     });
@@ -121,8 +130,9 @@ export const useGetBillingTemplateStatsQuery = (startDate?: string, endDate?: st
 export const useGetBillingCampaignStatsQuery = (startDate?: string, endDate?: string) => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['billing-campaign-stats', startDate, endDate],
+        queryKey: ['billing-campaign-stats', tenantId, startDate, endDate],
         queryFn: () => billingApis.getBillingCampaignStats(startDate, endDate),
         enabled: !!token && !isManagement,
     });
@@ -131,16 +141,18 @@ export const useGetBillingCampaignStatsQuery = (startDate?: string, endDate?: st
 export const useGetAiTokenUsageQuery = (startDate?: string, endDate?: string) => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['ai-token-usage', startDate, endDate],
+        queryKey: ['ai-token-usage', tenantId, startDate, endDate],
         queryFn: () => billingApis.getAiTokenUsage(startDate, endDate),
         enabled: !!token && !isManagement,
     });
 };
 
 export const useGetAutoRechargeSettingsQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['auto-recharge-settings'],
+        queryKey: ['auto-recharge-settings', tenantId],
         queryFn: () => billingApis.getAutoRechargeSettings()
     });
 };
@@ -168,8 +180,9 @@ export const useGetAvailableAiModelsQuery = () => {
 export const useGetWalletStatusQuery = () => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['wallet-status'],
+        queryKey: ['wallet-status', tenantId],
         queryFn: () => billingApis.getWalletStatus(),
         refetchInterval: 60000,
         enabled: !!token && !isManagement,
@@ -179,8 +192,9 @@ export const useGetWalletStatusQuery = () => {
 export const useGetBillingModeQuery = () => {
     const { user, token } = useAuth();
     const isManagement = user?.user_type === 'management';
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['billing-mode'],
+        queryKey: ['billing-mode', tenantId],
         queryFn: () => billingApis.getBillingMode(),
         staleTime: 5 * 60 * 1000,
         enabled: !!token && !isManagement,
@@ -188,16 +202,18 @@ export const useGetBillingModeQuery = () => {
 };
 
 export const useGetInvoicesQuery = (params?: { status?: string; page?: number; limit?: number }) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['invoices', params],
+        queryKey: ['invoices', tenantId, params],
         queryFn: () => billingApis.getInvoices(params),
         placeholderData: (previousData: unknown) => previousData,
     });
 };
 
 export const useGetInvoiceDetailQuery = (id: number) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['invoice-detail', id],
+        queryKey: ['invoice-detail', tenantId, id],
         queryFn: () => billingApis.getInvoiceDetail(id),
         enabled: !!id,
     });

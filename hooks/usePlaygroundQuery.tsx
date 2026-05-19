@@ -1,6 +1,7 @@
 import { PlaygroundApiData, PlaygroundChatPayload } from "@/services/playground";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
+import { useSelector } from "react-redux";
 
 const playgroundApi = new PlaygroundApiData();
 
@@ -14,8 +15,9 @@ export const usePlaygroundChatMutation = () => {
 };
 
 export const usePlaygroundKnowledgeSources = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ["playground_knowledge_sources"],
+        queryKey: ["playground_knowledge_sources", tenantId],
         queryFn: () => playgroundApi.getKnowledgeSources(),
         staleTime: 5 * 60 * 1000,
     });

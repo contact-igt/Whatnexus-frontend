@@ -12,7 +12,8 @@ import { clearAuthData } from '@/redux/slices/auth/authSlice';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { socket } from '@/utils/socket';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 import { updateUserData, updateUserPreferences } from '@/redux/slices/auth/authSlice';
 import { tenantUserApiData } from '@/services/tenantUser';
 import { managementApiData } from '@/services/management';
@@ -102,7 +103,6 @@ export const Header = () => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-    const queryClient = useQueryClient();
     const dispatch = useDispatch();
     const router = useRouter();
     const pathname = usePathname();
@@ -229,7 +229,7 @@ export const Header = () => {
             });
     };
     const handleLogout = () => {
-        queryClient.removeQueries({ queryKey: ["user-preferences"] });
+        queryClient.clear();
         dispatch(clearAuthData());
         router.replace('/login');
     };

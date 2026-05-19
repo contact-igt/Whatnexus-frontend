@@ -3,13 +3,14 @@ import { toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessagesApiData } from "@/services/messages";
 import { Variable } from "lucide-react";
+import { useSelector } from "react-redux";
 
 const MessagesApis = new MessagesApiData();
 
 export const useGetAllChatsQuery = () => {
-
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError } = useQuery({
-        queryKey: ['chats'],
+        queryKey: ['chats', tenantId],
         queryFn: () => MessagesApis.getAllChats(),
         staleTime: 2 * 60 * 1000,
     });
@@ -24,9 +25,9 @@ export const useGetAllChatsQuery = () => {
 
 
 export const useGetAllLiveChatsQuery = () => {
-
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ['livechats'],
+        queryKey: ['livechats', tenantId],
         queryFn: () => MessagesApis.getAllLiveChats(),
         staleTime: 2 * 60 * 1000,
     });
@@ -39,9 +40,9 @@ export const useGetAllLiveChatsQuery = () => {
 };
 
 export const useGetAllHistoryChatsQuery = () => {
-
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError } = useQuery({
-        queryKey: ['historychats'],
+        queryKey: ['historychats', tenantId],
         queryFn: () => MessagesApis.getAllHistoryChats(),
         staleTime: 2 * 60 * 1000,
     });
@@ -54,8 +55,9 @@ export const useGetAllHistoryChatsQuery = () => {
 };
 
 export const useMessagesByPhoneQuery = (phone_number: string) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ['messages', phone_number],
+        queryKey: ['messages', tenantId, phone_number],
         queryFn: () => MessagesApis.getMessagesByPhone(phone_number),
         enabled: !!phone_number,
         staleTime: 30 * 1000,
@@ -216,8 +218,9 @@ export const useAssignAgentMutation = () => {
 };
 
 export const useGetAgentsQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError } = useQuery({
-        queryKey: ['agents'],
+        queryKey: ['agents', tenantId],
         queryFn: () => MessagesApis.getAgents(),
         staleTime: 5 * 60 * 1000,
     });

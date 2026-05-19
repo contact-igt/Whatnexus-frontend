@@ -14,7 +14,11 @@ import { ActionMenu } from '@/components/ui/actionMenu';
 
 interface BookingListProps {
     isDarkMode: boolean;
+    showAll?: boolean;
+    autoOpenCreate?: boolean;
+    onAutoCreateHandled?: () => void;
 }
+
 
 export interface Appointment {
     appointment_id: string;
@@ -33,9 +37,16 @@ export interface Appointment {
     token_number?: number;
     type?: string;
     email?: string;
+    created_at?: string;
+    createdAt?: string;
 }
 
-export const BookingList = ({ isDarkMode }: BookingListProps) => {
+export const BookingList = ({
+    isDarkMode,
+    showAll = false,
+    autoOpenCreate = false,
+    onAutoCreateHandled,
+}: BookingListProps) => {
     const getIsoDate = (date: Date) => format(date, 'yyyy-MM-dd');
     const getDateLabel = (dateValue: string) => {
         const today = getIsoDate(new Date());
@@ -70,13 +81,29 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const { data, isLoading } = useGetAllAppointmentsQuery({ search: debouncedSearch, date: selectedDate });
+    const queryParams = useMemo(
+        () => (showAll ? { search: debouncedSearch } : { search: debouncedSearch, date: selectedDate }),
+        [showAll, debouncedSearch, selectedDate],
+    );
+
+    const { data, isLoading } = useGetAllAppointmentsQuery(queryParams);
     const { mutate: deleteAppointment, isPending: isDeleting } = useDeleteAppointmentMutation();
     const { mutate: updateAppointmentStatus, isPending: isStatusUpdating } = useUpdateAppointmentStatusMutation();
     const { mutate: completeWithOutcome, isPending: isCompletingWithOutcome } = useCompleteWithOutcomeMutation();
     const { mutate: noShowWithAction, isPending: isHandlingNoShow } = useNoShowWithActionMutation();
 
-    const allAppointments: Appointment[] = useMemo(() => data?.data || [], [data?.data]);
+    const allAppointments: Appointment[] = useMemo(() => {
+        const rows: Appointment[] = data?.data || [];
+        if (!showAll) return rows;
+
+        return [...rows].sort((a, b) => {
+            const aTime = new Date(a.created_at || a.createdAt || '').getTime();
+            const bTime = new Date(b.created_at || b.createdAt || '').getTime();
+            const safeA = Number.isFinite(aTime) ? aTime : 0;
+            const safeB = Number.isFinite(bTime) ? bTime : 0;
+            return safeB - safeA;
+        });
+    }, [data?.data, showAll]);
 
     // Status counts for filter pills
     const statusCounts = useMemo(() => {
@@ -103,6 +130,10 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
     }, [appointments, currentPage]);
 
     useEffect(() => {
+        if (showAll) {
+            return;
+        }
+
         const handleOutsideClick = (event: MouseEvent) => {
             if (!dateMenuRef.current) return;
             if (dateMenuRef.current.contains(event.target as Node)) return;
@@ -119,7 +150,15 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         return () => {
             document.removeEventListener('mousedown', handleOutsideClick);
         };
-    }, [isDateMenuOpen]);
+    }, [isDateMenuOpen, showAll]);
+
+    useEffect(() => {
+        if (!autoOpenCreate) return;
+        setSelectedAppointment(null);
+        setModalMode('create');
+        setIsModalOpen(true);
+        onAutoCreateHandled?.();
+    }, [autoOpenCreate, onAutoCreateHandled]);
 
     const dateFilterLabel = getDateLabel(selectedDate);
 
@@ -259,7 +298,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         notes: string;
         follow_up_required: boolean;
         follow_up_date?: string | null;
-        follow_up_type?: "Call" | "Visit" | "WhatsApp" | null;
+        follow_up_type?: "Call" | "WhatsApp" | null;
+        follow_up_reason?: "Revisit" | "Enquiry" | null;
+        template_id?: string | null;
     }) => {
         completeWithOutcome(payload, {
             onSuccess: () => {
@@ -276,16 +317,20 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
 
     const handleNoShowSave = (payload: {
         appointment_id: string;
-        mode: "follow_up" | "close";
+        mode: "manual" | "default";
         follow_up_date?: string | null;
+        follow_up_time?: string | null;
         follow_up_type?: "Call" | "WhatsApp" | null;
+        template_id: string | null;
     }) => {
         noShowWithAction(
             {
                 appointment_id: payload.appointment_id,
-                action: payload.mode,
+                mode: payload.mode,
                 follow_up_date: payload.follow_up_date || null,
+                follow_up_time: payload.follow_up_time || null,
                 follow_up_type: payload.follow_up_type || null,
+                template_id: payload.template_id,
             },
             {
                 onSuccess: () => {
@@ -321,6 +366,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
         { key: 'cancelled', label: 'Cancelled' },
         { key: 'noshow', label: 'No Show' },
     ];
+    const tableGridCols = showAll
+        ? "grid-cols-[1fr_1fr_140px_100px_110px_220px]"
+        : "grid-cols-[1fr_1fr_100px_110px_220px]";
 
     if (isLoading) {
         return (
@@ -358,75 +406,77 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                             )}
                         />
                     </div>
-                    <div className="relative" ref={dateMenuRef}>
-                        <button
-                            type="button"
-                            onClick={() => setIsDateMenuOpen((prev) => !prev)}
-                            className={cn(
-                                "px-3.5 py-2.5 rounded-xl text-sm border transition-all flex items-center gap-2 min-w-[160px] justify-between",
-                                isDarkMode
-                                    ? "bg-[#111615] border-white/10 text-white hover:border-emerald-500/40"
-                                    : "bg-white border-slate-200 text-slate-700 hover:border-emerald-500/40",
-                                isDateMenuOpen && (isDarkMode ? "border-emerald-500/40" : "border-emerald-500/40")
-                            )}
-                        >
-                            <span className="inline-flex items-center gap-2">
-                                <CalendarIcon size={15} className={isDarkMode ? "text-emerald-400/90" : "text-emerald-600"} />
-                                <span className="font-medium">{dateFilterLabel}</span>
-                            </span>
-                            <ChevronRight size={14} className={cn("transition-transform", isDarkMode ? "text-white/30" : "text-slate-400", isDateMenuOpen && "rotate-90")} />
-                        </button>
-
-                        {isDateMenuOpen && (
-                            <div
+                    {!showAll && (
+                        <div className="relative" ref={dateMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setIsDateMenuOpen((prev) => !prev)}
                                 className={cn(
-                                    "absolute right-0 mt-2 z-30 w-72 rounded-2xl border shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150",
-                                    isDarkMode ? "bg-[#0f1412] border-white/10" : "bg-white border-slate-200"
+                                    "px-3.5 py-2.5 rounded-xl text-sm border transition-all flex items-center gap-2 min-w-[160px] justify-between",
+                                    isDarkMode
+                                        ? "bg-[#111615] border-white/10 text-white hover:border-emerald-500/40"
+                                        : "bg-white border-slate-200 text-slate-700 hover:border-emerald-500/40",
+                                    isDateMenuOpen && (isDarkMode ? "border-emerald-500/40" : "border-emerald-500/40")
                                 )}
                             >
-                                {/* Preset quick-select buttons */}
-                                <div className={cn("p-3 border-b", isDarkMode ? "border-white/5" : "border-slate-100")}>
-                                    <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-2", isDarkMode ? "text-white/30" : "text-slate-400")}>Quick Select</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleSelectToday}
-                                            className={cn(
-                                                "px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all border",
-                                                selectedDate === todayDate
-                                                    ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
-                                                    : isDarkMode
-                                                        ? "text-white/60 hover:text-white border-white/8 hover:bg-white/5"
-                                                        : "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
-                                            )}
-                                        >
-                                            Today
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleSelectTomorrow}
-                                            className={cn(
-                                                "px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all border",
-                                                selectedDate === tomorrowDate
-                                                    ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
-                                                    : isDarkMode
-                                                        ? "text-white/60 hover:text-white border-white/8 hover:bg-white/5"
-                                                        : "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
-                                            )}
-                                        >
-                                            Tomorrow
-                                        </button>
+                                <span className="inline-flex items-center gap-2">
+                                    <CalendarIcon size={15} className={isDarkMode ? "text-emerald-400/90" : "text-emerald-600"} />
+                                    <span className="font-medium">{dateFilterLabel}</span>
+                                </span>
+                                <ChevronRight size={14} className={cn("transition-transform", isDarkMode ? "text-white/30" : "text-slate-400", isDateMenuOpen && "rotate-90")} />
+                            </button>
+
+                            {isDateMenuOpen && (
+                                <div
+                                    className={cn(
+                                        "absolute right-0 mt-2 z-30 w-72 rounded-2xl border shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150",
+                                        isDarkMode ? "bg-[#0f1412] border-white/10" : "bg-white border-slate-200"
+                                    )}
+                                >
+                                    {/* Preset quick-select buttons */}
+                                    <div className={cn("p-3 border-b", isDarkMode ? "border-white/5" : "border-slate-100")}>
+                                        <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-2", isDarkMode ? "text-white/30" : "text-slate-400")}>Quick Select</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleSelectToday}
+                                                className={cn(
+                                                    "px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all border",
+                                                    selectedDate === todayDate
+                                                        ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                                                        : isDarkMode
+                                                            ? "text-white/60 hover:text-white border-white/8 hover:bg-white/5"
+                                                            : "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                Today
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSelectTomorrow}
+                                                className={cn(
+                                                    "px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all border",
+                                                    selectedDate === tomorrowDate
+                                                        ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                                                        : isDarkMode
+                                                            ? "text-white/60 hover:text-white border-white/8 hover:bg-white/5"
+                                                            : "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                Tomorrow
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Calendar */}
+                                    <div className="p-3">
+                                        <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-3", isDarkMode ? "text-white/30" : "text-slate-400")}>Pick a Date</p>
+                                        {renderDateCalendar()}
                                     </div>
                                 </div>
-
-                                {/* Calendar */}
-                                <div className="p-3">
-                                    <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-3", isDarkMode ? "text-white/30" : "text-slate-400")}>Pick a Date</p>
-                                    {renderDateCalendar()}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
+                    )}
                     <button
                         onClick={handleCreateAppointment}
                         className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 active:scale-95"
@@ -490,7 +540,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                 ? 'No results found'
                                 : statusFilter !== 'all'
                                     ? 'No appointments match this status'
-                                    : 'No appointments for selected date'}
+                                    : showAll
+                                        ? 'No appointments found'
+                                        : 'No appointments for selected date'}
                     </p>
                     <p className="text-xs mt-1 opacity-60">
                         {debouncedSearch.trim() && statusFilter !== 'all'
@@ -499,7 +551,9 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                 ? 'Try a different search term'
                                 : statusFilter !== 'all'
                                     ? 'Try changing the status filter'
-                                    : 'Try another date'}
+                                    : showAll
+                                        ? 'Create an appointment to get started'
+                                        : 'Try another date'}
                     </p>
                 </div>
             ) : (
@@ -509,12 +563,12 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                 )}>
                     {/* Table Header */}
                     <div className={cn(
-                        "grid grid-cols-[1fr_1fr_140px_100px_110px_220px] gap-3 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider",
+                        `grid ${tableGridCols} gap-3 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider`,
                         isDarkMode ? "bg-white/[0.02] text-white/30 border-b border-white/5" : "bg-slate-50 text-slate-400 border-b border-slate-200"
                     )}>
                         <span>Patient</span>
                         <span>Doctor</span>
-                        <span>Date</span>
+                        {showAll && <span>Date</span>}
                         <span>Time</span>
                         <span>Status</span>
                         <span className="text-right">Actions</span>
@@ -527,7 +581,7 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                             <div
                                 key={appointment.appointment_id}
                                 className={cn(
-                                    "grid grid-cols-[1fr_1fr_140px_100px_110px_220px] gap-3 px-4 py-3 items-center transition-colors group",
+                                    `grid ${tableGridCols} gap-3 px-4 py-3 items-center transition-colors group`,
                                     index < currentAppointments.length - 1 && (isDarkMode ? "border-b border-white/[0.03]" : "border-b border-slate-100"),
                                     isDarkMode ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/80"
                                 )}
@@ -566,18 +620,19 @@ export const BookingList = ({ isDarkMode }: BookingListProps) => {
                                     )}
                                 </div>
 
-                                {/* Date */}
-                                <div className={cn("text-sm", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                                    {(() => {
-                                        try {
-                                            if (!appointment.appointment_date) return '-';
-                                            const date = parseISO(appointment.appointment_date);
-                                            return isNaN(date.getTime()) ? '-' : format(date, 'dd MMM yyyy');
-                                        } catch {
-                                            return '-';
-                                        }
-                                    })()}
-                                </div>
+                                {showAll && (
+                                    <div className={cn("text-sm", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                        {(() => {
+                                            try {
+                                                if (!appointment.appointment_date) return '-';
+                                                const date = parseISO(appointment.appointment_date);
+                                                return isNaN(date.getTime()) ? '-' : format(date, 'dd MMM yyyy');
+                                            } catch {
+                                                return '-';
+                                            }
+                                        })()}
+                                    </div>
+                                )}
 
                                 {/* Time */}
                                 <div className={cn("text-sm font-medium", isDarkMode ? "text-white/60" : "text-slate-600")}>

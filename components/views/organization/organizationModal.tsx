@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -10,6 +10,7 @@ import { Building2, Mail, Phone, MapPin, Users, Loader2, Cpu, Key, ShieldCheck }
 import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation, useValidateOpenAIKeyMutation } from "@/hooks/useTenantQuery";
 import { useGetAiPricingRulesQuery } from "@/hooks/useManagementQuery";
+import { useIndustriesQuery, usePlansQuery } from "@/hooks/useModuleAccessManagementQuery";
 import { Country, State, City } from 'country-state-city';
 import { sanitizePhoneInput } from "@/lib/phone";
 import { IndustryType } from "./TenantFeatureAccessChecklist";
@@ -35,6 +36,8 @@ export const OrganizationModal = ({
         openai_api_key?: string;
         gstin?: string;
         industry_type?: IndustryType;
+        industry_id?: string;
+        plan_id?: string;
     }>({
         company_name: '',
         owner_name: '',
@@ -52,6 +55,8 @@ export const OrganizationModal = ({
         adminEmail: '',
         isActive: true,
         industry_type: 'general',
+        industry_id: '',
+        plan_id: '',
         owner_country_code: '+91',
         password: '',
         input_model: 'gpt-4o-mini',
@@ -62,12 +67,24 @@ export const OrganizationModal = ({
     // ISO codes used to drive cascading dropdowns
     const [countryIso, setCountryIso] = useState('');
     const [stateIso, setStateIso] = useState('');
+    const [isIndustryIdTouched, setIsIndustryIdTouched] = useState(false);
+    const [isPlanIdTouched, setIsPlanIdTouched] = useState(false);
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { mutate: createTenantMutate, isPending: isCreateTenantPending } = useCreateTenantMutation();
     const { mutate: updateTenantMutate, isPending: isUpdateTenantPending } = useUpdateTenantMutation();
     const { mutateAsync: validateOpenAIKey, isPending: isValidatingKey } = useValidateOpenAIKeyMutation();
     const { data: aiPricingResponse } = useGetAiPricingRulesQuery();
+    const {
+        data: industriesResponse,
+        isLoading: isIndustriesLoading,
+        isError: isIndustriesError,
+    } = useIndustriesQuery();
+    const {
+        data: plansResponse,
+        isLoading: isPlansLoading,
+        isError: isPlansError,
+    } = usePlansQuery();
 
     // AI Models options from pricing table (active only)
     type AiPricingRuleLite = {
@@ -106,6 +123,56 @@ export const OrganizationModal = ({
 
     const hasInvalidInputModel = !!formData.input_model && !activeModelSet.has(formData.input_model);
     const hasInvalidOutputModel = !!formData.output_model && !activeModelSet.has(formData.output_model);
+
+    const resolveApiArray = <T,>(payload: unknown): T[] => {
+        if (Array.isArray(payload)) return payload as T[];
+        if (payload && typeof payload === 'object') {
+            const obj = payload as Record<string, unknown>;
+            if (Array.isArray(obj.data)) return obj.data as T[];
+        }
+        return [];
+    };
+
+    const industries = resolveApiArray<any>(industriesResponse);
+    const plans = resolveApiArray<any>(plansResponse);
+
+    const industryOptions = useMemo(() => {
+        const options = [{ value: '', label: 'Not Set' }];
+        for (const industry of industries) {
+            options.push({
+                value: industry.industry_id,
+                label: `${industry.industry_name || industry.industry_key || industry.industry_id} (${industry.industry_id})`,
+            });
+        }
+
+        if (formData.industry_id && !options.some((option) => option.value === formData.industry_id)) {
+            options.push({
+                value: formData.industry_id,
+                label: `${formData.industry_id} (current)`,
+            });
+        }
+
+        return options;
+    }, [industries, formData.industry_id]);
+
+    const planOptions = useMemo(() => {
+        const options = [{ value: '', label: 'Not Set' }];
+        for (const plan of plans) {
+            options.push({
+                value: plan.plan_id,
+                label: `${plan.plan_name || plan.plan_key || plan.plan_id} (${plan.plan_id})`,
+            });
+        }
+
+        if (formData.plan_id && !options.some((option) => option.value === formData.plan_id)) {
+            options.push({
+                value: formData.plan_id,
+                label: `${formData.plan_id} (current)`,
+            });
+        }
+
+        return options;
+    }, [plans, formData.plan_id]);
 
 
     // Derived Location Options
@@ -202,6 +269,8 @@ export const OrganizationModal = ({
                 subscriptionPlan: (org.subscription_plan || org.subscriptionPlan || 'basic').toLowerCase(),
                 // Users — API returns 'max_users', form uses 'maxUsers'
                 maxUsers: Number(org.max_users ?? org.maxUsers ?? 10),
+                industry_id: typeof org.industry_id === 'string' ? org.industry_id : '',
+                plan_id: typeof org.plan_id === 'string' ? org.plan_id : '',
                 // Phone
                 owner_country_code: org.owner_country_code || '+91',
                 owner_mobile: org.owner_mobile || '',
@@ -232,6 +301,8 @@ export const OrganizationModal = ({
                 adminEmail: '',
                 isActive: true,
                 industry_type: 'general',
+                industry_id: '',
+                plan_id: '',
                 owner_country_code: '+91',
                 password: '',
                 input_model: 'gpt-4o-mini',
@@ -240,11 +311,40 @@ export const OrganizationModal = ({
                 gstin: ''
             });
         }
+        setIsIndustryIdTouched(false);
+        setIsPlanIdTouched(false);
         setErrors({});
     }, [organization, mode, isOpen]);
 
+    useEffect(() => {
+        if (mode !== 'create') return;
+        if (isIndustryIdTouched) return;
+        if (formData.industry_id) return;
+
+        const selectedIndustryType = formData.industry_type || 'general';
+        const matchedIndustry = industries.find((industry: any) => (
+            industry?.industry_id === selectedIndustryType ||
+            industry?.industry_key === selectedIndustryType
+        ));
+
+        if (matchedIndustry?.industry_id) {
+            setFormData((prev) => ({ ...prev, industry_id: matchedIndustry.industry_id }));
+        }
+    }, [mode, isIndustryIdTouched, formData.industry_id, formData.industry_type, industries]);
+
+    useEffect(() => {
+        if (mode !== 'create') return;
+        if (isPlanIdTouched) return;
+        if (formData.plan_id) return;
+
+        const defaultPlan = plans.find((plan: any) => plan?.plan_id === 'default_plan');
+        if (defaultPlan?.plan_id) {
+            setFormData((prev) => ({ ...prev, plan_id: defaultPlan.plan_id }));
+        }
+    }, [mode, isPlanIdTouched, formData.plan_id, plans]);
+
     const handleChange = (
-        field: keyof Organization | 'input_model' | 'output_model' | 'openai_api_key' | 'gstin' | 'industry_type',
+        field: keyof Organization | 'input_model' | 'output_model' | 'openai_api_key' | 'gstin' | 'industry_type' | 'industry_id' | 'plan_id',
         value: any
     ) => {
         let sanitizedValue = value;
@@ -310,6 +410,27 @@ export const OrganizationModal = ({
             newErrors.output_model = "Selected output model is inactive. Please choose an active model.";
         }
 
+        const selectedIndustryId = typeof formData.industry_id === 'string' ? formData.industry_id.trim() : '';
+        const selectedPlanId = typeof formData.plan_id === 'string' ? formData.plan_id.trim() : '';
+
+        if (
+            selectedIndustryId &&
+            !isIndustriesLoading &&
+            !isIndustriesError &&
+            !industries.some((industry: any) => industry?.industry_id === selectedIndustryId)
+        ) {
+            newErrors.industry_id = "Selected industry_id is invalid";
+        }
+
+        if (
+            selectedPlanId &&
+            !isPlansLoading &&
+            !isPlansError &&
+            !plans.some((plan: any) => plan?.plan_id === selectedPlanId)
+        ) {
+            newErrors.plan_id = "Selected plan_id is invalid";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -347,18 +468,18 @@ export const OrganizationModal = ({
             pincode,
             maxUsers,
             subscriptionPlan,
+            industry_id,
+            plan_id,
             profile,
             input_model,
             output_model,
             openai_api_key,
             gstin,
             industry_type,
-            type: _legacyType,
             ...rest
         } = formData;
         void openai_api_key;
         void industry_type;
-        void _legacyType;
         const normalizedGstin = gstin?.trim().toUpperCase() || '';
 
         const aiSettingsPayload: any = {
@@ -381,6 +502,8 @@ export const OrganizationModal = ({
             maxUsers,
             subscriptionPlan,
             industry_type: currentIndustryType,
+            industry_id: typeof industry_id === 'string' && industry_id.trim() ? industry_id.trim() : null,
+            plan_id: typeof plan_id === 'string' && plan_id.trim() ? plan_id.trim() : null,
             profile: profile ? JSON.stringify(profile) : null,
             subscription_start_date: (organization as any)?.subscription_start_date,
             subscription_end_date: (organization as any)?.subscription_end_date,
@@ -547,6 +670,19 @@ export const OrganizationModal = ({
                         required
                     />
 
+                    <Select
+                        isDarkMode={isDarkMode}
+                        label="Dynamic Industry"
+                        value={formData.industry_id || ''}
+                        onChange={(value) => {
+                            setIsIndustryIdTouched(true);
+                            handleChange('industry_id', value);
+                        }}
+                        options={industryOptions}
+                        disabled={isView}
+                        error={errors.industry_id}
+                    />
+
                     {/* {mode === 'create' && (
                         <Input
                             autoComplete="new-password"
@@ -574,6 +710,19 @@ export const OrganizationModal = ({
                         ]}
                         disabled={isView}
                         required
+                    />
+
+                    <Select
+                        isDarkMode={isDarkMode}
+                        label="Dynamic Plan"
+                        value={formData.plan_id || ''}
+                        onChange={(value) => {
+                            setIsPlanIdTouched(true);
+                            handleChange('plan_id', value);
+                        }}
+                        options={planOptions}
+                        disabled={isView}
+                        error={errors.plan_id}
                     />
 
                     <div className="col-span-full">

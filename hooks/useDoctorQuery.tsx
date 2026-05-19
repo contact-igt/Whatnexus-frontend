@@ -1,6 +1,7 @@
 import { doctorApiData, CreateDoctorDto, UpdateDoctorDto } from "@/services/doctor";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
+import { useSelector } from "react-redux";
 
 const doctorApis = new doctorApiData();
 
@@ -21,15 +22,17 @@ export const useCreateDoctorMutation = () => {
 };
 
 export const useGetAllDoctorsQuery = (params?: any) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['doctors', params],
+        queryKey: ['doctors', tenantId, params],
         queryFn: () => doctorApis.getAllDoctors()
     });
 };
 
 export const useGetDoctorByIdQuery = (doctorId: string) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['doctor', doctorId],
+        queryKey: ['doctor', tenantId, doctorId],
         queryFn: () => doctorApis.getDoctorById(doctorId),
         enabled: !!doctorId
     });
@@ -70,8 +73,9 @@ export const useDeleteDoctorMutation = () => {
 };
 
 export const useGetDeletedDoctorsQuery = (params?: any) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['deleted-doctors', params],
+        queryKey: ['deleted-doctors', tenantId, params],
         queryFn: () => doctorApis.getDeletedDoctors()
     });
 };

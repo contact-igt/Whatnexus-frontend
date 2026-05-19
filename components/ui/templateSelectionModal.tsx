@@ -157,7 +157,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
     if (!isOpen || !mounted) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-md">
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-md">
             <GlassCard
                 isDarkMode={isDarkMode}
                 className="w-full max-w-7xl h-full max-h-[90vh] overflow-hidden flex flex-col border-white/10"
@@ -316,49 +316,74 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
                                     <button onClick={refetch} className="px-8 py-3 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all active:scale-95">RETRY CONNECTION</button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
-                                    {filteredTemplates.map((template) => (
-                                        <button
-                                            key={template.id}
-                                            onClick={() => setSelectedTemplate(template)}
-                                            className={cn(
-                                                "p-6 rounded-2xl border-2 text-left transition-all relative group flex flex-col h-[220px] min-w-0 overflow-hidden",
-                                                selectedTemplate?.id === template.id
-                                                    ? 'border-emerald-500 bg-emerald-500/5 shadow-2xl shadow-emerald-500/20 z-10'
-                                                    : isDarkMode
-                                                        ? 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-                                                        : 'border-slate-100 bg-white hover:border-slate-300 shadow-sm'
-                                            )}
-                                        >
-                                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex flex-col gap-2">
+                                    {filteredTemplates.map((template) => {
+                                        const isSelected = selectedTemplate?.id === template.id;
+                                        return (
+                                            <button
+                                                key={template.id}
+                                                onClick={() => setSelectedTemplate(template)}
+                                                className={cn(
+                                                    "w-full px-4 py-3.5 rounded-xl border text-left transition-all flex items-center gap-4",
+                                                    isSelected
+                                                        ? isDarkMode
+                                                            ? 'border-emerald-500/50 bg-emerald-500/10'
+                                                            : 'border-emerald-500/40 bg-emerald-50'
+                                                        : isDarkMode
+                                                            ? 'border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]'
+                                                            : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50 shadow-sm'
+                                                )}
+                                            >
+                                                {/* Icon */}
                                                 <div className={cn(
-                                                    "w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
-                                                    isDarkMode ? 'bg-emerald-500/20' : 'bg-emerald-50'
+                                                    "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0",
+                                                    isSelected
+                                                        ? 'bg-emerald-500/20'
+                                                        : isDarkMode ? 'bg-white/5' : 'bg-slate-100'
                                                 )}>
-                                                    <FileText size={20} className="text-emerald-500" />
+                                                    <FileText size={16} className={isSelected ? "text-emerald-400" : isDarkMode ? "text-white/40" : "text-slate-400"} />
                                                 </div>
-                                                {selectedTemplate?.id === template.id && (
-                                                    <div className="bg-emerald-500 text-white rounded-full p-1 shadow-lg animate-in zoom-in">
-                                                        <Check size={12} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <h3 className={cn("text-sm font-bold mb-1.5 pr-8 min-w-0 break-words line-clamp-2 leading-5", isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                                {template.name}
-                                            </h3>
-                                            <p className={cn("text-xs line-clamp-3 mb-6 flex-1 italic opacity-60 leading-relaxed", isDarkMode ? 'text-white/60' : 'text-slate-500')}>
-                                                "{template.description}"
-                                            </p>
-                                            <div className="flex items-center gap-2 pt-4 border-t border-white/5 mt-auto">
-                                                <span className={cn("text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest", isDarkMode ? 'bg-white/10 text-white/40' : 'bg-slate-100 text-slate-500')}>META</span>
-                                                {template.variables > 0 && (
-                                                    <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold ml-auto", isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600')}>
-                                                        VARS: {template.variables}
+
+                                                {/* Text */}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={cn(
+                                                        "text-sm font-semibold truncate",
+                                                        isSelected
+                                                            ? isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                                                            : isDarkMode ? 'text-white/90' : 'text-slate-800'
+                                                    )}>
+                                                        {template.name}
+                                                    </p>
+                                                    <p className={cn("text-xs truncate mt-0.5", isDarkMode ? 'text-white/30' : 'text-slate-400')}>
+                                                        {template.description}
+                                                    </p>
+                                                </div>
+
+                                                {/* Badges */}
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <span className={cn(
+                                                        "text-[10px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wide",
+                                                        isDarkMode ? 'bg-white/5 text-white/30' : 'bg-slate-100 text-slate-400'
+                                                    )}>
+                                                        {template.category}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
+                                                    {template.variables > 0 && (
+                                                        <span className={cn(
+                                                            "text-[10px] px-2 py-0.5 rounded-md font-semibold",
+                                                            isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'
+                                                        )}>
+                                                            {template.variables} vars
+                                                        </span>
+                                                    )}
+                                                    {isSelected && (
+                                                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                            <Check size={11} className="text-white" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                             {!loading && !error && filteredTemplates.length === 0 && (

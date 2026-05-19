@@ -2,6 +2,7 @@ import { faqApiData, PublishFaqReviewData, SaveFaqReviewData, CreateFaqData, Edi
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { useEffect } from "react";
+import { useSelector } from "react-redux";
 
 const FaqApis = new faqApiData();
 
@@ -13,8 +14,9 @@ export const useFaqReviewsQuery = (
   status?: "pending_review" | "published",
   options?: FaqQueryOptions,
 ) => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError, error } = useQuery<FaqReviewsListResponse>({
-    queryKey: ["faq-reviews", status ?? "all"],
+    queryKey: ["faq-reviews", tenantId, status ?? "all"],
     queryFn: () => FaqApis.getFaqReviews(status),
     enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000,
@@ -32,8 +34,9 @@ export const useFaqReviewsQuery = (
 };
 
 export const useFaqCountsQuery = (options?: FaqQueryOptions) => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["faq-counts"],
+    queryKey: ["faq-counts", tenantId],
     queryFn: () => FaqApis.getFaqCounts(),
     enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000,
@@ -42,8 +45,9 @@ export const useFaqCountsQuery = (options?: FaqQueryOptions) => {
 };
 
 export const useFaqMasterSourceQuery = () => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["faq-master"],
+    queryKey: ["faq-master", tenantId],
     queryFn: () => FaqApis.getFaqMasterSource(),
     staleTime: 2 * 60 * 1000,
   });
@@ -168,8 +172,9 @@ export const useDeleteFaqReviewMutation = () => {
 // ── Child FAQ Knowledge Entry hooks ──────────────────────────────────────
 
 export const useFaqKnowledgeEntriesQuery = (page = 1, limit = 50) => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["faq-knowledge-entries", page],
+    queryKey: ["faq-knowledge-entries", tenantId, page],
     queryFn: () => FaqApis.getFaqKnowledgeEntries(page, limit),
     staleTime: 2 * 60 * 1000,
   });

@@ -10,8 +10,9 @@ const whatsappConfigApis = new whatsappConfigApiData();
 
 export const useGetTierLimitQuery = () => {
     const { token, user } = useAuth();
+    const tenantId = user?.tenant_id;
     return useQuery({
-        queryKey: ['whatsapp-tier-limit'],
+        queryKey: ['whatsapp-tier-limit', tenantId],
         enabled: !!token && (user?.role !== 'super_admin' && user?.role !== 'platform_admin'),
         queryFn: () => whatsappConfigApis.getTierLimit(),
         staleTime: 5 * 60 * 1000,
@@ -23,8 +24,9 @@ export const useGetTierLimitQuery = () => {
 export const useGetWhatsappConfigQuery = () => {
     const dispatch = useDispatch();
     const { token, user } = useAuth();
+    const tenantId = user?.tenant_id;
     const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ['whatsapp-config'],
+        queryKey: ['whatsapp-config', tenantId],
         enabled: !!token && (user?.role !== 'super_admin' && user?.role !== 'platform_admin'),
         queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
         staleTime: 2 * 60 * 1000,

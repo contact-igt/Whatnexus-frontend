@@ -114,14 +114,14 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 roles: ['tenant_admin', 'staff', 'doctor']
             },
             {
-                label: "Follow-ups",
+                label: "Follow-up Hub",
                 route: "/followups",
                 icon: Clock,
                 featureKey: "fallback",
                 requiresWhatsApp: true,
             },
             {
-                label: "Appointment",
+                label: "Appointments",
                 route: "/appointments",
                 icon: Calendar,
                 featureKey: "appointments",
@@ -146,7 +146,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 requiresWhatsApp: true,
             },
             {
-                label: "Campaign",
+                label: "Campaigns",
                 route: "/campaign",
                 icon: Megaphone,
                 featureKey: "campaign",
@@ -223,7 +223,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         groupLabel: "Knowledge Base",
         items: [
             {
-                label: "Knowledge",
+                label: "Knowledge Base",
                 route: "/knowledge?tab=data-sources",
                 icon: Database,
                 featureKey: "fallback",
@@ -300,14 +300,14 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 roles: ['super_admin', 'platform_admin']
             },
             {
-                label: "Onboard Tenants",
+                label: "Tenant Onboarding",
                 route: "/management/onboarded",
                 icon: UserPlus,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             },
             {
-                label: "Tenant Invitation",
+                label: "Tenant Invitations",
                 route: "/management/invitations",
                 icon: Mail,
                 requiresWhatsApp: false,
@@ -316,6 +316,48 @@ export const managementSidebarConfig: SidebarGroup[] = [
             {
                 label: "Tenant Access Control",
                 route: "/management/tenant-access",
+                icon: ShieldCheck,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Industries",
+                route: "/management/industries",
+                icon: Building2,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "SaaS Modules",
+                route: "/management/saas-modules",
+                icon: Database,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Plans",
+                route: "/management/plans",
+                icon: CreditCard,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Industry Module Mapping",
+                route: "/management/industry-module-mapping",
+                icon: Workflow,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Plan Module Mapping",
+                route: "/management/plan-module-mapping",
+                icon: Terminal,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Tenant Dynamic Access",
+                route: "/management/tenant-dynamic-access",
                 icon: ShieldCheck,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']

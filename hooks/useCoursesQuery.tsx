@@ -1,6 +1,7 @@
 import { CoursesApiData } from "@/services/courses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
+import { useSelector } from "react-redux";
 import type {
   CreateCourseDto,
   UpdateCourseDto,
@@ -11,21 +12,25 @@ import type {
 const coursesApi = new CoursesApiData();
 
 /* ── Queries ─────────────────────────────────────────────────── */
-export const useGetAllCoursesQuery = () =>
-  useQuery({
-    queryKey: ["courses"],
+export const useGetAllCoursesQuery = () => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+  return useQuery({
+    queryKey: ["courses", tenantId],
     queryFn:  () => coursesApi.getAllCourses(),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+};
 
-export const useGetAllMentorsQuery = () =>
-  useQuery({
-    queryKey: ["course-mentors"],
+export const useGetAllMentorsQuery = () => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+  return useQuery({
+    queryKey: ["course-mentors", tenantId],
     queryFn:  () => coursesApi.getAllMentors(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+};
 
 /* ── Course Mutations ────────────────────────────────────────── */
 export const useCreateCourseMutation = () => {

@@ -1,6 +1,7 @@
 import { LeadIntelligenceApiData } from "@/services/leadIntelligene"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/lib/toast"
+import { useSelector } from "react-redux"
 
 type LeadSummaryResponse = {
   data: {
@@ -10,8 +11,9 @@ type LeadSummaryResponse = {
 
 const leadIntelligenceApis = new LeadIntelligenceApiData()
 export const useLeadIntelligenceQuery = () => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id)
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["lead-intelligence"],
+    queryKey: ["lead-intelligence", tenantId],
     queryFn: () => leadIntelligenceApis.getAllLeadIntelligence(),
     staleTime: 2 * 60 * 1000,
   })
@@ -20,8 +22,9 @@ export const useLeadIntelligenceQuery = () => {
 }
 
 export const useGetLeadByIdQuery = (id: string) => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id)
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["lead-intelligence", id],
+    queryKey: ["lead-intelligence", tenantId, id],
     queryFn: () => leadIntelligenceApis.getLeadById(id),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
@@ -59,8 +62,9 @@ export const useSummarizeLeadMutation = () => {
 };
 
 export const useGetDeletedLeadsQuery = () => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id)
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["deleted-leads"],
+    queryKey: ["deleted-leads", tenantId],
     queryFn: () => leadIntelligenceApis.getDeletedLeads(),
   })
   return { data, isLoading, isError, refetch }
