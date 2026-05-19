@@ -15,6 +15,28 @@ interface JwtPayload {
   [key: string]: any;
 }
 
+export type AxiosErrorCategory =
+  | "NETWORK_ERROR"
+  | "TIMEOUT"
+  | "CORS_OR_SERVER_UNREACHABLE"
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "VALIDATION_ERROR"
+  | "SERVER_ERROR"
+  | "UNKNOWN_ERROR";
+
+export interface NormalizedAxiosErrorInfo {
+  category: AxiosErrorCategory;
+  message: string;
+  status?: number;
+  code?: string;
+  isNetworkError: boolean;
+  isTimeout: boolean;
+  isAuthError: boolean;
+  endpoint?: string;
+  method?: string;
+}
+
 const DEFAULT_TIMEOUT = Number(process.env.NEXT_PUBLIC_AXIOS_TIMEOUT || 15000);
 const DEFAULT_MAX_RETRIES = Number(process.env.NEXT_PUBLIC_AXIOS_MAX_RETRIES || 3);
 const DEFAULT_RETRY_DELAY_MS = Number(process.env.NEXT_PUBLIC_AXIOS_RETRY_DELAY_MS || 300);
@@ -41,21 +63,54 @@ const isNgrokBrowserHost = () => {
   return hostname.includes("ngrok-free.dev") || hostname.includes("ngrok.io");
 };
 
-const getApiBaseUrl = (): string => {
-  const env = (process.env.NEXT_PUBLIC_ENV || "").trim();
-  const localhostUrl = (process.env.NEXT_PUBLIC_LOCALHOST_API_URL || "").trim();
-  const ngrokUrl = (process.env.NEXT_PUBLIC_NGROK_URL || "").trim();
+const normalizeBaseUrl = (value?: string) => {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  return raw.replace(/\/+$/, "");
+};
 
-  if (env === "ngrok") return ngrokUrl;
-  if (env === "production") return (process.env.NEXT_PUBLIC_PRODUCTION_API_URL || "").trim();
-  if (env === "development") return (process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL || "").trim();
-  if (env === "stage") return (process.env.NEXT_PUBLIC_STAGE_API_URL || "").trim();
-  if (env === "local") return localhostUrl;
-
+const getHostBasedApiFallback = () => {
+  const localhostUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_LOCALHOST_API_URL);
+  const ngrokUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_NGROK_URL);
+  if (typeof window !== "undefined" && !isLocalBrowserHost() && !isNgrokBrowserHost()) {
+    return normalizeBaseUrl(`${window.location.origin}/api`);
+  }
   if (isNgrokBrowserHost() && ngrokUrl) return ngrokUrl;
   if (isLocalBrowserHost() && localhostUrl) return localhostUrl;
+  return ngrokUrl || localhostUrl;
+};
 
-  return localhostUrl || ngrokUrl;
+const joinBaseAndPath = (baseUrl: string, requestPath: string) => {
+  const normalizedBase = normalizeBaseUrl(baseUrl);
+  const normalizedPath = requestPath.startsWith("/") ? requestPath : `/${requestPath}`;
+  return `${normalizedBase}${normalizedPath}`;
+};
+
+const getApiBaseUrl = (): string => {
+  const env = (process.env.NEXT_PUBLIC_ENV || "").trim();
+  const directApiUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+  const envApiUrlMap: Record<string, string> = {
+    ngrok: normalizeBaseUrl(process.env.NEXT_PUBLIC_NGROK_URL),
+    production: normalizeBaseUrl(process.env.NEXT_PUBLIC_PRODUCTION_API_URL),
+    development: normalizeBaseUrl(process.env.NEXT_PUBLIC_DEVELOPMENT_API_URL),
+    stage: normalizeBaseUrl(process.env.NEXT_PUBLIC_STAGE_API_URL),
+    local: normalizeBaseUrl(process.env.NEXT_PUBLIC_LOCALHOST_API_URL),
+  };
+
+  const selected =
+    directApiUrl ||
+    (env ? envApiUrlMap[env] || "" : "") ||
+    getHostBasedApiFallback();
+
+  const normalized = normalizeBaseUrl(selected);
+
+  if (!normalized && process.env.NODE_ENV !== "production") {
+    console.error(
+      "[Axios][Config] API base URL is empty. Check NEXT_PUBLIC_API_URL or environment-specific NEXT_PUBLIC_*_API_URL values.",
+    );
+  }
+
+  return normalized;
 };
 
 const isAuthEndpoint = (url?: string) => {
@@ -74,10 +129,16 @@ const isAuthEndpoint = (url?: string) => {
 };
 
 // Plain axios without our interceptors (used for refresh token calls)
-const plainAxios = axios.create({ timeout: DEFAULT_TIMEOUT });
+const plainAxios = axios.create({
+  timeout: DEFAULT_TIMEOUT,
+  transitional: { clarifyTimeoutError: true },
+});
 
 // Main axios instance used across the app
-const axiosInstance: AxiosInstance = axios.create({ timeout: DEFAULT_TIMEOUT });
+const axiosInstance: AxiosInstance = axios.create({
+  timeout: DEFAULT_TIMEOUT,
+  transitional: { clarifyTimeoutError: true },
+});
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
@@ -98,6 +159,71 @@ const isRetryableStatus = (status?: number) => {
   if (!status) return false;
   // Only retry on server errors and rate limits — never on network/CORS errors
   return status >= 500 || status === 429;
+};
+const normalizeAxiosError = (
+  error: any,
+  endpoint?: string,
+): NormalizedAxiosErrorInfo => {
+  const status = error?.response?.status;
+  const code = error?.code;
+  const method = error?.config?.method?.toUpperCase?.();
+  const rawMessage = String(error?.response?.data?.message || error?.message || "");
+  const isTimeout =
+    code === "ECONNABORTED" ||
+    code === "ETIMEDOUT" ||
+    /timeout/i.test(rawMessage);
+  const hasResponse = Boolean(error?.response);
+  const isCanceled = code === "ERR_CANCELED";
+  const isOffline =
+    typeof navigator !== "undefined" && typeof navigator.onLine === "boolean"
+      ? !navigator.onLine
+      : false;
+
+  let category: AxiosErrorCategory = "UNKNOWN_ERROR";
+
+  if (isTimeout) {
+    category = "TIMEOUT";
+  } else if (!hasResponse && (code === "ERR_NETWORK" || isOffline)) {
+    category = isOffline ? "NETWORK_ERROR" : "CORS_OR_SERVER_UNREACHABLE";
+  } else if (!hasResponse && !isCanceled) {
+    category = "NETWORK_ERROR";
+  } else if (status === 401) {
+    category = "UNAUTHORIZED";
+  } else if (status === 403) {
+    category = "FORBIDDEN";
+  } else if (status === 400 || status === 422) {
+    category = "VALIDATION_ERROR";
+  } else if (typeof status === "number" && status >= 500) {
+    category = "SERVER_ERROR";
+  }
+
+  const categoryMessages: Record<AxiosErrorCategory, string> = {
+    NETWORK_ERROR: "Network connection issue. Please check internet connectivity.",
+    TIMEOUT: "Request timed out. Please try again.",
+    CORS_OR_SERVER_UNREACHABLE:
+      "Unable to reach server. This can be a CORS, mixed-content, or server availability issue.",
+    UNAUTHORIZED: "Session expired or unauthorized request.",
+    FORBIDDEN: "You do not have permission to perform this action.",
+    VALIDATION_ERROR: "Request validation failed.",
+    SERVER_ERROR: "Server error occurred. Please try again later.",
+    UNKNOWN_ERROR: "Unexpected error occurred while processing request.",
+  };
+
+  const fallbackMessage = categoryMessages[category];
+  const message = rawMessage || fallbackMessage;
+
+  return {
+    category,
+    message,
+    status,
+    code,
+    isNetworkError:
+      category === "NETWORK_ERROR" || category === "CORS_OR_SERVER_UNREACHABLE",
+    isTimeout,
+    isAuthError: category === "UNAUTHORIZED",
+    endpoint,
+    method,
+  };
 };
 
 // Attach authorization header, meta token and debug logging
@@ -300,7 +426,6 @@ async function requestWithRetry<T = any>(
       const jitter = Math.floor(Math.random() * 100);
       const wait = backoff + jitter;
       console.warn(`[Axios][Retry] attempt ${attempt}/${maxRetries} for ${config.url}, waiting ${wait}ms`);
-      // eslint-disable-next-line no-await-in-loop
       await sleep(wait);
       // retry loop
     }
@@ -318,9 +443,28 @@ export const _axios = async (
   requestConfig: AxiosRequestConfig = {},
 ) => {
   const APIURL = getApiBaseUrl();
-  const endpoint = `${APIURL}${url || ""}`;
+  const requestPath = url || "";
+  const isAbsoluteUrl = /^https?:\/\//i.test(requestPath);
+  const endpoint = isAbsoluteUrl ? requestPath : joinBaseAndPath(APIURL, requestPath);
   const state: RootState = store.getState();
   const activeTab = state?.auth?.activeTabData;
+
+  if (!isAbsoluteUrl && !APIURL) {
+    const configError = new Error(
+      "API base URL is not configured. Set NEXT_PUBLIC_API_URL or NEXT_PUBLIC_*_API_URL variables.",
+    );
+    (configError as any).category = "UNKNOWN_ERROR";
+    (configError as any).normalized = {
+      category: "UNKNOWN_ERROR",
+      message: configError.message,
+      isNetworkError: false,
+      isTimeout: false,
+      isAuthError: false,
+      endpoint: requestPath,
+      method: method?.toUpperCase?.(),
+    } satisfies NormalizedAxiosErrorInfo;
+    throw configError;
+  }
 
   const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
@@ -347,6 +491,13 @@ export const _axios = async (
     const res = await requestWithRetry(axiosConfig);
     return res.data;
   } catch (err: any) {
+    const normalized = normalizeAxiosError(err, endpoint);
+
+    if (err && typeof err === "object") {
+      err.category = normalized.category;
+      err.normalized = normalized;
+    }
+
     // Normalize billing guard errors: backend sends `reason` but frontend expects `message`
     if (err?.response?.data?.blocked && err?.response?.data?.reason && !err?.response?.data?.message) {
       err.response.data.message = err.response.data.reason;
@@ -381,15 +532,19 @@ export const _axios = async (
     } else {
       // Log detailed debug info (include request for CORS/network issues)
       console.error("Axios error:", {
+        category: normalized.category,
         message: err?.message,
         method,
         url: endpoint,
         status,
+        code: err?.code,
+        online: typeof navigator !== "undefined" ? navigator.onLine : undefined,
         response: err?.response?.data,
         responseHeaders: err?.response?.headers,
         request: err?.request,
         errorJSON: typeof err?.toJSON === "function" ? err.toJSON() : undefined,
         config: err?.config,
+        normalized,
       });
     }
 
@@ -400,3 +555,5 @@ export const _axios = async (
 export const getWebhookBaseURL = (): string => {
   return getApiBaseUrl() || "";
 };
+
+
