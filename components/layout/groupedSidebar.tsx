@@ -1,23 +1,127 @@
 "use client";
 
-import { User, Sparkles } from 'lucide-react';
+import {
+    User,
+    Sparkles,
+    LayoutDashboard,
+    MessageCircle,
+    Timer,
+    Filter,
+    Users,
+    Group,
+    Clock,
+    Calendar,
+    Zap,
+    Megaphone,
+    Image,
+    Stethoscope,
+    BadgeCheck,
+    BookOpen,
+    Video,
+    UserCircle,
+    Users2,
+    Database,
+    CreditCard,
+    Settings,
+    MessageSquare,
+} from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from "@/hooks/useTheme";
 import { useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { setActiveTabData } from '@/redux/slices/auth/authSlice';
-import { tenantSidebarConfig, managementSidebarConfig, SidebarGroup } from './sidebarConfig';
+import { tenantSidebarConfig, managementSidebarConfig, SidebarGroup, SidebarItem } from './sidebarConfig';
 import { SidebarGroupItem } from '@/components/ui/sidebarGroupItem';
 import { useGetWhatsappConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 import { useFaqNotifications } from '@/hooks/useFaqNotifications';
 import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
+import { useFeatureAccess } from '@/redux/selectors/featureAccess/featureAccessSelector';
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
+import type { TenantDynamicNavigationPayload } from '@/services/tenantDynamicNavigation';
 
-export const GroupedSidebar = () => {
+interface GroupedSidebarProps {
+    tenantDynamicNavigationData?: TenantDynamicNavigationPayload;
+    isTenantDynamicNavigationSuccess?: boolean;
+}
+
+const ICON_KEY_MAP: Record<string, LucideIcon> = {
+    dashboard: LayoutDashboard,
+    chat: MessageCircle,
+    history: Timer,
+    leadpool: Filter,
+    contacts: Users,
+    groups: Group,
+    followups: Clock,
+    appointments: Calendar,
+    templates: Zap,
+    campaign: Megaphone,
+    media_gallery: Image,
+    doctors: Stethoscope,
+    specialization: BadgeCheck,
+    courses: BookOpen,
+    sessions: Video,
+    mentors: UserCircle,
+    agent_matrix: Users2,
+    knowledge: Database,
+    billing_payment: CreditCard,
+    general_settings: Settings,
+    whatsapp_settings: MessageSquare,
+};
+
+const normalizeRoute = (route: string) => {
+    const [pathname] = route.split('?');
+    const normalizedPath = pathname.trim().replace(/\/+$/, '');
+    return normalizedPath || '/';
+};
+
+const getStaticRouteMeta = () => {
+    const exactRouteMap = new Map<string, SidebarItem>();
+    const normalizedRouteMap = new Map<string, SidebarItem>();
+    const normalizedRouteOrder = new Map<string, number>();
+    const staticGroupOrder = new Map<string, number>();
+    let routeOrder = 0;
+
+    tenantSidebarConfig.forEach((group, groupIndex) => {
+        staticGroupOrder.set(group.groupLabel, groupIndex);
+        for (const item of group.items) {
+            if (!exactRouteMap.has(item.route)) {
+                exactRouteMap.set(item.route, item);
+            }
+
+            const normalized = normalizeRoute(item.route);
+            if (!normalizedRouteMap.has(normalized)) {
+                normalizedRouteMap.set(normalized, item);
+            }
+            if (!normalizedRouteOrder.has(normalized)) {
+                normalizedRouteOrder.set(normalized, routeOrder++);
+            }
+        }
+    });
+
+    return {
+        exactRouteMap,
+        normalizedRouteMap,
+        normalizedRouteOrder,
+        staticGroupOrder,
+    };
+};
+
+const getIconFromKey = (iconKey?: string | null) => {
+    if (!iconKey) return null;
+    const normalized = iconKey.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return ICON_KEY_MAP[normalized] || null;
+};
+
+export const GroupedSidebar = ({
+    tenantDynamicNavigationData,
+    isTenantDynamicNavigationSuccess = false,
+}: GroupedSidebarProps) => {
     const { user, whatsappApiDetails } = useAuth();
     const { unreadCount } = useNotifications();
+    const { enabled_features, industry_type } = useFeatureAccess();
     const { pendingCount: faqPendingCount, canAccessFaqNotifications } = useFaqNotifications();
     useGetWhatsappConfigQuery();
     const { isDarkMode } = useTheme();
@@ -25,9 +129,121 @@ export const GroupedSidebar = () => {
     const dispatch = useDispatch();
     const router = useRouter();
 
-    // Determine which sidebar config to use based on user role
     const isManagement = user?.user_type == 'management';
-    const sidebarConfig: SidebarGroup[] = isManagement ? managementSidebarConfig : tenantSidebarConfig;
+
+    const staticRouteMeta = useMemo(() => getStaticRouteMeta(), []);
+
+    const dynamicTenantSidebarConfig = useMemo(() => {
+        const groups = tenantDynamicNavigationData?.navigation;
+        if (!Array.isArray(groups)) return [];
+
+        const mappedGroups: SidebarGroup[] = groups
+            .map((group) => {
+                const validItems = (group.items || [])
+                    .filter((item) => typeof item?.label === "string" && item.label.trim() !== "" && typeof item?.route_path === "string" && item.route_path.trim() !== "")
+                    .map((item) => {
+                        const route = item.route_path.trim();
+                        const normalizedRoute = normalizeRoute(route);
+                        const staticMatch =
+                            staticRouteMeta.exactRouteMap.get(route) ||
+                            staticRouteMeta.normalizedRouteMap.get(normalizedRoute);
+
+                        const iconFromKey = getIconFromKey(item.icon_key);
+                        const resolvedIcon = iconFromKey || staticMatch?.icon || Sparkles;
+                        const resolvedLabel = staticMatch?.label || item.label.trim();
+
+                        return {
+                            label: resolvedLabel,
+                            route,
+                            icon: resolvedIcon,
+                            featureKey: staticMatch?.featureKey,
+                            requiresWhatsApp: staticMatch?.requiresWhatsApp,
+                            requiresLocal: staticMatch?.requiresLocal,
+                            roles: staticMatch?.roles,
+                            matchMode: staticMatch?.matchMode,
+                        };
+                    })
+                    .sort((a, b) => {
+                        const aOrder = staticRouteMeta.normalizedRouteOrder.get(normalizeRoute(a.route));
+                        const bOrder = staticRouteMeta.normalizedRouteOrder.get(normalizeRoute(b.route));
+
+                        if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+                        if (aOrder !== undefined) return -1;
+                        if (bOrder !== undefined) return 1;
+
+                        return a.label.localeCompare(b.label);
+                    });
+
+                return {
+                    groupLabel: group.menu_group || "General",
+                    items: validItems,
+                };
+            })
+            .filter((group) => group.items.length > 0);
+
+        const hasFollowUpHub = mappedGroups.some((group) =>
+            group.items.some((item) => {
+                const normalized = normalizeRoute(item.route);
+                return normalized === "/followups" || normalized === "/followup-hub";
+            }),
+        );
+
+        if (industry_type === "healthcare" && !hasFollowUpHub) {
+            const followUpStaticMeta =
+                staticRouteMeta.exactRouteMap.get("/followups") ||
+                staticRouteMeta.normalizedRouteMap.get("/followups");
+
+            const followUpItem: SidebarItem = {
+                label: "Follow-up Hub",
+                route: "/followups",
+                icon: Clock,
+                featureKey: followUpStaticMeta?.featureKey || "fallback",
+                requiresWhatsApp: followUpStaticMeta?.requiresWhatsApp ?? true,
+                requiresLocal: followUpStaticMeta?.requiresLocal,
+                roles: followUpStaticMeta?.roles,
+                matchMode: followUpStaticMeta?.matchMode,
+            };
+
+            const preferredGroupIndex = mappedGroups.findIndex(
+                (group) => group.groupLabel?.toLowerCase() === "contacts & leads",
+            );
+
+            if (preferredGroupIndex >= 0) {
+                mappedGroups[preferredGroupIndex] = {
+                    ...mappedGroups[preferredGroupIndex],
+                    items: [...mappedGroups[preferredGroupIndex].items, followUpItem],
+                };
+            } else {
+                mappedGroups.push({
+                    groupLabel: "Contacts & Leads",
+                    items: [followUpItem],
+                });
+            }
+        }
+
+        mappedGroups.sort((a, b) => {
+            const aOrder = staticRouteMeta.staticGroupOrder.get(a.groupLabel);
+            const bOrder = staticRouteMeta.staticGroupOrder.get(b.groupLabel);
+
+            if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+            if (aOrder !== undefined) return -1;
+            if (bOrder !== undefined) return 1;
+
+            return a.groupLabel.localeCompare(b.groupLabel);
+        });
+
+        return mappedGroups;
+    }, [industry_type, tenantDynamicNavigationData, staticRouteMeta]);
+
+    const hasValidDynamicNavigation =
+        isTenantDynamicNavigationSuccess &&
+        dynamicTenantSidebarConfig.some((group) => group.items.length > 0);
+
+    const sidebarConfig: SidebarGroup[] = isManagement
+        ? managementSidebarConfig
+        : hasValidDynamicNavigation
+            ? dynamicTenantSidebarConfig
+            : tenantSidebarConfig;
 
     // Check if WhatsApp is connected and active
     const isWhatsAppActive = whatsappApiDetails?.status === 'active';
@@ -55,12 +271,16 @@ export const GroupedSidebar = () => {
             .flatMap((group) => filterItemsByRole(group.items).map((item) => item.route));
         const uniqueRoutes = [...new Set(visibleRoutes)];
         uniqueRoutes.forEach((route) => router.prefetch(route));
-    }, [router, sidebarConfig, user?.role, isLocalServer]);
+    }, [router, sidebarConfig, user?.role, isLocalServer, enabled_features, isManagement]);
 
 
     // Filter items based on user role (case-insensitive) and local environment requirement
     const filterItemsByRole = (items: SidebarGroup['items']) => {
         return items.filter(item => {
+            if (!isManagement && item.featureKey && !enabled_features.includes(item.featureKey)) {
+                return false;
+            }
+
             // Filter out items that require local environment when not in local mode
             if (item.requiresLocal && !isLocalServer) return false;
 
@@ -285,6 +505,7 @@ export const GroupedSidebar = () => {
                                                 icon={item.icon}
                                                 label={item.label}
                                                 route={item.route}
+                                                matchMode={item.matchMode}
                                                 onClick={() => handleActiveTab(item.route)}
                                                 isDarkMode={isDarkMode}
                                                 isExpanded={isExpanded}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Bot, Brain, Wand2, Sparkles, Bell, BellOff, Settings2, CheckCircle2, Lock, Loader2, MessageSquare, Zap, ChevronRight, Cpu, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Bot, Brain, Wand2, Sparkles, Bell, BellOff, Settings2, CheckCircle2, Lock, Loader2, MessageSquare, Zap, ChevronRight, Cpu, ArrowRight, AlertTriangle, CalendarClock, Clock } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useGetTenantSettingsQuery, useUpdateTenantAiSettingsMutation } from '@/hooks/useTenantSettingsQuery';
@@ -9,7 +9,7 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
 
-type SettingsTab = 'capabilities' | 'models' | 'notifications';
+type SettingsTab = 'capabilities' | 'models' | 'notifications' | 'appointments';
 
 interface AiSettings {
     auto_responder: boolean;
@@ -114,7 +114,12 @@ export const GeneralSettingsView = () => {
     const [selectedInputModel, setSelectedInputModel] = useState<string | null>(null);
     const [selectedOutputModel, setSelectedOutputModel] = useState<string | null>(null);
 
+    const [noshowDays, setNoshowDays] = useState<number>(1);
+    const [noshowTime, setNoshowTime] = useState<string>("09:00");
+    const [isApptSaving, setIsApptSaving] = useState(false);
+
     const hasSyncedModels = useRef(false);
+    const hasSyncedAppt = useRef(false);
 
     // Sync state ONCE on initial data load — never overwrite after that (to avoid race condition after save)
     useEffect(() => {
@@ -122,6 +127,11 @@ export const GeneralSettingsView = () => {
             hasSyncedModels.current = true;
             setSelectedInputModel(settingsData.data.ai_settings?.input_model || 'gpt-4o-mini');
             setSelectedOutputModel(settingsData.data.ai_settings?.output_model || 'gpt-4o');
+        }
+        if (!hasSyncedAppt.current && settingsData?.data?.ai_settings !== undefined) {
+            hasSyncedAppt.current = true;
+            setNoshowDays(Number(settingsData.data.ai_settings?.noshow_followup_days) || 1);
+            setNoshowTime(settingsData.data.ai_settings?.noshow_followup_time || "09:00");
         }
     }, [settingsData?.data]);
 
@@ -155,9 +165,24 @@ export const GeneralSettingsView = () => {
         );
     };
 
+    const handleSaveApptSettings = () => {
+        if (!isAdmin) return;
+        const days = Math.min(Math.max(Number(noshowDays) || 1, 1), 30);
+        setIsApptSaving(true);
+        updateAiSettings(
+            { ai_settings: { noshow_followup_days: days, noshow_followup_time: noshowTime } },
+            {
+                onSuccess: () => toast.success("Appointment settings saved"),
+                onError: (err: any) => toast.error(err?.message || "Failed to save"),
+                onSettled: () => setIsApptSaving(false),
+            }
+        );
+    };
+
     const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
         { id: 'capabilities', label: 'AI Capabilities', icon: Sparkles },
         { id: 'models', label: 'AI Models', icon: Cpu },
+        { id: 'appointments', label: 'Appointments', icon: CalendarClock },
         // { id: 'notifications', label: 'Notifications', icon: Bell },
     ];
 
@@ -478,6 +503,129 @@ export const GeneralSettingsView = () => {
                                     <CheckCircle2 size={16} className="text-violet-500 shrink-0 mt-0.5" />
                                     <p className={cn("text-xs leading-relaxed", isDarkMode ? "text-violet-300" : "text-violet-700")}>
                                         Model changes take effect immediately. Premium models provide higher quality responses but cost more per token. Budget models are ideal for simple classification tasks.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Appointments Tab */}
+                        {activeTab === 'appointments' && (
+                            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="mb-6">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <CalendarClock size={18} className="text-emerald-500" />
+                                        <h2 className={cn("text-lg font-bold", isDarkMode ? "text-white" : "text-slate-900")}>
+                                            Appointment Settings
+                                        </h2>
+                                    </div>
+                                    <p className={cn("text-xs ml-[26px]", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                                        Configure default follow-up schedule for no-show appointments.
+                                    </p>
+                                </div>
+
+                                {!isAdmin && (
+                                    <div className={cn(
+                                        "mb-5 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm",
+                                        isDarkMode ? "bg-amber-500/5 border-amber-500/20 text-amber-400" : "bg-amber-50 border-amber-200 text-amber-700"
+                                    )}>
+                                        <Lock size={16} className="shrink-0" />
+                                        <span>Only <strong>tenant admins</strong> can modify appointment settings.</span>
+                                    </div>
+                                )}
+
+                                <div className={cn(
+                                    "p-6 rounded-2xl border space-y-6",
+                                    isDarkMode ? "bg-white/[0.02] border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                                )}>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDarkMode ? "bg-emerald-500/10" : "bg-emerald-50")}>
+                                            <CalendarClock size={18} className="text-emerald-500" />
+                                        </div>
+                                        <div>
+                                            <p className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>No-Show Default Follow-up</p>
+                                            <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>Used when "Default" mode is selected in the no-show drawer</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {/* Days after appointment */}
+                                        <div>
+                                            <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                                Days After Appointment
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={30}
+                                                value={noshowDays}
+                                                disabled={!isAdmin}
+                                                onChange={(e) => setNoshowDays(Number(e.target.value))}
+                                                className={cn(
+                                                    "w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50",
+                                                    !isAdmin && "opacity-50 cursor-not-allowed",
+                                                    isDarkMode
+                                                        ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                                                        : "bg-white border-slate-200 text-slate-900 hover:bg-slate-50"
+                                                )}
+                                            />
+                                            <p className={cn("text-[11px] mt-1.5 ml-1", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                1 = next day, 2 = day after tomorrow, etc.
+                                            </p>
+                                        </div>
+
+                                        {/* Default time */}
+                                        <div>
+                                            <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? "text-white/70" : "text-slate-700")}>
+                                                Follow-up Time
+                                            </label>
+                                            <div className="relative">
+                                                <Clock size={15} className={cn("absolute left-3 top-1/2 -translate-y-1/2", isDarkMode ? "text-white/30" : "text-slate-400")} />
+                                                <input
+                                                    type="time"
+                                                    value={noshowTime}
+                                                    disabled={!isAdmin}
+                                                    style={{ colorScheme: isDarkMode ? "dark" : "light" }}
+                                                    onChange={(e) => setNoshowTime(e.target.value)}
+                                                    className={cn(
+                                                        "w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50",
+                                                        !isAdmin && "opacity-50 cursor-not-allowed",
+                                                        isDarkMode
+                                                            ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                                                            : "bg-white border-slate-200 text-slate-900 hover:bg-slate-50"
+                                                    )}
+                                                />
+                                            </div>
+                                            <p className={cn("text-[11px] mt-1.5 ml-1", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                24-hour format (IST)
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {isAdmin && (
+                                        <div className="flex justify-end pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveApptSettings}
+                                                disabled={isApptSaving}
+                                                className={cn(
+                                                    "px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2",
+                                                    "bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                                                )}
+                                            >
+                                                {isApptSaving && <Loader2 size={14} className="animate-spin" />}
+                                                {isApptSaving ? "Saving..." : "Save Changes"}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className={cn(
+                                    "mt-6 p-4 rounded-xl border flex items-start gap-3",
+                                    isDarkMode ? "bg-emerald-500/5 border-emerald-500/15" : "bg-emerald-50 border-emerald-100"
+                                )}>
+                                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                                    <p className={cn("text-xs leading-relaxed", isDarkMode ? "text-emerald-300" : "text-emerald-700")}>
+                                        The default schedule is applied when staff marks an appointment as no-show without manually picking a date. Manual mode in the no-show drawer always overrides this setting.
                                     </p>
                                 </div>
                             </div>

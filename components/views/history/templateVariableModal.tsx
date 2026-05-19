@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, Send, Variable, Image, Video, FileText, MapPin, Play, Pause, ImageIcon, Film, Phone, ExternalLink, Reply } from "lucide-react";
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
@@ -289,8 +290,8 @@ export const TemplateVariableModal = ({
         return "*/*";
     };
 
-    return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    return createPortal(
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <GlassCard
                 isDarkMode={isDarkMode}
                 className="w-full flex flex-col overflow-hidden p-0"
@@ -624,6 +625,7 @@ export const TemplateVariableModal = ({
                     : 'all'
                 }
             />
-        </div>
+        </div>,
+        document.body
     );
 };

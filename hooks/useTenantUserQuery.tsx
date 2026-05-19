@@ -3,7 +3,7 @@ import { tenantUserApiData } from "@/services/tenantUser";
 import { whatsappConfigApiData } from "@/services/whatsappConfiguration";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "@/lib/toast";
 
 
@@ -11,8 +11,9 @@ const tenantUserApis = new tenantUserApiData();
 const whatsappConfigApis = new whatsappConfigApiData();
 
 export const useTenantUserQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError } = useQuery({
-        queryKey: ["tenant-user"],
+        queryKey: ["tenant-user", tenantId],
         queryFn: () => tenantUserApis.getAllTenantUser(),
         staleTime: 2 * 60 * 1000,
     })
@@ -46,7 +47,7 @@ export const useTenantUserLoginMutation = () => {
             if (response?.user?.role !== 'super_admin' && response?.user?.role !== 'platform_admin') {
                 try {
                     const configResult = await queryClient.fetchQuery({
-                        queryKey: ['whatsapp-config'],
+                        queryKey: ['whatsapp-config', response?.user?.tenant_id],
                         queryFn: () => whatsappConfigApis.getWhatsAppConfig(),
                     });
                     if (configResult?.data) {
@@ -153,8 +154,9 @@ export const usePermanentDeleteTenantUserMutation = () => {
 }
 
 export const useGetTenantUserByIdQuery = (tenantUserId: string) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError } = useQuery({
-        queryKey: ["tenant-user", tenantUserId],
+        queryKey: ["tenant-user", tenantId, tenantUserId],
         queryFn: () => tenantUserApis.getTenantUserById(tenantUserId),
         staleTime: 2 * 60 * 1000,
         enabled: !!tenantUserId,
@@ -168,8 +170,9 @@ export const useGetTenantUserByIdQuery = (tenantUserId: string) => {
 }
 
 export const useGetTenantProfileQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ["tenant-profile"],
+        queryKey: ["tenant-profile", tenantId],
         queryFn: () => tenantUserApis.getTenantProfile(),
         staleTime: 2 * 60 * 1000,
     })
@@ -214,8 +217,9 @@ export const useUpdateTenantProfileMutation = () => {
 }
 
 export const useDeletedTenantUserQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError } = useQuery({
-        queryKey: ["deleted-tenant-user"],
+        queryKey: ["deleted-tenant-user", tenantId],
         queryFn: () => tenantUserApis.getDeletedTenantUserList(),
         staleTime: 2 * 60 * 1000,
     })

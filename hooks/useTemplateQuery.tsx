@@ -1,6 +1,7 @@
 import { templateApiData } from "@/services/template";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
+import { useSelector } from "react-redux";
 
 const templateApis = new templateApiData();
 
@@ -59,8 +60,9 @@ export const useUpdateTemplateMutation = () => {
 
 
 export const useGetAllTemplateQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['templates'],
+        queryKey: ['templates', tenantId],
         queryFn: () => templateApis.getAllTemplate()
     })
 }
@@ -202,18 +204,19 @@ export const useRestoreTemplateMutation = () => {
 
 export const useGetTemplateByIdQuery = (template_id: any) => {
     const queryClient = useQueryClient();
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['template', template_id],
+        queryKey: ['template', tenantId, template_id],
         queryFn: () => templateApis.getTemplateById(template_id),
         enabled: !!template_id,
         initialData: () => {
             if (!template_id) return undefined;
-            const listData = queryClient.getQueryData<any>(['templates']);
+            const listData = queryClient.getQueryData<any>(['templates', tenantId]);
             const found = listData?.data?.templates?.find((t: any) => t.template_id === template_id);
             if (!found) return undefined;
             return { data: found };
         },
-        initialDataUpdatedAt: () => queryClient.getQueryState(['templates'])?.dataUpdatedAt,
+        initialDataUpdatedAt: () => queryClient.getQueryState(['templates', tenantId])?.dataUpdatedAt,
     })
 }
 
@@ -229,8 +232,9 @@ export const useGenerateAiTemplateMutation = () => {
 }
 
 export const useGetDeletedTemplatesQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['deletedTemplates'],
+        queryKey: ['deletedTemplates', tenantId],
         queryFn: () => templateApis.getDeletedTemplates(),
         staleTime: 0,
     })

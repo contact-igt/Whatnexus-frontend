@@ -1,12 +1,14 @@
 import { specializationApiData } from "@/services/specialization"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/lib/toast"
+import { useSelector } from "react-redux"
 
 const specializationsApis = new specializationApiData()
 
 export const useGetAllSpecializationsQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id)
     return useQuery({
-        queryKey: ['specializations'],
+        queryKey: ['specializations', tenantId],
         queryFn: () => specializationsApis.getAllSpecialization()
     })
 }
@@ -68,8 +70,9 @@ export const useToggleSpecializationStatusMutation = () => {
 }
 
 export const useGetDeletedSpecializationsQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id)
     return useQuery({
-        queryKey: ['deleted-specializations'],
+        queryKey: ['deleted-specializations', tenantId],
         queryFn: () => specializationsApis.getDeletedSpecializations()
     })
 }

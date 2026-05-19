@@ -1,36 +1,56 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Calendar, List } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { BookingList } from './bookingList';
 import { CalendarView } from './calendarView';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 
-type TabType = 'booking-list' | 'calendar';
+type TabType = 'booking-list' | 'all-appointments' | 'calendar';
 
 export const AppointmentsView = () => {
     const { isDarkMode } = useTheme();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     // Restore the last selected tab from localStorage on initial render.
     // Previously the tab was saved but never restored, so it always reset to 'booking-list'.
     const [activeTab, setActiveTab] = useState<TabType>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('selectedAppointmentTab');
-            if (saved === 'calendar' || saved === 'booking-list') return saved as TabType;
+            if (saved === 'calendar' || saved === 'booking-list' || saved === 'all-appointments') return saved as TabType;
         }
         return 'booking-list';
     });
 
     const appointmentTabs = [
         { value: "booking-list", label: "Booking List", icon: List },
+        { value: "all-appointments", label: "All Appointments", icon: List },
         { value: "calendar", label: "Calendar", icon: Calendar }
     ];
 
     const handleTabChange = (value: TabType) => {
         setActiveTab(value);
         localStorage.setItem("selectedAppointmentTab", value);
+    };
+
+    const shouldAutoOpenCreate = searchParams.get('create') === '1';
+
+    useEffect(() => {
+        if (!shouldAutoOpenCreate) return;
+        setActiveTab('booking-list');
+        localStorage.setItem("selectedAppointmentTab", 'booking-list');
+    }, [shouldAutoOpenCreate]);
+
+    const handleAutoCreateHandled = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('create');
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname);
     };
 
     return (
@@ -68,7 +88,15 @@ export const AppointmentsView = () => {
             </div>
 
             {activeTab === 'booking-list' && (
-                <BookingList isDarkMode={isDarkMode} />
+                <BookingList
+                    isDarkMode={isDarkMode}
+                    autoOpenCreate={shouldAutoOpenCreate}
+                    onAutoCreateHandled={handleAutoCreateHandled}
+                />
+            )}
+
+            {activeTab === 'all-appointments' && (
+                <BookingList isDarkMode={isDarkMode} showAll />
             )}
 
             {activeTab === 'calendar' && (

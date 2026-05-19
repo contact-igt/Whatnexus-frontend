@@ -1,6 +1,7 @@
 import { contactApiData } from "@/services/contact";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
+import { useSelector } from "react-redux";
 
 const contactApis = new contactApiData();
 
@@ -21,15 +22,17 @@ export const useCreateContactMutation = () => {
 };
 
 export const useGetAllContactsQuery = (params?: any) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['contacts', params],
+        queryKey: ['contacts', tenantId, params],
         queryFn: () => contactApis.getAllContacts(params)
     });
 };
 
 export const useGetContactByIdQuery = (contactId: string) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['contact', contactId],
+        queryKey: ['contact', tenantId, contactId],
         queryFn: () => contactApis.getContactById(contactId),
         enabled: !!contactId
     });
@@ -70,8 +73,9 @@ export const useDeleteContactMutation = () => {
 };
 
 export const useGetDeletedContactsQuery = (params?: any) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['deleted-contacts', params],
+        queryKey: ['deleted-contacts', tenantId, params],
         queryFn: () => contactApis.getDeletedContacts(params)
     });
 };

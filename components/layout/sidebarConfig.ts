@@ -21,6 +21,7 @@ import {
     Clock,
     Workflow,
     BadgeCheck,
+    ShieldCheck,
     CreditCard,
     Mail,
     Trash2,
@@ -29,7 +30,9 @@ import {
     Landmark,
     UserPlus,
     DollarSign,
-    Image
+    Image,
+    BookOpen,
+    Video
 
 } from 'lucide-react';
 
@@ -37,9 +40,11 @@ export interface SidebarItem {
     label: string;
     route: string;
     icon: LucideIcon;
+    featureKey?: string;
     requiresWhatsApp?: boolean;
     requiresLocal?: boolean;
     roles?: string[];
+    matchMode?: 'exact' | 'prefix';
 }
 
 export interface SidebarGroup {
@@ -56,6 +61,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Neural Hub",
                 route: "/dashboard",
                 icon: LayoutDashboard,
+                featureKey: "dashboard",
                 requiresWhatsApp: false,
             }
         ]
@@ -67,15 +73,17 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Chats",
                 route: "/shared-inbox/live-chats",
                 icon: MessageCircle,
+                featureKey: "chat",
                 requiresWhatsApp: true,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+                roles: ['tenant_admin', 'staff', 'doctor']
             },
             {
                 label: "History",
                 route: "/shared-inbox/history",
                 icon: Timer,
+                featureKey: "history",
                 requiresWhatsApp: true,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+                roles: ['tenant_admin', 'staff', 'doctor']
             }
         ]
     },
@@ -86,32 +94,37 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Lead Pool",
                 route: "/leads",
                 icon: Filter,
+                featureKey: "leadpool",
                 requiresWhatsApp: true,
             },
             {
                 label: "Contacts",
                 route: "/contacts/contacts",
                 icon: Users,
+                featureKey: "contacts",
                 requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+                roles: ['tenant_admin', 'staff', 'doctor']
             },
             {
                 label: "Groups",
                 route: "/contacts/groups",
                 icon: Group,
+                featureKey: "groups",
                 requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+                roles: ['tenant_admin', 'staff', 'doctor']
             },
             {
-                label: "Follow-ups",
+                label: "Follow-up Hub",
                 route: "/followups",
                 icon: Clock,
+                featureKey: "fallback",
                 requiresWhatsApp: true,
             },
             {
-                label: "Appointment",
+                label: "Appointments",
                 route: "/appointments",
                 icon: Calendar,
+                featureKey: "appointments",
                 requiresWhatsApp: true,
             },
             // {
@@ -129,18 +142,21 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Templates",
                 route: "/templates",
                 icon: Zap,
+                featureKey: "templates",
                 requiresWhatsApp: true,
             },
             {
-                label: "Campaign",
+                label: "Campaigns",
                 route: "/campaign",
                 icon: Megaphone,
+                featureKey: "campaign",
                 requiresWhatsApp: true,
             },
             {
                 label: "Media Gallery",
                 route: "/gallery",
                 icon: Image,
+                featureKey: "media_gallery",
                 requiresWhatsApp: true,
             }
         ]
@@ -149,18 +165,57 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         groupLabel: "Team Management",
         items: [
             {
-                label: "Agent Matrix",
-                route: "/team",
-                icon: Users2,
-                requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
-            },
-            {
                 label: "Doctors",
                 route: "/doctors",
                 icon: Stethoscope,
+                featureKey: "doctors",
                 requiresWhatsApp: false,
+                matchMode: 'exact',
                 roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+            },
+            {
+                label: "Specialization",
+                route: "/specialization",
+                icon: BadgeCheck,
+                featureKey: "specialization",
+                requiresWhatsApp: false,
+                matchMode: 'exact',
+                roles: ['tenant_admin', 'staff', 'doctor']
+            },
+            {
+                label: "Courses",
+                route: "/courses",
+                icon: BookOpen,
+                featureKey: "courses",
+                requiresWhatsApp: false,
+                matchMode: 'exact',
+                roles: ['tenant_admin', 'staff', 'doctor']
+            },
+            {
+                label: "Sessions",
+                route: "/courses/sessions",
+                icon: Video,
+                featureKey: "sessions",
+                requiresWhatsApp: false,
+                matchMode: 'exact',
+                roles: ['tenant_admin', 'staff', 'doctor']
+            },
+            {
+                label: "Mentors",
+                route: "/courses/mentors",
+                icon: UserCircle,
+                featureKey: "mentors",
+                requiresWhatsApp: false,
+                matchMode: 'exact',
+                roles: ['tenant_admin', 'staff', 'doctor']
+            },
+            {
+                label: "Agent Matrix",
+                route: "/team",
+                icon: Users2,
+                featureKey: "agent_matrix",
+                requiresWhatsApp: false,
+                roles: ['tenant_admin', 'staff', 'doctor']
             }
         ]
     },
@@ -168,9 +223,10 @@ export const tenantSidebarConfig: SidebarGroup[] = [
         groupLabel: "Knowledge Base",
         items: [
             {
-                label: "Knowledge",
+                label: "Knowledge Base",
                 route: "/knowledge?tab=data-sources",
                 icon: Database,
+                featureKey: "fallback",
                 requiresWhatsApp: false,
             }
         ]
@@ -182,6 +238,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Billing & Payments",
                 route: "/billing",
                 icon: CreditCard,
+                featureKey: "billing_payment",
                 requiresWhatsApp: true,
                 roles: ['tenant_admin']
             }
@@ -194,23 +251,26 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "General Settings",
                 route: "/settings/general",
                 icon: Settings,
+                featureKey: "general_settings",
                 requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+                roles: ['tenant_admin', 'staff', 'doctor']
             },
             {
                 label: "WhatsApp Settings",
                 route: "/settings/whatsapp-settings",
                 icon: MessageSquare,
+                featureKey: "fallback",
                 requiresWhatsApp: false,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+                roles: ['tenant_admin', 'staff', 'doctor']
             },
             {
                 label: "WhatsApp Playground",
                 route: "/settings/whatsapp-playground",
                 icon: FlaskConical,
+                featureKey: "fallback",
                 requiresWhatsApp: false,
                 requiresLocal: true,
-                roles: ['tenant_admin', 'staff', 'doctor', 'agent']
+                roles: ['tenant_admin', 'staff', 'doctor']
             }
         ]
     },
@@ -240,16 +300,65 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 roles: ['super_admin', 'platform_admin']
             },
             {
-                label: "Onboard Tenants",
+                label: "Tenant Onboarding",
                 route: "/management/onboarded",
                 icon: UserPlus,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             },
             {
-                label: "Tenant Invitation",
+                label: "Tenant Invitations",
                 route: "/management/invitations",
                 icon: Mail,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Tenant Access Control",
+                route: "/management/tenant-access",
+                icon: ShieldCheck,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Industries",
+                route: "/management/industries",
+                icon: Building2,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "SaaS Modules",
+                route: "/management/saas-modules",
+                icon: Database,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Plans",
+                route: "/management/plans",
+                icon: CreditCard,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Industry Module Mapping",
+                route: "/management/industry-module-mapping",
+                icon: Workflow,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Plan Module Mapping",
+                route: "/management/plan-module-mapping",
+                icon: Terminal,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "Tenant Dynamic Access",
+                route: "/management/tenant-dynamic-access",
+                icon: ShieldCheck,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             },

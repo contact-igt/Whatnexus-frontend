@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { getHeatStateStyles } from '@/utils/leadUtils';
 import dayjs from "@/utils/dayjs";
+import { AppointmentDrawer } from './appointments/appointmentDrawer';
+import { Appointment } from './appointments/bookingList';
+import { useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
+import { useGetAllDoctorsQuery } from '@/hooks/useDoctorQuery';
 import {
     ArrowLeft,
     Edit,
@@ -29,9 +33,10 @@ interface LeadDetailsViewProps {
     lead: any;
     isDarkMode: boolean;
     onBack?: () => void;
+    onLeadRefresh?: () => void;
 }
 
-export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewProps) => {
+export const LeadDetailsView = ({ lead, isDarkMode, onBack, onLeadRefresh }: LeadDetailsViewProps) => {
     if (!lead) return null;
 
     const formatDate = (dateString: string) => {
@@ -77,6 +82,67 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
 
     const { mutate: summarizeLead, isPending } = useSummarizeLeadMutation();
     const [copied, setCopied] = useState(false);
+    const [isAppointmentDrawerOpen, setIsAppointmentDrawerOpen] = useState(false);
+    const [appointmentDrawerMode, setAppointmentDrawerMode] = useState<'view' | 'edit' | 'create'>('create');
+    const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+    const { data: leadAppointmentsData, refetch: refetchLeadAppointments } =
+        useGetAllAppointmentsQuery({ lead_id: lead.lead_id });
+    const { data: doctorsData } = useGetAllDoctorsQuery();
+    const doctors = doctorsData?.data || [];
+    const leadAppointments: Appointment[] = leadAppointmentsData?.data || [];
+
+    const sortedAppointments = useMemo(() => {
+        if (!leadAppointments.length) return [];
+        return [...leadAppointments].sort((a, b) => {
+            const aDateTime = dayjs(`${a.appointment_date || ''} ${a.appointment_time || ''}`);
+            const bDateTime = dayjs(`${b.appointment_date || ''} ${b.appointment_time || ''}`);
+            return bDateTime.valueOf() - aDateTime.valueOf();
+        });
+    }, [leadAppointments]);
+
+    const latestAppointment = sortedAppointments.length ? sortedAppointments[0] : null;
+
+    const latestAppointmentDoctorName = useMemo(() => {
+        if (!latestAppointment?.doctor_id) return '-';
+        const doctor = doctors.find((d: any) => d.doctor_id === latestAppointment.doctor_id);
+        return doctor?.name ? `${doctor.title ? `${doctor.title} ` : ''}${doctor.name}` : latestAppointment.doctor_id;
+    }, [doctors, latestAppointment]);
+
+    const getDoctorName = (appointment: Appointment) => {
+        if (!appointment?.doctor_id) return '-';
+        const doctor = doctors.find((d: any) => d.doctor_id === appointment.doctor_id);
+        return doctor?.name ? `${doctor.title ? `${doctor.title} ` : ''}${doctor.name}` : '-';
+    };
+
+    const getStatusStyles = (status?: string) => {
+        switch ((status || '').trim().toLowerCase()) {
+            case 'pending':
+                return isDarkMode
+                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                    : "bg-amber-50 text-amber-700 border-amber-200";
+            case 'confirmed':
+                return isDarkMode
+                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200";
+            case 'completed':
+                return isDarkMode
+                    ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                    : "bg-blue-50 text-blue-700 border-blue-200";
+            case 'noshow':
+                return isDarkMode
+                    ? "bg-orange-500/15 text-orange-300 border-orange-500/30"
+                    : "bg-orange-50 text-orange-700 border-orange-200";
+            case 'cancelled':
+                return isDarkMode
+                    ? "bg-red-500/15 text-red-300 border-red-500/30"
+                    : "bg-red-50 text-red-700 border-red-200";
+            default:
+                return isDarkMode
+                    ? "bg-white/10 text-white/70 border-white/20"
+                    : "bg-slate-100 text-slate-700 border-slate-200";
+        }
+    };
 
     const handleRefresh = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -95,14 +161,33 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
         }
     };
 
+    const handleCreateAppointment = () => {
+        setSelectedAppointment(null);
+        setAppointmentDrawerMode('create');
+        setIsAppointmentDrawerOpen(true);
+    };
+
+    const handleOpenAppointment = () => {
+        if (!latestAppointment) return;
+        setSelectedAppointment(latestAppointment);
+        setAppointmentDrawerMode('edit');
+        setIsAppointmentDrawerOpen(true);
+    };
+
+    const handleAppointmentSaved = async () => {
+        setIsAppointmentDrawerOpen(false);
+        await refetchLeadAppointments();
+        onLeadRefresh?.();
+    };
+
     return (
-        <div className="h-full overflow-y-auto p-6 space-y-6 animate-in fade-in duration-500">
+        <div className="h-full overflow-y-auto p-4 md:p-5 space-y-4 animate-in fade-in duration-500">
             {/* Header Section */}
-            <GlassCard className="p-6 relative overflow-hidden" isDarkMode={isDarkMode}>
+            <GlassCard className="p-5 relative overflow-hidden" isDarkMode={isDarkMode}>
                 {/* Background Decoration */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
 
-                <div className="relative z-10 flex flex-col gap-6">
+                <div className="relative z-10 flex flex-col gap-4">
                     {/* Top Row: Back Button & Actions */}
                     {/* <div className="flex justify-between items-center bg-white/5 p-2 rounded-lg backdrop-blur-sm border border-white/5">
                         <button
@@ -126,8 +211,8 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                         </div>
                     </div> */}
 
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div className="flex items-center space-x-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center space-x-4">
                             <div className={cn(
                                 "w-24 h-24 rounded-2xl flex items-center justify-center font-bold text-4xl shadow-2xl relative overflow-hidden group border",
                                 isDarkMode ? 'bg-gradient-to-br from-white/10 to-white/5 border-white/10 text-white' : 'bg-white border-slate-100 text-slate-800'
@@ -187,7 +272,7 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
 
                         {/* Enhanced Score Card */}
                         <div className={cn(
-                            "p-6 rounded-2xl border min-w-[280px] relative overflow-hidden group transition-all hover:shadow-lg",
+                            "p-4 rounded-2xl border min-w-[260px] md:min-w-[280px] relative overflow-hidden group transition-all hover:shadow-lg",
                             isDarkMode ? "bg-black/20 border-white/10" : "bg-white border-slate-100 shadow-sm"
                         )}>
                             {/* <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity duration-500">
@@ -255,10 +340,10 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                 </div>
             </GlassCard>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Left Column: Contact & Metadata */}
-                <div className="space-y-8 lg:col-span-1">
-                    <GlassCard className="p-6 space-y-6" isDarkMode={isDarkMode}>
+                <div className="space-y-5 lg:col-span-1">
+                    <GlassCard className="p-5 space-y-4" isDarkMode={isDarkMode}>
                         <h3 className={cn("text-sm font-bold uppercase tracking-wide flex items-center gap-2", isDarkMode ? "text-white/90" : "text-slate-800")}>
                             <User size={18} className="text-emerald-500" />
                             Contact Details
@@ -299,7 +384,136 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                         </div>
                     </GlassCard>
 
-                    <GlassCard className="p-6 space-y-6" isDarkMode={isDarkMode}>
+                    <GlassCard className="p-5 space-y-4" isDarkMode={isDarkMode}>
+                        <h3 className={cn("text-sm font-bold uppercase tracking-wide flex items-center gap-2", isDarkMode ? "text-white/90" : "text-slate-800")}>
+                            <Calendar size={18} className="text-emerald-500" />
+                            Appointment Information
+                        </h3>
+
+                        {!latestAppointment ? (
+                            <div className="space-y-4">
+                                <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                    No appointment created
+                                </p>
+                                <button
+                                    onClick={handleCreateAppointment}
+                                    className={cn(
+                                        "px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                                        isDarkMode
+                                            ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                    )}
+                                >
+                                    Create Appointment
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-white/5">
+                                        <span className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-400")}>Doctor</span>
+                                        <span className={cn("text-xs text-right", isDarkMode ? "text-white/80" : "text-slate-700")}>{latestAppointmentDoctorName}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-white/5">
+                                        <span className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-400")}>Date</span>
+                                        <span className={cn("text-xs", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                            {latestAppointment.appointment_date ? dayjs(latestAppointment.appointment_date).format('MMM D, YYYY') : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-white/5">
+                                        <span className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-400")}>Time</span>
+                                        <span className={cn("text-xs", isDarkMode ? "text-white/80" : "text-slate-700")}>{latestAppointment.appointment_time || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-white/5">
+                                        <span className={cn("text-xs font-medium", isDarkMode ? "text-white/40" : "text-slate-400")}>Status</span>
+                                        <span className={cn("text-xs font-semibold", isDarkMode ? "text-white/90" : "text-slate-800")}>{latestAppointment.status || '-'}</span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleOpenAppointment}
+                                    className={cn(
+                                        "px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                                        isDarkMode
+                                            ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                    )}
+                                >
+                                    Open Appointment
+                                </button>
+
+                                <div className={cn("h-px", isDarkMode ? "bg-white/10" : "bg-slate-200")} />
+
+                                <div className="space-y-2">
+                                    <h4 className={cn(
+                                        "text-xs font-bold uppercase tracking-wide",
+                                        isDarkMode ? "text-white/80" : "text-slate-700"
+                                    )}>
+                                        Appointment History
+                                    </h4>
+
+                                    {sortedAppointments.length === 0 ? (
+                                        <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                            No appointment history
+                                        </p>
+                                    ) : (
+                                        <div className={cn(
+                                            "rounded-lg border overflow-hidden",
+                                            isDarkMode ? "border-white/10" : "border-slate-200"
+                                        )}>
+                                            <div className={cn(
+                                                "grid grid-cols-[1.2fr_1fr_1fr_1.4fr] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide",
+                                                isDarkMode ? "bg-white/5 text-white/40" : "bg-slate-50 text-slate-500"
+                                            )}>
+                                                <span>Status</span>
+                                                <span>Date</span>
+                                                <span>Time</span>
+                                                <span>Doctor</span>
+                                            </div>
+                                            {sortedAppointments.map((appointment, index) => (
+                                                <button
+                                                    key={appointment.appointment_id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedAppointment(appointment);
+                                                        setAppointmentDrawerMode('edit');
+                                                        setIsAppointmentDrawerOpen(true);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full grid grid-cols-[1.2fr_1fr_1fr_1.4fr] gap-2 px-3 py-2 text-left text-sm transition-colors",
+                                                        index < sortedAppointments.length - 1 && (isDarkMode ? "border-b border-white/5" : "border-b border-slate-100"),
+                                                        isDarkMode ? "hover:bg-white/5" : "hover:bg-slate-50"
+                                                    )}
+                                                >
+                                                    <span className="flex items-center">
+                                                        <span className={cn(
+                                                            "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                                                            getStatusStyles(appointment.status)
+                                                        )}>
+                                                            {appointment.status || '-'}
+                                                        </span>
+                                                    </span>
+                                                    <span className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                                        {appointment.appointment_date
+                                                            ? dayjs(appointment.appointment_date).format('MMM D, YYYY')
+                                                            : '-'}
+                                                    </span>
+                                                    <span className={cn("text-sm", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                                        {appointment.appointment_time || '-'}
+                                                    </span>
+                                                    <span className={cn("text-sm truncate", isDarkMode ? "text-white/80" : "text-slate-700")}>
+                                                        {getDoctorName(appointment)}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </GlassCard>
+
+                    <GlassCard className="p-5 space-y-4" isDarkMode={isDarkMode}>
                         <h3 className={cn("text-sm font-bold uppercase tracking-wide flex items-center gap-2", isDarkMode ? "text-white/90" : "text-slate-800")}>
                             <Shield size={18} className="text-emerald-500" />
                             System Info
@@ -323,8 +537,8 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                 </div>
 
                 {/* Right Column: AI Intelligence & Recent Activity */}
-                <div className="lg:col-span-2 space-y-8">
-                    <GlassCard className="p-8 relative overflow-hidden group" isDarkMode={isDarkMode}>
+                <div className="lg:col-span-2 space-y-5">
+                    <GlassCard className="p-6 relative overflow-hidden group" isDarkMode={isDarkMode}>
 
                         <div className="flex items-center justify-between mb-6 relative z-10">
                             <h3 className={cn("text-xl font-bold flex items-center gap-3", isDarkMode ? "text-white" : "text-slate-900")}>
@@ -405,7 +619,7 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                     </GlassCard>
 
                     {/* Recent Activity / Chat UI */}
-                    <GlassCard className="flex flex-col h-[400px] max-h-[420px] overflow-hidden p-0 border-0" isDarkMode={isDarkMode}>
+                    <GlassCard className="flex flex-col h-[420px] lg:h-[calc(100vh-24rem)] lg:min-h-[420px] lg:max-h-[620px] overflow-hidden p-0 border-0" isDarkMode={isDarkMode}>
                         {/* Header */}
                         <div className={cn(
                             "px-6 py-4 flex items-center justify-between shrink-0 border-b",
@@ -488,6 +702,20 @@ export const LeadDetailsView = ({ lead, isDarkMode, onBack }: LeadDetailsViewPro
                     </GlassCard>
                 </div>
             </div>
+            <AppointmentDrawer
+                isOpen={isAppointmentDrawerOpen}
+                onClose={() => setIsAppointmentDrawerOpen(false)}
+                onSave={handleAppointmentSaved}
+                appointment={selectedAppointment}
+                mode={appointmentDrawerMode}
+                isDarkMode={isDarkMode}
+                prefillData={{
+                    patient_name: lead.name || '',
+                    contact_number: lead.phone || '',
+                    contact_id: lead.contact_id || '',
+                    lead_id: lead.lead_id || '',
+                }}
+            />
         </div>
     );
 };

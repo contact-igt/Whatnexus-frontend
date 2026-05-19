@@ -6,18 +6,24 @@ import { useFaqRealtimeUpdates } from "@/hooks/useFaqNotifications";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import FeatureProtectedRoute from "@/routes/FeatureProtectedRoute";
 import { AccountStatusOverlay } from "@/components/ui/accountStatusOverlay";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { tenantUserApiData } from "@/services/tenantUser";
 import { managementApiData } from "@/services/management";
+import { useTenantFeaturesQuery } from "@/hooks/useTenantFeaturesQuery";
+import { useTenantDynamicNavigationQuery } from "@/hooks/useTenantDynamicNavigationQuery";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
     const { isDarkMode, setTheme } = useTheme();
     const { user } = useAuth();
+    const isTenantUser = user?.user_type === "tenant";
     const tenantUserApi = new tenantUserApiData();
     const managementApi = new managementApiData();
+    useTenantFeaturesQuery();
+    const tenantDynamicNavigationQuery = useTenantDynamicNavigationQuery();
     useFaqRealtimeUpdates();
 
     const { data: preferencesData } = useQuery({
@@ -44,12 +50,17 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <AccountStatusOverlay />
         <div className={cn("flex h-screen font-sans overflow-hidden relative transition-colors duration-300", isDarkMode ? 'bg-[#0A0A0B] text-slate-200' : 'bg-[#FAFAFB] text-slate-900')}>
             <div className={cn("absolute top-[-20%] left-[-10%] w-[80%] h-[80%] blur-[200px] rounded-full transition-all duration-300", isDarkMode ? 'bg-emerald-900/10' : 'bg-emerald-200/40')} />
-            <GroupedSidebar />
+            <GroupedSidebar
+                tenantDynamicNavigationData={isTenantUser ? tenantDynamicNavigationQuery.data?.data : undefined}
+                isTenantDynamicNavigationSuccess={isTenantUser ? tenantDynamicNavigationQuery.isSuccess : false}
+            />
             <main className="flex-1 flex flex-col min-w-0 relative z-10 overflow-hidden">
                 <WalletAnnouncementBar />
                 <Header />
                 <div className="flex-1 min-h-0 overflow-y-auto relative">
-                    {children}
+                    <FeatureProtectedRoute>
+                        {children}
+                    </FeatureProtectedRoute>
                 </div>
             </main>
         </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { Filter, MessageSquare, MoreHorizontal, ClipboardList, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, ArchiveRestore, Trash, Eye, RefreshCw, Sparkles, BrainCircuit, Check, UserPlus, UserMinus, Users, CheckSquare, Square, ShieldCheck, Lock, Search, ChevronDown } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { Select } from '@/components/ui/select';
@@ -94,6 +94,88 @@ export const LeadsView = () => {
         };
     };
 
+    const getAppointmentBadgeConfig = (status?: string | null) => {
+        const normalized = String(status || '').trim().toLowerCase();
+        switch (normalized) {
+            case 'pending':
+                return {
+                    label: 'Pending',
+                    dotClass: 'bg-amber-500',
+                    className: isDarkMode
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        : 'bg-amber-50 text-amber-700 border-amber-200',
+                };
+            case 'confirmed':
+                return {
+                    label: 'Confirmed',
+                    dotClass: 'bg-emerald-500',
+                    className: isDarkMode
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                };
+            case 'completed':
+                return {
+                    label: 'Completed',
+                    dotClass: 'bg-blue-500',
+                    className: isDarkMode
+                        ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                        : 'bg-blue-50 text-blue-700 border-blue-200',
+                };
+            case 'noshow':
+                return {
+                    label: 'No Show',
+                    dotClass: 'bg-orange-500',
+                    className: isDarkMode
+                        ? 'bg-orange-500/15 text-orange-300 border-orange-500/30'
+                        : 'bg-orange-50 text-orange-700 border-orange-200',
+                };
+            case 'cancelled':
+                return {
+                    label: 'Cancelled',
+                    dotClass: 'bg-red-500',
+                    className: isDarkMode
+                        ? 'bg-red-500/15 text-red-300 border-red-500/30'
+                        : 'bg-red-50 text-red-700 border-red-200',
+                };
+            default:
+                return null;
+        }
+    };
+
+    const formatAppointmentDate = (dateString?: string | null) => {
+        if (!dateString) return null;
+        const parsed = dayjs(dateString);
+        return parsed.isValid() ? parsed.format('MMM D') : null;
+    };
+
+    const formatAppointmentTime = (timeString?: string | null) => {
+        if (!timeString) return null;
+        const trimmed = String(timeString).trim();
+
+        if (/am|pm/i.test(trimmed)) {
+            return trimmed.toUpperCase();
+        }
+
+        const parts = trimmed.split(':');
+        const hour = Number(parts[0]);
+        const minute = parts[1];
+        if (Number.isNaN(hour) || !minute) return trimmed;
+
+        const suffix = hour >= 12 ? 'PM' : 'AM';
+        const normalizedHour = hour % 12 || 12;
+        return `${normalizedHour}:${minute} ${suffix}`;
+    };
+
+    const getAppointmentDateTimeLine = (dateString?: string | null, timeString?: string | null) => {
+        const formattedDate = formatAppointmentDate(dateString);
+        const formattedTime = formatAppointmentTime(timeString);
+
+        if (formattedDate && formattedTime) return `${formattedDate} • ${formattedTime}`;
+        if (formattedDate) return formattedDate;
+        if (formattedTime) return formattedTime;
+        return null;
+    };
+
     const isLoading = activeTab === 'all' ? isLoadingLeads : isLoadingDeletedLeads;
     const leads = activeTab === 'all' ? (leadIntelligenceData?.data?.leads || []) : (deletedLeadsData?.data?.items || []);
 
@@ -114,6 +196,10 @@ export const LeadsView = () => {
             finalHeatState,
             lead?.ai_summary,
             lead?.summary_status,
+            lead?.latest_appointment_status,
+            lead?.visit_count,
+            lead?.is_returning_patient ? 'returning patient' : '',
+            lead?.last_visit_date,
             lead?.lead_score_reason_codes?.join?.(','),
             date,
             time
@@ -479,6 +565,87 @@ export const LeadsView = () => {
                     <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border", getHeatStateStyles(finalStatus))}>
                         {finalStatus}
                     </span>
+                );
+            }
+        },
+        {
+            field: 'latest_appointment_status',
+            headerName: 'Appointment',
+            minWidth: 210,
+            renderCell: ({ row }) => {
+                const rawStatus = row?.latest_appointment_status;
+                const normalizedStatus = typeof rawStatus === 'string' ? rawStatus.trim() : '';
+                const hasAppointmentStatus = !!normalizedStatus;
+                const badgeConfig = getAppointmentBadgeConfig(rawStatus);
+                const visitCount = Number(row?.visit_count || 0);
+                const isReturning = Boolean(row?.is_returning_patient) && visitCount > 1;
+                const appointmentDateTime = getAppointmentDateTimeLine(
+                    row?.latest_appointment_date || row?.last_visit_date,
+                    row?.latest_appointment_time
+                );
+
+                if (!hasAppointmentStatus) {
+                    return (
+                        <div className="flex flex-col justify-center gap-1">
+                            <span className={cn(
+                                "text-xs font-semibold",
+                                isDarkMode ? "text-white/45" : "text-slate-500"
+                            )}>
+                                No Appointment
+                            </span>
+                        </div>
+                    );
+                }
+
+                if (!badgeConfig) {
+                    return (
+                        <div className="flex flex-col justify-center gap-1">
+                            <span className={cn(
+                                "text-xs font-semibold",
+                                isDarkMode ? "text-white/80" : "text-slate-700"
+                            )}>
+                                {normalizedStatus}
+                            </span>
+                            {appointmentDateTime && (
+                                <span className={cn(
+                                    "text-[11px]",
+                                    isDarkMode ? "text-white/60" : "text-slate-500"
+                                )}>
+                                    {appointmentDateTime}
+                                </span>
+                            )}
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="flex flex-col justify-center gap-1">
+                        <span className={cn(
+                            "inline-flex w-fit items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-bold",
+                            badgeConfig.className
+                        )}>
+                            <span className={cn("h-1.5 w-1.5 rounded-full", badgeConfig.dotClass)} />
+                            {badgeConfig.label}
+                        </span>
+
+                        {appointmentDateTime && (
+                            <span className={cn(
+                                "text-[11px]",
+                                isDarkMode ? "text-white/60" : "text-slate-500"
+                            )}>
+                                {appointmentDateTime}
+                            </span>
+                        )}
+
+                        {isReturning && (
+                            <span className={cn(
+                                "text-[10px] font-medium",
+                                isDarkMode ? "text-white/45" : "text-slate-400"
+                            )}>
+                                Returning • {visitCount} visits
+                            </span>
+                        )}
+                    </div>
                 );
             }
         },
@@ -1209,3 +1376,4 @@ export const LeadsView = () => {
         </div>
     );
 };
+

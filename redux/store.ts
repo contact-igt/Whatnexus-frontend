@@ -4,6 +4,7 @@ import createWebStorage from 'redux-persist/es/storage/createWebStorage';
 import authReducer from './slices/auth/authSlice';
 import templateReducer from './slices/template/templateSlice';
 import notificationsReducer from './slices/notifications/notificationsSlice';
+import featureAccessReducer from './slices/featureAccess/featureAccessSlice';
 import { combineReducers } from 'redux';
 
 const createNoopStorage = () => ({
@@ -47,6 +48,7 @@ const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   template: persistReducer(templatePersistConfig, templateReducer),
   notifications: notificationsReducer,
+  featureAccess: featureAccessReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

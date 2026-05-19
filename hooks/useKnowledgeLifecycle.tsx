@@ -14,11 +14,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { knowledgeLifecycleApi } from "@/services/lifecycle/knowledgeLifecycle";
+import { useSelector } from "react-redux";
 
 // ── Query: trash list ─────────────────────────────────────────────────────────
 export const useDeletedKnowledgeQuery = (page = 1, limit = 20) => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["knowledge-deleted", page],
+    queryKey: ["knowledge-deleted", tenantId, page],
     queryFn: () => knowledgeLifecycleApi.getDeleted(page, limit),
     staleTime: 60 * 1000, // trash list can be stale for 1 min
   });

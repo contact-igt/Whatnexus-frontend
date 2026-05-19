@@ -92,6 +92,7 @@ export default function LeadDetailsPage() {
                 lead={lead}
                 isDarkMode={isDarkMode}
                 onBack={() => router.back()}
+                onLeadRefresh={refetch}
             />
         </div>
     );

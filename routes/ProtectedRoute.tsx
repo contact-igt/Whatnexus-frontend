@@ -3,18 +3,33 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-const ProtectedRoute = ({ children }: { children: any }) => {
+const MANAGEMENT_PATH_PREFIXES = [
+    '/management',
+    '/organizations',
+    '/platformAdmins',
+    '/admin-billing',
+    '/pricing',
+];
+
+const isManagementScopePath = (pathname: string) => {
+    return MANAGEMENT_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+};
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const { token } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
-    console.log("token", token);
+
     useEffect(() => {
         if (!token) {
-            router.replace(`/login?from=${encodeURIComponent(pathname)}`)
+            const loginPath = isManagementScopePath(pathname)
+                ? '/management/login'
+                : '/login';
+            router.replace(`${loginPath}?from=${encodeURIComponent(pathname)}`);
         }
     }, [token, router, pathname]);
 
-    if(!token) return null;
+    if (!token) return null;
 
     return <>{children}</>;
 };

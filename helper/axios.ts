@@ -8,6 +8,7 @@ import {
   setAccountError,
   setAuthData,
 } from "@/redux/slices/auth/authSlice";
+import { queryClient } from "@/lib/queryClient";
 
 interface JwtPayload {
   exp: number;
@@ -57,6 +58,21 @@ const getApiBaseUrl = (): string => {
   return localhostUrl || ngrokUrl;
 };
 
+const isAuthEndpoint = (url?: string) => {
+  if (!url) return false;
+  return (
+    url.includes("/management/login") ||
+    url.includes("/tenant/login") ||
+    url.includes("/management/refresh-token") ||
+    url.includes("/management/forgot-Password") ||
+    url.includes("/management/verify-otp") ||
+    url.includes("/management/reset-password") ||
+    url.includes("/tenant/forgot-password") ||
+    url.includes("/tenant/verify-otp") ||
+    url.includes("/tenant/reset-password")
+  );
+};
+
 // Plain axios without our interceptors (used for refresh token calls)
 const plainAxios = axios.create({ timeout: DEFAULT_TIMEOUT });
 
@@ -78,16 +94,9 @@ const onRefreshed = (token: string | null) => {
 
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-const isNetworkError = (err: any) => {
-  return (
-    !err.response &&
-    (err.code === "ECONNABORTED" || err.message === "Network Error" || Boolean(err.request))
-  );
-};
-
 const isRetryableStatus = (status?: number) => {
   if (!status) return false;
-  // Retry on 5xx and 429 (rate limit)
+  // Only retry on server errors and rate limits — never on network/CORS errors
   return status >= 500 || status === 429;
 };
 
@@ -115,6 +124,7 @@ axiosInstance.interceptors.request.use(
               const newToken = await refreshPromise;
               if (newToken) token = newToken;
             } else {
+              queryClient.clear();
               store.dispatch(clearAuthData());
               throw new Error("Token expired");
             }
@@ -171,12 +181,18 @@ axiosInstance.interceptors.response.use(
     const status = error.response?.status;
 
     // 401 handling
-    if (status === 401 && originalRequest && !originalRequest._retry) {
+    if (
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest?.url)
+    ) {
       originalRequest._retry = true;
       const state: RootState = store.getState();
       const refreshToken = state?.auth?.refreshToken;
 
       if (!refreshToken) {
+        queryClient.clear();
         store.dispatch(clearAuthData());
         return Promise.reject(error);
       }
@@ -206,6 +222,7 @@ axiosInstance.interceptors.response.use(
         .catch((refreshErr) => {
           isRefreshing = false;
           onRefreshed(null);
+          queryClient.clear();
           store.dispatch(clearAuthData());
           throw refreshErr;
         });
@@ -270,8 +287,9 @@ async function requestWithRetry<T = any>(
       const status = err?.response?.status;
       if (status === 401) throw err;
 
-      // Decide if retryable
-      if (!isNetworkError(err) && !isRetryableStatus(status)) {
+      // Only retry on server-side failures (5xx, 429).
+      // Network errors and CORS failures are not retryable here.
+      if (!isRetryableStatus(status)) {
         throw err;
       }
 
@@ -335,7 +353,9 @@ export const _axios = async (
     }
 
     // If token was rejected and refresh didnt work, clear auth state
-    if (err?.response?.status === 401) {
+    // Skip this for public auth endpoints (login/otp/forgot flows).
+    if (err?.response?.status === 401 && !isAuthEndpoint(endpoint)) {
+      queryClient.clear();
       store.dispatch(clearAuthData());
     }
 
@@ -345,16 +365,33 @@ export const _axios = async (
       store.dispatch(setAccountError(errMsg));
     }
 
-    // Log detailed debug info
-    console.error("Axios error:", {
-      message: err?.message,
-      method,
-      url: endpoint,
-      status: err?.response?.status,
-      response: err?.response?.data,
-      headers: err?.response?.headers,
-      config: err?.config,
-    });
+    const status = err?.response?.status;
+    const isExpectedAuthFailure = isAuthEndpoint(endpoint) && (status === 400 || status === 401);
+
+    // Avoid noisy stack dumps for expected login/auth failures
+    if (isExpectedAuthFailure) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Axios auth request failed:", {
+          message: err?.response?.data?.message || err?.message,
+          method,
+          url: endpoint,
+          status,
+        });
+      }
+    } else {
+      // Log detailed debug info (include request for CORS/network issues)
+      console.error("Axios error:", {
+        message: err?.message,
+        method,
+        url: endpoint,
+        status,
+        response: err?.response?.data,
+        responseHeaders: err?.response?.headers,
+        request: err?.request,
+        errorJSON: typeof err?.toJSON === "function" ? err.toJSON() : undefined,
+        config: err?.config,
+      });
+    }
 
     throw err;
   }

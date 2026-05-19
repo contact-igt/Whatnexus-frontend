@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { contactGroupApis } from "@/services/contactGroup";
 import { toast } from "@/lib/toast";
 import { CreateGroupDto, UpdateGroupDto, AddContactsToGroupDto } from "@/types/contactGroup";
+import { useSelector } from "react-redux";
 
 // Create Group
 export const useCreateGroupMutation = () => {
@@ -24,16 +25,18 @@ export const useCreateGroupMutation = () => {
 
 // Get All Groups
 export const useGetAllGroupsQuery = (params?: any) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['contact-groups', params],
+        queryKey: ['contact-groups', tenantId, params],
         queryFn: () => contactGroupApis.getAllGroups(params),
     });
 };
 
 // Get Group By ID
 export const useGetGroupByIdQuery = (groupId: string, enabled: boolean = true) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['contact-group', groupId],
+        queryKey: ['contact-group', tenantId, groupId],
         queryFn: () => contactGroupApis.getGroupById(groupId),
         enabled: enabled && !!groupId,
     });
@@ -41,8 +44,9 @@ export const useGetGroupByIdQuery = (groupId: string, enabled: boolean = true) =
 
 // Get Available Contacts (NOT in group)
 export const useGetAvailableContactsQuery = (groupId: string, enabled: boolean = true) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['available-contacts', groupId],
+        queryKey: ['available-contacts', tenantId, groupId],
         queryFn: () => contactGroupApis.getAvailableContacts(groupId),
         enabled: enabled && !!groupId,
     });
@@ -125,8 +129,9 @@ export const useDeleteGroupMutation = () => {
 
 // Get Deleted Groups
 export const useGetDeletedGroupsQuery = (params?: any) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
-        queryKey: ['deleted-groups', params],
+        queryKey: ['deleted-groups', tenantId, params],
         queryFn: () => contactGroupApis.getDeletedGroups(params),
     });
 };

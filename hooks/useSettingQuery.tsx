@@ -1,13 +1,14 @@
 import { settingApiData } from "@/services/settings";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
+import { useSelector } from "react-redux";
 
 const SettingsApis = new settingApiData();
 
 export const useGetAllSettingQuery = () => {
-
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError } = useQuery({
-        queryKey: ['settings'],
+        queryKey: ['settings', tenantId],
         queryFn: () => SettingsApis.getAllSettings(),
         staleTime: 2 * 60 * 1000,
     });

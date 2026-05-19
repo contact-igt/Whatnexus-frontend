@@ -42,7 +42,6 @@ export default function LoginPage() {
     const dispatch = useDispatch();
     const { token, user } = useAuth();
     const pathname = usePathname();
-    console.log("pathname", pathname)
     const { mutate: loginMutate, isPending: isManagementLoading } = useManagementLoginMutation();
     const { mutate: tenantLoginMutate, isPending: isTenantLoading } = useTenantUserLoginMutation();
     const [showPassword, setShowPassword] = useState(false);
@@ -257,7 +256,7 @@ export default function LoginPage() {
                                 id="email"
                                 type="text"
                                 autoComplete="new-password"
-                                placeholder="Enter your email or username"
+                                placeholder="Enter your email"
                                 className={cn(
                                     "w-full pl-12 pr-4 py-3 rounded-xl border transition-all duration-300 outline-none",
                                     "focus:ring-2 focus:ring-emerald-500/50",

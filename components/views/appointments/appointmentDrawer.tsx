@@ -23,9 +23,16 @@ interface AppointmentDrawerProps {
     appointment: Appointment | null;
     mode: 'view' | 'edit' | 'create';
     isDarkMode: boolean;
+    prefillData?: {
+        patient_name?: string;
+        contact_number?: string;
+        contact_id?: string;
+        lead_id?: string;
+    };
 }
 
 const APPOINTMENT_STATUSES = ['Pending', 'Confirmed', 'Cancelled', 'Completed', 'Noshow'];
+const TERMINAL_STATUSES = new Set(['Completed', 'Noshow']);
 
 const DoctorCalendar = ({ selectedDate, onSelect, availableDays, isDarkMode }: any) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -191,7 +198,8 @@ export const AppointmentDrawer = ({
     onSave,
     appointment,
     mode,
-    isDarkMode
+    isDarkMode,
+    prefillData
 }: AppointmentDrawerProps) => {
     const [formData, setFormData] = useState({
         patient_name: '',
@@ -203,6 +211,7 @@ export const AppointmentDrawer = ({
         notes: '',
         doctor_id: '',
         contact_id: '',
+        lead_id: '',
         age: '',
         email: '',
     });
@@ -233,7 +242,6 @@ export const AppointmentDrawer = ({
         if (availabilities.length === 0) return [];
 
         const allSlots = [];
-        const duration = activeDoctor.consultation_duration || 15;
 
         // Helper to convert 24h time to AM/PM format (e.g., "09:30" -> "09:30 AM")
         const to12HourFormat = (hour: number, min: number) => {
@@ -243,37 +251,22 @@ export const AppointmentDrawer = ({
         };
 
         for (const availability of availabilities) {
-            let [currentHour, currentMin] = availability.start_time.split(':').map(Number);
+            const [currentHour, currentMin] = availability.start_time.split(':').map(Number);
             const [endHour, endMin] = availability.end_time.split(':').map(Number);
+            const startTimeStr = to12HourFormat(currentHour, currentMin);
+            const endTimeStr = to12HourFormat(endHour, endMin);
 
-            while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-                // Generate time in AM/PM format to match backend storage
-                const startTimeStr = to12HourFormat(currentHour, currentMin);
+            // Doctor availability rows are concrete slots; do not subdivide them.
+            const isBooked = doctorAppointments?.data?.some((appt: any) => {
+                const apptTime = appt.appointment_time || '';
+                return apptTime === startTimeStr && appt.status !== 'Cancelled';
+            });
 
-                let nextMin = currentMin + duration;
-                let nextHour = currentHour;
-                if (nextMin >= 60) {
-                    nextHour += Math.floor(nextMin / 60);
-                    nextMin %= 60;
-                }
-                const endTimeStr = to12HourFormat(nextHour, nextMin);
-
-                // Check if slot overlaps with any existing non-cancelled appointment
-                // Backend stores time in AM/PM format, so compare directly
-                const isBooked = doctorAppointments?.data?.some((appt: any) => {
-                    const apptTime = appt.appointment_time || '';
-                    return apptTime === startTimeStr && appt.status !== 'Cancelled';
-                });
-
-                allSlots.push({
-                    time: startTimeStr,
-                    label: `${startTimeStr} - ${endTimeStr}`,
-                    isAvailable: !isBooked
-                });
-
-                currentHour = nextHour;
-                currentMin = nextMin;
-            }
+            allSlots.push({
+                time: startTimeStr,
+                label: `${startTimeStr} - ${endTimeStr}`,
+                isAvailable: !isBooked
+            });
         }
         return allSlots.sort((a, b) => a.time.localeCompare(b.time));
     };
@@ -314,29 +307,35 @@ export const AppointmentDrawer = ({
                 notes: appointment.notes || '',
                 doctor_id: appointment.doctor_id || '',
                 contact_id: appointment.contact_id || '',
+                lead_id: appointment.lead_id || '',
                 age: appointment.age?.toString() || '',
                 email: appointment.email || '',
             });
             setIsContactSelected(false);
             setIsAvailable(null);
         } else if (mode === 'create') {
+            const prefillCountryCode = '+91';
+            const prefillPhone =
+                sanitizePhoneInput(prefillData?.contact_number || '', true) || '';
+
             setFormData({
-                patient_name: '',
-                country_code: '+91',
-                contact_number: '',
+                patient_name: prefillData?.patient_name || '',
+                country_code: prefillCountryCode,
+                contact_number: prefillPhone,
                 appointment_date: '',
                 appointment_time: '',
                 status: 'Pending',
                 notes: '',
                 doctor_id: '',
-                contact_id: '',
+                contact_id: prefillData?.contact_id || '',
+                lead_id: prefillData?.lead_id || '',
                 age: '',
                 email: '',
             });
             setIsContactSelected(false);
             setIsAvailable(null);
         }
-    }, [appointment, mode, isOpen]);
+    }, [appointment, mode, isOpen, prefillData]);
 
     const handleChange = (field: string, value: string) => {
         if (field === 'doctor_id') {
@@ -385,20 +384,31 @@ export const AppointmentDrawer = ({
         }
 
         if (mode === 'create') {
-            createMutation.mutate({
+            const createPayload = {
                 patient_name: formData.patient_name,
                 country_code: formData.country_code,
                 contact_number: formData.contact_number.trim(),
                 appointment_date: formData.appointment_date,
                 appointment_time: formData.appointment_time,
                 contact_id: formData.contact_id || undefined,
+                lead_id: formData.lead_id || prefillData?.lead_id || undefined,
                 doctor_id: formData.doctor_id || undefined,
                 notes: formData.notes || undefined,
-                status: formData.status,
+                status: 'Pending',
                 age: Number(formData.age),
                 email: formData.email.trim(),
-            }, { onSuccess: () => onSave() });
+            };
+
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('[APPOINTMENT-CREATE-PAYLOAD]', createPayload);
+            }
+
+            createMutation.mutate(createPayload, { onSuccess: () => onSave() });
         } else if (mode === 'edit' && appointment) {
+            const sanitizedStatus = TERMINAL_STATUSES.has(formData.status)
+                ? undefined
+                : formData.status;
+
             updateMutation.mutate({
                 appointmentId: appointment.appointment_id,
                 data: {
@@ -409,7 +419,7 @@ export const AppointmentDrawer = ({
                     appointment_time: formData.appointment_time,
                     doctor_id: formData.doctor_id || undefined,
                     notes: formData.notes || undefined,
-                    status: formData.status,
+                    status: sanitizedStatus,
                     age: Number(formData.age),
                     email: formData.email.trim(),
                 },
@@ -648,7 +658,7 @@ export const AppointmentDrawer = ({
                             </div>
                         )}
 
-                        {/* ─── 3. PATIENT & FINAL DETAILS ─── */}
+                        {/* 3. PATIENT & FINAL DETAILS */}
                         {formData.appointment_date && formData.appointment_time && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
                                 {/* Step 3: Patient Info */}
@@ -706,7 +716,7 @@ export const AppointmentDrawer = ({
                                                         <option value="">Search existing contacts...</option>
                                                         {contacts.map((contact: any) => (
                                                             <option key={contact.contact_id} value={contact.contact_id}>
-                                                                {contact.name} — {contact.phone}
+                                                                {contact.name} - {contact.phone}
                                                             </option>
                                                         ))}
                                                     </select>
@@ -844,13 +854,21 @@ export const AppointmentDrawer = ({
                                             <select
                                                 value={formData.status}
                                                 onChange={(e) => handleChange('status', e.target.value)}
+                                                disabled={isEdit && TERMINAL_STATUSES.has(appointment?.status || '')}
                                                 className={cn(
                                                     "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none capitalize",
+                                                    isEdit && TERMINAL_STATUSES.has(appointment?.status || '') && "opacity-60 cursor-not-allowed",
                                                     isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
                                                 )}
                                             >
                                                 {APPOINTMENT_STATUSES.map(status => (
-                                                    <option key={status} value={status}>{status}</option>
+                                                    <option
+                                                        key={status}
+                                                        value={status}
+                                                        disabled={TERMINAL_STATUSES.has(status)}
+                                                    >
+                                                        {status}
+                                                    </option>
                                                 ))}
                                             </select>
                                         </div>

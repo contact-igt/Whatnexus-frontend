@@ -36,10 +36,11 @@ export const useGetWhatsappDashboardQuery = (startDate: Date, endDate: Date) => 
 
 // Weekly Summary Query - Get 4 weeks of aggregated statistics
 export const useGetWeeklySummaryQuery = () => {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
+    const tenantId = user?.tenant_id;
 
     return useQuery({
-        queryKey: ['weekly-summary'],
+        queryKey: ['weekly-summary', tenantId],
         enabled: !!token,
         queryFn: () => dashboardApis.getWeeklySummary(),
         staleTime: 10 * 60 * 1000, // 10 minutes
@@ -53,11 +54,12 @@ export const useGetContactWeeklySummaryQuery = (
     phone?: string,
     options?: { enabled?: boolean }
 ) => {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
+    const tenantId = user?.tenant_id;
     const contactIdStr = contactId?.toString();
 
     return useQuery({
-        queryKey: ['contact-weekly-summary', contactIdStr, phone],
+        queryKey: ['contact-weekly-summary', tenantId, contactIdStr, phone],
         enabled: (options?.enabled ?? true) && !!token && (!!contactIdStr || !!phone),
         queryFn: () => dashboardApis.getContactWeeklySummary(contactIdStr, phone),
         staleTime: 0, // Always fetch fresh data

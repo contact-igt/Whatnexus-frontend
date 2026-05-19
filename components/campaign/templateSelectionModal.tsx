@@ -204,7 +204,7 @@ export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSe
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] font-sans flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100000] font-sans flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <GlassCard
                 isDarkMode={isDarkMode}
                 className="w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"

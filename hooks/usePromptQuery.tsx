@@ -2,6 +2,7 @@ import { promptApiData } from "@/services/prompt";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { useEffect } from "react";
+import { useSelector } from "react-redux";
 
 const PromptApis = new promptApiData();
 
@@ -93,8 +94,9 @@ export const useDeletePromptMutation = () => {
 };
 
 export const useGetPromptConfigurationQuery = () => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["prompt-configurations"],
+    queryKey: ["prompt-configurations", tenantId],
     queryFn: () => PromptApis.getAllPrompts(),
     staleTime: 2 * 60 * 1000,
   });
@@ -109,8 +111,9 @@ export const useGetPromptConfigurationQuery = () => {
 };
 
 export const usePromptByIdQuery = (id: string, type: string) => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["prompt-configurations", id],
+    queryKey: ["prompt-configurations", tenantId, id],
     queryFn: () => PromptApis.getPromptById(id),
     enabled: !!id && type == "prompt",
     staleTime: 3 * 60 * 1000,
@@ -148,8 +151,9 @@ export const useUpdatePromptMutation = () => {
 };
 
 export const useDeletedPromptList = () => {
+  const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["deleted-prompt-configurations"],
+    queryKey: ["deleted-prompt-configurations", tenantId],
     queryFn: () => PromptApis.getDeletedPrompts(),
     staleTime: 2 * 60 * 1000,
   });
