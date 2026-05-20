@@ -18,20 +18,19 @@ import * as z from "zod";
 // import { Doctor } from '@/services/doctor';
 
 const doctorSchema = z.object({
-    title: z.string().min(1, "Title is required"),
+    title: z.string().optional().default('Dr'),
     name: z.string().trim().min(2, "Name must be at least 2 characters"),
     country_code: z.string().default("+91"),
-    mobile: z.string().regex(/^\d{10}$/, "Mobile number must be 10 digits"),
-    email: z.string().trim().email("Invalid email address"),
+    mobile: z.string().regex(/^\d{10}$/, "Mobile number must be 10 digits").optional().or(z.literal('')),
+    email: z.string().trim().email("Invalid email address").optional().or(z.literal('')),
     status: z.string().default("available"),
-    consultation_duration: z.coerce.number().min(5, "Duration must be at least 5 minutes").max(240, "Duration must be at most 240 minutes"),
+    consultation_duration: z.coerce.number().min(5, "Duration must be at least 5 minutes").max(240, "Duration must be at most 240 minutes").optional(),
     bio: z.string().trim().min(10, "Bio is required (min 10 chars)").max(500, "Bio must be less than 500 characters").optional().or(z.literal('')),
     profile_pic: z.string().optional(),
     experience_years: z.preprocess((val) => String(val ?? ''), z.string())
-        .refine((val) => val !== '', { message: "Experience is required" })
-        .refine((val) => !isNaN(Number(val)) && Number(val) >= 0, { message: "Experience must be 0 or more" })
-        .transform((val) => Number(val)),
-    qualification: z.string().trim().min(2, "Qualification is required (min 2 chars)"),
+        .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) >= 0), { message: "Experience must be 0 or more" })
+        .transform((val) => val === '' ? 0 : Number(val)),
+    qualification: z.string().trim().optional().or(z.literal('')),
     specializations: z.array(z.string()).min(1, "At least one specialization is required"),
 });
 
@@ -553,6 +552,9 @@ export const DoctorDrawer = ({
 
         const apiData: any = {
             ...data,
+            country_code: data.mobile ? data.country_code : null,
+            mobile: data.mobile || null,
+            email: data.email || null,
             specializations: data.specializations,
             availability: availability
         };
@@ -823,7 +825,6 @@ export const DoctorDrawer = ({
                                             <Select
                                                 isDarkMode={isDarkMode}
                                                 label="Title"
-                                                required
                                                 value={field.value}
                                                 onChange={field.onChange}
                                                 options={[
@@ -862,7 +863,6 @@ export const DoctorDrawer = ({
                                             <Select
                                                 isDarkMode={isDarkMode}
                                                 label="Code"
-                                                required
                                                 value={field.value}
                                                 onChange={field.onChange}
                                                 options={[
@@ -878,7 +878,7 @@ export const DoctorDrawer = ({
 
                                     <div className="col-span-2">
                                         <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                            Mobile Number <span className="text-red-500">*</span>
+                                            Mobile Number
                                         </label>
                                         <Input
                                             isDarkMode={isDarkMode}
@@ -898,7 +898,7 @@ export const DoctorDrawer = ({
                                 {/* Email */}
                                 <div>
                                     <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                        Email <span className="text-red-500">*</span>
+                                        Email
                                     </label>
                                     <Input
                                         isDarkMode={isDarkMode}
@@ -921,7 +921,6 @@ export const DoctorDrawer = ({
                                                 <Select
                                                     isDarkMode={isDarkMode}
                                                     label="Current Status"
-                                                    required
                                                     value={field.value}
                                                     onChange={field.onChange}
                                                     options={[
@@ -946,7 +945,6 @@ export const DoctorDrawer = ({
                                                 <Select
                                                     isDarkMode={isDarkMode}
                                                     label="Consultation Duration (min)"
-                                                    required
                                                     value={String(field.value)}
                                                     onChange={(val) => field.onChange(Number(val))}
                                                     options={[
@@ -973,7 +971,7 @@ export const DoctorDrawer = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                        Qualification <span className="text-red-500">*</span>
+                                        Qualification
                                     </label>
                                     <Input
                                         isDarkMode={isDarkMode}
@@ -988,7 +986,7 @@ export const DoctorDrawer = ({
 
                                 <div>
                                     <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
-                                        Experience (Years) <span className="text-red-500">*</span>
+                                        Experience (Years)
                                     </label>
                                     <Input
                                         isDarkMode={isDarkMode}

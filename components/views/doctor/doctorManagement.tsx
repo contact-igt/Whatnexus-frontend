@@ -378,14 +378,14 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                                     <div className="space-y-2">
                                         <div className="flex items-center space-x-2">
                                             <Phone className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
-                                            <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {doctor.country_code} {doctor.mobile}
+                                            <span className={cn("text-sm", doctor.mobile ? (isDarkMode ? "text-white/60" : "text-slate-600") : (isDarkMode ? "text-white/25" : "text-slate-400"), !doctor.mobile && "italic")}>
+                                                {doctor.mobile ? `${doctor.country_code} ${doctor.mobile}` : "Not provided"}
                                             </span>
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <Mail className={cn(isDarkMode ? "text-white/40" : "text-slate-400")} size={14} />
-                                            <span className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                {doctor.email}
+                                            <span className={cn("text-sm", doctor.email ? (isDarkMode ? "text-white/60" : "text-slate-600") : (isDarkMode ? "text-white/25" : "text-slate-400"), !doctor.email && "italic")}>
+                                                {doctor.email || "Not provided"}
                                             </span>
                                         </div>
                                         <div className="flex items-center space-x-2">
