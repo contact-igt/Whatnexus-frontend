@@ -131,7 +131,7 @@ export function MediaPreviewDrawer({
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-1000 bg-black/50 transition-opacity duration-300"
+          className="fixed inset-0 z-[100011] bg-black/50 transition-opacity duration-300"
           onClick={onClose}
         />
       )}
@@ -139,7 +139,7 @@ export function MediaPreviewDrawer({
       {/* Drawer panel */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 h-screen z-[1001] flex flex-col w-full max-w-[600px]",
+          "fixed inset-y-0 right-0 h-screen z-[100012] flex flex-col w-full max-w-[600px]",
           "transition-transform duration-300 ease-out shadow-2xl",
           isOpen ? "translate-x-0" : "translate-x-full",
           isDarkMode ? "bg-black border-l border-white/[0.08]" : "bg-white border-l border-slate-200"

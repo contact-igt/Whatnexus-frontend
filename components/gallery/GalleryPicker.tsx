@@ -337,7 +337,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
   return createPortal(
     <>
       {/* ── Backdrop ────────────────────────────────────────────────────────── */}
-      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-[100010] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <div
           className="w-full max-w-5xl"
           onClick={(event: React.MouseEvent<HTMLDivElement>) => event.stopPropagation()}
