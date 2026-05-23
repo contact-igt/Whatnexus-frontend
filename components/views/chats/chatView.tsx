@@ -52,6 +52,23 @@ export const ChatView = () => {
         refetch: refetchChats,
     } = useGetAllLiveChatsQuery();
     console.log("chatList", chatList)
+    
+    // Debug: Check for interactive messages and buttons_info
+    useEffect(() => {
+        if (chatList?.data) {
+            const interactiveChats = chatList.data.filter((c: any) => c.message_type === 'interactive');
+            if (interactiveChats.length > 0) {
+                console.log('[CHAT-VIEW] Interactive chats found:', interactiveChats.map((c: any) => ({
+                    phone: c.phone,
+                    message_type: c.message_type,
+                    has_buttons_info: !!c.buttons_info,
+                    buttons_info: c.buttons_info,
+                    has_interactive_payload: !!c.interactive_payload,
+                })));
+            }
+        }
+    }, [chatList?.data]);
+    
     const [filteredChats, setFilteredChats] = useState<any[]>([]);
 
     useEffect(() => {
@@ -496,6 +513,7 @@ export const ChatView = () => {
                     contact_id: data.contact_id || existing.contact_id,
                     message: data.message,
                     message_type: data.message_type || existing.message_type,
+                    interactive_payload: data.interactive_payload || existing.interactive_payload,
                     last_message_time: data.created_at || data.timestamp,
                     seen: isUser ? "false" : existing.seen,
                     unread_count: isUser ? (Number(existing.unread_count) || 0) + 1 : existing.unread_count
@@ -509,6 +527,7 @@ export const ChatView = () => {
                     name: data.name,
                     message: data.message,
                     message_type: data.message_type || null,
+                    interactive_payload: data.interactive_payload || null,
                     last_message_time: data.created_at || data.timestamp,
                     seen: isUser ? "false" : "true",
                     unread_count: isUser ? 1 : 0
@@ -516,7 +535,14 @@ export const ChatView = () => {
                 ...safePrev,
             ];
         });
-        queryClient.invalidateQueries({ queryKey: ["livechats"] });
+        
+        // Refetch chat list to update button info for interactive messages
+        if (data.message_type === 'interactive' || data.interactive_payload) {
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
+            queryClient.invalidateQueries({ queryKey: ["chats"] });
+        } else {
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
+        }
     };
 
     useEffect(() => {
