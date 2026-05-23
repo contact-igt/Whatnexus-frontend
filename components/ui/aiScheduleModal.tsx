@@ -31,7 +31,13 @@ interface AiScheduleModalProps {
     isDarkMode: boolean;
 }
 
-const STORAGE_KEY = "ai_schedule";
+interface TenantSettingsResponse {
+    data?: {
+        ai_settings?: Record<string, unknown> | null;
+    };
+}
+
+const TENANT_SETTINGS_KEY = "ai_schedule";
 const DEFAULT_SCHEDULE: AiSchedule = {
     pauseStart: 21,
     pauseEnd: 8,
@@ -46,19 +52,19 @@ const MINUTES_PER_DAY = 24 * 60;
 const SLOT_MINUTES = 30;
 
 const PALETTE = {
-    bgPrimary: "#0d1818",
-    bgSurface: "#111f1f",
-    bgCardFrom: "#162a2a",
-    border: "#243838",
-    textPrimary: "#cce8e0",
-    textMuted: "#5a8888",
+    bgPrimary: "#09090b",
+    bgSurface: "#09090b",
+    bgCardFrom: "#09090b",
+    border: "rgba(255,255,255,0.08)",
+    textPrimary: "#e5edf0",
+    textMuted: "#94a3b8",
     accentGreen: "#00a884",
     accentBright: "#00d4a0",
     accentTeal: "#0f6e56",
     accentRed: "#6b2828",
     accentRedBright: "#e53535",
     accentRedSoft: "#ff7070",
-    inputBg: "#1a2e2e",
+    inputBg: "#18181b",
     moon: "#e0a020",
     white05: "rgba(255,255,255,0.05)",
     white07: "rgba(255,255,255,0.07)",
@@ -86,25 +92,22 @@ function getCurrentDayKey(date = new Date()): DayKey {
     return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()] as DayKey;
 }
 
-function getScheduleFromStorage(): AiSchedule {
-    if (typeof window === "undefined") return DEFAULT_SCHEDULE;
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return DEFAULT_SCHEDULE;
-        const parsed = JSON.parse(raw);
-        return {
-            pauseStart: normalizeScheduleValue(parsed.pauseStart, DEFAULT_SCHEDULE.pauseStart),
-            pauseEnd: normalizeScheduleValue(parsed.pauseEnd, DEFAULT_SCHEDULE.pauseEnd),
-            enabled: typeof parsed.enabled === "boolean" ? parsed.enabled : DEFAULT_SCHEDULE.enabled,
-            activeDays: normalizeActiveDays(parsed.activeDays),
-        };
-    } catch {
-        return DEFAULT_SCHEDULE;
-    }
+function normalizeSchedule(value: unknown, fallback: AiSchedule = DEFAULT_SCHEDULE): AiSchedule {
+    if (!value || typeof value !== "object") return fallback;
+    const schedule = value as Partial<AiSchedule>;
+
+    return {
+        pauseStart: normalizeScheduleValue(Number(schedule.pauseStart), fallback.pauseStart),
+        pauseEnd: normalizeScheduleValue(Number(schedule.pauseEnd), fallback.pauseEnd),
+        enabled: typeof schedule.enabled === "boolean" ? schedule.enabled : fallback.enabled,
+        activeDays: normalizeActiveDays(schedule.activeDays),
+    };
 }
 
-function saveScheduleToStorage(schedule: AiSchedule) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(schedule));
+function getScheduleFromSettings(settingsData: TenantSettingsResponse | undefined): AiSchedule | null {
+    const value = settingsData?.data?.ai_settings?.[TENANT_SETTINGS_KEY];
+    if (!value) return null;
+    return normalizeSchedule(value);
 }
 
 function hourToAngle(hour: number): number {
@@ -255,17 +258,24 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
 
     const { data: settingsData } = useGetTenantSettingsQuery();
     const { mutate: updateAiSettings } = useUpdateTenantAiSettingsMutation();
+    const tenantSchedule = useMemo(() => getScheduleFromSettings(settingsData), [settingsData]);
+    const hasTenantSettings = Boolean(settingsData?.data);
 
     useEffect(() => {
-        if (isOpen) {
-            const persistedSchedule = getScheduleFromStorage();
-            setSchedule(persistedSchedule);
+        if (!isOpen || !hasTenantSettings) return;
+
+        const persistedSchedule = tenantSchedule ?? DEFAULT_SCHEDULE;
+
+        const timeoutId = window.setTimeout(() => {
             setTimeFields({
                 start: toTimeFieldState(persistedSchedule.pauseStart),
                 end: toTimeFieldState(persistedSchedule.pauseEnd),
             });
-        }
-    }, [isOpen]);
+            setSchedule(persistedSchedule);
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [hasTenantSettings, isOpen, tenantSchedule]);
 
     useEffect(() => {
         return () => {
@@ -298,8 +308,10 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
     }, [isOpen, onClose]);
 
     useEffect(() => {
+        if (!hasTenantSettings) return;
+
         const enforce = () => {
-            const persistedSchedule = getScheduleFromStorage();
+            const persistedSchedule = tenantSchedule ?? DEFAULT_SCHEDULE;
             const currentAutoResponder = settingsData?.data?.ai_settings?.auto_responder;
             const shouldBeActive = shouldAiBeActive(persistedSchedule, new Date());
 
@@ -313,7 +325,7 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
         enforce();
         const interval = setInterval(enforce, 60_000);
         return () => clearInterval(interval);
-    }, [settingsData, updateAiSettings]);
+    }, [hasTenantSettings, settingsData, tenantSchedule, updateAiSettings]);
 
     const getAngleFromEvent = useCallback((event: MouseEvent | TouchEvent) => {
         if (!svgRef.current) return 0;
@@ -491,6 +503,25 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
         applyDays([getCurrentDayKey()]);
     };
 
+    const persistSchedule = useCallback((nextSchedule: AiSchedule) => {
+        updateAiSettings({
+            ai_settings: {
+                [TENANT_SETTINGS_KEY]: nextSchedule,
+                auto_responder: shouldAiBeActive(nextSchedule, new Date()),
+            },
+        });
+    }, [updateAiSettings]);
+
+    const handleScheduleActivationToggle = useCallback(() => {
+        const nextSchedule = {
+            ...schedule,
+            enabled: !schedule.enabled,
+        };
+
+        setSchedule(nextSchedule);
+        persistSchedule(nextSchedule);
+    }, [persistSchedule, schedule]);
+
     const handleSave = () => {
         const nextPauseStart = parseTimeFieldState(timeFields.start) ?? schedule.pauseStart;
         const nextPauseEnd = parseTimeFieldState(timeFields.end) ?? schedule.pauseEnd;
@@ -506,8 +537,7 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
             start: toTimeFieldState(nextPauseStart),
             end: toTimeFieldState(nextPauseEnd),
         });
-        saveScheduleToStorage(nextSchedule);
-        updateAiSettings({ ai_settings: { auto_responder: shouldAiBeActive(nextSchedule, new Date()) } });
+        persistSchedule(nextSchedule);
         setSaved(true);
 
         if (saveResetTimeoutRef.current) {
@@ -519,9 +549,52 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
         }, 1500);
     };
 
+    const scheduleActivationControl = (
+        <div
+            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-2.5 align-middle"
+            style={{
+                borderColor: schedule.enabled
+                    ? "rgba(0,168,132,0.34)"
+                    : "rgba(229,53,53,0.42)",
+                background: schedule.enabled
+                    ? isDarkMode ? "rgba(0,168,132,0.12)" : "rgba(0,168,132,0.08)"
+                    : isDarkMode ? "rgba(229,53,53,0.12)" : "rgba(254,242,242,0.96)",
+            }}
+        >
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: isDarkMode ? PALETTE.textMuted : "rgba(71,85,105,0.9)" }}>
+                Schedule Activation:
+            </span>
+            <button
+                type="button"
+                aria-pressed={schedule.enabled}
+                aria-label="Toggle schedule activation"
+                onClick={handleScheduleActivationToggle}
+                className="relative h-[22px] w-10 rounded-full transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+                style={{
+                    background: schedule.enabled
+                        ? `linear-gradient(135deg, ${PALETTE.accentGreen}, ${PALETTE.accentBright})`
+                        : `linear-gradient(135deg, ${PALETTE.accentRed}, ${PALETTE.accentRedBright})`,
+                    boxShadow: schedule.enabled
+                        ? "0 0 12px rgba(0,212,160,0.22), inset 0 1px 2px rgba(0,0,0,0.14)"
+                        : "0 0 12px rgba(229,53,53,0.18), inset 0 1px 2px rgba(0,0,0,0.16)",
+                }}
+            >
+                <span
+                    className="absolute left-[3px] top-[3px] h-4 w-4 rounded-full bg-white transition-transform duration-300 ease-out"
+                    style={{
+                        transform: schedule.enabled ? "translateX(18px)" : "translateX(0)",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.18)",
+                    }}
+                />
+            </button>
+        </div>
+    );
+
     if (!isOpen) return null;
 
     return (
+        <>
+            <div className="fixed inset-0 z-[9998] bg-black/20 backdrop-blur-[3px]" />
         <div
             ref={modalRef}
             className="absolute top-[56px] right-4 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200"
@@ -542,8 +615,7 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
             >
                 {isDarkMode && (
                     <>
-                        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(circle at 18% 20%, rgba(0,212,160,0.12), transparent 36%), radial-gradient(circle at 86% 88%, rgba(0,212,160,0.08), transparent 28%)" }} />
-                        <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[rgba(255,255,255,0.12)] to-transparent" />
+                        <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(0,168,132,0.025)" }} />
                     </>
                 )}
 
@@ -556,11 +628,16 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
                         <X size={16} />
                     </button>
 
-                    <div className="mb-4 pr-8">
-                        <h2 className={cn("text-[20px] font-extrabold tracking-tight sm:text-[22px]", isDarkMode ? "text-white" : "text-slate-900")}>
-                            AI Response Schedule{" "}
-                            <span style={{ color: isDarkMode ? PALETTE.textMuted : "rgba(100,116,139,0.95)" }}>(Off-Hours)</span>
-                        </h2>
+                    <div className="mb-4 pr-12">
+                        <div className="flex items-start justify-between gap-3">
+                            <h2 className={cn("min-w-0 text-[20px] font-extrabold tracking-tight sm:text-[22px]", isDarkMode ? "text-white" : "text-slate-900")}>
+                                AI Response Schedule{" "}
+                                <span style={{ color: isDarkMode ? PALETTE.textMuted : "rgba(100,116,139,0.95)" }}>(Off-Hours)</span>
+                            </h2>
+                            <div className="pt-0.5">
+                                {scheduleActivationControl}
+                            </div>
+                        </div>
                         <p className="mt-1.5 text-[12px] leading-relaxed sm:text-[13px]" style={{ color: isDarkMode ? PALETTE.textMuted : "rgba(100,116,139,0.92)" }}>
                             Define the time window when the AI assistant is paused. Within this time, all incoming messages are held for manual review. Outside this window, the AI will be active and automatically respond.
                         </p>
@@ -624,7 +701,7 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
                                             className="ml-auto flex items-center rounded-lg border p-0.5"
                                             style={{
                                                 borderColor: isDarkMode ? PALETTE.white10 : "rgba(148,163,184,0.24)",
-                                                background: isDarkMode ? "rgba(13,24,24,0.72)" : "rgba(241,245,249,0.92)",
+                                                background: isDarkMode ? "#09090b" : "rgba(241,245,249,0.92)",
                                             }}
                                         >
                                             {(["AM", "PM"] as const).map(period => {
@@ -942,35 +1019,14 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
                         </div>
                     </div>
 
-                    <div className="mt-4">
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm font-bold" style={{ color: isDarkMode ? PALETTE.textPrimary : "rgba(15,23,42,0.9)" }}>
-                                    Schedule Activation:
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => setSchedule(prev => ({ ...prev, enabled: !prev.enabled }))}
-                                    className="relative h-[26px] w-12 rounded-full transition-all duration-300 ease-out"
-                                    style={{
-                                        background: schedule.enabled
-                                            ? `linear-gradient(135deg, ${PALETTE.accentGreen}, ${PALETTE.accentBright})`
-                                            : isDarkMode ? PALETTE.inputBg : "rgba(203,213,225,0.95)",
-                                        boxShadow: schedule.enabled
-                                            ? "0 0 12px rgba(0,212,160,0.26), inset 0 1px 2px rgba(0,0,0,0.14)"
-                                            : "inset 0 1px 3px rgba(0,0,0,0.16)",
-                                    }}
-                                >
-                                    <span
-                                        className="absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-white transition-transform duration-300 ease-out"
-                                        style={{
-                                            transform: schedule.enabled ? "translateX(22px)" : "translateX(0)",
-                                            boxShadow: "0 2px 4px rgba(0,0,0,0.18)",
-                                        }}
-                                    />
-                                </button>
-                            </div>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="min-w-0 flex-1 text-left text-[12px] leading-relaxed" style={{ color: isDarkMode ? PALETTE.textMuted : "rgba(100,116,139,0.92)" }}>
+                            AI will be inactive for{" "}
+                            <span className="font-bold" style={{ color: PALETTE.accentBright }}>{formatDurationText(pausedHours)}</span>{" "}
+                            on {activeDaysText} ({formatHour12(schedule.pauseStart)} – {formatHour12(schedule.pauseEnd)}).
+                        </p>
 
+                        <div className="flex shrink-0 items-center justify-end">
                             <button
                                 type="button"
                                 onClick={handleSave}
@@ -987,16 +1043,11 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
                                 <span>{saved ? "Saved!" : "Save Schedule"}</span>
                             </button>
                         </div>
-
-                        <p className="mt-3 text-[12px]" style={{ color: isDarkMode ? PALETTE.textMuted : "rgba(100,116,139,0.92)" }}>
-                            AI will be inactive for{" "}
-                            <span className="font-bold" style={{ color: PALETTE.accentBright }}>{formatDurationText(pausedHours)}</span>{" "}
-                            on {activeDaysText} ({formatHour12(schedule.pauseStart)} – {formatHour12(schedule.pauseEnd)}).
-                        </p>
                     </div>
                 </div>
             </div>
         </div>
+        </>
     );
 };
 
