@@ -24,6 +24,14 @@ export const Sidebar = () => {
     const { isDarkMode } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);
     const dispatch = useDispatch();
+    const _pgEnv = (process.env.NEXT_PUBLIC_ENV || "").trim();
+    const isPlaygroundVisible = _pgEnv ? _pgEnv !== 'production' : (
+        typeof window !== 'undefined' && (
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.includes('ngrok')
+        )
+    );
 
     const handleActiveTab = (tab: string) => {
         if (tab.includes('live-chats')) {
@@ -127,7 +135,7 @@ export const Sidebar = () => {
                                 icon: MessageSquare,
                                 onClick: () => handleActiveTab('/settings/whatsapp-settings'),
                             },
-                            ...(typeof window !== 'undefined' && window.location.hostname === 'localhost' ? [{
+                            ...(isPlaygroundVisible ? [{
                                 label: 'WhatsApp Playground',
                                 route: '/settings/whatsapp-playground',
                                 icon: FlaskConical,

@@ -269,12 +269,15 @@ export const GroupedSidebar = ({
     // Check if WhatsApp is connected and active
     const isWhatsAppActive = whatsappApiDetails?.status === 'active';
 
-    // Check if we're in local development mode (for playground visibility)
-    const isLocalServer = typeof window !== 'undefined' && (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.includes('ngrok')
-    );
+    // Show playground on local / ngrok / stage — block on production
+    const _playgroundEnv = (process.env.NEXT_PUBLIC_ENV || "").trim();
+    const isLocalServer = _playgroundEnv
+        ? _playgroundEnv !== 'production'
+        : typeof window !== 'undefined' && (
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.includes('ngrok')
+          );
 
 
     // Sync Redux active tab state only — navigation is driven by <Link> in SidebarGroupItem.
