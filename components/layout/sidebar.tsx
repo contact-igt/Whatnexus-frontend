@@ -24,14 +24,17 @@ export const Sidebar = () => {
     const { isDarkMode } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);
     const dispatch = useDispatch();
-    const _pgEnv = (process.env.NEXT_PUBLIC_ENV || "").trim();
-    const isPlaygroundVisible = _pgEnv ? _pgEnv !== 'production' : (
-        typeof window !== 'undefined' && (
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.hostname.includes('ngrok')
-        )
-    );
+    const _pgVercelEnv = (process.env.NEXT_PUBLIC_VERCEL_ENV || '').trim();
+    const _pgAppEnv    = (process.env.NEXT_PUBLIC_ENV || '').trim();
+    const isPlaygroundVisible = _pgVercelEnv
+        ? _pgVercelEnv !== 'production'
+        : _pgAppEnv
+            ? _pgAppEnv !== 'production'
+            : typeof window !== 'undefined' && (
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1' ||
+                window.location.hostname.includes('ngrok')
+              );
 
     const handleActiveTab = (tab: string) => {
         if (tab.includes('live-chats')) {

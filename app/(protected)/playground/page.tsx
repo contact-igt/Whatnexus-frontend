@@ -1,11 +1,16 @@
 import { WhatsAppPlaygroundView } from '@/components/views/playground/whatsapp-playground-view';
 
-const env = (process.env.NEXT_PUBLIC_ENV || "").trim();
-const isAllowedEnv = env !== 'production';
+// VERCEL_ENV is set automatically by Vercel (server-side, cannot be overridden by user env vars):
+//   'production' → main production deployment
+//   'preview'    → all branch deployments (stage, feature branches, etc.)
+//   'development'→ local `vercel dev`
+// Fall back to NEXT_PUBLIC_ENV when running outside Vercel (plain local dev).
+const vercelEnv = (process.env.VERCEL_ENV || '').trim();
+const appEnv    = (process.env.NEXT_PUBLIC_ENV || '').trim();
+const isProduction = vercelEnv ? vercelEnv === 'production' : appEnv === 'production';
 
 export default function PlaygroundPage() {
-    // Block production — allow local, ngrok, stage, development
-    if (!isAllowedEnv) {
+    if (isProduction) {
         return (
             <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 gap-2">
                 <span className="text-4xl">🔒</span>

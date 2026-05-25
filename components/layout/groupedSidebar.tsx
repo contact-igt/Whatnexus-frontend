@@ -269,15 +269,20 @@ export const GroupedSidebar = ({
     // Check if WhatsApp is connected and active
     const isWhatsAppActive = whatsappApiDetails?.status === 'active';
 
-    // Show playground on local / ngrok / stage — block on production
-    const _playgroundEnv = (process.env.NEXT_PUBLIC_ENV || "").trim();
-    const isLocalServer = _playgroundEnv
-        ? _playgroundEnv !== 'production'
-        : typeof window !== 'undefined' && (
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.hostname.includes('ngrok')
-          );
+    // NEXT_PUBLIC_VERCEL_ENV is exposed automatically by Vercel for client-side code:
+    //   'production' → main production deployment  |  'preview' → branch deployments
+    // Fall back to NEXT_PUBLIC_ENV then hostname for non-Vercel / local environments.
+    const _vercelEnv = (process.env.NEXT_PUBLIC_VERCEL_ENV || '').trim();
+    const _appEnv    = (process.env.NEXT_PUBLIC_ENV || '').trim();
+    const isLocalServer = _vercelEnv
+        ? _vercelEnv !== 'production'
+        : _appEnv
+            ? _appEnv !== 'production'
+            : typeof window !== 'undefined' && (
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1' ||
+                window.location.hostname.includes('ngrok')
+              );
 
 
     // Sync Redux active tab state only — navigation is driven by <Link> in SidebarGroupItem.
