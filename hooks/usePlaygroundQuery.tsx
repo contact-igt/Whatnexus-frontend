@@ -1,4 +1,4 @@
-import { PlaygroundApiData, PlaygroundChatPayload } from "@/services/playground";
+import { PlaygroundApiData, PlaygroundChatPayload, PlaygroundInboundPayload } from "@/services/playground";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { useSelector } from "react-redux";
@@ -10,6 +10,15 @@ export const usePlaygroundChatMutation = () => {
         mutationFn: (data: PlaygroundChatPayload) => playgroundApi.sendMessage(data),
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || error?.message || "Failed to send message");
+        },
+    });
+};
+
+export const usePlaygroundInboundMutation = () => {
+    return useMutation({
+        mutationFn: (data: PlaygroundInboundPayload) => playgroundApi.sendInbound(data),
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "Failed to process playground action");
         },
     });
 };
