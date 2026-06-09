@@ -140,7 +140,6 @@ const extractInteractiveButtons = (interactive_payload: string): Array<{ text: s
     try {
         const payload = typeof interactive_payload === 'string' ? JSON.parse(interactive_payload) : interactive_payload;
         const buttons: Array<{ text: string; value?: string; type: 'quick_reply' }> = [];
-        console.log("payload", payload)
         // Handle QUICK_REPLY buttons ONLY (action.buttons)
         // Do NOT extract action.sections (list items)
         if (payload?.interactive?.action?.button || (payload?.interactive?.action?.buttons && Array.isArray(payload.interactive.action.buttons))) {
@@ -163,12 +162,11 @@ const extractInteractiveButtons = (interactive_payload: string): Array<{ text: s
                 });
             }
 
-            console.log('[PARSE-INTERACTIVE] Extracted action.buttons:', buttons.length);
+            
         }
-        console.log("buttons", buttons)
         return buttons;
     } catch (error) {
-        console.log('[PARSE-INTERACTIVE] Error parsing payload:', error);
+        
         return [];
     }
 };
@@ -626,8 +624,6 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
     );
 };
 
-
-
 interface MessageListProps {
     isDarkMode: boolean;
     isMessagesLoading: boolean;
@@ -772,12 +768,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
                             // Debug log for interactive messages
                             if (msg.interactive_payload) {
-                                console.log('[MSG-INTERACTIVE] Message has interactive payload:', {
-                                    message_type: msg.message_type,
-                                    isInteractive,
-                                    buttons_count: msgInteractiveButtons.length,
-                                    buttons: msgInteractiveButtons
-                                });
+                                
                             }
 
                             return (

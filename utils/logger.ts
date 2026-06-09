@@ -4,7 +4,7 @@ export const logger = {
   debug: (...args: unknown[]) => {
     if (isDev) {
       // eslint-disable-next-line no-console
-      console.log(...args);
+      
     }
   },
   error: (...args: unknown[]) => {

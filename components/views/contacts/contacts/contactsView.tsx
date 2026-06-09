@@ -106,8 +106,6 @@ export const ContactsView = () => {
         );
     }, [contacts, searchQuery]);
 
-
-
     // Handlers
     const handleAddContact = (data: CreateContactDto) => {
         createContact(data, {
@@ -311,7 +309,6 @@ export const ContactsView = () => {
                 isLoading={isCreating}
             />
 
-
             {/* Edit Contact Drawer */}
             <EditContactDrawer
                 isOpen={isEditDrawerOpen}
@@ -364,7 +361,6 @@ export const ContactsView = () => {
                 isLoading={isDeleting || isRestoring || isPermanentlyDeleting}
                 variant={actionType === 'restore' ? 'info' : 'danger'}
             />
-
 
             {/* Bulk Delete Confirmation Drawer */}
             <ConfirmationDrawer

@@ -70,8 +70,6 @@ export const GroupsView = () => {
         );
     }, [groups, debouncedSearchQuery]);
 
-
-
     // Handlers
     const handleCreateGroup = (data: CreateGroupDto) => {
         createGroup(data, {

@@ -13,15 +13,18 @@ export interface Doctor {
     availability?: {
         [key: string]: {
             enabled: boolean;
-            slotDuration?: number;
+            slotDuration?: number | null;
+            useDefaultDuration?: boolean;
             slots: { start: string; end: string }[];
         };
-    } | { day_of_week: string; start_time: string; end_time: string; slot_duration?: number; slotDuration?: number; enabled?: boolean }[];
+    } | { day_of_week: string; start_time: string; end_time: string; slot_duration?: number | null; slotDuration?: number | null; enabled?: boolean; use_default_duration?: boolean; useDefaultDuration?: boolean }[];
     availabilityDays?: Array<{
         day_of_week: string;
         enabled: boolean;
-        slot_duration?: number;
-        slotDuration?: number;
+        slot_duration?: number | null;
+        slotDuration?: number | null;
+        use_default_duration?: boolean;
+        useDefaultDuration?: boolean;
     }>;
     consultation_duration?: number;
     appointment_count?: number;
@@ -47,7 +50,8 @@ export interface CreateDoctorDto {
     availability?: Array<{
         day: string;
         enabled?: boolean;
-        slotDuration?: number;
+        slotDuration?: number | null;
+        useDefaultDuration?: boolean;
         slots: Array<{
             start_time: string;
             end_time: string;
@@ -71,7 +75,8 @@ export interface UpdateDoctorDto {
     availability?: Array<{
         day: string;
         enabled?: boolean;
-        slotDuration?: number;
+        slotDuration?: number | null;
+        useDefaultDuration?: boolean;
         slots: Array<{
             start_time: string;
             end_time: string;
@@ -84,8 +89,14 @@ export class doctorApiData {
         return await _axios("post", "/whatsapp/doctor", data);
     };
 
-    getAllDoctors = async () => {
-        return await _axios("get", "/whatsapp/doctors");
+    getAllDoctors = async (params?: { search?: string }) => {
+        return await _axios(
+            "get",
+            "/whatsapp/doctors",
+            undefined,
+            "application/json",
+            params,
+        );
     };
 
     getDoctorById = async (doctorId: string) => {
@@ -100,8 +111,14 @@ export class doctorApiData {
         return await _axios("delete", `/whatsapp/doctor/${doctorId}/soft`);
     };
 
-    getDeletedDoctors = async () => {
-        return await _axios("get", "/whatsapp/doctors/deleted/list");
+    getDeletedDoctors = async (params?: { search?: string; page?: number; limit?: number }) => {
+        return await _axios(
+            "get",
+            "/whatsapp/doctors/deleted/list",
+            undefined,
+            "application/json",
+            params,
+        );
     };
 
     restoreDoctor = async (doctorId: string) => {
@@ -110,5 +127,15 @@ export class doctorApiData {
 
     permanentDeleteDoctor = async (doctorId: string) => {
         return await _axios("delete", `/whatsapp/doctor/${doctorId}/permanent`);
+    };
+
+    // Get branches mapped to a doctor
+    getDoctorBranches = async (doctorId: string) => {
+        return await _axios("get", `/whatsapp/doctor/${doctorId}/branches`);
+    };
+
+    // Replace doctor branch mappings (atomic)
+    updateDoctorBranches = async (doctorId: string, data: { branches: Array<{ branch_id: string; is_primary?: boolean }> }) => {
+        return await _axios("put", `/whatsapp/doctor/${doctorId}/branches`, data);
     };
 }

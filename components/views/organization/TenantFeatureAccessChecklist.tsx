@@ -18,10 +18,14 @@ export const COMMON_FEATURES = [
   "agent_matrix",
   "billing_payment",
   "general_settings",
-  "fallback",
+  "followups",
+  "knowledge",
+  "whatsapp_settings",
+  "whatsapp_playground",
 ];
 
 export const HEALTHCARE_FEATURES = [
+  "branches",
   "doctors",
   "appointments",
   "specialization",
@@ -57,7 +61,11 @@ const FEATURE_LABELS: Record<string, string> = {
   agent_matrix: "Agent Matrix",
   billing_payment: "Billing & Payment",
   general_settings: "General Settings",
-  fallback: "Fallback",
+  followups: "Follow-up Hub",
+  knowledge: "Knowledge Base",
+  whatsapp_settings: "WhatsApp Settings",
+  whatsapp_playground: "WhatsApp Playground",
+  branches: "Branches",
   doctors: "Doctors",
   appointments: "Appointments",
   specialization: "Specialization",
@@ -209,4 +217,3 @@ export const TenantFeatureAccessChecklist = ({
     </div>
   );
 };
-

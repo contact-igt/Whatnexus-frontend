@@ -29,11 +29,10 @@ import { LeadIntelligenceApiData } from '@/services/leadIntelligene';
 
 const leadIntelligenceApis = new LeadIntelligenceApiData();
 
-
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
     const { whatsappApiDetails, user } = useAuth();
-    console.log("whatsappApiDetails", whatsappApiDetails);
+    
     const router = useRouter();
 
     const { data: tenantSettingsData } = useGetTenantSettingsQuery();
@@ -234,7 +233,6 @@ export const LeadsView = () => {
         "instagram", "facebook", "twitter", "campaign", "post", "nearby", "other"
     ];
 
-
     // Mutations
     const { mutate: softDeleteLead, isPending: isSoftDeletePending } = useSoftDeleteLeadMutation();
     const { mutate: permanentDeleteLead, isPending: isPermanentDeletePending } = usePermanentDeleteLeadMutation();
@@ -244,7 +242,6 @@ export const LeadsView = () => {
     const { data: agentsList } = useGetAgentsQuery();
 
     const [activeSummaryId, setActiveSummaryId] = useState<string | null>(null);
-
 
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
     const [isAssigningBulk, setIsAssigningBulk] = useState(false);
@@ -410,9 +407,6 @@ export const LeadsView = () => {
             });
         }
     };
-
-    console.log("leadIntelligenceData", leadIntelligenceData)
-    console.log("leadIntelligenceData", leadIntelligenceData)
 
     const handleLeadOpen = (leadPhone: string) => {
         router.push(`/chats?phone=${leadPhone}`)

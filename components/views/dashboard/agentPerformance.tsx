@@ -33,8 +33,6 @@ const onlineBadge = {
     offline: { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8',  border: 'rgba(100,116,139,0.25)', dot: '#64748b' },
 };
 
-
-
 export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerformanceProps) => {
     const [show, setShow] = useState(false);
     const [bars, setBars] = useState(false);
@@ -84,7 +82,7 @@ export const AgentPerformance = ({ isDarkMode = true, agentData }: AgentPerforma
                     // Softer fallback colors instead of bright neon logic based on position:
                     const colorList = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
                     const hex = colorList[i % colorList.length];
-                    const roleLabel = a.role === 'doctor' ? 'Doctor' : a.role === 'staff' ? 'Staff' : 'Agent';
+                    const roleLabel = a.role === 'staff' ? 'Staff' : 'Agent';
 
                     return (
                         <div key={i} onClick={() => router.push('/team')}

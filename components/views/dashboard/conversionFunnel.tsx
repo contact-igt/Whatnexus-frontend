@@ -24,8 +24,6 @@ const stepGradients = [
     ['#3b82f6', '#06b6d4'], ['#6366f1', '#3b82f6'], ['#8b5cf6', '#6366f1'],
 ];
 
-
-
 export const ConversionFunnel = ({ isDarkMode = true, funnelData, funnelSummary }: ConversionFunnelProps) => {
     const [phase, setPhase] = useState<'loading' | 'ready'>('loading');
     const [visibleBars, setVisibleBars] = useState<boolean[]>([]);

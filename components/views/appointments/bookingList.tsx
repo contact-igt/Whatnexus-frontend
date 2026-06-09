@@ -19,7 +19,6 @@ interface BookingListProps {
     onAutoCreateHandled?: () => void;
 }
 
-
 export interface Appointment {
     appointment_id: string;
     patient_name: string;
@@ -301,6 +300,8 @@ export const BookingList = ({
         follow_up_type?: "Call" | "WhatsApp" | null;
         follow_up_reason?: "Revisit" | "Enquiry" | null;
         template_id?: string | null;
+        header_media_url?: string | null;
+        header_file_name?: string | null;
     }) => {
         completeWithOutcome(payload, {
             onSuccess: () => {
@@ -322,6 +323,8 @@ export const BookingList = ({
         follow_up_time?: string | null;
         follow_up_type?: "Call" | "WhatsApp" | null;
         template_id: string | null;
+        header_media_url?: string | null;
+        header_file_name?: string | null;
     }) => {
         noShowWithAction(
             {
@@ -331,6 +334,8 @@ export const BookingList = ({
                 follow_up_time: payload.follow_up_time || null,
                 follow_up_type: payload.follow_up_type || null,
                 template_id: payload.template_id,
+                header_media_url: payload.header_media_url || null,
+                header_file_name: payload.header_file_name || null,
             },
             {
                 onSuccess: () => {

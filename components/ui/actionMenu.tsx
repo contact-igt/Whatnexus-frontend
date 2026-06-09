@@ -1,7 +1,6 @@
 
 "use client";
 
-
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play, Sparkles, RefreshCw, MessageSquare, RotateCcw, CheckCircle, Ban, Lock } from 'lucide-react';
@@ -42,7 +41,6 @@ interface ActionMenuProps {
     onActivate?: () => void;
     isDeactivate?: boolean;
     onDeactivate?: () => void;
-
 
 }
 

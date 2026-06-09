@@ -46,7 +46,7 @@ export const HistoryView = () => {
         data: chatHistoryList,
         isLoading: isChatsLoading,
     } = useGetAllHistoryChatsQuery();
-    console.log("chatHistoryList:", chatHistoryList);
+    
     const [filteredChats, setFilteredChats] = useState(chatHistoryList?.data?.chats);
     const [messageSearchText, setMessageSearchText] = useState("");
     const [filteredMessage, setFilteredMessage] = useState<any[]>([]);
@@ -157,7 +157,7 @@ export const HistoryView = () => {
             });
         }
     };
-    console.log("selectedChat in HistoryView:", selectedChat);
+    
     const handleSendWithVariables = (components: any[]) => {
         if (!selectedTemplateForVariables) return;
 
@@ -175,7 +175,6 @@ export const HistoryView = () => {
             }
         });
     };
-    console.log("selectedTemplateForVariables", selectedTemplateForVariables)
     useEffect(() => {
         const timer = setTimeout(() => {
             const value = chatSearchText.trim().toLowerCase();

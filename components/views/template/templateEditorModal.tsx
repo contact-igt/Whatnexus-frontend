@@ -227,7 +227,6 @@ export const TemplateEditorModal = ({
                                 required
                             />
 
-
                             <Select
                                 isDarkMode={isDarkMode}
                                 label="Language"

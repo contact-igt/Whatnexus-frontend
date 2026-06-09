@@ -1,4 +1,4 @@
-import { AppointmentApiData, CompleteWithOutcomeDto, CreateAppointmentDto, CreateAppointmentOutcomeDto, NoShowWithActionDto, UpdateAppointmentStatusDto, UpdateAppointmentDto } from "@/services/appointment";
+import { AppointmentApiData, CompleteWithOutcomeDto, CreateAppointmentDto, CreateAppointmentOutcomeDto, NoShowWithActionDto, UpdateAppointmentStatusDto, UpdateAppointmentDto, ReminderRulePayload } from "@/services/appointment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { useSelector } from "react-redux";
@@ -13,8 +13,6 @@ export const useGetAllAppointmentsQuery = (params?: { search?: string; status?: 
         staleTime: 30 * 1000,
     });
 };
-
-
 
 export const useGetContactAppointmentsQuery = (contactId: string) => {
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
@@ -138,6 +136,48 @@ export const useCompleteWithOutcomeMutation = () => {
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || "Failed to complete appointment.");
+        },
+    });
+};
+
+export const useGetReminderRulesQuery = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    return useQuery({
+        queryKey: ["appointment-reminder-rules", tenantId],
+        queryFn: () => appointmentApis.getReminderRules(),
+        staleTime: 60 * 1000,
+    });
+};
+
+export const useUpsertReminderRulesMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (rules: ReminderRulePayload[]) => appointmentApis.upsertReminderRules(rules),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["appointment-reminder-rules"] });
+            toast.success("Reminder rules saved successfully.");
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to save reminder rules.");
+        },
+    });
+};
+
+export const useUpdateAppointmentRemindersMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ appointmentId, data }: { appointmentId: string; data: { reminder_mode: "default" | "custom" | "none"; custom_reminders?: any[] } }) =>
+            appointmentApis.updateAppointmentReminders(appointmentId, data),
+        onSuccess: (data, variables) => {
+            const appointmentId = (variables as any)?.appointmentId;
+            if (appointmentId) {
+                queryClient.invalidateQueries({ queryKey: ["appointment-reminders", appointmentId] });
+            }
+            queryClient.invalidateQueries({ queryKey: ["appointments"] });
+            toast.success(data?.message || "Reminders updated successfully.");
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || "Failed to update reminders.");
         },
     });
 };

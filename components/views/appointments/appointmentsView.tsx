@@ -9,7 +9,6 @@ import { BookingList } from './bookingList';
 import { CalendarView } from './calendarView';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-
 type TabType = 'booking-list' | 'all-appointments' | 'calendar';
 
 export const AppointmentsView = () => {
@@ -17,8 +16,6 @@ export const AppointmentsView = () => {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    // Restore the last selected tab from localStorage on initial render.
-    // Previously the tab was saved but never restored, so it always reset to 'booking-list'.
     const [activeTab, setActiveTab] = useState<TabType>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('selectedAppointmentTab');
@@ -30,7 +27,7 @@ export const AppointmentsView = () => {
     const appointmentTabs = [
         { value: "booking-list", label: "Booking List", icon: List },
         { value: "all-appointments", label: "All Appointments", icon: List },
-        { value: "calendar", label: "Calendar", icon: Calendar }
+        { value: "calendar", label: "Calendar", icon: Calendar },
     ];
 
     const handleTabChange = (value: TabType) => {

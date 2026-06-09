@@ -56,9 +56,3 @@ const SOCKET_URL = (() => {
   }
 })();
 
-console.log(`[Socket] ENV=${env}, URL=${SOCKET_URL}`);
-
-export const socket = io(SOCKET_URL, {
-  transports: ["websocket", "polling"],
-  autoConnect: false,
-});

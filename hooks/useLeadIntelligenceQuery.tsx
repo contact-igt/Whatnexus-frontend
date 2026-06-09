@@ -17,7 +17,6 @@ export const useLeadIntelligenceQuery = () => {
     queryFn: () => leadIntelligenceApis.getAllLeadIntelligence(),
     staleTime: 2 * 60 * 1000,
   })
-  console.log("data", data)
   return { data, isLoading, isError, refetch }
 }
 
@@ -31,8 +30,6 @@ export const useGetLeadByIdQuery = (id: string) => {
   })
   return { data, isLoading, isError, refetch }
 }
-
-
 
 export const useSummarizeLeadMutation = () => {
   const queryClient = useQueryClient();

@@ -2001,7 +2001,6 @@ export const TemplateFormPage: React.FC<TemplateFormPageProps> = ({
                                 </div>
                             )} */}
 
-
                         </div>
 
                         {/* Template Content */}

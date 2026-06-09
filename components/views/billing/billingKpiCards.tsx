@@ -48,7 +48,6 @@ export const BillingKpiCards = ({ isDarkMode, startDate, endDate }: BillingKpiCa
     { label: 'Messages Sent', value: kpiData.totalMessagesSent.toLocaleString(), trend: '—', color: 'blue', icon: Send },
   ];
 
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-10 w-full col-span-full">

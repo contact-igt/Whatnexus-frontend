@@ -19,8 +19,6 @@ interface AIIntelligencePanelProps {
     aiData?: AiPerformanceData;
 }
 
-
-
 export const AIIntelligencePanel = ({ isDarkMode = true, aiData }: AIIntelligencePanelProps) => {
     const [show, setShow] = useState(false);
     const [barW, setBarW] = useState(0);

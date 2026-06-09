@@ -104,7 +104,6 @@ export const ComposeMessageView = () => {
             csvMobileField: activeTab === 'csv' ? csvMobileField : undefined,
         };
 
-
         setIsSending(true);
         setSendResult(null);
 
@@ -201,7 +200,7 @@ export const ComposeMessageView = () => {
     };
 
     const handleCsvSubmit = (data: CSVRow[]) => {
-        console.log('CSV Data submitted:', data);
+        
         // Handle CSV data submission here
     };
 

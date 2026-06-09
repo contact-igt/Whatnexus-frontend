@@ -14,18 +14,16 @@ import {
     useRestoreDoctorMutation,
     usePermanentDeleteDoctorMutation
 } from "@/hooks/useDoctorQuery";
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { useGetAllSpecializationsQuery } from '@/hooks/useSpecializationsQuery';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
 import { Pagination } from '@/components/ui/pagination';
 import { Doctor } from '@/services/doctor';
-import { useAuth } from '@/redux/selectors/auth/authSelector';
 interface DoctorManagementProps {
     isDarkMode: boolean;
 }
 
 export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
-    const { user } = useAuth();
-    const isDoctor = user?.role === 'doctor';
     const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
     const [searchQuery, setSearchQuery] = useState('');
     const { data: specializationsData, isPending } = useGetAllSpecializationsQuery();
@@ -108,7 +106,9 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
         setCurrentPage(1);
     }, [activeTab, searchQuery, filterSpecialization]);
 
-
+    const { user } = useAuth();
+    const normalizedRole = String(user?.role || '').toLowerCase();
+    const isDoctor = user?.user_type === 'tenant' && normalizedRole === 'doctor';
 
     const handleCreateDoctor = () => {
         setSelectedDoctor(null);
@@ -228,7 +228,6 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                 >
                     Active Doctors
                 </button>
-                {!isDoctor && (
                 <button
                     onClick={() => setActiveTab('trash')}
                     className={cn(
@@ -240,7 +239,6 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                 >
                     Trash ({deletedDoctors.length})
                 </button>
-                )}
             </div>
 
             {/* Search, Filter and Create */}
@@ -274,7 +272,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                         />
                     </div>
                 </div>
-                {activeTab === 'active' && !isDoctor && (
+                {activeTab === 'active' && (
                     <button
                         onClick={handleCreateDoctor}
                         className={cn(

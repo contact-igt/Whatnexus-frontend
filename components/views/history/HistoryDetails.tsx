@@ -26,7 +26,7 @@ export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
     isUnclaiming,
 }) => {
     const lastActiveLabel = formatLastActiveConversation(selectedChat?.last_message_time);
-    console.log("selectedChat in HistoryDetails:", selectedChat);
+    
     return (
         <div className={cn("w-1/4 min-w-[280px] border-l flex flex-col shrink-0", isDarkMode ? "bg-[#111b21] border-white/5" : "bg-white border-slate-200")}>
             <div className="p-4 flex flex-col items-center border-b space-y-3">
@@ -101,7 +101,7 @@ export const HistoryDetails: React.FC<HistoryDetailsProps> = ({
                             {!isNeuralSummaryEnabled && <Lock size={14} className="ml-2 shrink-0 opacity-80" />}
                         </button>
 
-                        {/* Unclaim Lead — only for staff/agent/doctor when assigned to current user */}
+                        {/* Unclaim lead for non-admin assignees */}
                         {selectedChat?.assigned_admin_id &&
                             selectedChat.assigned_admin_id === user?.tenant_user_id &&
                             user?.role !== 'tenant_admin' && (

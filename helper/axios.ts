@@ -556,4 +556,3 @@ export const getWebhookBaseURL = (): string => {
   return getApiBaseUrl() || "";
 };
 
-

@@ -2,7 +2,6 @@ import { managementApiData } from "@/services/management"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/lib/toast";
 
-
 const managementApis = new managementApiData();
 
 export const useManagementQuery = () => {
@@ -18,7 +17,6 @@ export const useManagementQuery = () => {
 
     return { data, isLoading, isError }
 }
-
 
 export const useCreateManagementMutation = () => {
     const queryClient = useQueryClient();
@@ -51,8 +49,6 @@ export const useUpdateManagementMutation = () => {
         }
     })
 }
-
-
 
 export const useGetManagementByIdQuery = (managementId: string) => {
     const { data, isLoading, isError } = useQuery({

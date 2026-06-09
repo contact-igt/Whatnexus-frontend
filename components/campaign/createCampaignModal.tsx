@@ -1284,7 +1284,6 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     </div>
                                 )}
 
-
                                 {/* Media Header Input */}
                                 {selectedTemplate && isMediaType(selectedTemplate.type) && (
                                     <div className="mt-4 space-y-3">
@@ -1497,7 +1496,6 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                 )}
                             </div>
 
-
                         </div>
                     )}
 
@@ -1512,7 +1510,6 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
                                     You can change the source in Step 1 if needed.
                                 </p>
                             </div>
-
 
                             {/* CSV Upload */}
                             {formData.recipient_source === 'csv' && (

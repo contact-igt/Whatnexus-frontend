@@ -190,6 +190,12 @@ export class ModuleAccessManagementApiData {
     return await _axios("patch", `/management/industries/${industryId}`, payload);
   };
 
+  deleteIndustry = async (
+    industryId: string,
+  ): Promise<ApiResponse<{ industry_id: string }>> => {
+    return await _axios("delete", `/management/industries/${industryId}`);
+  };
+
   listSaaSModules = async (): Promise<ApiResponse<SaaSModule[]>> => {
     return await _axios("get", "/management/saas-modules");
   };
@@ -207,6 +213,12 @@ export class ModuleAccessManagementApiData {
     return await _axios("patch", `/management/saas-modules/${moduleId}`, payload);
   };
 
+  deleteSaaSModule = async (
+    moduleId: string,
+  ): Promise<ApiResponse<{ module_id: string }>> => {
+    return await _axios("delete", `/management/saas-modules/${moduleId}`);
+  };
+
   listPlans = async (): Promise<ApiResponse<Plan[]>> => {
     return await _axios("get", "/management/plans");
   };
@@ -220,6 +232,12 @@ export class ModuleAccessManagementApiData {
     payload: PatchPlanPayload,
   ): Promise<ApiResponse<Plan>> => {
     return await _axios("patch", `/management/plans/${planId}`, payload);
+  };
+
+  deletePlan = async (
+    planId: string,
+  ): Promise<ApiResponse<{ plan_id: string }>> => {
+    return await _axios("delete", `/management/plans/${planId}`);
   };
 
   getIndustrySaaSModules = async (

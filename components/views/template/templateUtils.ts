@@ -7,7 +7,6 @@ import { franc } from 'franc-min';
 export function extractVariables(text: string): string[] {
     // Match {{variable}} where variable contains letters, numbers, or underscores
     const regex = /\{\{([\w]+)\}\}/g;
-    console.log("text", text)
     const matches = text?.matchAll(regex);
     const variables = Array.from(matches, match => match[1]);
 
@@ -65,7 +64,7 @@ export function replaceVariables(
         const regex = new RegExp(`\\{\\{${escapedKey}\\}\\}`, 'g');
 
         // Debug logging
-        console.log('replaceVariables Debug:', { key, value, keyForRegex, regex: regex.toString() });
+        
 
         // Default replacement is the placeholder itself (preserve if no value provided)
         let replacement = `{{${keyForRegex}}}`;
@@ -382,17 +381,17 @@ export function validateLanguageMatch(language: string, content: string): Langua
 
     const expectedScript = LANGUAGE_SCRIPT_MAP[language];
     if (!expectedScript) {
-        console.log('[LanguageValidation] Unknown language, skipping:', language);
+        
         return { valid: true };
     }
 
     const detectedScript = detectTemplateScript(content);
     if (!detectedScript) {
-        console.log('[LanguageValidation] Could not detect script, content too short');
+        
         return { valid: true };
     }
 
-    console.log('[LanguageValidation] Layer 1:', { language, expectedScript, detectedScript });
+    
 
     // ── Layer 1: Script family mismatch ──────────────────────────
     // Japanese can match hiragana, katakana, OR cjk
@@ -419,7 +418,7 @@ export function validateLanguageMatch(language: string, content: string): Langua
         const isEnglishVariant = ['English', 'English (UK)', 'English (US)'].includes(language);
         const detectedLang = detectContentLanguage(content);
         const expectedIso = LANGUAGE_FRANC_MAP[language];
-        console.log('[LanguageValidation] Layer 2 (franc):', { isEnglishVariant, detectedLang, expectedIso });
+        
 
         // If franc can't determine the language, allow it
         if (detectedLang === 'und') return { valid: true };
@@ -509,7 +508,7 @@ export function validateLanguageMatch(language: string, content: string): Langua
  */
 export function validateContentLanguageMatch(content: string, language: string): string | null {
     const result = validateLanguageMatch(language, content);
-    console.log('[LanguageValidation] validateContentLanguageMatch:', { language, contentSnippet: content?.substring(0, 60), valid: result.valid, message: result.message });
+    
     return result.valid ? null : (result.message ?? null);
 }
 

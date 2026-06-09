@@ -6,16 +6,17 @@ import { Drawer } from "@/components/ui/drawer";
 import { Select } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
-import { Doctor } from '@/services/doctor';
+import { Doctor, doctorApiData } from '@/services/doctor';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "@/lib/toast";
-import { useCreateDoctorMutation, useUpdateDoctorMutation } from '@/hooks/useDoctorQuery';
+import { useCreateDoctorMutation, useUpdateDoctorMutation, useGetDoctorBranchesQuery } from '@/hooks/useDoctorQuery';
+import { useGetAllBranchesQuery } from '@/hooks/useBranchQuery';
 import { useDeleteSpecializationMutation } from '@/hooks/useSpecializationsQuery';
 import { SpecializationDrawer } from '../specialization/specializationDrawer';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-// import { Doctor } from '@/services/doctor';
 
 const doctorSchema = z.object({
     title: z.string().optional().default('Dr'),
@@ -32,6 +33,8 @@ const doctorSchema = z.object({
         .transform((val) => val === '' ? 0 : Number(val)),
     qualification: z.string().trim().optional().or(z.literal('')),
     specializations: z.array(z.string()).min(1, "At least one specialization is required"),
+    branches: z.array(z.string()).optional().default([]),
+    primary_branch_id: z.string().optional().default(''),
 });
 
 type DoctorFormValues = z.infer<typeof doctorSchema>;
@@ -53,6 +56,7 @@ type AvailabilitySlot = { start: string; end: string };
 type AvailabilityDay = {
     enabled: boolean;
     slotDuration: number;
+    useCustomDuration: boolean;
     slots: AvailabilitySlot[];
 };
 
@@ -65,6 +69,7 @@ type AvailabilityValidation = {
 const defaultAvailabilityDay = (enabled = false): AvailabilityDay => ({
     enabled,
     slotDuration: DEFAULT_SLOT_DURATION,
+    useCustomDuration: false,
     slots: [],
 });
 
@@ -86,7 +91,9 @@ const minutesToTime = (minutes: number) => {
 const addMinutesToTime = (time: string, minutes: number) => {
     const start = timeToMinutes(time);
     if (start === null) return '';
-    return minutesToTime(start + minutes);
+    const end = start + minutes;
+    if (end > 1439) return '';
+    return minutesToTime(end);
 };
 
 const validateAvailabilityMap = (map: Record<string, AvailabilityDay>): AvailabilityValidation => {
@@ -95,13 +102,14 @@ const validateAvailabilityMap = (map: Record<string, AvailabilityDay>): Availabi
 
     for (const day of DAYS_OF_WEEK) {
         const dayData = map[day] || defaultAvailabilityDay(false);
-        const duration = Number(dayData.slotDuration);
-
-        if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
-            dayErrors[day] = 'Slot duration must be an integer between 5 and 480 minutes.';
-        }
-
         if (!dayData.enabled) continue;
+
+        if (dayData.useCustomDuration) {
+            const duration = Number(dayData.slotDuration);
+            if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
+                dayErrors[day] = 'Custom slot duration must be an integer between 5 and 480 minutes.';
+            }
+        }
 
         if (!dayData.slots.length) {
             dayErrors[day] = dayErrors[day] || 'Add at least one slot or disable this day.';
@@ -150,13 +158,41 @@ const validateAvailabilityMap = (map: Record<string, AvailabilityDay>): Availabi
 const sortedSlots = (slots: AvailabilitySlot[]) =>
     [...slots].sort((a, b) => (timeToMinutes(a.start) || 0) - (timeToMinutes(b.start) || 0));
 
+const rebuildSlotsSequentially = (
+    slots: AvailabilitySlot[],
+    durationMinutes: number,
+    anchorIndex = 0,
+    anchorStart?: string,
+) => {
+    const next = [...slots];
+    if (!next.length) return next;
+
+    const safeAnchorIndex = Math.max(0, Math.min(anchorIndex, next.length - 1));
+    const firstStart = anchorStart ?? next[safeAnchorIndex]?.start ?? '';
+    next[safeAnchorIndex] = {
+        ...next[safeAnchorIndex],
+        start: firstStart,
+        end: addMinutesToTime(firstStart, durationMinutes),
+    };
+
+    for (let index = safeAnchorIndex + 1; index < next.length; index += 1) {
+        const previousEnd = next[index - 1]?.end || '';
+        next[index] = {
+            ...next[index],
+            start: previousEnd,
+            end: addMinutesToTime(previousEnd, durationMinutes),
+        };
+    }
+
+    return next;
+};
+
 const getSlotDurationMinutes = (
     slot: AvailabilitySlot,
-    fallbackDuration = DEFAULT_SLOT_DURATION,
 ) => {
     const start = timeToMinutes(slot.start);
     const end = timeToMinutes(slot.end);
-    if (start === null || end === null || end <= start) return fallbackDuration;
+    if (start === null || end === null || end <= start) return null;
     return end - start;
 };
 
@@ -185,6 +221,8 @@ export const DoctorDrawer = ({
             experience_years: 0,
             qualification: '',
             specializations: [],
+            branches: [],
+            primary_branch_id: '',
         }
     });
 
@@ -193,8 +231,29 @@ export const DoctorDrawer = ({
     const [availabilityMap, setAvailabilityMap] = useState<Record<string, AvailabilityDay>>({});
     const [customDurationDrafts, setCustomDurationDrafts] = useState<Record<string, string>>({});
 
+    const getDoctorDefaultDuration = () => {
+        const duration = Number(formData?.consultation_duration);
+        if (!Number.isInteger(duration) || duration < 5 || duration > 240) return 30;
+        return duration;
+    };
+
     const createDoctorMutation = useCreateDoctorMutation();
     const updateDoctorMutation = useUpdateDoctorMutation();
+    const queryClient = useQueryClient();
+    const doctorApis = new doctorApiData();
+
+    const { data: allBranchesData } = useGetAllBranchesQuery({ is_active: true });
+    const shouldFetchDoctorBranches =
+        isOpen &&
+        !!doctor?.doctor_id &&
+        (mode === 'view' || mode === 'edit');
+    const {
+        data: doctorBranchesData,
+        isLoading: isDoctorBranchesLoading,
+        isFetching: isDoctorBranchesFetching,
+    } = useGetDoctorBranchesQuery(doctor?.doctor_id || '', {
+        enabled: shouldFetchDoctorBranches,
+    });
 
     // Specialization Management States
     const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false);
@@ -210,6 +269,35 @@ export const DoctorDrawer = ({
 
     // Track spec being edited so we can sync form values after rename
     const editingSpecRef = useRef<{ name: string; id: string } | null>(null);
+
+    useEffect(() => {
+        const defaultDuration = getDoctorDefaultDuration();
+        setAvailabilityMap((prev) => {
+            let changed = false;
+            const next: Record<string, AvailabilityDay> = {};
+
+            for (const day of DAYS_OF_WEEK) {
+                const existing = prev[day] || defaultAvailabilityDay(false);
+                if (existing.useCustomDuration || !existing.slots.length) {
+                    next[day] = existing;
+                    continue;
+                }
+
+                const updatedSlots = existing.slots.map((slot) => {
+                    const computedEnd = addMinutesToTime(slot.start, defaultDuration);
+                    if (slot.end !== computedEnd) changed = true;
+                    return { ...slot, end: computedEnd };
+                });
+
+                next[day] = {
+                    ...existing,
+                    slots: updatedSlots,
+                };
+            }
+
+            return changed ? next : prev;
+        });
+    }, [formData?.consultation_duration]);
 
     // Sync form specialization names when the list updates after a rename
     useEffect(() => {
@@ -271,10 +359,13 @@ export const DoctorDrawer = ({
                 experience_years: doctor.experience_years || 0,
                 qualification: doctor.qualification || '',
                 specializations: specs,
+                branches: [],
+                primary_branch_id: '',
             });
 
             // Convert availability to map
             const availMap: Record<string, AvailabilityDay> = {};
+            const doctorDefaultDuration = Number(doctor.consultation_duration || 30);
 
             const availabilityDays = Array.isArray((doctor as any).availabilityDays)
                 ? (doctor as any).availabilityDays
@@ -284,9 +375,15 @@ export const DoctorDrawer = ({
                 const dayRaw = daySetting.day_of_week || daySetting.day;
                 if (!dayRaw) return;
                 const day = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1).toLowerCase();
+                const rawSlotDuration = daySetting.slotDuration ?? daySetting.slot_duration;
+                const explicitUseDefault = daySetting.useDefaultDuration ?? daySetting.use_default_duration;
+                const useCustomDuration = explicitUseDefault !== undefined
+                    ? !Boolean(explicitUseDefault)
+                    : rawSlotDuration !== undefined && rawSlotDuration !== null && String(rawSlotDuration).trim() !== '';
                 availMap[day] = {
                     enabled: Boolean(daySetting.enabled),
-                    slotDuration: Number(daySetting.slotDuration ?? daySetting.slot_duration ?? DEFAULT_SLOT_DURATION),
+                    slotDuration: Number(rawSlotDuration ?? doctorDefaultDuration ?? DEFAULT_SLOT_DURATION),
+                    useCustomDuration,
                     slots: [],
                 };
             });
@@ -297,23 +394,42 @@ export const DoctorDrawer = ({
                     if (dayRaw) {
                         const day = dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1).toLowerCase();
                         if (!availMap[day]) {
+                            const rawSlotDuration = slot.slotDuration ?? slot.slot_duration;
+                            const explicitUseDefault = slot.useDefaultDuration ?? slot.use_default_duration;
+                            const useCustomDuration = explicitUseDefault !== undefined
+                                ? !Boolean(explicitUseDefault)
+                                : rawSlotDuration !== undefined && rawSlotDuration !== null && String(rawSlotDuration).trim() !== '';
                             availMap[day] = {
                                 enabled: Boolean(slot.enabled ?? true),
-                                slotDuration: Number(slot.slotDuration ?? slot.slot_duration ?? DEFAULT_SLOT_DURATION),
+                                slotDuration: Number(rawSlotDuration ?? doctorDefaultDuration ?? DEFAULT_SLOT_DURATION),
+                                useCustomDuration,
                                 slots: [],
                             };
                         }
                         availMap[day].enabled = Boolean(slot.enabled ?? true);
-                        availMap[day].slotDuration = Number(slot.slotDuration ?? slot.slot_duration ?? availMap[day].slotDuration ?? DEFAULT_SLOT_DURATION);
+                        if (slot.slotDuration !== undefined || slot.slot_duration !== undefined || slot.useDefaultDuration !== undefined || slot.use_default_duration !== undefined) {
+                            const rawSlotDuration = slot.slotDuration ?? slot.slot_duration;
+                            const explicitUseDefault = slot.useDefaultDuration ?? slot.use_default_duration;
+                            availMap[day].useCustomDuration = explicitUseDefault !== undefined
+                                ? !Boolean(explicitUseDefault)
+                                : rawSlotDuration !== undefined && rawSlotDuration !== null && String(rawSlotDuration).trim() !== '';
+                            availMap[day].slotDuration = Number(rawSlotDuration ?? availMap[day].slotDuration ?? doctorDefaultDuration ?? DEFAULT_SLOT_DURATION);
+                        }
                         availMap[day].slots.push({ start: slot.start_time, end: slot.end_time });
                     }
                 });
             } else if (doctor.availability) {
                 Object.keys(doctor.availability).forEach(day => {
                     const dayData = (doctor.availability as any)[day];
+                    const rawSlotDuration = dayData.slotDuration ?? dayData.slot_duration;
+                    const explicitUseDefault = dayData.useDefaultDuration ?? dayData.use_default_duration;
+                    const useCustomDuration = explicitUseDefault !== undefined
+                        ? !Boolean(explicitUseDefault)
+                        : rawSlotDuration !== undefined && rawSlotDuration !== null && String(rawSlotDuration).trim() !== '';
                     availMap[day] = {
                         enabled: dayData.enabled || false,
-                        slotDuration: Number(dayData.slotDuration ?? dayData.slot_duration ?? DEFAULT_SLOT_DURATION),
+                        slotDuration: Number(rawSlotDuration ?? doctorDefaultDuration ?? DEFAULT_SLOT_DURATION),
+                        useCustomDuration,
                         slots: dayData.slots || []
                     };
                 });
@@ -336,6 +452,8 @@ export const DoctorDrawer = ({
                 experience_years: 0,
                 qualification: '',
                 specializations: [],
+                branches: [],
+                primary_branch_id: '',
             });
             setAvailabilityMap({});
 
@@ -343,14 +461,96 @@ export const DoctorDrawer = ({
             lastDoctorId.current = 'new';
         }
     }, [doctor?.doctor_id, mode, isOpen, reset]);
+
+    // Normalize branches list helper
+    const normalizeBranches = (payload: any) => {
+        if (!payload) return [];
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.items)) return payload.items;
+        if (Array.isArray(payload?.branches)) return payload.branches;
+        return [];
+    };
+    const getMappingBranchId = (mapping: any) =>
+        String(mapping?.branch_id || mapping?.branch?.branch_id || '').trim();
+    const getMappingBranchName = (mapping: any) =>
+        String(mapping?.branch?.name || '').trim();
+
+    const availableBranches = normalizeBranches(allBranchesData?.data);
+    const branchOptions = availableBranches.map((b: any) => ({ value: b.branch_id, label: b.name || (b.branch && b.branch.name) || b.branch_id }));
+    const isBranchMappingsLoading = shouldFetchDoctorBranches && (isDoctorBranchesLoading || isDoctorBranchesFetching);
+    const doctorBranchMappings = normalizeBranches(doctorBranchesData?.data);
+    const watchedBranchIds = ((watch('branches') || []) as string[])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean);
+    const watchedPrimaryBranchId = String(watch('primary_branch_id') || '').trim();
+    const branchLabelById = new Map<string, string>();
+    doctorBranchMappings.forEach((mapping: any) => {
+        const id = getMappingBranchId(mapping);
+        const name = getMappingBranchName(mapping);
+        if (id && name) branchLabelById.set(id, name);
+    });
+    branchOptions.forEach((opt: any) => {
+        if (!branchLabelById.has(opt.value)) {
+            branchLabelById.set(opt.value, opt.label);
+        }
+    });
+    const viewBranchOptions = watchedBranchIds.map((id) => ({
+        value: id,
+        label: branchLabelById.get(id) || id,
+    }));
+    const viewPrimaryBranchOptions = [
+        { value: '', label: 'None' },
+        ...viewBranchOptions,
+    ];
+
+    // Sync doctor branch mappings when data is available
+    useEffect(() => {
+        if (!isOpen || !doctor?.doctor_id) return;
+        if (!(mode === 'view' || mode === 'edit')) return;
+        if (isDoctorBranchesLoading || isDoctorBranchesFetching) return;
+
+        const mappings = normalizeBranches(doctorBranchesData?.data);
+        const selectedBranchIds: string[] = Array.from(
+            new Set(
+                mappings
+                    .map((m: any) => getMappingBranchId(m))
+                    .filter(Boolean),
+            ),
+        ) as string[];
+        const primaryBranchId = String(
+            getMappingBranchId(
+                mappings.find((m: any) => Boolean(m?.is_primary)),
+            ) || '',
+        );
+        const safePrimaryBranchId = selectedBranchIds.includes(primaryBranchId)
+            ? primaryBranchId
+            : '';
+
+        setValue('branches', selectedBranchIds);
+        setValue('primary_branch_id', safePrimaryBranchId);
+    }, [
+        isOpen,
+        doctor?.doctor_id,
+        mode,
+        doctorBranchesData,
+        isDoctorBranchesLoading,
+        isDoctorBranchesFetching,
+        setValue,
+    ]);
     // ^ Removed specializationsList from dependencies to avoid unwanted resets
+
+    const getDayDurationFromState = (dayData: AvailabilityDay) =>
+        dayData.useCustomDuration
+            ? Number(dayData.slotDuration || DEFAULT_SLOT_DURATION)
+            : getDoctorDefaultDuration();
 
     const handleDayToggle = (day: string) => {
         const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
         const nextEnabled = !dayData.enabled;
+        const effectiveDuration = getDayDurationFromState(dayData);
         const firstSlot = {
             start: '09:00',
-            end: addMinutesToTime('09:00', dayData.slotDuration || DEFAULT_SLOT_DURATION),
+            end: addMinutesToTime('09:00', effectiveDuration),
         };
         setAvailabilityMap({
             ...availabilityMap,
@@ -366,9 +566,28 @@ export const DoctorDrawer = ({
 
     const handleAddTimeSlot = (day: string) => {
         const dayData = availabilityMap[day] || defaultAvailabilityDay(true);
-        const start = dayData.slots.length
-            ? dayData.slots[dayData.slots.length - 1].end
-            : '09:00';
+        const effectiveDuration = getDayDurationFromState(dayData);
+
+        let start = '09:00';
+        if (dayData.slots.length > 0) {
+            const lastSlot = dayData.slots[dayData.slots.length - 1];
+            start = lastSlot?.end || '';
+
+            if (!start) {
+                const lastStart = timeToMinutes(lastSlot?.start);
+                if (lastStart !== null) {
+                    const fallbackStart = lastStart + effectiveDuration;
+                    start = fallbackStart <= 1439 ? minutesToTime(fallbackStart) : '';
+                }
+            }
+        }
+
+        const end = start ? addMinutesToTime(start, effectiveDuration) : '';
+        if (!start || !end) {
+            toast.error('Cannot add more slots for this day. End time would exceed 23:59.');
+            return;
+        }
+
         setAvailabilityMap({
             ...availabilityMap,
             [day]: {
@@ -378,7 +597,7 @@ export const DoctorDrawer = ({
                     ...dayData.slots,
                     {
                         start,
-                        end: addMinutesToTime(start, dayData.slotDuration || DEFAULT_SLOT_DURATION),
+                        end,
                     },
                 ],
             }
@@ -398,15 +617,35 @@ export const DoctorDrawer = ({
 
     const handleTimeSlotChange = (day: string, index: number, value: string) => {
         const dayData = availabilityMap[day] || defaultAvailabilityDay(true);
-        const updatedSlots = dayData.slots.map((slot, i) =>
-            i === index
-                ? {
-                    ...slot,
-                    start: value,
-                    end: addMinutesToTime(value, dayData.slotDuration || DEFAULT_SLOT_DURATION),
+        const updatedSlots = [...dayData.slots];
+        if (!updatedSlots[index]) return;
+
+        if (dayData.useCustomDuration) {
+            updatedSlots[index] = {
+                ...updatedSlots[index],
+                start: value,
+            };
+
+            const rebuilt = rebuildSlotsSequentially(
+                updatedSlots,
+                getDayDurationFromState(dayData),
+                index,
+                value,
+            );
+            setAvailabilityMap({
+                ...availabilityMap,
+                [day]: {
+                    ...dayData,
+                    slots: rebuilt
                 }
-                : slot
-        );
+            });
+            return;
+        }
+
+        updatedSlots[index] = {
+            ...updatedSlots[index],
+            start: value,
+        };
         setAvailabilityMap({
             ...availabilityMap,
             [day]: {
@@ -437,15 +676,22 @@ export const DoctorDrawer = ({
 
     const applyDurationChange = (day: string, duration: number) => {
         const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
+        const rebuiltSlots = dayData.slots.length > 0
+            ? rebuildSlotsSequentially(
+                dayData.slots,
+                duration,
+                0,
+                dayData.slots[0]?.start || '09:00',
+            )
+            : dayData.slots;
+
         setAvailabilityMap({
             ...availabilityMap,
             [day]: {
                 ...dayData,
+                useCustomDuration: true,
                 slotDuration: duration,
-                slots: dayData.slots.map(slot => ({
-                    ...slot,
-                    end: addMinutesToTime(slot.start, duration),
-                })),
+                slots: rebuiltSlots,
             },
         });
         setCustomDurationDrafts((drafts) => ({
@@ -470,6 +716,34 @@ export const DoctorDrawer = ({
     const handlePresetDurationClick = (day: string, duration: number) => {
         setCustomDurationDrafts((drafts) => ({ ...drafts, [day]: '' }));
         requestDurationChange(day, duration);
+    };
+
+    const handleCustomDurationToggle = (day: string, enabled: boolean) => {
+        const dayData = availabilityMap[day] || defaultAvailabilityDay(false);
+        const nextDuration = enabled
+            ? Number(dayData.slotDuration || DEFAULT_SLOT_DURATION)
+            : getDoctorDefaultDuration();
+
+        const rebuiltSlots = dayData.slots.length > 0
+            ? rebuildSlotsSequentially(
+                dayData.slots,
+                nextDuration,
+                0,
+                dayData.slots[0]?.start || '09:00',
+            )
+            : dayData.slots;
+
+        setAvailabilityMap({
+            ...availabilityMap,
+            [day]: {
+                ...dayData,
+                useCustomDuration: enabled,
+                slots: rebuiltSlots,
+            },
+        });
+        if (!enabled) {
+            setCustomDurationDrafts((drafts) => ({ ...drafts, [day]: '' }));
+        }
     };
 
     const handleCustomDurationChange = (day: string, value: string) => {
@@ -540,7 +814,10 @@ export const DoctorDrawer = ({
             return {
                 day: day.toLowerCase(),
                 enabled: dayData.enabled,
-                slotDuration: Number(dayData.slotDuration || DEFAULT_SLOT_DURATION),
+                useDefaultDuration: !dayData.useCustomDuration,
+                slotDuration: dayData.useCustomDuration
+                    ? Number(dayData.slotDuration || DEFAULT_SLOT_DURATION)
+                    : null,
                 slots: dayData.enabled
                     ? sortedSlots(dayData.slots).map(slot => ({
                         start_time: slot.start,
@@ -559,20 +836,91 @@ export const DoctorDrawer = ({
             availability: availability
         };
 
-        try {
-            if (mode === 'create') {
-                await createDoctorMutation.mutateAsync(apiData);
-            } else if (mode === 'edit' && doctor?.doctor_id) {
-                await updateDoctorMutation.mutateAsync({ doctorId: doctor.doctor_id, data: apiData });
+        // Separate doctor save and branch assignment flows so mapping failures
+        // don't present a false full-success state.
+        if (mode === 'create') {
+            // Create doctor first
+            let newDoctorId: string | undefined;
+            try {
+                const resp: any = await createDoctorMutation.mutateAsync(apiData);
+                newDoctorId = resp?.data?.doctor_id || resp?.data?.doctor?.doctor_id;
+            } catch (error: any) {
+                const msg = error?.response?.data?.message || '';
+                if (msg.toLowerCase().includes('mobile')) {
+                    setError('mobile', { type: 'manual', message: msg });
+                } else if (msg.toLowerCase().includes('email')) {
+                    setError('email', { type: 'manual', message: msg });
+                }
+                // Creation failed — do not attempt branch assignment
+                return;
             }
+
+            // If branches were selected during create, apply mappings after creation
+            if (data.branches && data.branches.length > 0) {
+                if (data.primary_branch_id && !data.branches.includes(data.primary_branch_id)) {
+                    setError('primary_branch_id', { type: 'manual', message: 'Primary branch must be one of the selected branches.' });
+                    return;
+                }
+                const mappingPayload = data.branches.map((b: string) => ({ branch_id: b, is_primary: b === data.primary_branch_id }));
+                if (newDoctorId) {
+                    try {
+                        // Call API directly to avoid duplicate generic toasts from the mutation hook
+                        await doctorApis.updateDoctorBranches(newDoctorId, { branches: mappingPayload });
+                        // Invalidate relevant queries so UI reflects new mappings
+                        queryClient.invalidateQueries({ queryKey: ['doctors'] });
+                        queryClient.invalidateQueries({ queryKey: ['doctor'] });
+                        queryClient.invalidateQueries({ queryKey: ['doctor-branches'] });
+                        onClose();
+                        return;
+                    } catch (err: any) {
+                        // Doctor created but branch assignment failed — surface clear message and keep drawer open
+                        toast.error('Doctor saved, but branch assignment failed. Please update branch assignment again.');
+                        return;
+                    }
+                }
+            }
+
+            // No branches selected — creation succeeded, close drawer
             onClose();
-        } catch (error: any) {
-            const msg = error?.response?.data?.message || '';
-            if (msg.toLowerCase().includes('mobile')) {
-                setError('mobile', { type: 'manual', message: msg });
-            } else if (msg.toLowerCase().includes('email')) {
-                setError('email', { type: 'manual', message: msg });
+            return;
+        } else if (mode === 'edit' && doctor?.doctor_id) {
+            // Update doctor first
+            try {
+                await updateDoctorMutation.mutateAsync({ doctorId: doctor.doctor_id, data: apiData });
+            } catch (error: any) {
+                const msg = error?.response?.data?.message || '';
+                if (msg.toLowerCase().includes('mobile')) {
+                    setError('mobile', { type: 'manual', message: msg });
+                } else if (msg.toLowerCase().includes('email')) {
+                    setError('email', { type: 'manual', message: msg });
+                }
+                // Update failed — do not attempt branch assignment
+                return;
             }
+
+            // Update branch mappings if provided (for edit, allow empty array to clear mappings)
+            if (typeof data.branches !== 'undefined') {
+                if (data.primary_branch_id && !data.branches.includes(data.primary_branch_id)) {
+                    setError('primary_branch_id', { type: 'manual', message: 'Primary branch must be one of the selected branches.' });
+                    return;
+                }
+                const mappingPayload = (data.branches || []).map((b: string) => ({ branch_id: b, is_primary: b === data.primary_branch_id }));
+                try {
+                    await doctorApis.updateDoctorBranches(doctor.doctor_id, { branches: mappingPayload });
+                    queryClient.invalidateQueries({ queryKey: ['doctors'] });
+                    queryClient.invalidateQueries({ queryKey: ['doctor'] });
+                    queryClient.invalidateQueries({ queryKey: ['doctor-branches'] });
+                    onClose();
+                    return;
+                } catch (err: any) {
+                    toast.error('Doctor saved, but branch assignment failed. Please update branch assignment again.');
+                    return;
+                }
+            }
+
+            // No branch info provided — close drawer since update succeeded
+            onClose();
+            return;
         }
     };
     const isView = mode === 'view';
@@ -698,7 +1046,7 @@ export const DoctorDrawer = ({
                                     </div>
                                     <div>
                                         <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                            Consultation Duration
+                                            Default Consultation Duration
                                         </label>
                                         <p className={cn("text-sm font-medium", isDarkMode ? 'text-white' : 'text-slate-900')}>
                                             {formData.consultation_duration} min
@@ -740,6 +1088,62 @@ export const DoctorDrawer = ({
                                 </div>
                             </div>
 
+                            {/* Branches */}
+                            <div className="space-y-3">
+                                <div>
+                                    <label className={cn("text-xs font-semibold mb-2 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                        Branches
+                                    </label>
+                                    {isBranchMappingsLoading ? (
+                                        <p className={cn("text-sm italic", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                            Loading assigned branches...
+                                        </p>
+                                    ) : watchedBranchIds.length === 0 ? (
+                                        <p className={cn("text-sm italic", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                            No branches assigned
+                                        </p>
+                                    ) : (
+                                        <MultiSelect
+                                            isDarkMode={isDarkMode}
+                                            value={watchedBranchIds}
+                                            onChange={(_v: any) => { }}
+                                            options={viewBranchOptions}
+                                            disabled
+                                            variant="secondary"
+                                        />
+                                    )}
+                                </div>
+                                <div>
+                                    <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                        Primary Branch
+                                    </label>
+                                    {isBranchMappingsLoading ? (
+                                        <p className={cn("text-sm italic", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                            Loading assigned branches...
+                                        </p>
+                                    ) : watchedBranchIds.length === 0 ? (
+                                        <p className={cn("text-sm italic", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                            No branches assigned
+                                        </p>
+                                    ) : (
+                                        <>
+                                            <Select
+                                                isDarkMode={isDarkMode}
+                                                value={watchedPrimaryBranchId || ''}
+                                                onChange={(_v: any) => { }}
+                                                options={viewPrimaryBranchOptions}
+                                                disabled
+                                            />
+                                            {!watchedPrimaryBranchId && (
+                                                <p className={cn("text-sm italic mt-1", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                                                    No primary branch selected
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Bio */}
                             <div>
                                 <label className={cn("text-xs font-semibold mb-1 block", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
@@ -772,7 +1176,9 @@ export const DoctorDrawer = ({
                                                         {day}
                                                     </span>
                                                     <span className={cn("text-[11px]", isDarkMode ? "text-white/40" : "text-slate-500")}>
-                                                        {dayData.slotDuration || DEFAULT_SLOT_DURATION}m slots
+                                                        {dayData.useCustomDuration
+                                                            ? `${dayData.slotDuration || DEFAULT_SLOT_DURATION}m custom`
+                                                            : `Default (${formData.consultation_duration || 30}m)`}
                                                     </span>
                                                 </div>
                                                 <div className="space-y-1">
@@ -944,7 +1350,7 @@ export const DoctorDrawer = ({
                                             render={({ field }) => (
                                                 <Select
                                                     isDarkMode={isDarkMode}
-                                                    label="Consultation Duration (min)"
+                                                    label="Default Consultation Duration (min)"
                                                     value={String(field.value)}
                                                     onChange={(val) => field.onChange(Number(val))}
                                                     options={[
@@ -963,6 +1369,9 @@ export const DoctorDrawer = ({
                                                 />
                                             )}
                                         />
+                                        <p className={cn("text-[11px] mt-1 ml-1", isDarkMode ? "text-white/45" : "text-slate-500")}>
+                                            Used for all appointment slots unless a day has custom slot duration.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -1079,6 +1488,76 @@ export const DoctorDrawer = ({
                             </div>
 
                             {/* Availability Schedule */}
+                            {/* Branch Assignment */}
+                            <div className="space-y-3">
+                                <Controller
+                                    name="branches"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div>
+                                            <label className={cn(
+                                                "text-xs font-semibold font-sans mb-2 block ml-1",
+                                                isDarkMode ? 'text-white/70' : 'text-slate-700'
+                                            )}>
+                                                Branches
+                                            </label>
+                                            <div className="flex items-start gap-2">
+                                                <div className="flex-1">
+                                                    <MultiSelect
+                                                        isDarkMode={isDarkMode}
+                                                        value={field.value}
+                                                        onChange={(v: any) => {
+                                                            field.onChange(v);
+                                                            const primary = watch('primary_branch_id');
+                                                            if (primary && !v.includes(primary)) {
+                                                                setValue('primary_branch_id', '');
+                                                            }
+                                                        }}
+                                                        options={branchOptions}
+                                                        placeholder={branchOptions.length === 0 ? "No branches available" : "Select branches"}
+                                                        disabled={isView}
+                                                        variant="secondary"
+                                                    />
+                                                    {isBranchMappingsLoading && (
+                                                        <p className={cn("text-[11px] mt-1 ml-1", isDarkMode ? "text-white/45" : "text-slate-500")}>
+                                                            Loading assigned branches...
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                />
+
+                                {((watch('branches') || []) as string[]).length > 0 && (
+                                    <div>
+                                        <label className={cn("text-xs font-semibold mb-2 block ml-1", isDarkMode ? 'text-white/70' : 'text-slate-700')}>
+                                            Primary Branch
+                                        </label>
+                                        <Controller
+                                            name="primary_branch_id"
+                                            control={control}
+                                            render={({ field }) => {
+                                                const selected = (watch('branches') || []) as string[];
+                                                const options = [{ value: '', label: 'None' }, ...selected.map((id: string) => {
+                                                    const found = branchOptions.find((b: any) => b.value === id);
+                                                    return { value: id, label: found?.label || id };
+                                                })];
+                                                return (
+                                                    <Select
+                                                        isDarkMode={isDarkMode}
+                                                        value={field.value || ''}
+                                                        onChange={field.onChange}
+                                                        options={options}
+                                                        disabled={isView}
+                                                        error={errors.primary_branch_id?.message}
+                                                    />
+                                                );
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                             <div className="space-y-3">
                                 <h3 className={cn("text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
                                     Weekly Availability
@@ -1147,8 +1626,17 @@ export const DoctorDrawer = ({
                                                 )}>
                                                     <div className="flex flex-wrap items-center gap-2">
                                                         <span className={cn("text-xs font-semibold mr-1", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                                                            Slot duration
+                                                            Custom Slot Duration for this Day
                                                         </span>
+                                                        <label className={cn("inline-flex items-center gap-1.5 text-xs", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                                                            <input
+                                                                type="checkbox"
+                                                                disabled={isView || !dayData.enabled}
+                                                                checked={dayData.useCustomDuration}
+                                                                onChange={(e) => handleCustomDurationToggle(day, e.target.checked)}
+                                                            />
+                                                            <span>Enable custom</span>
+                                                        </label>
                                                         {SLOT_DURATION_PRESETS.map(duration => (
                                                             <button
                                                                 key={duration}
@@ -1157,7 +1645,7 @@ export const DoctorDrawer = ({
                                                                 onClick={() => handlePresetDurationClick(day, duration)}
                                                                 className={cn(
                                                                     "px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors",
-                                                                    dayData.slotDuration === duration
+                                                                    dayData.useCustomDuration && dayData.slotDuration === duration
                                                                         ? (isDarkMode ? "bg-emerald-500/20 border-emerald-500 text-emerald-300" : "bg-emerald-50 border-emerald-300 text-emerald-700")
                                                                         : (isDarkMode ? "border-white/10 text-white/60 hover:bg-white/5" : "border-slate-200 text-slate-600 hover:bg-slate-50")
                                                                 )}
@@ -1169,11 +1657,13 @@ export const DoctorDrawer = ({
                                                             type="text"
                                                             inputMode="numeric"
                                                             pattern="[0-9]*"
-                                                            disabled={isView || !dayData.enabled}
+                                                            disabled={isView || !dayData.enabled || !dayData.useCustomDuration}
                                                             maxLength={3}
                                                             value={
-                                                                customDurationDrafts[day] ??
-                                                                (SLOT_DURATION_PRESETS.includes(dayData.slotDuration) ? '' : String(dayData.slotDuration || ''))
+                                                                dayData.useCustomDuration
+                                                                    ? (customDurationDrafts[day] ??
+                                                                        (SLOT_DURATION_PRESETS.includes(dayData.slotDuration) ? '' : String(dayData.slotDuration || '')))
+                                                                    : ''
                                                             }
                                                             onChange={(e) => handleCustomDurationChange(day, e.target.value)}
                                                             onBlur={() => applyCustomDurationDraft(day)}
@@ -1194,6 +1684,9 @@ export const DoctorDrawer = ({
                                                             minutes
                                                         </span>
                                                     </div>
+                                                    <p className={cn("text-[11px] mt-2", isDarkMode ? "text-white/45" : "text-slate-500")}>
+                                                        Leave empty or disable custom duration to use the doctor&apos;s default consultation duration.
+                                                    </p>
                                                     {dayError && (
                                                         <p className="text-xs text-red-500 mt-2">{dayError}</p>
                                                     )}
@@ -1203,11 +1696,12 @@ export const DoctorDrawer = ({
                                                         <div className={cn("grid grid-cols-[1fr_1fr_80px_36px] gap-2 text-[11px] font-semibold", isDarkMode ? "text-white/40" : "text-slate-500")}>
                                                             <span>Start time</span>
                                                             <span>End time</span>
-                                                            <span>Duration</span>
+                                                            <span>Computed</span>
                                                             <span />
                                                         </div>
                                                         {dayData.slots.map((slot: any, index: number) => {
                                                             const rowError = availabilityValidation.rowErrors[`${day}:${index}`];
+                                                            const computedDuration = getSlotDurationMinutes(slot);
                                                             return (
                                                                 <div key={index} className="space-y-1">
                                                                     <div className="grid grid-cols-[1fr_1fr_80px_36px] gap-2 items-center">
@@ -1227,13 +1721,13 @@ export const DoctorDrawer = ({
                                                                         />
                                                                         <input
                                                                             type="time"
-                                                                            disabled={isView}
+                                                                            disabled={isView || dayData.useCustomDuration}
                                                                             value={slot.end}
                                                                             onChange={(e) => handleEndTimeSlotChange(day, index, e.target.value)}
                                                                             className={cn(
                                                                                 "px-3 py-2 rounded-lg text-sm border",
                                                                                 rowError && "border-red-500",
-                                                                                isView && "opacity-60 cursor-not-allowed",
+                                                                                (isView || dayData.useCustomDuration) && "opacity-60 cursor-not-allowed",
                                                                                 isDarkMode
                                                                                     ? 'bg-white/5 border-white/10 text-white'
                                                                                     : 'bg-white border-slate-200 text-slate-900'
@@ -1243,7 +1737,7 @@ export const DoctorDrawer = ({
                                                                             "px-2 py-2 rounded-lg text-xs font-semibold text-center border",
                                                                             isDarkMode ? "bg-white/5 border-white/10 text-white/70" : "bg-slate-100 border-slate-200 text-slate-600"
                                                                         )}>
-                                                                            {getSlotDurationMinutes(slot, dayData.slotDuration)}m
+                                                                            {computedDuration === null ? '--' : `${computedDuration}m`}
                                                                         </span>
                                                                         {!isView && (
                                                                             <button

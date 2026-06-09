@@ -129,6 +129,24 @@ export const usePatchIndustryMutation = () => {
   });
 };
 
+export const useDeleteIndustryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (industryId: string) =>
+      moduleAccessManagementApi.deleteIndustry(industryId),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({
+        queryKey: moduleAccessManagementQueryKeys.industries,
+      });
+      toast.success(response?.message || "Deleted successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || "Delete failed");
+    },
+  });
+};
+
 export const useCreateSaaSModuleMutation = () => {
   const queryClient = useQueryClient();
 
@@ -176,6 +194,24 @@ export const usePatchSaaSModuleMutation = () => {
   });
 };
 
+export const useDeleteSaaSModuleMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (moduleId: string) =>
+      moduleAccessManagementApi.deleteSaaSModule(moduleId),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({
+        queryKey: moduleAccessManagementQueryKeys.saasModules,
+      });
+      toast.success(response?.message || "Deleted successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || "Delete failed");
+    },
+  });
+};
+
 export const useCreatePlanMutation = () => {
   const queryClient = useQueryClient();
 
@@ -216,6 +252,23 @@ export const usePatchPlanMutation = () => {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || error?.message || "Failed to update plan");
+    },
+  });
+};
+
+export const useDeletePlanMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (planId: string) => moduleAccessManagementApi.deletePlan(planId),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({
+        queryKey: moduleAccessManagementQueryKeys.plans,
+      });
+      toast.success(response?.message || "Deleted successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || "Delete failed");
     },
   });
 };

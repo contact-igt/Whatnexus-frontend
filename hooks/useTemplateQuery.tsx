@@ -58,7 +58,6 @@ export const useUpdateTemplateMutation = () => {
     })
 }
 
-
 export const useGetAllTemplateQuery = () => {
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
@@ -66,7 +65,6 @@ export const useGetAllTemplateQuery = () => {
         queryFn: () => templateApis.getAllTemplate()
     })
 }
-
 
 export const useSubmitTemplateMutation = () => {
     const queryClient = useQueryClient();

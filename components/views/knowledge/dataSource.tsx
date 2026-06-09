@@ -251,7 +251,6 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                 }
             }
 
-
             if (hasError) {
                 setError(newError);
                 setIsUpdating({ status: false, type: null });

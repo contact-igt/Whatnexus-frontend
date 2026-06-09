@@ -128,7 +128,6 @@ export function GalleryListRow({
         </div>
       )}
 
-
       {/* Avatar Content */}
       <div className={cn(COL_FILE, "flex items-center gap-3")}>
         <div

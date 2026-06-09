@@ -77,10 +77,9 @@ export const TeamManagementView = () => {
 
     const isLoading = activeTab === 'active' ? activeLoading : deletedLoading;
 
-
     const activeUsers = useMemo(() => {
         return (tenantUserData?.data?.users || []).filter((u: any) => {
-            if (u.role === "super_admin" || u.role === "doctor") return false;
+            if (u.role === "super_admin") return false;
             const searchLower = searchQuery.toLowerCase();
             return [u.username, u.email, u.mobile, u.role, u.status].some(field =>
                 field?.toString().toLowerCase().includes(searchLower)
@@ -90,7 +89,6 @@ export const TeamManagementView = () => {
 
     const deletedUsers = useMemo(() => {
         return (deletedTenantUserData?.data || []).filter((u: any) => {
-            if (u.role === "doctor") return false;
             const searchLower = searchQuery.toLowerCase();
             return [u.username, u.email, u.mobile, u.role, u.status].some(field =>
                 field?.toString().toLowerCase().includes(searchLower)
@@ -136,7 +134,6 @@ export const TeamManagementView = () => {
             );
         }
     };
-
 
     const handleEditClick = (user: any) => {
         setSelectedUser(user);
@@ -250,8 +247,7 @@ export const TeamManagementView = () => {
                     "text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide",
                     row.role === 'tenant_admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
                         row.role === 'admin' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                            row.role === 'doctor' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
                 )}>
                     {row?.role || 'staff'}
                 </span>

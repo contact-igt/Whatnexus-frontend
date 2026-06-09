@@ -51,20 +51,12 @@ export const ChatView = () => {
         isLoading: isChatsLoading,
         refetch: refetchChats,
     } = useGetAllLiveChatsQuery();
-    console.log("chatList", chatList)
-    
     // Debug: Check for interactive messages and buttons_info
     useEffect(() => {
         if (chatList?.data) {
             const interactiveChats = chatList.data.filter((c: any) => c.message_type === 'interactive');
             if (interactiveChats.length > 0) {
-                console.log('[CHAT-VIEW] Interactive chats found:', interactiveChats.map((c: any) => ({
-                    phone: c.phone,
-                    message_type: c.message_type,
-                    has_buttons_info: !!c.buttons_info,
-                    buttons_info: c.buttons_info,
-                    has_interactive_payload: !!c.interactive_payload,
-                })));
+                
             }
         }
     }, [chatList?.data]);
@@ -550,12 +542,12 @@ export const ChatView = () => {
 
         // Register event listeners BEFORE connecting to ensure we don't miss events
         const handleConnect = () => {
-            console.log("[Socket] Connected, joining tenant room:", user.tenant_id);
+            
             socket.emit("join-tenant", user.tenant_id);
         };
 
         const handleAiTyping = (data: any) => {
-            console.log("[Socket] ai-typing event received:", data);
+            
             if (arePhonesEqual(selectedChatRef.current?.phone, data.phone)) {
                 setIsAiTyping(data.status);
             }
@@ -657,7 +649,7 @@ export const ChatView = () => {
     useEffect(() => {
         if (!isAiTyping) return;
         const timeoutId = setTimeout(() => {
-            console.log("[Typing] Safety timeout reached, clearing typing indicator");
+            
             setIsAiTyping(false);
         }, 30000);
         return () => clearTimeout(timeoutId);

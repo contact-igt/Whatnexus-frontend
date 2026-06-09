@@ -44,7 +44,6 @@ export const Sidebar = () => {
         }
         router.push(tab);
     }
-    console.log("user", user)
     return (
         <aside
             onMouseEnter={() => setIsExpanded(true)}

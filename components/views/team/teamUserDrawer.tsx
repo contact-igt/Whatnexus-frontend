@@ -200,8 +200,7 @@ export const TeamUserDrawer = ({
                                         "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
                                         user?.role === 'tenant_admin' ? (isDarkMode ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-purple-50 text-purple-700 border-purple-200') :
                                             user?.role === 'admin' ? (isDarkMode ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-700 border-blue-200') :
-                                                user?.role === 'doctor' ? (isDarkMode ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' : 'bg-teal-50 text-teal-700 border-teal-200') :
-                                                    (isDarkMode ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' : 'bg-slate-100 text-slate-600 border-slate-200')
+                                                (isDarkMode ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' : 'bg-slate-100 text-slate-600 border-slate-200')
                                     )}>
                                         {user?.role}
                                     </span>

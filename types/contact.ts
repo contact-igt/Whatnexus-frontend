@@ -24,7 +24,6 @@ export interface CreateContactDto {
     profile_pic?: string;
 }
 
-
 export interface UpdateContactDto {
     // ⚠️ Phone cannot be edited after creation
     name?: string;

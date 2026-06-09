@@ -26,8 +26,6 @@ const statusChipStyle: Record<string, { bg: string; color: string; label: string
     ignored:  { bg: 'rgba(148,163,184,0.1)', color: '#94a3b8', label: 'Ignored'  },
 };
 
-
-
 export const ActivityFeed = ({ isDarkMode = true, recentActivity }: ActivityFeedProps) => {
     const [visible, setVisible] = useState<boolean[]>([]);
     const t = tx(isDarkMode);

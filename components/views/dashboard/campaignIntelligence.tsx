@@ -19,8 +19,6 @@ const statusColor: Record<string, string> = {
     paused:    '#94a3b8',
 };
 
-
-
 export const CampaignIntelligence = ({ isDarkMode = true, campaignsData }: CampaignIntelligenceProps) => {
     const [show, setShow] = useState(false);
     const t = tx(isDarkMode);

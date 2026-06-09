@@ -131,7 +131,6 @@ export const TemplateVariableModal = ({
         }
     };
 
-
     const handleGallerySelect = (asset: MediaAsset) => {
         const url = asset.preview_url || asset.media_url || (asset as any).url || "";
         setMediaUrl(url);

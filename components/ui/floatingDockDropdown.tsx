@@ -36,7 +36,6 @@ export const FloatingDockDropdown = ({
         }
     };
     const isParentActive = items.some(item => item.route === pathname);
-    console.log("pathname", pathname)
     return (
         <div className="relative">
             {/* Main Button */}

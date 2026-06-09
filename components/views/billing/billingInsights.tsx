@@ -24,8 +24,6 @@ const categoryBarColor: Record<string, string> = {
   service: 'from-emerald-600 to-emerald-400',
 };
 
-
-
 export const BillingInsights = ({ isDarkMode, startDate, endDate }: BillingInsightsProps) => {
   const sStr = startDate?.toISOString();
   const eStr = endDate?.toISOString();

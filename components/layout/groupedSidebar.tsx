@@ -15,6 +15,7 @@ import {
     Megaphone,
     Image,
     Stethoscope,
+    Building2,
     BadgeCheck,
     BookOpen,
     Video,
@@ -24,6 +25,7 @@ import {
     CreditCard,
     Settings,
     MessageSquare,
+    Bell,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -60,6 +62,7 @@ const ICON_KEY_MAP: Record<string, LucideIcon> = {
     campaign: Megaphone,
     media_gallery: Image,
     doctors: Stethoscope,
+    branches: Building2,
     specialization: BadgeCheck,
     courses: BookOpen,
     sessions: Video,
@@ -197,7 +200,7 @@ export const GroupedSidebar = ({
                 label: "Follow-up Hub",
                 route: "/followups",
                 icon: Clock,
-                featureKey: followUpStaticMeta?.featureKey || "fallback",
+                featureKey: followUpStaticMeta?.featureKey || "followups",
                 requiresWhatsApp: followUpStaticMeta?.requiresWhatsApp ?? true,
                 requiresLocal: followUpStaticMeta?.requiresLocal,
                 roles: followUpStaticMeta?.roles,
@@ -217,6 +220,44 @@ export const GroupedSidebar = ({
                 mappedGroups.push({
                     groupLabel: "Contacts & Leads",
                     items: [followUpItem],
+                });
+            }
+        }
+
+        // Inject Reminders for ALL tenants if not already present in dynamic nav.
+        const hasReminders = mappedGroups.some((group) =>
+            group.items.some((item) => normalizeRoute(item.route) === "/reminders"),
+        );
+
+        if (!hasReminders) {
+            const remindersStaticMeta =
+                staticRouteMeta.exactRouteMap.get("/reminders") ||
+                staticRouteMeta.normalizedRouteMap.get("/reminders");
+
+            const remindersItem: SidebarItem = {
+                label: "Reminders",
+                route: "/reminders",
+                icon: Bell,
+                featureKey: remindersStaticMeta?.featureKey || "appointments",
+                requiresWhatsApp: remindersStaticMeta?.requiresWhatsApp ?? true,
+                requiresLocal: remindersStaticMeta?.requiresLocal,
+                roles: remindersStaticMeta?.roles,
+                matchMode: remindersStaticMeta?.matchMode,
+            };
+
+            const preferredGroupIndex = mappedGroups.findIndex(
+                (group) => group.groupLabel?.toLowerCase() === "contacts & leads",
+            );
+
+            if (preferredGroupIndex >= 0) {
+                mappedGroups[preferredGroupIndex] = {
+                    ...mappedGroups[preferredGroupIndex],
+                    items: [...mappedGroups[preferredGroupIndex].items, remindersItem],
+                };
+            } else {
+                mappedGroups.push({
+                    groupLabel: "Contacts & Leads",
+                    items: [remindersItem],
                 });
             }
         }
@@ -284,7 +325,6 @@ export const GroupedSidebar = ({
                 window.location.hostname.includes('ngrok')
               );
 
-
     // Sync Redux active tab state only — navigation is driven by <Link> in SidebarGroupItem.
     const handleActiveTab = (tab: string) => {
         if (tab.includes('live-chats')) {
@@ -301,7 +341,6 @@ export const GroupedSidebar = ({
         const uniqueRoutes = [...new Set(visibleRoutes)];
         uniqueRoutes.forEach((route) => router.prefetch(route));
     }, [router, sidebarConfig, user?.role, isLocalServer, enabled_features, isManagement]);
-
 
     // Filter items based on user role (case-insensitive) and local environment requirement
     const filterItemsByRole = (items: SidebarGroup['items']) => {

@@ -4,7 +4,7 @@ import { saveAs } from 'file-saver';
 
 export const handleXslxDownloadData = (data: any, fileName: string) => {
     // Convert JSON to worksheet
-    console.log(data);
+    
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();

@@ -84,7 +84,6 @@ export const CampaignView = memo(() => {
         };
     }, [user?.tenant_id]);
 
-
     const handleCampaignSuccess = (campaignId: string) => {
         refetch(); // Refresh the campaign list
         router.push(`/campaign/${campaignId}`); // Navigate to the new campaign
@@ -119,7 +118,6 @@ export const CampaignView = memo(() => {
     const handleCampaignClick = (campaignId: string) => {
         router.push(`/campaign/${campaignId}`);
     };
-
 
     const handleAction = async () => {
         if (!selectedCampaignId) return;

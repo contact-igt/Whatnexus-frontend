@@ -6,7 +6,7 @@ import { playNotificationSound } from "@/lib/notificationSound";
 import type { FaqReviewItem } from "@/services/faq";
 import { socket } from "@/utils/socket";
 
-const FAQ_NOTIFICATION_ROLES = new Set(["tenant_admin", "staff", "doctor"]);
+const FAQ_NOTIFICATION_ROLES = new Set(["tenant_admin", "staff"]);
 const DEFAULT_PREVIEW_LIMIT = 3;
 const FAQ_SOCKET_EVENT = "faq-updated";
 
@@ -64,7 +64,7 @@ export const useFaqRealtimeUpdates = () => {
       const isFlaggedFaqEvent =
         eventAction === "faq-created" && eventStatus === "pending_review";
 
-      console.log("[FAQ-SOCKET] event received:", { eventAction, eventStatus, isFlaggedFaqEvent });
+      
 
       if (isFlaggedFaqEvent) {
         void playNotificationSound({ soundPath: "/sounds/FAQ_notify.mp3" });
