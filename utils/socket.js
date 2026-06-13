@@ -56,3 +56,20 @@ const SOCKET_URL = (() => {
   }
 })();
 
+const socketOptions = {
+  autoConnect: false,
+  transports: ["websocket", "polling"],
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+};
+
+const globalSocketKey = "__whatsnexusSocket";
+
+export const socket =
+  globalThis[globalSocketKey] ||
+  (globalThis[globalSocketKey] = io(SOCKET_URL, socketOptions));
+
+export { SOCKET_URL };
+export default socket;

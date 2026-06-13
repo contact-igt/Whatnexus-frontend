@@ -40,6 +40,7 @@ import { useGetWhatsappConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 import { useFaqNotifications } from '@/hooks/useFaqNotifications';
 import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
 import { useFeatureAccess } from '@/redux/selectors/featureAccess/featureAccessSelector';
+import { useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import type { TenantDynamicNavigationPayload } from '@/services/tenantDynamicNavigation';
@@ -126,8 +127,11 @@ export const GroupedSidebar = ({
     const { unreadCount } = useNotifications();
     const { enabled_features, industry_type } = useFeatureAccess();
     const { pendingCount: faqPendingCount, canAccessFaqNotifications } = useFaqNotifications();
+    const { data: pendingAppointmentsData } = useGetAllAppointmentsQuery({ status: 'pending' });
     useGetWhatsappConfigQuery();
     const { isDarkMode } = useTheme();
+
+    const appointmentPendingCount = pendingAppointmentsData?.data?.length ?? 0;
     const [isExpanded, setIsExpanded] = useState(false);
     const dispatch = useDispatch();
     const router = useRouter();
@@ -582,9 +586,11 @@ export const GroupedSidebar = ({
                                                 notificationCount={
                                                     item.route === '/shared-inbox/live-chats'
                                                         ? unreadCount
-                                                        : item.route === '/knowledge' && canAccessFaqNotifications
-                                                            ? faqPendingCount
-                                                            : 0
+                                                        : item.route === '/appointments'
+                                                            ? appointmentPendingCount
+                                                            : item.route === '/knowledge' && canAccessFaqNotifications
+                                                                ? faqPendingCount
+                                                                : 0
                                                 }
                                             />
                                         );

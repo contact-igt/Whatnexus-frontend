@@ -111,11 +111,12 @@ const TimelineStep = ({
       <div className="flex w-full items-center">
         <div className="flex-1 h-px" style={{ background: lineColor }} />
         <div
-          className="h-3 w-3 shrink-0 rounded-full ring-2 ring-offset-2"
+          className="h-3 w-3 shrink-0 rounded-full"
           style={{
             background: dotColor,
-            ringColor: dotColor,
-            ringOffsetColor: isDarkMode ? "#09090b" : "#ffffff",
+            boxShadow: `0 0 0 2px ${
+              isDarkMode ? "#09090b" : "#ffffff"
+            }, 0 0 0 4px ${dotColor}`,
           }}
         />
         <div className="flex-1 h-px" style={{ background: isDarkMode ? "#27272a" : "#e4e4e7" }} />
@@ -254,8 +255,11 @@ export const FollowUpDetailPageView = ({ followUpId }: { followUpId: string }) =
                 {initial}
                 {/* Status dot */}
                 <span
-                  className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2"
-                  style={{ background: status.color, ringColor: isDarkMode ? "#09090b" : "#fff" }}
+                  className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full"
+                  style={{
+                    background: status.color,
+                    boxShadow: `0 0 0 2px ${isDarkMode ? "#09090b" : "#fff"}`,
+                  }}
                 >
                   <StatusIcon size={10} color="#fff" />
                 </span>
@@ -295,11 +299,10 @@ export const FollowUpDetailPageView = ({ followUpId }: { followUpId: string }) =
             </div>
 
             {/* Right: meta stats strip */}
-            <div className="flex items-stretch divide-x rounded-xl overflow-hidden"
+            <div className="flex items-stretch rounded-xl overflow-hidden"
               style={{
                 background: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
                 border: `1px solid ${isDarkMode ? "rgba(255,255,255,0.08)" : "#e4e4e7"}`,
-                divideColor: isDarkMode ? "rgba(255,255,255,0.07)" : "#e4e4e7",
               }}
             >
               {[
