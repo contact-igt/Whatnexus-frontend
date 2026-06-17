@@ -766,7 +766,11 @@ export const LeadsView = () => {
             renderCell: ({ row }) => (
                 <div className="flex flex-col items-start justify-center group/summary py-1 w-full">
                     {row?.ai_summary ? (
-                        <div className="flex flex-col gap-1 w-full">
+                        <div
+                            className="flex flex-col gap-1 w-full cursor-pointer"
+                            onClick={(e) => summarizeLead(e, row)}
+                            title="Open Neural Summary"
+                        >
                             {row?.summary_status && (
                                 <div className="self-start">
                                     <Badge
@@ -792,7 +796,7 @@ export const LeadsView = () => {
                                 </p>
                                 {row?.summary_status?.toLowerCase() === 'new' && (
                                     <button
-                                        onClick={(e) => handleRefreshSummary(e, row.lead_id)}
+                                        onClick={(e) => { e.stopPropagation(); handleRefreshSummary(e, row.lead_id); }}
                                         className={cn(
                                             "p-1 rounded transition-all shrink-0 mt-0.5",
                                             isDarkMode ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400 hover:text-slate-600"
