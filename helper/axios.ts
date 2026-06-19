@@ -9,6 +9,7 @@ import {
   setAuthData,
 } from "@/redux/slices/auth/authSlice";
 import { queryClient } from "@/lib/queryClient";
+import { disconnectSocket } from "@/utils/socket";
 
 interface JwtPayload {
   exp: number;
@@ -251,6 +252,7 @@ axiosInstance.interceptors.request.use(
               if (newToken) token = newToken;
             } else {
               queryClient.clear();
+              disconnectSocket();
               store.dispatch(clearAuthData());
               throw new Error("Token expired");
             }
@@ -319,6 +321,7 @@ axiosInstance.interceptors.response.use(
 
       if (!refreshToken) {
         queryClient.clear();
+        disconnectSocket();
         store.dispatch(clearAuthData());
         return Promise.reject(error);
       }
@@ -349,6 +352,7 @@ axiosInstance.interceptors.response.use(
           isRefreshing = false;
           onRefreshed(null);
           queryClient.clear();
+          disconnectSocket();
           store.dispatch(clearAuthData());
           throw refreshErr;
         });
@@ -507,6 +511,7 @@ export const _axios = async (
     // Skip this for public auth endpoints (login/otp/forgot flows).
     if (err?.response?.status === 401 && !isAuthEndpoint(endpoint)) {
       queryClient.clear();
+      disconnectSocket();
       store.dispatch(clearAuthData());
     }
 

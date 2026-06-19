@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useTenantUserLoginMutation } from "@/hooks/useTenantUserQuery";
 import { useDispatch } from "react-redux";
 import { clearAuthData } from "@/redux/slices/auth/authSlice";
+import { disconnectSocket } from "@/utils/socket";
 
 const loginSchema = z.object({
     email: z
@@ -97,6 +98,7 @@ export default function LoginPage() {
                 router.replace("/dashboard");
             } else {
                 // User type doesn't match login page - clear auth and stay on login
+                disconnectSocket();
                 dispatch(clearAuthData());
             }
         }

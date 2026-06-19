@@ -1,24 +1,94 @@
-import { AppointmentApiData, CompleteWithOutcomeDto, CreateAppointmentDto, CreateAppointmentOutcomeDto, NoShowWithActionDto, UpdateAppointmentStatusDto, UpdateAppointmentDto, ReminderRulePayload } from "@/services/appointment";
+import {
+    AppointmentApiData,
+    CompleteWithOutcomeDto,
+    CreateAppointmentDto,
+    CreateAppointmentOutcomeDto,
+    CustomReminderDto,
+    NoShowWithActionDto,
+    ReminderRule,
+    ReminderRulePayload,
+    UpdateAppointmentStatusDto,
+    UpdateAppointmentDto,
+} from "@/services/appointment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import { useSelector } from "react-redux";
+import type { RootState } from "@/redux/store";
 
 const appointmentApis = new AppointmentApiData();
 
-export const useGetAllAppointmentsQuery = (params?: { search?: string; status?: string; date?: string; doctor_id?: string; lead_id?: string }) => {
-    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+type AppointmentQueryParams = {
+    search?: string;
+    status?: string;
+    date?: string;
+    doctor_id?: string;
+    lead_id?: string;
+};
+
+type AppointmentRecord = Record<string, unknown>;
+
+type AppointmentListResponse = {
+    success?: boolean;
+    data?: AppointmentRecord[];
+    message?: string;
+};
+
+type MutationResponse = {
+    success?: boolean;
+    message?: string;
+    data?: unknown;
+};
+
+type ReminderRulesResponse = {
+    success: boolean;
+    data: ReminderRule[];
+};
+
+type UpdateAppointmentRemindersPayload = {
+    reminder_mode: "default" | "custom" | "none";
+    custom_reminders?: CustomReminderDto[];
+};
+
+type UpdateAppointmentRemindersVariables = {
+    appointmentId: string;
+    data: UpdateAppointmentRemindersPayload;
+};
+
+type ErrorWithMessage = {
+    message?: string;
+    response?: {
+        data?: {
+            message?: string;
+        };
+    };
+};
+
+const getErrorMessage = (error: unknown, fallbackMessage: string) => {
+    if (typeof error === "object" && error !== null) {
+        const candidate = error as ErrorWithMessage;
+        return candidate.response?.data?.message || candidate.message || fallbackMessage;
+    }
+    return fallbackMessage;
+};
+
+export const useGetAllAppointmentsQuery = (params?: AppointmentQueryParams) => {
+    const tenantId = useSelector((state: RootState) => state.auth.user?.tenant_id);
+    const userType = useSelector((state: RootState) => state.auth.user?.user_type);
+    const token = useSelector((state: RootState) => state.auth.token);
+
     return useQuery({
         queryKey: ["appointments", tenantId, params],
-        queryFn: () => appointmentApis.getAllAppointments(params),
+        queryFn: () => appointmentApis.getAllAppointments(params) as Promise<AppointmentListResponse>,
         staleTime: 30 * 1000,
+        enabled: !!token && userType === "tenant" && !!tenantId,
     });
 };
 
 export const useGetContactAppointmentsQuery = (contactId: string) => {
-    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    const tenantId = useSelector((state: RootState) => state.auth.user?.tenant_id);
     return useQuery({
         queryKey: ["appointments", tenantId, "contact", contactId],
-        queryFn: () => appointmentApis.getContactAppointments(contactId),
+        queryFn: () => appointmentApis.getContactAppointments(contactId) as Promise<AppointmentListResponse>,
         enabled: !!contactId,
     });
 };
@@ -26,14 +96,14 @@ export const useGetContactAppointmentsQuery = (contactId: string) => {
 export const useCreateAppointmentMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: CreateAppointmentDto) => appointmentApis.createAppointment(data),
+        mutationFn: (data: CreateAppointmentDto) => appointmentApis.createAppointment(data) as Promise<MutationResponse>,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Appointment created successfully!");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to create appointment.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to create appointment."));
         },
     });
 };
@@ -42,7 +112,7 @@ export const useUpdateAppointmentStatusMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ appointmentId, data }: { appointmentId: string; data: UpdateAppointmentStatusDto }) =>
-            appointmentApis.updateAppointmentStatus(appointmentId, data),
+            appointmentApis.updateAppointmentStatus(appointmentId, data) as Promise<MutationResponse>,
         onSuccess: (data, variables) => {
             const nextStatus = variables?.data?.status;
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -55,26 +125,26 @@ export const useUpdateAppointmentStatusMutation = () => {
                 toast.success(data?.message || "Appointment status updated.");
             }
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to update status.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to update status."));
         },
     });
 };
 
 export const useCheckAvailabilityQuery = (doctor_id: string, date: string, time: string) => {
-    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    const tenantId = useSelector((state: RootState) => state.auth.user?.tenant_id);
     return useQuery({
         queryKey: ["appointment-availability", tenantId, doctor_id, date, time],
-        queryFn: () => appointmentApis.checkAvailability(doctor_id, date, time),
+        queryFn: () => appointmentApis.checkAvailability(doctor_id, date, time) as Promise<MutationResponse>,
         enabled: !!doctor_id && !!date && !!time,
     });
 };
 
 export const useGetAvailableSlotsQuery = (doctor_id: string, date: string) => {
-    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    const tenantId = useSelector((state: RootState) => state.auth.user?.tenant_id);
     return useQuery({
         queryKey: ["appointment-slots", tenantId, doctor_id, date],
-        queryFn: () => appointmentApis.getAvailableSlots(doctor_id, date),
+        queryFn: () => appointmentApis.getAvailableSlots(doctor_id, date) as Promise<MutationResponse>,
         enabled: !!doctor_id && !!date,
     });
 };
@@ -83,14 +153,14 @@ export const useUpdateAppointmentMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ appointmentId, data }: { appointmentId: string; data: UpdateAppointmentDto }) =>
-            appointmentApis.updateAppointment(appointmentId, data),
+            appointmentApis.updateAppointment(appointmentId, data) as Promise<MutationResponse>,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Appointment updated successfully.");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to update appointment.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to update appointment."));
         },
     });
 };
@@ -98,14 +168,14 @@ export const useUpdateAppointmentMutation = () => {
 export const useDeleteAppointmentMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (appointmentId: string) => appointmentApis.deleteAppointment(appointmentId),
+        mutationFn: (appointmentId: string) => appointmentApis.deleteAppointment(appointmentId) as Promise<MutationResponse>,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Appointment cancelled. Patient notified by email.");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to delete appointment.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to delete appointment."));
         },
     });
 };
@@ -113,14 +183,14 @@ export const useDeleteAppointmentMutation = () => {
 export const useCreateAppointmentOutcomeMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: CreateAppointmentOutcomeDto) => appointmentApis.createAppointmentOutcome(data),
+        mutationFn: (data: CreateAppointmentOutcomeDto) => appointmentApis.createAppointmentOutcome(data) as Promise<MutationResponse>,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Visit outcome saved successfully.");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to save visit outcome.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to save visit outcome."));
         },
     });
 };
@@ -128,23 +198,23 @@ export const useCreateAppointmentOutcomeMutation = () => {
 export const useCompleteWithOutcomeMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: CompleteWithOutcomeDto) => appointmentApis.completeWithOutcome(data),
+        mutationFn: (data: CompleteWithOutcomeDto) => appointmentApis.completeWithOutcome(data) as Promise<MutationResponse>,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "Appointment completed successfully.");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to complete appointment.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to complete appointment."));
         },
     });
 };
 
 export const useGetReminderRulesQuery = () => {
-    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    const tenantId = useSelector((state: RootState) => state.auth.user?.tenant_id);
     return useQuery({
         queryKey: ["appointment-reminder-rules", tenantId],
-        queryFn: () => appointmentApis.getReminderRules(),
+        queryFn: () => appointmentApis.getReminderRules() as Promise<ReminderRulesResponse>,
         staleTime: 60 * 1000,
     });
 };
@@ -152,13 +222,13 @@ export const useGetReminderRulesQuery = () => {
 export const useUpsertReminderRulesMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (rules: ReminderRulePayload[]) => appointmentApis.upsertReminderRules(rules),
+        mutationFn: (rules: ReminderRulePayload[]) => appointmentApis.upsertReminderRules(rules) as Promise<MutationResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["appointment-reminder-rules"] });
             toast.success("Reminder rules saved successfully.");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to save reminder rules.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to save reminder rules."));
         },
     });
 };
@@ -166,18 +236,18 @@ export const useUpsertReminderRulesMutation = () => {
 export const useUpdateAppointmentRemindersMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ appointmentId, data }: { appointmentId: string; data: { reminder_mode: "default" | "custom" | "none"; custom_reminders?: any[] } }) =>
-            appointmentApis.updateAppointmentReminders(appointmentId, data),
+        mutationFn: ({ appointmentId, data }: UpdateAppointmentRemindersVariables) =>
+            appointmentApis.updateAppointmentReminders(appointmentId, data) as Promise<MutationResponse>,
         onSuccess: (data, variables) => {
-            const appointmentId = (variables as any)?.appointmentId;
+            const appointmentId = variables?.appointmentId;
             if (appointmentId) {
                 queryClient.invalidateQueries({ queryKey: ["appointment-reminders", appointmentId] });
             }
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             toast.success(data?.message || "Reminders updated successfully.");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to update reminders.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to update reminders."));
         },
     });
 };
@@ -185,14 +255,14 @@ export const useUpdateAppointmentRemindersMutation = () => {
 export const useNoShowWithActionMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: NoShowWithActionDto) => appointmentApis.noShowWithAction(data),
+        mutationFn: (data: NoShowWithActionDto) => appointmentApis.noShowWithAction(data) as Promise<MutationResponse>,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             toast.success(data?.message || "No-show handled successfully.");
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Failed to handle no-show.");
+        onError: (error: unknown) => {
+            toast.error(getErrorMessage(error, "Failed to handle no-show."));
         },
     });
 };

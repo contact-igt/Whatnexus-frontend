@@ -9,7 +9,7 @@ import { useLeadIntelligenceQuery } from '@/hooks/useLeadIntelligenceQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { socket } from "@/utils/socket";
+import { connectTenantSocketWithToken, socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
@@ -41,7 +41,7 @@ const arePhonesEqual = (p1: any, p2: any) => {
 export const ChatView = () => {
     const queryClient = useQueryClient();
     const dispatch = useDispatch();
-    const { user, whatsappApiDetails } = useAuth();
+    const { user, whatsappApiDetails, token } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
@@ -538,12 +538,11 @@ export const ChatView = () => {
     };
 
     useEffect(() => {
-        if (!user?.tenant_id) return;
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         // Register event listeners BEFORE connecting to ensure we don't miss events
         const handleConnect = () => {
-            
-            socket.emit("join-tenant", user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
 
         const handleAiTyping = (data: any) => {
@@ -601,11 +600,7 @@ export const ChatView = () => {
         socket.on("insufficient-balance", handleInsufficientBalance);
 
         // Then connect (or emit join if already connected)
-        if (socket.connected) {
-            socket.emit("join-tenant", user.tenant_id);
-        } else {
-            socket.connect();
-        }
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         return () => {
             socket.off("connect", handleConnect);
@@ -617,7 +612,7 @@ export const ChatView = () => {
             socket.off("wallet-suspended", handleWalletSuspended);
             socket.off("insufficient-balance", handleInsufficientBalance);
         };
-    }, [user?.tenant_id]);
+    }, [token, user?.tenant_id, user?.user_type]);
 
     useEffect(() => {
         if (displayMessages.length > 0 && !highlightParam) {

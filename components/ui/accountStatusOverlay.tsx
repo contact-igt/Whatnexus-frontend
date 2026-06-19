@@ -3,6 +3,7 @@
 import { useDispatch } from 'react-redux';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { clearAuthData } from '@/redux/slices/auth/authSlice';
+import { disconnectSocket } from '@/utils/socket';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { ShieldOff, LogOut } from 'lucide-react';
@@ -51,7 +52,10 @@ export const AccountStatusOverlay = () => {
 
                 {/* Logout */}
                 <button
-                    onClick={() => dispatch(clearAuthData())}
+                    onClick={() => {
+                        disconnectSocket();
+                        dispatch(clearAuthData());
+                    }}
                     className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-orange-600 hover:bg-orange-500 transition-all shadow-lg shadow-orange-500/20"
                 >
                     <LogOut size={15} />

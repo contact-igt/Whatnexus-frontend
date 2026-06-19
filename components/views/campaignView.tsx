@@ -27,12 +27,12 @@ import { Pagination } from '@/components/ui/pagination';
 import { Campaign } from '@/services/campaign/campaign.types';
 import { CreateCampaignModal } from '@/components/campaign/createCampaignModal';
 import { PageTransition } from '@/components/ui/pageTransition';
-import { socket } from '@/utils/socket';
+import { connectTenantSocketWithToken, socket } from '@/utils/socket';
 
 type TabType = 'all' | 'draft' | 'scheduled' | 'active' | 'paused' | 'completed' | 'failed' | 'trash';
 
 export const CampaignView = memo(() => {
-    const { whatsappApiDetails, user } = useAuth();
+    const { whatsappApiDetails, user, token } = useAuth();
     const { isDarkMode } = useTheme();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -59,19 +59,13 @@ export const CampaignView = memo(() => {
 
     // Socket: real-time campaign delivery status updates
     useEffect(() => {
-        if (!user?.tenant_id) return;
-
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Already connected, emit join immediately
-            socket.emit('join-tenant', user.tenant_id);
-        }
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         const handleConnect = () => {
-            socket.emit('join-tenant', user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
         socket.on('connect', handleConnect);
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         const handleCampaignUpdate = () => {
             refetch();
@@ -82,7 +76,7 @@ export const CampaignView = memo(() => {
             socket.off('campaign-status-update', handleCampaignUpdate);
             socket.off('connect', handleConnect);
         };
-    }, [user?.tenant_id]);
+    }, [token, user?.tenant_id, user?.user_type]);
 
     const handleCampaignSuccess = (campaignId: string) => {
         refetch(); // Refresh the campaign list
@@ -200,12 +194,22 @@ export const CampaignView = memo(() => {
             align: 'center',
             headerAlign: 'center',
             renderCell: ({ row }) => (
-                <span className={cn(
-                    "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
-                    getCampaignStatusColor(row.status)
-                )}>
-                    {row.status}
-                </span>
+                <div className="flex flex-col items-center gap-0.5">
+                    <span className={cn(
+                        "text-[9px] font-bold px-2 py-1 rounded uppercase tracking-wide",
+                        getCampaignStatusColor(row.status)
+                    )}>
+                        {row.status}
+                    </span>
+                    {row.status === 'paused' && row.paused_reason && (
+                        <span className={cn(
+                            "text-[8px] max-w-[110px] truncate",
+                            isDarkMode ? "text-amber-400/60" : "text-amber-600/70"
+                        )} title={row.paused_reason}>
+                            {row.paused_reason}
+                        </span>
+                    )}
+                </div>
             )
         },
         {

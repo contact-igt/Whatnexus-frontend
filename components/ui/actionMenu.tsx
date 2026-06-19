@@ -109,6 +109,9 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
             <button
                 ref={menuRef}
                 onClick={toggleOpen}
+                aria-label="Open action menu"
+                aria-expanded={isOpen}
+                aria-haspopup="menu"
                 className={cn(
                     "p-2 rounded-lg transition-all font-sans",
                     isOpen
@@ -157,6 +160,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                             <button
                                                 key={index}
                                                 onClick={(e) => { e.stopPropagation(); item.onClick(); setIsOpen(false); }}
+                                                aria-label={item.label}
                                                 className={cn(
                                                     "w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all group",
                                                     item.customClass || (isDarkMode
@@ -204,6 +208,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                                 key={index}
                                                 onClick={(e) => { e.stopPropagation(); if (!item.locked) { item.onClick(); setIsOpen(false); } }}
                                                 disabled={item.locked}
+                                                aria-label={item.label}
                                                 title={item.locked ? "Neural Summary is disabled in settings" : undefined}
                                                 className={cn(
                                                     "w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all group",
@@ -254,6 +259,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                             <button
                                                 key={index}
                                                 onClick={(e) => { e.stopPropagation(); item.onClick(); setIsOpen(false); }}
+                                                aria-label={item.label}
                                                 className={cn(
                                                     "w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all group",
                                                     item.customClass || (isDarkMode

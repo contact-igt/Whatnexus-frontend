@@ -12,7 +12,6 @@ import {
     Timer,
     Group,
     Users2,
-    Smartphone,
     UserCog,
     UserCircle,
     LucideIcon,
@@ -24,8 +23,8 @@ import {
     ShieldCheck,
     CreditCard,
     Mail,
-    Trash2,
     Terminal,
+    ScrollText,
     FlaskConical,
     Landmark,
     UserPlus,
@@ -397,6 +396,13 @@ export const managementSidebarConfig: SidebarGroup[] = [
                 label: "Pricing & Rates",
                 route: "/pricing",
                 icon: DollarSign,
+                requiresWhatsApp: false,
+                roles: ['super_admin', 'platform_admin']
+            },
+            {
+                label: "API Logs",
+                route: "/management/api-request-logs",
+                icon: ScrollText,
                 requiresWhatsApp: false,
                 roles: ['super_admin', 'platform_admin']
             }

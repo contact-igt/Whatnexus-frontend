@@ -15,7 +15,7 @@ import { BillingPaymentHistory } from "./billingPaymentHistory";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useGetBillingModeQuery, useGetWalletBalanceQuery } from "@/hooks/useBillingQuery";
-import { socket } from "@/utils/socket";
+import { connectTenantSocketWithToken, socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { WhatsAppConnectionPlaceholder } from "../whatsappConfiguration/whatsappConnectionPlaceholder";
@@ -29,7 +29,7 @@ import {
 const billingApis = new billingApiData();
 
 export const BillingView = () => {
-  const { whatsappApiDetails, user } = useAuth();
+  const { whatsappApiDetails, user, token } = useAuth();
   const { isDarkMode } = useTheme();
   const queryClient = useQueryClient();
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -63,22 +63,14 @@ export const BillingView = () => {
   }, [walletBalanceRes?.data?.balance, isPostpaid]);
 
   useEffect(() => {
-    if (!user?.tenant_id) return;
-
-    if (!socket.connected) {
-      socket.connect();
-    }
+    if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
     const joinAndListen = () => {
-      
-      socket.emit("join-tenant", user.tenant_id);
+      connectTenantSocketWithToken(token, user.tenant_id);
     };
 
     socket.on("connect", joinAndListen);
-
-    if (socket.connected) {
-      joinAndListen();
-    }
+    connectTenantSocketWithToken(token, user.tenant_id);
 
     // Debounced billing update — prevents 900 API calls/min during high msg throughput
     let updateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -262,7 +254,7 @@ export const BillingView = () => {
       socket.off("billing-mode-changed", handleBillingModeChanged);
       socket.off("gst-rate-changed", handleGstRateChanged);
     };
-  }, [user?.tenant_id, queryClient]);
+  }, [queryClient, token, user?.tenant_id, user?.user_type]);
 
   const handleDateChange = (start: Date | null, end: Date | null) => {
     setStartDate(start);

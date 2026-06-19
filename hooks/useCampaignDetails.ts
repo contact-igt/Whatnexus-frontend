@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { campaignService } from "@/services/campaign/campaign.service";
 import type {
     CampaignDetails,
+    CampaignDetailsResponse,
     CampaignStatsResponse,
     Recipient,
     RecipientStatus,
@@ -15,121 +17,116 @@ interface UseCampaignDetailsReturn {
     isRefreshing: boolean;
     error: string | null;
     stats: CampaignStatsResponse["data"] | null;
+    statsError: string | null;
     lastUpdatedAt: string | null;
     refetch: (options?: { manual?: boolean }) => Promise<void>;
+    setCampaign: (campaign: CampaignDetails | null) => void;
     filters: {
         recipientStatus: RecipientStatus | undefined;
         setRecipientStatus: (status: RecipientStatus | undefined) => void;
     };
 }
 
-/**
- * Custom hook for managing campaign details with real-time updates
- * @param campaignId Campaign ID to fetch details for
- * @param autoRefresh Enable auto-refresh for active campaigns (default: true)
- * @param refreshInterval Refresh interval in milliseconds (default: 5000)
- */
 export const useCampaignDetails = (
     campaignId: string,
     autoRefresh: boolean = true,
     refreshInterval: number = 5000
 ): UseCampaignDetailsReturn => {
-    const [campaign, setCampaign] = useState<CampaignDetails | null>(null);
-    const [recipients, setRecipients] = useState<Recipient[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+    const queryClient = useQueryClient();
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-    const [stats, setStats] = useState<CampaignStatsResponse["data"] | null>(null);
     const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
-    const [recipientStatusFilter, setRecipientStatusFilter] = useState<
+
+    const [recipientStatusFilter, setRecipientStatusFilterState] = useState<
         RecipientStatus | undefined
-    >(undefined);
+    >(() => {
+        if (typeof window === "undefined") return undefined;
+        const storageKey = `campaign_recipient_filter_${campaignId}`;
+        const stored = localStorage.getItem(storageKey);
+        return stored ? (stored as RecipientStatus) : undefined;
+    });
 
-    const fetchCampaignDetails = useCallback(async (options?: { manual?: boolean }) => {
-        try {
-            if (options?.manual) {
-                setIsRefreshing(true);
-            } else {
-                setLoading(true);
-            }
-            setError(null);
+    const detailsQueryKey = [
+        "campaignDetails",
+        campaignId,
+        recipientStatusFilter,
+    ] as const;
+    const statsQueryKey = ["campaignStats", campaignId] as const;
 
+    const detailsQuery = useQuery({
+        queryKey: detailsQueryKey,
+        enabled: Boolean(campaignId),
+        queryFn: () => {
             const params = recipientStatusFilter
                 ? { recipient_status: recipientStatusFilter }
                 : undefined;
+            return campaignService.getCampaignDetails(campaignId, params);
+        },
+        refetchInterval: (query) => {
+            if (!autoRefresh) return false;
+            const campaign = (query.state.data as CampaignDetailsResponse | undefined)?.data;
+            return campaign && isCampaignActive(campaign.status) ? refreshInterval : false;
+        },
+    });
 
-            const response = await campaignService.getCampaignDetails(
-                campaignId,
-                params
-            );
+    const statsQuery = useQuery({
+        queryKey: statsQueryKey,
+        enabled: Boolean(campaignId),
+        queryFn: () => campaignService.getCampaignStats(campaignId),
+        refetchInterval: () => {
+            if (!autoRefresh) return false;
+            const campaign = detailsQuery.data?.data;
+            return campaign && isCampaignActive(campaign.status) ? refreshInterval : false;
+        },
+    });
 
-            setCampaign(response.data);
-            setRecipients(response.data.recipients || []);
-            setLastUpdatedAt(new Date().toISOString());
+    useEffect(() => {
+        if (detailsQuery.dataUpdatedAt) {
+            setLastUpdatedAt(new Date(detailsQuery.dataUpdatedAt).toISOString());
+        }
+    }, [detailsQuery.dataUpdatedAt]);
 
-            // Fetch stats separately so a stats failure doesn't break the whole page
-            try {
-                const statsResponse = await campaignService.getCampaignStats(campaignId);
-                setStats(statsResponse.data);
-            } catch (statsErr) {
-                console.warn("Failed to fetch campaign stats:", statsErr);
-                // Keep existing stats if available, or set null — page still works
-            }
-        } catch (err) {
-            console.error("Error fetching campaign details:", err);
-            setError("Failed to load campaign details. Please try again.");
-        } finally {
-            if (options?.manual) {
-                setIsRefreshing(false);
+    const setRecipientStatusFilter = useCallback((status: RecipientStatus | undefined) => {
+        setRecipientStatusFilterState(status);
+        if (typeof window !== "undefined") {
+            const storageKey = `campaign_recipient_filter_${campaignId}`;
+            if (status) {
+                localStorage.setItem(storageKey, status);
             } else {
-                setLoading(false);
+                localStorage.removeItem(storageKey);
             }
         }
-    }, [campaignId, recipientStatusFilter]);
+    }, [campaignId]);
 
-    // Initial fetch
+    const refetch = useCallback(async (options?: { manual?: boolean }) => {
+        if (options?.manual) setIsRefreshing(true);
+        try {
+            await Promise.all([detailsQuery.refetch(), statsQuery.refetch()]);
+        } finally {
+            if (options?.manual) setIsRefreshing(false);
+        }
+    }, [detailsQuery, statsQuery]);
+
     useEffect(() => {
-        Promise.resolve().then(() => fetchCampaignDetails());
-    }, [fetchCampaignDetails]);
+        if (!autoRefresh || !detailsQuery.data?.data) return;
 
-    // Auto-refresh for active campaigns
-    useEffect(() => {
-        if (!autoRefresh || !campaign) return;
-
-        const isActive = isCampaignActive(campaign.status);
-        if (!isActive) return;
-
-        const intervalId = setInterval(() => {
-            fetchCampaignDetails();
-        }, refreshInterval);
-
-        return () => clearInterval(intervalId);
-    }, [autoRefresh, campaign, refreshInterval, fetchCampaignDetails]);
-
-    // Smart auto-refresh for scheduled campaigns: fire exactly when scheduled_at arrives
-    useEffect(() => {
-        if (!autoRefresh || !campaign) return;
+        const campaign = detailsQuery.data.data;
         if (campaign.status !== "scheduled" || !campaign.scheduled_at) return;
 
         const scheduledMs = new Date(campaign.scheduled_at).getTime();
         const delayMs = scheduledMs - Date.now();
-
         let timeoutId: ReturnType<typeof setTimeout>;
         let intervalId: ReturnType<typeof setInterval>;
 
         const startPolling = () => {
-            // Immediately fetch once, then poll every refreshInterval until no longer scheduled
-            fetchCampaignDetails();
+            void refetch();
             intervalId = setInterval(() => {
-                fetchCampaignDetails();
+                void refetch();
             }, refreshInterval);
         };
 
         if (delayMs <= 0) {
-            // Scheduled time already passed (e.g. page opened after due time) — poll now
             startPolling();
         } else {
-            // Set a one-shot timer to fire exactly when the scheduled time arrives
             timeoutId = setTimeout(startPolling, delayMs);
         }
 
@@ -137,25 +134,50 @@ export const useCampaignDetails = (
             clearTimeout(timeoutId);
             clearInterval(intervalId);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [autoRefresh, campaign?.status, campaign?.scheduled_at]);
+    }, [
+        autoRefresh,
+        detailsQuery.data?.data?.status,
+        detailsQuery.data?.data?.scheduled_at,
+        refetch,
+        refreshInterval,
+    ]);
+
+    const setCampaign = useCallback((campaign: CampaignDetails | null) => {
+        queryClient.setQueryData<CampaignDetailsResponse | undefined>(
+            detailsQueryKey,
+            (current) => {
+                if (!campaign) return current;
+                return {
+                    message: current?.message || "Campaign details",
+                    data: {
+                        ...campaign,
+                        recipients: campaign.recipients || current?.data?.recipients || [],
+                    },
+                };
+            }
+        );
+    }, [detailsQueryKey, queryClient]);
 
     const setRecipientStatus = useCallback(
         (status: RecipientStatus | undefined) => {
             setRecipientStatusFilter(status);
         },
-        []
+        [setRecipientStatusFilter]
     );
+
+    const campaign = detailsQuery.data?.data || null;
 
     return {
         campaign,
-        recipients,
-        loading,
+        recipients: campaign?.recipients || [],
+        loading: detailsQuery.isLoading,
+        statsError: statsQuery.isError ? "Stats unavailable. Please refresh to retry." : null,
         isRefreshing,
-        error,
-        stats,
+        error: detailsQuery.isError ? "Failed to load campaign details. Please try again." : null,
+        stats: statsQuery.data?.data || null,
         lastUpdatedAt,
-        refetch: fetchCampaignDetails,
+        refetch,
+        setCampaign,
         filters: {
             recipientStatus: recipientStatusFilter,
             setRecipientStatus,

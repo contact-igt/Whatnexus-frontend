@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { jwtDecode } from "jwt-decode";
 import { clearAuthData } from "@/redux/slices/auth/authSlice";
+import { disconnectSocket } from "@/utils/socket";
 import { toast } from "@/lib/toast";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -1125,6 +1126,7 @@ export const SuperAdminBillingView = () => {
     }, [token]);
 
     const handleRelogin = () => {
+        disconnectSocket();
         dispatch(clearAuthData());
         router.replace("/management/login");
     };

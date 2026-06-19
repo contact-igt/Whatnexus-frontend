@@ -23,7 +23,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGetAgentsQuery } from '@/hooks/useMessagesQuery';
 import { useBulkUpdateLeadsMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { toast } from '@/lib/toast';
-import { socket } from '@/utils/socket';
+import { connectTenantSocketWithToken, socket } from '@/utils/socket';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 import { LeadIntelligenceApiData } from '@/services/leadIntelligene';
 
@@ -31,7 +31,7 @@ const leadIntelligenceApis = new LeadIntelligenceApiData();
 
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
-    const { whatsappApiDetails, user } = useAuth();
+    const { whatsappApiDetails, user, token } = useAuth();
     
     const router = useRouter();
 
@@ -56,19 +56,13 @@ export const LeadsView = () => {
 
     // Socket: real-time lead updates
     useEffect(() => {
-        if (!user?.tenant_id) return;
-
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Already connected, emit join immediately
-            socket.emit('join-tenant', user.tenant_id);
-        }
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         const handleConnect = () => {
-            socket.emit('join-tenant', user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
         socket.on('connect', handleConnect);
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         const handleLeadUpdated = () => {
             refetchLeads();
@@ -79,7 +73,7 @@ export const LeadsView = () => {
             socket.off('lead-updated', handleLeadUpdated);
             socket.off('connect', handleConnect);
         };
-    }, [user?.tenant_id]);
+    }, [token, user?.tenant_id, user?.user_type]);
     const { data: deletedLeadsData, isLoading: isLoadingDeletedLeads, refetch: refetchDeletedLeads } = useGetDeletedLeadsQuery();
 
     const formatMessageDate = (dateString: string) => {

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useChatSuggestMutation, useGetAllHistoryChatsQuery, useMessagesByPhoneQuery, useSendTemplateMessageMutation, useUpdateSeenMutation, useAssignAgentMutation } from '@/hooks/useMessagesQuery';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { socket } from "@/utils/socket";
+import { connectTenantSocketWithToken, socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
 import { TemplateSelectionModal, ProcessedTemplate } from "@/components/campaign/templateSelectionModal";
@@ -37,7 +37,7 @@ export const HistoryView = () => {
     const aiSettings = {
         neural_summary: rawAiSettings.neural_summary ?? true,
     };
-    const { user, whatsappApiDetails } = useAuth();
+    const { user, whatsappApiDetails, token } = useAuth();
     const { isDarkMode } = useTheme();
     const [chatSummary, setChatSummary] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -306,19 +306,13 @@ export const HistoryView = () => {
     };
 
     useEffect(() => {
-        if (!user?.tenant_id) return;
-
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Already connected, emit join immediately
-            socket.emit("join-tenant", user.tenant_id);
-        }
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         const handleConnect = () => {
-            socket.emit("join-tenant", user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
         socket.on("connect", handleConnect);
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         socket.on("new-message", handleIncomingMessage);
         const handleSessionActivated = () => {
@@ -331,7 +325,7 @@ export const HistoryView = () => {
             socket.off("session-activated", handleSessionActivated);
             socket.off("connect", handleConnect);
         };
-    }, [user?.tenant_id]);
+    }, [token, user?.tenant_id, user?.user_type]);
 
     useEffect(() => {
         if (groupedEntries?.length > 0) {

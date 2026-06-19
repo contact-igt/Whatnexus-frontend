@@ -69,12 +69,14 @@ export const LaunchCampaignModal = ({
     }, []);
 
     useEffect(() => {
+        let resetTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
         if (isOpen) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
-            // Reset form when closed
-            setTimeout(() => {
+            // Reset form when closed with proper cleanup
+            resetTimeoutId = setTimeout(() => {
                 setActiveTab('single');
                 setCampaignName("");
                 setMessageContent("");
@@ -91,6 +93,9 @@ export const LaunchCampaignModal = ({
         }
         return () => {
             document.body.style.overflow = 'unset';
+            if (resetTimeoutId) {
+                clearTimeout(resetTimeoutId);
+            }
         };
     }, [isOpen]);
 
