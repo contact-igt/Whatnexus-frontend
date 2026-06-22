@@ -25,11 +25,33 @@ type AppointmentQueryParams = {
     lead_id?: string;
 };
 
-type AppointmentRecord = Record<string, unknown>;
+export interface Appointment {
+    appointment_id: string;
+    patient_name: string;
+    country_code?: string | null;
+    contact_number: string;
+    contact_id?: string | null;
+    lead_id?: string | null;
+    age?: number | null;
+    appointment_date: string;
+    appointment_time: string;
+    status: string;
+    notes?: string | null;
+    doctor_id?: string | null;
+    doctor?: { doctor_id: string; name: string; title?: string | null } | null;
+    token_number?: number | null;
+    type?: string | null;
+    email?: string | null;
+    created_at?: string | null;
+    createdAt?: string | null;
+    patientName?: string | null;
+    contact?: string | null;
+    time?: string | null;
+}
 
 type AppointmentListResponse = {
     success?: boolean;
-    data?: AppointmentRecord[];
+    data?: Appointment[];
     message?: string;
 };
 

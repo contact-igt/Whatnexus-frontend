@@ -378,7 +378,7 @@ export const calculatePercentage = (part: number, total: number): string => {
  * @param status Campaign status
  * @returns Tailwind color classes
  */
-export const getCampaignStatusColor = (status: CampaignStatus): string => {
+export const getCampaignStatusColor = (status: CampaignStatus | 'cancelled' | 'deleted'): string => {
     switch (status) {
         case "completed":
             return "bg-emerald-500/10 text-emerald-500";

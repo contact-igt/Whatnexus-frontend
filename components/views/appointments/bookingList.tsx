@@ -8,6 +8,7 @@ import { AppointmentDrawer } from './appointmentDrawer';
 import { VisitOutcomeDrawer } from './VisitOutcomeDrawer';
 import { NoShowDrawer } from './NoShowDrawer';
 import { useGetAllAppointmentsQuery, useDeleteAppointmentMutation, useUpdateAppointmentStatusMutation, useCompleteWithOutcomeMutation, useNoShowWithActionMutation } from '@/hooks/useAppointmentQuery';
+import type { Appointment } from '@/hooks/useAppointmentQuery';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { ActionMenu } from '@/components/ui/actionMenu';
@@ -19,26 +20,7 @@ interface BookingListProps {
     onAutoCreateHandled?: () => void;
 }
 
-export interface Appointment {
-    appointment_id: string;
-    patient_name: string;
-    country_code?: string;
-    contact_number: string;
-    contact_id?: string;
-    lead_id?: string;
-    age?: number;
-    appointment_date: string;
-    appointment_time: string;
-    status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed' | 'Noshow';
-    notes?: string;
-    doctor_id?: string;
-    doctor?: { doctor_id: string; name: string; title?: string };
-    token_number?: number;
-    type?: string;
-    email?: string;
-    created_at?: string;
-    createdAt?: string;
-}
+export type { Appointment };
 
 export const BookingList = ({
     isDarkMode,
@@ -355,10 +337,10 @@ export const BookingList = ({
 
     const statusConfig: Record<string, { color: string; bg: string; border: string; accent: string; dot: string }> = {
         confirmed: { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', accent: 'bg-emerald-500', dot: 'bg-emerald-500' },
-        pending:   { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', accent: 'bg-amber-500', dot: 'bg-amber-500' },
+        pending: { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', accent: 'bg-amber-500', dot: 'bg-amber-500' },
         cancelled: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', accent: 'bg-red-500', dot: 'bg-red-500' },
         completed: { color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', accent: 'bg-blue-500', dot: 'bg-blue-500' },
-        noshow:    { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', accent: 'bg-orange-500', dot: 'bg-orange-500' },
+        noshow: { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', accent: 'bg-orange-500', dot: 'bg-orange-500' },
     };
 
     const getStatus = (status: string) => statusConfig[status?.toLowerCase()] || statusConfig['pending'];
