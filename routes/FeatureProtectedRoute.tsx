@@ -6,6 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 
 const FEATURE_ROUTE_MAP: Array<{ route: string; featureKey: string; matchMode: "exact" | "prefix" }> = [
+  { route: "/followups", featureKey: "appointments", matchMode: "prefix" },
+  { route: "/followup-hub", featureKey: "appointments", matchMode: "prefix" },
+  { route: "/reminders", featureKey: "appointments", matchMode: "exact" },
   { route: "/courses/sessions", featureKey: "sessions", matchMode: "exact" },
   { route: "/courses/mentors", featureKey: "mentors", matchMode: "exact" },
   { route: "/specialization", featureKey: "specialization", matchMode: "exact" },

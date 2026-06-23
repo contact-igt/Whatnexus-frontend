@@ -515,9 +515,13 @@ export const _axios = async (
       store.dispatch(clearAuthData());
     }
 
-    // Detect account-level errors (deactivated / suspended / blocked) and store globally
+    // Detect account-level errors (deactivated / suspended / blocked) and store globally.
+    // Skip feature-level guards like: Feature "appointments" is disabled for this tenant.
     const errMsg: string = err?.response?.data?.message || err?.message || "";
-    if (/deactivat|suspend|block|disabled|contact your admin/i.test(errMsg)) {
+    const isFeatureDisabledGuard = /^Feature\s+"[^"]+"\s+is\s+disabled\s+for\s+this\s+tenant$/i.test(
+      errMsg.trim(),
+    );
+    if (!isFeatureDisabledGuard && /deactivat|suspend|block|contact your admin/i.test(errMsg)) {
       store.dispatch(setAccountError(errMsg));
     }
 

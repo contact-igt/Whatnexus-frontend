@@ -127,7 +127,11 @@ export const GroupedSidebar = ({
     const { unreadCount } = useNotifications();
     const { enabled_features, industry_type } = useFeatureAccess();
     const { pendingCount: faqPendingCount, canAccessFaqNotifications } = useFaqNotifications();
-    const { data: pendingAppointmentsData } = useGetAllAppointmentsQuery({ status: 'pending' });
+    const canAccessAppointments = enabled_features.includes('appointments');
+    const { data: pendingAppointmentsData } = useGetAllAppointmentsQuery(
+        { status: 'pending' },
+        { enabled: canAccessAppointments },
+    );
     useGetWhatsappConfigQuery();
     const { isDarkMode } = useTheme();
 
@@ -204,7 +208,7 @@ export const GroupedSidebar = ({
                 label: "Follow-up Hub",
                 route: "/followups",
                 icon: Clock,
-                featureKey: followUpStaticMeta?.featureKey || "followups",
+                featureKey: followUpStaticMeta?.featureKey || "appointments",
                 requiresWhatsApp: followUpStaticMeta?.requiresWhatsApp ?? true,
                 requiresLocal: followUpStaticMeta?.requiresLocal,
                 roles: followUpStaticMeta?.roles,
@@ -318,7 +322,7 @@ export const GroupedSidebar = ({
     //   'production' → main production deployment  |  'preview' → branch deployments
     // Fall back to NEXT_PUBLIC_ENV then hostname for non-Vercel / local environments.
     const _vercelEnv = (process.env.NEXT_PUBLIC_VERCEL_ENV || '').trim();
-    const _appEnv    = (process.env.NEXT_PUBLIC_ENV || '').trim();
+    const _appEnv = (process.env.NEXT_PUBLIC_ENV || '').trim();
     const isLocalServer = _vercelEnv
         ? _vercelEnv !== 'production'
         : _appEnv
@@ -327,7 +331,7 @@ export const GroupedSidebar = ({
                 window.location.hostname === 'localhost' ||
                 window.location.hostname === '127.0.0.1' ||
                 window.location.hostname.includes('ngrok')
-              );
+            );
 
     // Sync Redux active tab state only — navigation is driven by <Link> in SidebarGroupItem.
     const handleActiveTab = (tab: string) => {

@@ -117,7 +117,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
                 label: "Follow-up Hub",
                 route: "/followups",
                 icon: Clock,
-                featureKey: "followups",
+                featureKey: "appointments",
                 requiresWhatsApp: true,
             },
             {
@@ -168,7 +168,7 @@ export const tenantSidebarConfig: SidebarGroup[] = [
             }
         ]
     },
-        {
+    {
         groupLabel: "Team Management",
         items: [
             {
