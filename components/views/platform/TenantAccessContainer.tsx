@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ALL_FEATURE_KEYS,
+  getAllowedFeaturesForIndustry,
   getDefaultFeaturesForIndustry,
   IndustryType,
 } from "../organization/TenantFeatureAccessChecklist";
@@ -130,9 +131,11 @@ export const TenantAccessContainer = () => {
   };
 
   const buildOverridesPayload = () => {
+    const allowedFeatureSet = new Set(getAllowedFeaturesForIndustry(selectedIndustryType));
     const defaultFeatureSet = new Set(getDefaultFeaturesForIndustry(selectedIndustryType));
 
     return ALL_FEATURE_KEYS
+      .filter((featureKey) => allowedFeatureSet.has(featureKey))
       .map((featureKey) => {
         const isEnabled = Boolean(selectedFeatures[featureKey]);
         const isDefaultEnabled = defaultFeatureSet.has(featureKey);
@@ -145,6 +148,30 @@ export const TenantAccessContainer = () => {
         };
       })
       .filter(Boolean) as Array<{ feature_key: string; is_enabled: boolean }>;
+  };
+
+  const handleIndustryTypeChange = (industryType: IndustryType) => {
+    setSelectedIndustryType(industryType);
+
+    const allowedFeatureSet = new Set(getAllowedFeaturesForIndustry(industryType));
+    const defaultFeatureSet = new Set(getDefaultFeaturesForIndustry(industryType));
+
+    setSelectedFeatures((prev) => {
+      const nextSelectedFeatures: Record<string, boolean> = {};
+
+      ALL_FEATURE_KEYS.forEach((featureKey) => {
+        if (!allowedFeatureSet.has(featureKey)) {
+          nextSelectedFeatures[featureKey] = false;
+          return;
+        }
+
+        const prevValue = prev[featureKey];
+        nextSelectedFeatures[featureKey] =
+          typeof prevValue === "boolean" ? prevValue : defaultFeatureSet.has(featureKey);
+      });
+
+      return nextSelectedFeatures;
+    });
   };
 
   const handleSave = () => {
@@ -212,7 +239,7 @@ export const TenantAccessContainer = () => {
           <TenantIndustrySelector
             isDarkMode={isDarkMode}
             selectedIndustryType={selectedIndustryType}
-            onChange={setSelectedIndustryType}
+            onChange={handleIndustryTypeChange}
           />
 
           <TenantFeatureMatrix

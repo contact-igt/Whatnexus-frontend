@@ -43,10 +43,10 @@ const FEATURE_GROUPS: Array<{
   title: string;
   features: string[];
 }> = [
-  { title: "Common Features", features: COMMON_FEATURES },
-  { title: "Healthcare Features", features: HEALTHCARE_FEATURES },
-  { title: "Education Features", features: EDUCATION_FEATURES },
-];
+    { title: "Common Features", features: COMMON_FEATURES },
+    { title: "Healthcare Features", features: HEALTHCARE_FEATURES },
+    { title: "Education Features", features: EDUCATION_FEATURES },
+  ];
 
 const FEATURE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -79,8 +79,29 @@ export const getDefaultFeaturesForIndustry = (
 ) => {
   const normalizedIndustry =
     industryType === "healthcare" ||
-    industryType === "education" ||
-    industryType === "general"
+      industryType === "education" ||
+      industryType === "general"
+      ? industryType
+      : "general";
+
+  if (normalizedIndustry === "healthcare") {
+    return [...COMMON_FEATURES, ...HEALTHCARE_FEATURES];
+  }
+
+  if (normalizedIndustry === "education") {
+    return [...COMMON_FEATURES, ...EDUCATION_FEATURES];
+  }
+
+  return [...COMMON_FEATURES];
+};
+
+export const getAllowedFeaturesForIndustry = (
+  industryType: IndustryType | string,
+) => {
+  const normalizedIndustry =
+    industryType === "healthcare" ||
+      industryType === "education" ||
+      industryType === "general"
       ? industryType
       : "general";
 

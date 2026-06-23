@@ -25,6 +25,10 @@ type AppointmentQueryParams = {
     lead_id?: string;
 };
 
+type AppointmentQueryOptions = {
+    enabled?: boolean;
+};
+
 export interface Appointment {
     appointment_id: string;
     patient_name: string;
@@ -93,7 +97,10 @@ const getErrorMessage = (error: unknown, fallbackMessage: string) => {
     return fallbackMessage;
 };
 
-export const useGetAllAppointmentsQuery = (params?: AppointmentQueryParams) => {
+export const useGetAllAppointmentsQuery = (
+    params?: AppointmentQueryParams,
+    options?: AppointmentQueryOptions,
+) => {
     const tenantId = useSelector((state: RootState) => state.auth.user?.tenant_id);
     const userType = useSelector((state: RootState) => state.auth.user?.user_type);
     const token = useSelector((state: RootState) => state.auth.token);
@@ -102,7 +109,11 @@ export const useGetAllAppointmentsQuery = (params?: AppointmentQueryParams) => {
         queryKey: ["appointments", tenantId, params],
         queryFn: () => appointmentApis.getAllAppointments(params) as Promise<AppointmentListResponse>,
         staleTime: 30 * 1000,
-        enabled: !!token && userType === "tenant" && !!tenantId,
+        enabled:
+            !!token &&
+            userType === "tenant" &&
+            !!tenantId &&
+            (options?.enabled ?? true),
     });
 };
 

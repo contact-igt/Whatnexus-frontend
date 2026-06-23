@@ -1,5 +1,10 @@
 import { cn } from "@/lib/utils";
-import { getDefaultFeaturesForIndustry, IndustryType } from "../organization/TenantFeatureAccessChecklist";
+import {
+  ALL_FEATURE_KEYS,
+  getAllowedFeaturesForIndustry,
+  getDefaultFeaturesForIndustry,
+  IndustryType,
+} from "../organization/TenantFeatureAccessChecklist";
 
 interface TenantAccessSummaryProps {
   isDarkMode: boolean;
@@ -15,6 +20,7 @@ export const TenantAccessSummary = ({
   featureMetadata,
 }: TenantAccessSummaryProps) => {
   const defaultSet = new Set(getDefaultFeaturesForIndustry(selectedIndustryType));
+  const allowedSet = new Set(getAllowedFeaturesForIndustry(selectedIndustryType));
   const labelMap = featureMetadata.reduce<Record<string, string>>((acc, item) => {
     acc[item.key] = item.label;
     return acc;
@@ -24,7 +30,8 @@ export const TenantAccessSummary = ({
   const disabled: string[] = [];
   const overrides: Array<{ key: string; enabled: boolean }> = [];
 
-  Object.entries(selectedFeatures).forEach(([featureKey, isEnabled]) => {
+  ALL_FEATURE_KEYS.filter((featureKey) => allowedSet.has(featureKey)).forEach((featureKey) => {
+    const isEnabled = Boolean(selectedFeatures[featureKey]);
     if (isEnabled) {
       enabled.push(labelMap[featureKey] || featureKey);
     } else {
