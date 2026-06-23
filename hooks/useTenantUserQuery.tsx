@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "@/lib/toast";
 
-
 const tenantUserApis = new tenantUserApiData();
 const whatsappConfigApis = new whatsappConfigApiData();
 
@@ -24,7 +23,6 @@ export const useTenantUserQuery = () => {
 
     return { data, isLoading, isError }
 }
-
 
 // ================= Tenant User ==================
 

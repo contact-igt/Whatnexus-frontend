@@ -8,13 +8,18 @@ import type {
 } from "@/services/campaign/campaign.types";
 
 /**
- * Validates phone number format (91XXXXXXXXXX)
+ * Validates phone number format per E.164 standard.
+ * Backend accepts:
+ *   - 10 digits → prepends '91' (India default)
+ *   - 11 digits starting with '0' → strips '0', prepends '91'
+ *   - 12 digits → accepts as-is (assumed to already include country code)
+ * Frontend accepts combined 10-15 digits (E.164 range).
  * @param phone Phone number to validate
  * @returns true if valid, false otherwise
  */
 export const validatePhoneNumber = (phone: string): boolean => {
-    // Strict rule: either local 10 digits or country+number 12 digits
-    const phoneRegex = /^(?:\d{10}|\d{12})$/;
+    // Accept 10-15 digits (E.164 standard range)
+    const phoneRegex = /^\d{10,15}$/;
     return phoneRegex.test(phone);
 };
 
@@ -66,7 +71,9 @@ export const parseCSV = async (file: File): Promise<string[][]> => {
 };
 
 /**
- * Validates CSV data against template variable count
+ * Validates CSV data against template variable count.
+ * Phone validation (E.164): accepts combined 10-15 digits.
+ * Backend will normalize: 10 digits → prepend '91', 12 digits → use as-is, etc.
  * @param data Array of CSV rows (excluding header)
  * @param templateVariableCount Number of variables expected by template
  * @returns Validation result with errors and valid/invalid rows
@@ -86,7 +93,7 @@ export const validateCSVData = (
         const localNumber = row[1];
         const dynamicVariables = row.slice(2, templateVariableCount + 2);
 
-        // New rule: require country_code and mobile_number to be digits and their concatenation must be exactly 12 digits.
+        // Validate: country_code and mobile_number must contain only digits
         if (!countryCode || !/^\d+$/.test(countryCode)) {
             errors.push({ field: `Row ${rowNumber}`, message: `Invalid country code: ${countryCode}. Must contain only digits.` });
             invalidRows.push(rowNumber);
@@ -100,9 +107,10 @@ export const validateCSVData = (
         }
 
         const fullPhoneNumber = countryCode + localNumber;
-        // Enforce exact combined length of 12 digits (country code + local number)
-        if (fullPhoneNumber.length !== 12) {
-            errors.push({ field: `Row ${rowNumber}`, message: `Combined number ${fullPhoneNumber} is invalid — must be exactly 12 digits (country code + local number).` });
+        // E.164 validation: accept 10-15 digits combined (aligned with backend)
+        // Backend will normalize to backend's expected format (10→+91, 12→as-is, etc.)
+        if (fullPhoneNumber.length < 10 || fullPhoneNumber.length > 15) {
+            errors.push({ field: `Row ${rowNumber}`, message: `Phone number ${fullPhoneNumber} has ${fullPhoneNumber.length} digits — must be 10-15 digits (country code + local number).` });
             invalidRows.push(rowNumber);
             return;
         }
@@ -370,7 +378,7 @@ export const calculatePercentage = (part: number, total: number): string => {
  * @param status Campaign status
  * @returns Tailwind color classes
  */
-export const getCampaignStatusColor = (status: CampaignStatus): string => {
+export const getCampaignStatusColor = (status: CampaignStatus | 'cancelled' | 'deleted'): string => {
     switch (status) {
         case "completed":
             return "bg-emerald-500/10 text-emerald-500";
@@ -409,8 +417,9 @@ export const getRecipientStatusColor = (status: RecipientStatus): string => {
         case "pending":
             return "bg-slate-500/10 text-slate-500";
         case "failed":
+            return "bg-red-500/10 text-red-500"; // Retryable failure (lighter)
         case "permanently_failed":
-            return "bg-red-500/10 text-red-500";
+            return "bg-red-900/20 text-red-700 font-semibold"; // F-13: Distinct permanent failure (darker, bold)
         default:
             return "bg-slate-500/10 text-slate-500";
     }

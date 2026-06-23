@@ -83,7 +83,7 @@ export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
             setIsDemoRequesting(false);
             await handleGoogleSheetForm(params);
         } catch (error) {
-            console.log(error);
+            
             setIsDemoRequesting(false);
         }
         setIsSubmitted(true);
@@ -93,9 +93,9 @@ export const DemoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
         try {
             const res = await fetch("https://script.google.com/macros/s/AKfycbxTIuIQRP01F0cJQ2fXGGixghd4EAfPNSrGf_do98dFsvpmjNYuFkbCmum67EEdeA10/exec", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString() })
             const data = await res.json();
-            console.log(data);
+            
         } catch (error) {
-            console.log(error);
+            
         }
     }
     return (

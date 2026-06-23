@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import {
   useCreateIndustryMutation,
+  useDeleteIndustryMutation,
   useIndustriesQuery,
   usePatchIndustryMutation,
 } from "@/hooks/useModuleAccessManagementQuery";
@@ -20,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ActionMenu } from "@/components/ui/actionMenu";
 
 const toSnakeCaseKey = (value: string) =>
   value
@@ -41,6 +43,8 @@ export const IndustriesManagementView = () => {
     useCreateIndustryMutation();
   const { mutate: patchIndustry, isPending: isPatchPending } =
     usePatchIndustryMutation();
+  const { mutate: deleteIndustry, isPending: isDeletePending } =
+    useDeleteIndustryMutation();
 
   const industries = useMemo(() => data?.data || [], [data]);
 
@@ -48,6 +52,7 @@ export const IndustriesManagementView = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<any | null>(null);
   const [pendingStatusIndustry, setPendingStatusIndustry] = useState<any | null>(null);
+  const [pendingDeleteIndustry, setPendingDeleteIndustry] = useState<any | null>(null);
 
   const [createForm, setCreateForm] = useState({
     industry_id: "",
@@ -159,6 +164,14 @@ export const IndustriesManagementView = () => {
     });
   };
 
+  const handleDeleteIndustry = (industry: any) => {
+    deleteIndustry(industry.industry_id, {
+      onSuccess: () => {
+        setPendingDeleteIndustry(null);
+      },
+    });
+  };
+
   return (
     <div className="h-full overflow-y-auto p-8 space-y-6 max-w-[1400px] mx-auto no-scrollbar pb-32">
       <div className="flex justify-between items-end gap-4">
@@ -228,29 +241,18 @@ export const IndustriesManagementView = () => {
                     </span>
                   </TableCell>
                   <TableCell align="center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => openEdit(industry)}
-                        className={cn(
-                          "px-2.5 py-1.5 text-xs rounded-lg font-medium",
-                          isDarkMode ? "bg-white/10 text-white hover:bg-white/15" : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-                        )}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setPendingStatusIndustry(industry)}
-                        disabled={isPatchPending}
-                        className={cn(
-                          "px-2.5 py-1.5 text-xs rounded-lg font-medium",
-                          industry.is_active
-                            ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                            : "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25",
-                          isPatchPending && "opacity-60 cursor-not-allowed",
-                        )}
-                      >
-                        {industry.is_active ? "Deactivate" : "Activate"}
-                      </button>
+                    <div className="flex items-center justify-center">
+                      <ActionMenu
+                        isDarkMode={isDarkMode}
+                        isEdit
+                        onEdit={() => openEdit(industry)}
+                        isDelete
+                        onDelete={() => setPendingDeleteIndustry(industry)}
+                        isActivate={!industry.is_active}
+                        onActivate={() => setPendingStatusIndustry(industry)}
+                        isDeactivate={industry.is_active}
+                        onDeactivate={() => setPendingStatusIndustry(industry)}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -429,6 +431,23 @@ export const IndustriesManagementView = () => {
         onConfirm={() => {
           if (!pendingStatusIndustry) return;
           toggleIndustryStatus(pendingStatusIndustry);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteIndustry)}
+        title="Delete Item?"
+        description="Are you sure you want to delete this item? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeletePending}
+        onCancel={() => {
+          if (!isDeletePending) setPendingDeleteIndustry(null);
+        }}
+        onConfirm={() => {
+          if (!pendingDeleteIndustry) return;
+          handleDeleteIndustry(pendingDeleteIndustry);
         }}
       />
     </div>

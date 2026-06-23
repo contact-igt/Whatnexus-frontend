@@ -133,6 +133,44 @@ const stripVariablePlaceholders = (message: string) => {
     return message.replace(/\{\{\d+\}\}/g, '').trim();
 };
 
+// Parse interactive payload and extract buttons
+const extractInteractiveButtons = (interactive_payload: string): Array<{ text: string; value?: string; type: 'quick_reply' }> => {
+    if (!interactive_payload) return [];
+
+    try {
+        const payload = typeof interactive_payload === 'string' ? JSON.parse(interactive_payload) : interactive_payload;
+        const buttons: Array<{ text: string; value?: string; type: 'quick_reply' }> = [];
+        // Handle QUICK_REPLY buttons ONLY (action.buttons)
+        // Do NOT extract action.sections (list items)
+        if (payload?.interactive?.action?.button || (payload?.interactive?.action?.buttons && Array.isArray(payload.interactive.action.buttons))) {
+            if (payload.interactive.action.button) {
+                buttons.push({
+                    text: payload.interactive.action.button,
+                    value: payload.interactive.action.button,
+                    type: 'quick_reply'
+                })
+            }
+            else if (payload.interactive.action.buttons && Array.isArray(payload.interactive.action.buttons)) {
+                payload.interactive.action.buttons.forEach((btn: any) => {
+                    if (btn.reply) {
+                        buttons.push({
+                            text: btn.reply.title || btn.reply.id,
+                            value: btn.reply.id,
+                            type: 'quick_reply'
+                        });
+                    }
+                });
+            }
+
+            
+        }
+        return buttons;
+    } catch (error) {
+        
+        return [];
+    }
+};
+
 // Format WhatsApp text: *bold*, _italic_, ~strikethrough~
 const formatWhatsAppText = (text: string): string => {
     let formatted = text;
@@ -219,16 +257,16 @@ const resolveMediaUrl = (url: string | null | undefined): string | null => {
 };
 
 // 33-bar waveform pattern — mimics a real voice recording amplitude envelope
-const WAVE_H = [3,5,9,6,12,7,4,10,6,8,4,13,7,5,10,6,11,4,8,5,10,6,3,9,5,8,4,11,6,8,3,5,7];
+const WAVE_H = [3, 5, 9, 6, 12, 7, 4, 10, 6, 8, 4, 13, 7, 5, 10, 6, 11, 4, 8, 5, 10, 6, 3, 9, 5, 8, 4, 11, 6, 8, 3, 5, 7];
 
 const CustomAudioPlayer: React.FC<{ src: string; isDarkMode: boolean; isOutgoing: boolean }> = ({
     src, isDarkMode, isOutgoing,
 }) => {
-    const audioRef               = useRef<HTMLAudioElement>(null);
-    const [playing,  setPlaying] = useState(false);
-    const [current,  setCurrent] = useState(0);
-    const [dur,      setDur]     = useState(0);
-    const [err,      setErr]     = useState(false);
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [playing, setPlaying] = useState(false);
+    const [current, setCurrent] = useState(0);
+    const [dur, setDur] = useState(0);
+    const [err, setErr] = useState(false);
 
     // Reset all state when src changes (e.g. meta_media_id → R2 URL after async download)
     useEffect(() => {
@@ -255,16 +293,16 @@ const CustomAudioPlayer: React.FC<{ src: string; isDarkMode: boolean; isOutgoing
         setCurrent(t);
     };
 
-    const pct         = dur > 0 ? (current / dur) * 100 : 0;
+    const pct = dur > 0 ? (current / dur) * 100 : 0;
     const displayTime = playing || current > 0 ? current : dur;
 
     // Colours derived once for clarity
-    const playBtn  = isOutgoing ? 'bg-white/25 hover:bg-white/40' : isDarkMode ? 'bg-[#00a884] hover:bg-[#06cf9c]' : 'bg-[#00a884] hover:bg-[#009073]';
-    const barFill  = isOutgoing ? 'bg-white'      : 'bg-[#00a884]';
-    const barEmpty = isOutgoing ? 'bg-white/30'   : isDarkMode ? 'bg-white/20' : 'bg-black/15';
-    const timeCol  = isOutgoing ? 'text-white/65' : isDarkMode ? 'text-white/45' : 'text-black/40';
-    const micBg    = isOutgoing ? 'bg-white/20'   : isDarkMode ? 'bg-[#00a884]/25' : 'bg-[#00a884]/15';
-    const micCol   = isOutgoing ? 'text-white/90' : 'text-[#00a884]';
+    const playBtn = isOutgoing ? 'bg-white/25 hover:bg-white/40' : isDarkMode ? 'bg-[#00a884] hover:bg-[#06cf9c]' : 'bg-[#00a884] hover:bg-[#009073]';
+    const barFill = isOutgoing ? 'bg-white' : 'bg-[#00a884]';
+    const barEmpty = isOutgoing ? 'bg-white/30' : isDarkMode ? 'bg-white/20' : 'bg-black/15';
+    const timeCol = isOutgoing ? 'text-white/65' : isDarkMode ? 'text-white/45' : 'text-black/40';
+    const micBg = isOutgoing ? 'bg-white/20' : isDarkMode ? 'bg-[#00a884]/25' : 'bg-[#00a884]/15';
+    const micCol = isOutgoing ? 'text-white/90' : 'text-[#00a884]';
 
     if (err) return (
         <div className={cn('flex items-center gap-2 text-xs opacity-50', timeCol)}>
@@ -328,7 +366,7 @@ const CustomAudioPlayer: React.FC<{ src: string; isDarkMode: boolean; isOutgoing
             >
                 {playing
                     ? <Pause size={16} fill="white" stroke="none" className="text-white" />
-                    : <Play  size={16} fill="white" stroke="none" className="text-white ml-0.5" />
+                    : <Play size={16} fill="white" stroke="none" className="text-white ml-0.5" />
                 }
             </button>
         </div>
@@ -353,9 +391,12 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
     const rawUrl = resolveMediaUrl(embeddedMedia?.url || mediaUrl);
     const effectiveUrl = mediaError ? null : rawUrl;
 
-    // Extract buttons from message text
+    // Extract buttons from message text (template format)
     const hasButtons = msg.message?.includes("[Button:");
     const templateButtons = hasButtons ? extractButtonsFromText(msg.message) : [];
+
+    // Extract buttons from interactive payload
+    const interactiveButtons = msg.interactive_payload ? extractInteractiveButtons(msg.interactive_payload) : [];
 
     // Get body text: strip media prefix and buttons
     let bodyText = msg.message || '';
@@ -368,6 +409,7 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
     bodyText = stripVariablePlaceholders(bodyText);
 
     const isTemplate = isTemplateMessage(msg);
+    const isInteractive = msg.message_type === 'interactive';
 
     // Highlight search text
     const renderText = (text: string) => {
@@ -489,6 +531,22 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
         );
     }
 
+    // ─── Interactive Message Layout ───
+    if (isInteractive) {
+        return (
+            <div className="interactive-message">
+                {/* Body Text */}
+                {bodyText && (
+                    <div className={cn(
+                        "text-[15px] whitespace-pre-wrap break-words mb-1 px-1"
+                    )}>
+                        {renderFormattedBody(bodyText)}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     // ─── Regular Message Layout ───
     return (
         <>
@@ -565,8 +623,6 @@ const MessageContent: React.FC<{ msg: any; searchText: string; isDarkMode: boole
         </>
     );
 };
-
-
 
 interface MessageListProps {
     isDarkMode: boolean;
@@ -701,13 +757,23 @@ export const MessageList: React.FC<MessageListProps> = ({
                         {msgs.map((msg: any, msgIndex: number) => {
                             const isOutgoing = msg.sender !== 'user';
                             const isTemplate = isTemplateMessage(msg);
+                            // Check message_type OR if it has interactive_payload
+                            const isInteractive = msg.message_type === 'interactive' || !!msg.interactive_payload;
 
                             // Extract template buttons for rendering outside bubble
                             const msgTemplateButtons = isTemplate ? extractButtonsFromText(msg.message || '') : [];
 
+                            // Extract interactive buttons for rendering outside bubble
+                            const msgInteractiveButtons = isInteractive ? extractInteractiveButtons(msg.interactive_payload) : [];
+
+                            // Debug log for interactive messages
+                            if (msg.interactive_payload) {
+                                
+                            }
+
                             return (
                                 <div key={msg.id || msgIndex} data-wamid={msg.wamid || undefined} className={cn("flex px-4 py-1", isOutgoing ? 'justify-end' : 'justify-start')}>
-                                    <div className={isTemplate ? "w-full max-w-[320px]" : "max-w-[85%]"}>
+                                    <div className={isTemplate || isInteractive ? "w-full max-w-[320px]" : "max-w-[85%]"}>
                                         {/* Message Bubble */}
                                         <div className={cn(
                                             "min-w-[60px] w-full rounded-lg shadow-sm relative group overflow-hidden p-2 break-words",
@@ -725,7 +791,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                                             <MessageContent msg={msg} searchText={searchText} isDarkMode={isDarkMode} isOutgoing={isOutgoing} />
                                             <div className={cn(
                                                 "flex items-center justify-end space-x-1 opacity-60",
-                                                isTemplate ? "px-1 pb-0.5 pt-1" : ""
+                                                isTemplate || isInteractive ? "px-1 pb-0.5 pt-1" : ""
                                             )}>
                                                 {/* Show "Not delivered" for failed messages */}
                                                 {msg.status === 'failed' && isOutgoing && (
@@ -761,6 +827,27 @@ export const MessageList: React.FC<MessageListProps> = ({
                                                                 <span>{btn.text}</span>
                                                             </div>
                                                         </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* Interactive Buttons — flex layout below bubble */}
+                                        {isInteractive && msgInteractiveButtons.length > 0 && (
+                                            <div className="mt-2 flex gap-2 flex-wrap">
+                                                {msgInteractiveButtons.map((btn, btnIndex) => {
+                                                    return (
+                                                        <button
+                                                            key={btnIndex}
+                                                            className={cn(
+                                                                "flex-1 min-w-[100px] py-2 px-3 rounded-lg text-[12px] font-semibold text-center transition-all cursor-pointer border",
+                                                                isDarkMode
+                                                                    ? 'bg-[#1c2c33] text-emerald-400 border-emerald-500/30 hover:bg-[#243a40]'
+                                                                    : 'bg-white text-emerald-700 border-emerald-300 shadow-sm hover:bg-emerald-50'
+                                                            )}
+                                                        >
+                                                            <span className="truncate">{btn.text}</span>
+                                                        </button>
                                                     );
                                                 })}
                                             </div>

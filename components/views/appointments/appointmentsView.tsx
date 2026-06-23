@@ -7,18 +7,18 @@ import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { BookingList } from './bookingList';
 import { CalendarView } from './calendarView';
+import { useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-
 
 type TabType = 'booking-list' | 'all-appointments' | 'calendar';
 
 export const AppointmentsView = () => {
     const { isDarkMode } = useTheme();
+    const { data: pendingAppointmentsData } = useGetAllAppointmentsQuery({ status: 'pending' });
+    const appointmentPendingCount = pendingAppointmentsData?.data?.length ?? 0;
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    // Restore the last selected tab from localStorage on initial render.
-    // Previously the tab was saved but never restored, so it always reset to 'booking-list'.
     const [activeTab, setActiveTab] = useState<TabType>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('selectedAppointmentTab');
@@ -29,8 +29,8 @@ export const AppointmentsView = () => {
 
     const appointmentTabs = [
         { value: "booking-list", label: "Booking List", icon: List },
-        { value: "all-appointments", label: "All Appointments", icon: List },
-        { value: "calendar", label: "Calendar", icon: Calendar }
+        { value: "all-appointments", label: "All Appointments", icon: List, count: appointmentPendingCount },
+        { value: "calendar", label: "Calendar", icon: Calendar },
     ];
 
     const handleTabChange = (value: TabType) => {
@@ -81,6 +81,11 @@ export const AppointmentsView = () => {
                             >
                                 <Icon size={16} />
                                 <span>{tab?.label}</span>
+                                {tab.count ? (
+                                    <span className="ml-2 inline-flex items-center justify-center rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                        {tab.count > 99 ? '99+' : tab.count}
+                                    </span>
+                                ) : null}
                             </button>
                         );
                     })

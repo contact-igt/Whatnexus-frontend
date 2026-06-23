@@ -115,7 +115,6 @@ export const KnowledgeView = () => {
         // { value: "aiLogs", label: "AI Logs" },
         // { value: "settings", label: "Settings" }
     ];
-    console.log("user", user)
     const handleTabChange = (value: TabType) => {
         setActiveTab(value);
         router.push(`/knowledge?tab=${value}`);
@@ -226,9 +225,9 @@ export const KnowledgeView = () => {
     };
 
     const handleDeleteClick = (item: any, type: string, isPermanent: boolean = false) => {
-        console.log("item", item);
-        console.log("type", type);
-        console.log("isPermanent", isPermanent);
+        
+        
+        
         setItemToDelete({ item, type });
         if (isPermanent && type == "knowledge") {
             setIsPermanentKnowledgeDelete(true);
@@ -239,7 +238,6 @@ export const KnowledgeView = () => {
     };
 
     const handleRestore = (item: any, type: string) => {
-        console.log("item", item)
         setItemToDelete({ item, type });
         setIsRestoreModalOpen(true);
     }
@@ -329,7 +327,6 @@ export const KnowledgeView = () => {
             }
         }));
         setUploading(false);
-        console.log("newFiles", newFiles)
         setUploadedData(prev => [...newFiles, ...prev]);
     };
 
@@ -370,7 +367,6 @@ export const KnowledgeView = () => {
 
     const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         processFiles(e.target.files);
-        console.log("files", e.target.files)
         e.target.value = "";
     };
 
@@ -413,9 +409,9 @@ export const KnowledgeView = () => {
             setEditContent({ name: data?.name, prompt: content });
         }
     }, [knowledgeDetailsById, promptDetailsById, viewMode, isViewModalOpen]);
-    console.log("editContent", editContent);
-    console.log("isPermanentKnowledgeDelete", isPermanentKnowledgeDelete);
-    console.log("isPermanentPromptDelete", isPermanentPromptDelete);
+    
+    
+    
     return (
         <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">

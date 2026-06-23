@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { campaignService } from "@/services/campaign/campaign.service";
+import { socket } from "@/utils/socket";
 import type {
     Campaign,
     CampaignListParams,
+    CampaignListResponse,
     CampaignStatus,
 } from "@/services/campaign/campaign.types";
 
@@ -29,32 +32,24 @@ interface UseCampaignsReturn {
 }
 
 /**
- * Custom hook for managing campaign list with pagination and filtering
- * @param autoRefresh Enable auto-refresh for active campaigns (default: true)
- * @param refreshInterval Refresh interval in milliseconds (default: 5000)
+ * Campaign list hook. React Query owns fetching/cache invalidation while this
+ * hook preserves the older return shape consumed by the campaign views.
  */
 export const useCampaigns = (
     autoRefresh: boolean = true,
-    refreshInterval: number = 5000
+    refreshInterval: number = 5000,
+    onlyPollWhenSocketDisconnected: boolean = true
 ): UseCampaignsReturn => {
-    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [limit, setLimit] = useState<number>(10);
-    const [totalPages, setTotalPages] = useState<number>(1);
-    const [totalCampaigns, setTotalCampaigns] = useState<number>(0);
     const [statusFilter, setStatusFilter] = useState<CampaignStatus | undefined>(
         undefined
     );
-    const [deletedCampaigns, setDeletedCampaigns] = useState<Campaign[]>([]);
     const [searchFilter, setSearchFilter] = useState<string>("");
 
-    const fetchCampaigns = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
+    const campaignQuery = useQuery({
+        queryKey: ["campaigns", currentPage, limit, statusFilter, searchFilter],
+        queryFn: () => {
             const params: CampaignListParams = {
                 page: currentPage,
                 limit,
@@ -62,73 +57,46 @@ export const useCampaigns = (
                 ...(searchFilter ? { search: searchFilter } : {}),
             };
 
-            const response = await campaignService.getCampaignList(params);
+            return campaignService.getCampaignList(params);
+        },
+        refetchInterval: (query) => {
+            if (!autoRefresh) return false;
 
-            // Derive completed status on the client when all messages are delivered
-            const campaignsFromApi = response.data.campaigns || [];
-            const campaignsWithDerivedStatus = campaignsFromApi.map((c: any) => {
-                try {
-                    const total = Number(c.total_audience || c.total_audience_count || 0);
-                    const delivered = Number(c.delivered_count || 0);
-                    if (total > 0 && delivered >= total && c.status !== 'completed') {
-                        return { ...c, status: 'completed' };
-                    }
-                } catch { }
-                return c;
-            });
+            const campaignsFromApi =
+                (query.state.data as CampaignListResponse | undefined)?.data?.campaigns || [];
+            const hasActiveCampaigns = campaignsFromApi.some(
+                (campaign) => campaign.status === "active"
+            );
+            if (!hasActiveCampaigns) return false;
 
-            setCampaigns(campaignsWithDerivedStatus);
-            setTotalPages(response.data.totalPages);
-            setTotalCampaigns(response.data.totalItems);
-        } catch (err) {
-            console.error("Error fetching campaigns:", err);
-            setError("Failed to load campaigns. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    }, [currentPage, limit, statusFilter, searchFilter]);
+            const shouldPoll = !onlyPollWhenSocketDisconnected || !socket.connected;
+            return shouldPoll ? refreshInterval : false;
+        },
+    });
 
-    const fetchDeletedCampaigns = useCallback(async () => {
-        try {
-            setLoading(true);
+    const deletedCampaignsQuery = useQuery({
+        queryKey: ["deletedCampaigns"],
+        queryFn: async () => {
             const response = await campaignService.getDeletedCampaignList();
-            // Lifecycle controller returns data.items; main list returns data.campaigns
-            const items = (response as any)?.data?.items ?? (response as any)?.data?.campaigns ?? [];
-            const normalizedItems = items.map((item: any) => ({
+            const items =
+                (response as any)?.data?.items ?? (response as any)?.data?.campaigns ?? [];
+
+            return items.map((item: any) => ({
                 ...item,
-                status: item?.status || 'deleted',
                 createdAt: item?.createdAt || item?.created_at || null,
                 updatedAt: item?.updatedAt || item?.updated_at || null,
-            }));
-            setDeletedCampaigns(normalizedItems);
-        } catch (err) {
-            console.error("Error fetching deleted campaigns:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+            })) as Campaign[];
+        },
+        enabled: false,
+    });
 
-    // Initial fetch
-    useEffect(() => {
-        fetchCampaigns();
-    }, [fetchCampaigns]);
+    const refetch = useCallback(async () => {
+        await campaignQuery.refetch();
+    }, [campaignQuery]);
 
-    // Auto-refresh for active campaigns
-    useEffect(() => {
-        if (!autoRefresh) return;
-
-        const hasActiveCampaigns = campaigns.some(
-            (campaign) => campaign.status === "active"
-        );
-
-        if (!hasActiveCampaigns) return;
-
-        const intervalId = setInterval(() => {
-            fetchCampaigns();
-        }, refreshInterval);
-
-        return () => clearInterval(intervalId);
-    }, [autoRefresh, campaigns, refreshInterval, fetchCampaigns]);
+    const fetchDeletedCampaigns = useCallback(async () => {
+        await deletedCampaignsQuery.refetch();
+    }, [deletedCampaignsQuery]);
 
     const setPage = useCallback((page: number) => {
         setCurrentPage(page);
@@ -136,12 +104,12 @@ export const useCampaigns = (
 
     const setLimitCallback = useCallback((newLimit: number) => {
         setLimit(newLimit);
-        setCurrentPage(1); // Reset to first page when limit changes
+        setCurrentPage(1);
     }, []);
 
     const setStatus = useCallback((status: CampaignStatus | undefined) => {
         setStatusFilter(status);
-        setCurrentPage(1); // Reset to first page when filter changes
+        setCurrentPage(1);
     }, []);
 
     const setSearch = useCallback((search: string) => {
@@ -150,14 +118,14 @@ export const useCampaigns = (
     }, []);
 
     return {
-        campaigns,
-        loading,
-        error,
-        refetch: fetchCampaigns,
+        campaigns: campaignQuery.data?.data?.campaigns || [],
+        loading: campaignQuery.isLoading || deletedCampaignsQuery.isFetching,
+        error: campaignQuery.isError ? "Failed to load campaigns. Please try again." : null,
+        refetch,
         pagination: {
             currentPage,
-            totalPages,
-            totalCampaigns,
+            totalPages: campaignQuery.data?.data?.totalPages || 1,
+            totalCampaigns: campaignQuery.data?.data?.totalItems || 0,
             setPage,
             setLimit: setLimitCallback,
         },
@@ -167,7 +135,7 @@ export const useCampaigns = (
             search: searchFilter,
             setSearch,
         },
-        deletedCampaigns,
+        deletedCampaigns: deletedCampaignsQuery.data || [],
         fetchDeletedCampaigns,
     };
 };

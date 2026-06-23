@@ -25,7 +25,7 @@ export const useGetAllDoctorsQuery = (params?: any) => {
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
         queryKey: ['doctors', tenantId, params],
-        queryFn: () => doctorApis.getAllDoctors()
+        queryFn: () => doctorApis.getAllDoctors(params)
     });
 };
 
@@ -40,13 +40,14 @@ export const useGetDoctorByIdQuery = (doctorId: string) => {
 
 export const useUpdateDoctorMutation = () => {
     const queryClient = useQueryClient();
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useMutation({
         mutationFn: ({ doctorId, data }: { doctorId: string; data: UpdateDoctorDto }) => {
             return doctorApis.updateDoctor(doctorId, data);
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['doctors'] });
-            queryClient.invalidateQueries({ queryKey: ['doctor', variables.doctorId] });
+            queryClient.invalidateQueries({ queryKey: ['doctor', tenantId, variables.doctorId] });
             toast.success(data?.message || 'Doctor updated successfully!');
         },
         onError: (error: any) => {
@@ -76,7 +77,7 @@ export const useGetDeletedDoctorsQuery = (params?: any) => {
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({
         queryKey: ['deleted-doctors', tenantId, params],
-        queryFn: () => doctorApis.getDeletedDoctors()
+        queryFn: () => doctorApis.getDeletedDoctors(params)
     });
 };
 
@@ -109,6 +110,39 @@ export const usePermanentDeleteDoctorMutation = () => {
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Doctor permanent deletion failed!');
+        }
+    });
+};
+
+// --- Doctor <-> Branches hooks ---
+export const useGetDoctorBranchesQuery = (
+    doctorId: string,
+    options?: { enabled?: boolean },
+) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    const enabled = options?.enabled ?? true;
+    return useQuery({
+        queryKey: ['doctor-branches', tenantId, doctorId],
+        queryFn: () => doctorApis.getDoctorBranches(doctorId),
+        enabled: !!doctorId && enabled,
+    });
+};
+
+export const useUpdateDoctorBranchesMutation = () => {
+    const queryClient = useQueryClient();
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    return useMutation({
+        mutationFn: ({ doctorId, data }: { doctorId: string; data: { branches: Array<{ branch_id: string; is_primary?: boolean }> } }) => {
+            return doctorApis.updateDoctorBranches(doctorId, data);
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['doctors'] });
+            queryClient.invalidateQueries({ queryKey: ['doctor', tenantId, variables.doctorId] });
+            queryClient.invalidateQueries({ queryKey: ['doctor-branches', tenantId, variables.doctorId] });
+            toast.success(data?.message || 'Doctor branches updated successfully!');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to update doctor branches');
         }
     });
 };

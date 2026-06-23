@@ -11,6 +11,7 @@ const FEATURE_ROUTE_MAP: Array<{ route: string; featureKey: string; matchMode: "
   { route: "/specialization", featureKey: "specialization", matchMode: "exact" },
   { route: "/appointments", featureKey: "appointments", matchMode: "exact" },
   { route: "/doctors", featureKey: "doctors", matchMode: "exact" },
+  { route: "/branches", featureKey: "branches", matchMode: "exact" },
   { route: "/courses", featureKey: "courses", matchMode: "exact" },
 ];
 
@@ -58,4 +59,3 @@ const FeatureProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default FeatureProtectedRoute;
-

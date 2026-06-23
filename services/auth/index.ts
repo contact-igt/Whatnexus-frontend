@@ -1,6 +1,5 @@
 import {_axios} from "@/helper/axios";
 
-
 export interface user{
     username: string;
     password: string;

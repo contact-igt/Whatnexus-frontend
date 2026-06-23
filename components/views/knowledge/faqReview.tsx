@@ -123,8 +123,6 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
   const { mutate: deleteReview } = useDeleteFaqReviewMutation();
   const { mutate: toggleActive } = useToggleFaqActiveMutation();
 
-
-
   const pendingCount: number = countsData?.data?.pending_review ?? 0;
   const publishedCount: number = countsData?.data?.published ?? 0;
 
@@ -164,7 +162,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
     const whatsappNumber = item.whatsapp_number || item.phone;
     const wamid = item.wamid;
 
-    console.log('[Go to Chat] Item:', { whatsappNumber, wamid, item });
+    
 
     if (!whatsappNumber) {
       console.error('[Go to Chat] No phone number found for this FAQ');
@@ -179,7 +177,7 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
     }
 
     // Navigate with highlight parameter
-    console.log('[Go to Chat] Navigating with highlight:', { phone: whatsappNumber, wamid });
+    
     router.push(
       `/chats?phone=${encodeURIComponent(whatsappNumber)}&highlight=${encodeURIComponent(wamid)}`
     );
@@ -664,14 +662,14 @@ export const FaqReview = ({ isDarkMode }: FaqReviewProps) => {
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          console.log('[Variant Button] v.wamid:', v.wamid, 'v.phone:', v.phone, 'variant:', v);
+                                          
                                           // Build variant item object to pass to handleGoToChat
                                           const variantItem = {
                                             whatsapp_number: v.phone || item.whatsapp_number,
                                             phone: v.phone || item.whatsapp_number,
                                             wamid: v.wamid
                                           };
-                                          console.log('[Variant Button] variantItem:', variantItem);
+                                          
                                           handleGoToChat(variantItem);
                                         }}
                                         className={cn(

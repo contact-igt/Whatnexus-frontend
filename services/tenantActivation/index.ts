@@ -1,6 +1,5 @@
 import { _axios } from "@/helper/axios"
 
-
 export class TenantActivationApiData {
     CheckInvitedEmailStatus = async (token: string) => {
         return await _axios("get", `/tenant/invite/verify?token=${token}`)

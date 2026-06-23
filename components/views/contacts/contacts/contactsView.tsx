@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { socket } from '@/utils/socket';
+import { connectTenantSocketWithToken, socket } from '@/utils/socket';
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Contact, CreateContactDto, UpdateContactDto } from "@/types/contact";
@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 export const ContactsView = () => {
     const { isDarkMode } = useTheme();
+    const { user, token } = useAuth();
 
     // Modals and Drawers State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -52,21 +53,14 @@ export const ContactsView = () => {
     const { data: contactsData, isLoading: isLoadingContacts, refetch: refetchContacts } = useGetAllContactsQuery();
 
     // Socket: auto-refresh when new contact is created via WhatsApp
-    const { user } = useAuth();
     useEffect(() => {
-        if (!user?.tenant_id) return;
-
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Already connected, emit join immediately
-            socket.emit('join-tenant', user.tenant_id);
-        }
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         const handleConnect = () => {
-            socket.emit('join-tenant', user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
         socket.on('connect', handleConnect);
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         const handleContactCreated = () => {
             if (activeTab === 'all') refetchContacts();
@@ -77,7 +71,7 @@ export const ContactsView = () => {
             socket.off('contact-created', handleContactCreated);
             socket.off('connect', handleConnect);
         };
-    }, [user?.tenant_id, activeTab]);
+    }, [activeTab, token, user?.tenant_id, user?.user_type]);
     const { data: deletedContactsData, isLoading: isLoadingDeleted } = useGetDeletedContactsQuery();
 
     const { mutate: createContact, isPending: isCreating } = useCreateContactMutation();
@@ -105,8 +99,6 @@ export const ContactsView = () => {
             (contact.email || "").toLowerCase().includes(query)
         );
     }, [contacts, searchQuery]);
-
-
 
     // Handlers
     const handleAddContact = (data: CreateContactDto) => {
@@ -311,7 +303,6 @@ export const ContactsView = () => {
                 isLoading={isCreating}
             />
 
-
             {/* Edit Contact Drawer */}
             <EditContactDrawer
                 isOpen={isEditDrawerOpen}
@@ -364,7 +355,6 @@ export const ContactsView = () => {
                 isLoading={isDeleting || isRestoring || isPermanentlyDeleting}
                 variant={actionType === 'restore' ? 'info' : 'danger'}
             />
-
 
             {/* Bulk Delete Confirmation Drawer */}
             <ConfirmationDrawer

@@ -4,7 +4,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { DoctorManagement } from './doctorManagement';
 import { cn } from "@/lib/utils";
 
-
 export const DoctorsView = () => {
     const { isDarkMode } = useTheme();
     return (

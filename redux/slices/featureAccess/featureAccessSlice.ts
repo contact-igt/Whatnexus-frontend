@@ -17,7 +17,10 @@ export const COMMON_FEATURES = [
   "agent_matrix",
   "billing_payment",
   "general_settings",
-  "fallback",
+  "followups",
+  "knowledge",
+  "whatsapp_settings",
+  "whatsapp_playground",
 ];
 
 interface FeatureAccessState {
@@ -95,4 +98,3 @@ export const {
 } = featureAccessSlice.actions;
 
 export default featureAccessSlice.reducer;
-

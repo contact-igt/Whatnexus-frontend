@@ -60,7 +60,6 @@ const SectionHeader = ({ icon, title, subtitle, accentColor = '#3b82f6', isDarkM
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
-
 export const DashboardView = () => {
     const { isDarkMode } = useTheme();
     const { user } = useAuth();

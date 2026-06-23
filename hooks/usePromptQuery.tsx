@@ -69,7 +69,7 @@ export const useActivatePromptMutation = () => {
       toast.success("Prompt status updated successfully!");
     },
     onError: (error: any) => {
-      console.log(error);
+      
       toast.error(error?.response?.data?.message || "Failed to update prompt status");
     },
   });

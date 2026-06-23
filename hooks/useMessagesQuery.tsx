@@ -22,8 +22,6 @@ export const useGetAllChatsQuery = () => {
     return { data, isLoading, isError };
 };
 
-
-
 export const useGetAllLiveChatsQuery = () => {
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const { data, isLoading, isError, refetch } = useQuery({
@@ -116,7 +114,6 @@ export const useUpdateSeenMutation = () => {
         },
     })
 }
-
 
 export const useChatSuggestMutation = () => {
     const queryClient = useQueryClient();

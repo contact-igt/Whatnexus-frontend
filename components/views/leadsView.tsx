@@ -23,17 +23,16 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGetAgentsQuery } from '@/hooks/useMessagesQuery';
 import { useBulkUpdateLeadsMutation } from '@/hooks/useLeadIntelligenceQuery';
 import { toast } from '@/lib/toast';
-import { socket } from '@/utils/socket';
+import { connectTenantSocketWithToken, socket } from '@/utils/socket';
 import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 import { LeadIntelligenceApiData } from '@/services/leadIntelligene';
 
 const leadIntelligenceApis = new LeadIntelligenceApiData();
 
-
 export const LeadsView = () => {
     const { isDarkMode } = useTheme();
-    const { whatsappApiDetails, user } = useAuth();
-    console.log("whatsappApiDetails", whatsappApiDetails);
+    const { whatsappApiDetails, user, token } = useAuth();
+    
     const router = useRouter();
 
     const { data: tenantSettingsData } = useGetTenantSettingsQuery();
@@ -57,19 +56,13 @@ export const LeadsView = () => {
 
     // Socket: real-time lead updates
     useEffect(() => {
-        if (!user?.tenant_id) return;
-
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Already connected, emit join immediately
-            socket.emit('join-tenant', user.tenant_id);
-        }
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         const handleConnect = () => {
-            socket.emit('join-tenant', user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
         socket.on('connect', handleConnect);
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         const handleLeadUpdated = () => {
             refetchLeads();
@@ -80,7 +73,7 @@ export const LeadsView = () => {
             socket.off('lead-updated', handleLeadUpdated);
             socket.off('connect', handleConnect);
         };
-    }, [user?.tenant_id]);
+    }, [token, user?.tenant_id, user?.user_type]);
     const { data: deletedLeadsData, isLoading: isLoadingDeletedLeads, refetch: refetchDeletedLeads } = useGetDeletedLeadsQuery();
 
     const formatMessageDate = (dateString: string) => {
@@ -234,7 +227,6 @@ export const LeadsView = () => {
         "instagram", "facebook", "twitter", "campaign", "post", "nearby", "other"
     ];
 
-
     // Mutations
     const { mutate: softDeleteLead, isPending: isSoftDeletePending } = useSoftDeleteLeadMutation();
     const { mutate: permanentDeleteLead, isPending: isPermanentDeletePending } = usePermanentDeleteLeadMutation();
@@ -244,7 +236,6 @@ export const LeadsView = () => {
     const { data: agentsList } = useGetAgentsQuery();
 
     const [activeSummaryId, setActiveSummaryId] = useState<string | null>(null);
-
 
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
     const [isAssigningBulk, setIsAssigningBulk] = useState(false);
@@ -410,9 +401,6 @@ export const LeadsView = () => {
             });
         }
     };
-
-    console.log("leadIntelligenceData", leadIntelligenceData)
-    console.log("leadIntelligenceData", leadIntelligenceData)
 
     const handleLeadOpen = (leadPhone: string) => {
         router.push(`/chats?phone=${leadPhone}`)
@@ -772,7 +760,11 @@ export const LeadsView = () => {
             renderCell: ({ row }) => (
                 <div className="flex flex-col items-start justify-center group/summary py-1 w-full">
                     {row?.ai_summary ? (
-                        <div className="flex flex-col gap-1 w-full">
+                        <div
+                            className="flex flex-col gap-1 w-full cursor-pointer"
+                            onClick={(e) => summarizeLead(e, row)}
+                            title="Open Neural Summary"
+                        >
                             {row?.summary_status && (
                                 <div className="self-start">
                                     <Badge
@@ -798,7 +790,7 @@ export const LeadsView = () => {
                                 </p>
                                 {row?.summary_status?.toLowerCase() === 'new' && (
                                     <button
-                                        onClick={(e) => handleRefreshSummary(e, row.lead_id)}
+                                        onClick={(e) => { e.stopPropagation(); handleRefreshSummary(e, row.lead_id); }}
                                         className={cn(
                                             "p-1 rounded transition-all shrink-0 mt-0.5",
                                             isDarkMode ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400 hover:text-slate-600"

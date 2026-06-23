@@ -125,7 +125,6 @@ export default function GalleryPage() {
     }
   };
 
-
   // ── State ──────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -341,7 +340,6 @@ export default function GalleryPage() {
       setIsRestoring(false);
     }
   };
-
 
   // ── Drawer ─────────────────────────────────────────────────────────────────
   const openDrawer = (asset: MediaAsset) => {

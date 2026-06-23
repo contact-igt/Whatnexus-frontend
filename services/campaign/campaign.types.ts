@@ -6,7 +6,9 @@
 
 export type CampaignType = 'immediate' | 'scheduled' | 'broadcast' | 'api';
 export type RecipientSource = 'csv' | 'group' | 'manual';
-export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused' | 'cancelled' | 'deleted';
+// Campaign Status: backend never sets 'deleted' or 'cancelled'. Uses is_deleted flag for soft-delete.
+// Frontend uses 'trash' tab to display is_deleted=true campaigns.
+export type CampaignStatus = 'draft' | 'active' | 'scheduled' | 'completed' | 'failed' | 'paused';
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'permanently_failed';
 export type RecipientDynamicVariables = string[] | string | Record<string, string> | null;
 
@@ -91,6 +93,7 @@ export interface Campaign {
     campaign_name: string;
     campaign_type: CampaignType;
     status: CampaignStatus;
+    paused_reason?: string | null;
     total_audience: number;
     delivered_count: number;
     read_count: number;
@@ -134,6 +137,7 @@ export interface CampaignDetails {
     campaign_name: string;
     campaign_type: CampaignType;
     status: CampaignStatus;
+    paused_reason?: string | null;
     total_audience: number;
     delivered_count: number;
     read_count: number;
@@ -143,6 +147,9 @@ export interface CampaignDetails {
     scheduled_at?: string | null;
     template: TemplateInfo;
     recipients: Recipient[];
+    // F-12: Soft-delete flag (not status='deleted')
+    is_deleted?: boolean;
+    deleted_at?: string | null;
 }
 
 export interface CampaignDetailsResponse {

@@ -52,7 +52,6 @@ export const useSaveWhatsAppConfigMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ data }: { data: any }) => {
-            console.log("datahook", data)
             return whatsappConfigApis.saveWhatsappConfig(data);
         },
         onSuccess: (response, variables) => {
@@ -87,7 +86,6 @@ export const useSendTestWhatsAppConfigQuery = () => {
 
     return useMutation({
         mutationFn: (data: any) => {
-            console.log("data", data)
             return whatsappConfigApis.sendTestWhatsAppConfig(data);
         },
         onSuccess: (response) => {

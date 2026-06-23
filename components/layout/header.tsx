@@ -11,7 +11,7 @@ import { useDispatch } from 'react-redux';
 import { clearAuthData } from '@/redux/slices/auth/authSlice';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
-import { socket } from '@/utils/socket';
+import { connectTenantSocketWithToken, disconnectSocket, socket } from '@/utils/socket';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { updateUserData, updateUserPreferences } from '@/redux/slices/auth/authSlice';
@@ -96,7 +96,7 @@ type HistoryChatsResponse = {
 const messagesApi = new MessagesApiData();
 
 export const Header = () => {
-    const { user, whatsappApiDetails } = useAuth();
+    const { user, whatsappApiDetails, token } = useAuth();
     const { setTheme, isDarkMode } = useTheme();
     const tenantUserApi = new tenantUserApiData();
     const managementApi = new managementApiData();
@@ -161,19 +161,13 @@ export const Header = () => {
     ]);
 
     useEffect(() => {
-        if (!user?.tenant_id) return;
-
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Already connected, emit join immediately
-            socket.emit('join-tenant', user.tenant_id);
-        }
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         const handleConnect = () => {
-            socket.emit('join-tenant', user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
         socket.on('connect', handleConnect);
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         const handleNewMessage = (payload: { sender?: string } = {}) => {
             if (payload.sender !== 'user') return;
@@ -190,7 +184,7 @@ export const Header = () => {
             socket.off('new-message', handleNewMessage);
             socket.off('connect', handleConnect);
         };
-    }, [dispatch, user?.tenant_id]);
+    }, [dispatch, token, user?.tenant_id, user?.user_type]);
 
     const toggleTheme = () => {
         const newTheme = isDarkMode ? "light" : "dark";
@@ -229,6 +223,7 @@ export const Header = () => {
             });
     };
     const handleLogout = () => {
+        disconnectSocket();
         queryClient.clear();
         dispatch(clearAuthData());
         router.replace('/login');

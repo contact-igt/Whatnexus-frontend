@@ -36,8 +36,6 @@ interface TemplateSelectionModalProps {
 type CategoryType = 'marketing' | 'utility' | 'authentication';
 type TemplateType = 'all' | 'text' | 'image' | 'document' | 'video' | 'carousel' | 'location';
 
-
-
 export const TemplateSelectionModal = ({ isOpen, onClose, onSelect }: TemplateSelectionModalProps) => {
     const { isDarkMode } = useTheme();
     const { templates: apiTemplates, loading, error, refetch } = useTemplates();

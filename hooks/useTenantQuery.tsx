@@ -65,7 +65,6 @@ export const useTenantStatusMutation = () => {
     })
 }
 
-
 export const useTestWhatsAppConnectionMutation = () => {
     return useMutation({
         mutationFn: ({ tenantId, data }: { tenantId: string; data: any }) => {
@@ -116,7 +115,6 @@ export const useDeleteTenantMutation = () => {
         },
     });
 };
-
 
 export const useResendInvitationMutation = () => {
     const queryClient = useQueryClient();

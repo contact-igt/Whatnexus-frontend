@@ -20,7 +20,6 @@ interface UserProfileDropdownProps {
 export const UserProfileDropdown = ({ isDarkMode, user, onClose, onLogout }: UserProfileDropdownProps) => {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
-    console.log("user2", user)
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {

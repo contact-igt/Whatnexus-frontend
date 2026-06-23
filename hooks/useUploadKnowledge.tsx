@@ -40,7 +40,6 @@ export const useUploadKnowledgeMutation = () => {
     });
 };
 
-
 export const useGetKnowledgesQuery = () => {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['knowledges'],
@@ -57,7 +56,6 @@ export const useGetKnowledgesQuery = () => {
     return { data, isLoading, isError };
 };
 
-
 export const useKnowledgeByIdQuery = (id: string, type: string) => {
     const query = useQuery({
         queryKey: ['knowledge', id],
@@ -67,7 +65,6 @@ export const useKnowledgeByIdQuery = (id: string, type: string) => {
     });
     return query;
 }
-
 
 export const useUpdateKnowledgeMutation = () => {
     const queryClient = useQueryClient();
@@ -88,7 +85,6 @@ export const useUpdateKnowledgeMutation = () => {
         },
     });
 };
-
 
 export const useActivateKnowledgeMutation = () => {
     const queryClient = useQueryClient();
@@ -156,7 +152,6 @@ export const useDeleteKnowledgePermanentById = () => {
         },
     });
 };
-
 
 export const useRestoreKnowledgeById = () => {
     const queryClient = useQueryClient();

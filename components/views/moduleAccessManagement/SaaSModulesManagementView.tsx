@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import {
   useCreateSaaSModuleMutation,
+  useDeleteSaaSModuleMutation,
   usePatchSaaSModuleMutation,
   useSaaSModulesQuery,
 } from "@/hooks/useModuleAccessManagementQuery";
@@ -21,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ActionMenu } from "@/components/ui/actionMenu";
 
 const MODULE_TYPES = ["core", "feature", "addon", "experimental", "enterprise"] as const;
 const VISIBILITY_TYPES = ["sidebar", "hidden", "internal", "api_only"] as const;
@@ -57,6 +59,8 @@ export const SaaSModulesManagementView = () => {
     useCreateSaaSModuleMutation();
   const { mutate: patchModule, isPending: isPatchPending } =
     usePatchSaaSModuleMutation();
+  const { mutate: deleteSaaSModule, isPending: isDeletePending } =
+    useDeleteSaaSModuleMutation();
 
   const modules = useMemo(() => data?.data || [], [data]);
 
@@ -64,6 +68,7 @@ export const SaaSModulesManagementView = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<any | null>(null);
   const [pendingStatusModule, setPendingStatusModule] = useState<any | null>(null);
+  const [pendingDeleteModule, setPendingDeleteModule] = useState<any | null>(null);
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
@@ -235,6 +240,14 @@ export const SaaSModulesManagementView = () => {
     });
   };
 
+  const handleDeleteModule = (module: any) => {
+    deleteSaaSModule(module.module_id, {
+      onSuccess: () => {
+        setPendingDeleteModule(null);
+      },
+    });
+  };
+
   const parentOptions = modules.map((module: any) => ({
     value: module.module_id,
     label: `${module.module_name} (${module.module_id})`,
@@ -317,29 +330,18 @@ export const SaaSModulesManagementView = () => {
                     </span>
                   </TableCell>
                   <TableCell align="center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => openEdit(module)}
-                        className={cn(
-                          "px-2.5 py-1.5 text-xs rounded-lg font-medium",
-                          isDarkMode ? "bg-white/10 text-white hover:bg-white/15" : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-                        )}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setPendingStatusModule(module)}
-                        disabled={isPatchPending}
-                        className={cn(
-                          "px-2.5 py-1.5 text-xs rounded-lg font-medium",
-                          module.is_active
-                            ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                            : "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25",
-                          isPatchPending && "opacity-60 cursor-not-allowed",
-                        )}
-                      >
-                        {module.is_active ? "Deactivate" : "Activate"}
-                      </button>
+                    <div className="flex items-center justify-center">
+                      <ActionMenu
+                        isDarkMode={isDarkMode}
+                        isEdit
+                        onEdit={() => openEdit(module)}
+                        isDelete
+                        onDelete={() => setPendingDeleteModule(module)}
+                        isActivate={!module.is_active}
+                        onActivate={() => setPendingStatusModule(module)}
+                        isDeactivate={module.is_active}
+                        onDeactivate={() => setPendingStatusModule(module)}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -618,6 +620,23 @@ export const SaaSModulesManagementView = () => {
         onConfirm={() => {
           if (!pendingStatusModule) return;
           toggleStatus(pendingStatusModule);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteModule)}
+        title="Delete Item?"
+        description="Are you sure you want to delete this item? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeletePending}
+        onCancel={() => {
+          if (!isDeletePending) setPendingDeleteModule(null);
+        }}
+        onConfirm={() => {
+          if (!pendingDeleteModule) return;
+          handleDeleteModule(pendingDeleteModule);
         }}
       />
     </div>

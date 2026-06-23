@@ -36,7 +36,6 @@ export const whatsappConnectSchema = z.object({
         .min(8, "WABA ID is too short")
         .max(20, "WABA ID is too long"),
 
-
     phone_number_id: z
         .string()
         .regex(/^\d+$/, "Phone Number ID must contain only numbers")
@@ -52,7 +51,7 @@ export const whatsappConnectSchema = z.object({
     access_token: z
         .string()
         .min(100, "Access token is too short")
-        .max(300, "Access token is too long"),
+        .max(900, "Access token is too long"),
 
     app_id: z
         .string()
@@ -132,7 +131,7 @@ export const WhatsAppConnectionView = () => {
     }
 
     const handleEditClick = (connection: any) => {
-        console.log('Edit clicked for connection:', connection.id);
+        
     };
 
     const handleSaveEdit = (fields: { waba_id: string; phone_number_id: string; whatsapp_number: string; app_id: string; access_token: string }) => {
@@ -159,9 +158,7 @@ export const WhatsAppConnectionView = () => {
         return <XCircle size={16} />;
     };
 
-
     const onSubmit = (data: any) => {
-        console.log("datafunc", data)
         saveWhatsConfigMutate({ data });
     }
 
@@ -442,7 +439,6 @@ export const WhatsAppConnectionView = () => {
                             </div>
                         )}
                     </div>
-
 
                     <div className="xl:col-span-1 space-y-6">
                         <WhatsAppFlowStepper

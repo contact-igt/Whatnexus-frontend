@@ -186,7 +186,6 @@ export const OrganizationView = () => {
     };
 
     const handleNavigateToWhatsApp = (org: Organization) => {
-        console.log("Navigate to WhatsApp", org.tenant_id)
         router.push(`/whatsapp-settings?tenantId=${org.tenant_id}`);
     }
     const handleManageAccess = (org: Organization) => {

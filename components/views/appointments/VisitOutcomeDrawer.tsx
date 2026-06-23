@@ -22,6 +22,8 @@ export interface VisitOutcomePayload {
   follow_up_type?: "Call" | "WhatsApp" | null;
   follow_up_reason?: "Revisit" | "Enquiry" | null;
   template_id?: string | null;
+  header_media_url?: string | null;
+  header_file_name?: string | null;
 }
 
 interface VisitOutcomeDrawerProps {
@@ -53,6 +55,8 @@ export const VisitOutcomeDrawer = ({
   const [followUpType, setFollowUpType] = useState("");
   const [followUpReason, setFollowUpReason] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [headerMediaUrl, setHeaderMediaUrl] = useState("");
+  const [headerFileName, setHeaderFileName] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isTemplateVariableModalOpen, setIsTemplateVariableModalOpen] = useState(false);
@@ -70,6 +74,8 @@ export const VisitOutcomeDrawer = ({
     setFollowUpType("");
     setFollowUpReason("");
     setTemplateId("");
+    setHeaderMediaUrl("");
+    setHeaderFileName("");
     setSelectedTemplate(null);
     setSelectedTemplateForVariables(null);
     setIsTemplateModalOpen(false);
@@ -105,6 +111,8 @@ export const VisitOutcomeDrawer = ({
 
     setSelectedTemplate(template);
     setTemplateId(template.id);
+    setHeaderMediaUrl("");
+    setHeaderFileName("");
     setIsTemplateModalOpen(false);
   };
 
@@ -131,6 +139,14 @@ export const VisitOutcomeDrawer = ({
       follow_up_type: followUpRequired ? (followUpType as any || null) : null,
       follow_up_reason: followUpRequired ? (followUpReason as any || null) : null,
       template_id: followUpRequired && followUpType === "WhatsApp" ? (templateId || null) : null,
+      header_media_url:
+        followUpRequired && followUpType === "WhatsApp"
+          ? headerMediaUrl || null
+          : null,
+      header_file_name:
+        followUpRequired && followUpType === "WhatsApp"
+          ? headerFileName || null
+          : null,
     });
   };
 
@@ -232,6 +248,8 @@ export const VisitOutcomeDrawer = ({
                           setFollowUpType("");
                           setFollowUpReason("");
                           setTemplateId("");
+                          setHeaderMediaUrl("");
+                          setHeaderFileName("");
                           setSelectedTemplate(null);
                         }
                       }}
@@ -282,6 +300,8 @@ export const VisitOutcomeDrawer = ({
                     setFollowUpType(val);
                     if (val !== "WhatsApp") {
                       setTemplateId("");
+                      setHeaderMediaUrl("");
+                      setHeaderFileName("");
                       setSelectedTemplate(null);
                       setTemplateTouched(false);
                     }
@@ -385,7 +405,20 @@ export const VisitOutcomeDrawer = ({
       isOpen={isTemplateVariableModalOpen}
       onClose={() => setIsTemplateVariableModalOpen(false)}
       template={selectedTemplateForVariables}
-      onSend={() => {
+      onSend={(components) => {
+        const headerComp = Array.isArray(components)
+          ? components.find((c) => c?.type === "header")
+          : null;
+        const headerParam = headerComp?.parameters?.[0] || null;
+        const mediaLink =
+          headerParam?.image?.link ||
+          headerParam?.video?.link ||
+          headerParam?.document?.link ||
+          "";
+        const documentFileName = headerParam?.document?.filename || "";
+
+        setHeaderMediaUrl(mediaLink);
+        setHeaderFileName(documentFileName);
         if (!selectedTemplateForVariables) return;
         setSelectedTemplate(selectedTemplateForVariables);
         setTemplateId(selectedTemplateForVariables.id);

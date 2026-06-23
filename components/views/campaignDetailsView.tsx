@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, AlertTriangle, Wallet, Check, CheckCheck, Download, PauseCircle, PlayCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Users, Send, Eye, MessageCircle, Calendar, Play, AlertTriangle, Wallet, Check, CheckCheck, Download, PauseCircle, PlayCircle, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'next/navigation';
 import { useCampaignDetails } from '@/hooks/useCampaignDetails';
+import { useSoftDeleteCampaignMutation, usePermanentDeleteCampaignMutation, useRestoreCampaignMutation } from '@/hooks/useCampaignQuery';
 import { campaignService } from '@/services/campaign/campaign.service';
 import type { RecipientStatus } from '@/services/campaign/campaign.types';
 import { toast } from '@/lib/toast';
 import { ConfirmationModal } from '@/components/ui/confirmationModal';
+import { formatApiErrorForUser } from '@/utils/httpErrorMapper'; // F-15: HTTP error mapper
 import {
     formatCampaignDateTime,
     calculateCampaignStatistics,
@@ -23,24 +25,6 @@ import { Select } from '@/components/ui/select';
 interface CampaignDetailsViewProps {
     campaignId: string;
 }
-
-interface ApiErrorLike {
-    response?: {
-        data?: {
-            message?: string;
-        };
-    };
-    message?: string;
-}
-
-const getErrorMessage = (error: unknown, fallback: string): string => {
-    if (typeof error === 'object' && error !== null) {
-        const apiError = error as ApiErrorLike;
-        return apiError.response?.data?.message || apiError.message || fallback;
-    }
-
-    return fallback;
-};
 
 const getRefreshStatusMeta = (
     sentCount: number,
@@ -108,40 +92,68 @@ const getRefreshStatusMeta = (
 export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) => {
     const { isDarkMode } = useTheme();
     const router = useRouter();
-    const { campaign, recipients, loading, isRefreshing, error, refetch, filters, stats, lastUpdatedAt } = useCampaignDetails(campaignId);
+    const { campaign, recipients, loading, isRefreshing, error, refetch, filters, stats, statsError, lastUpdatedAt, setCampaign } = useCampaignDetails(campaignId);
     const [executing, setExecuting] = useState(false);
     const [pausing, setPausing] = useState(false);
     const [resuming, setResuming] = useState(false);
     const [isStopConfirmationOpen, setIsStopConfirmationOpen] = useState(false);
     const [downloadingStatus, setDownloadingStatus] = useState<'all' | RecipientStatus | null>(null);
 
+    // F-2: Delete/Restore state and mutations
+    const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
+    const [isPermanentDeleteConfirmationOpen, setIsPermanentDeleteConfirmationOpen] = useState(false);
+    const [isRestoreConfirmationOpen, setIsRestoreConfirmationOpen] = useState(false);
+    const softDeleteMutation = useSoftDeleteCampaignMutation(() => {
+        toast.info('Campaign deleted. Reloading...');
+        refetch({ manual: true });
+    });
+    const permanentDeleteMutation = usePermanentDeleteCampaignMutation(() => {
+        toast.info('Campaign permanently deleted. Redirecting...');
+        router.push('/campaign');
+    });
+    const restoreMutation = useRestoreCampaignMutation(() => {
+        toast.info('Campaign restored. Reloading...');
+        refetch({ manual: true });
+    });
+
     const statistics = campaign ? calculateCampaignStatistics(campaign) : null;
-    // Prefer backend-provided aggregates when available (added: sent_count, failed_count)
-    const sentCount = campaign?.sent_count ?? stats?.total_sent ?? recipients.filter((recipient) => ['sent', 'delivered', 'read'].includes(recipient.status)).length;
-    const deliveredCount = stats?.total_delivered ?? statistics?.delivered_count ?? recipients.filter((recipient) => ['delivered', 'read'].includes(recipient.status)).length;
-    const readCount = stats?.total_opened ?? statistics?.read_count ?? recipients.filter((recipient) => recipient.status === 'read').length;
-    const failedCount = campaign?.failed_count ?? stats?.status_counts?.failed ?? recipients.filter((recipient) => ['failed', 'permanently_failed'].includes(recipient.status)).length;
-    // Use backend-provided error message instead of deriving from 100-row preview
-    const failedErrorMessage = stats?.latest_failed_error ?? recipients.find((recipient) => ['failed', 'permanently_failed'].includes(recipient.status) && recipient.error_message?.trim())?.error_message?.trim() ?? null;
+    // Use stats from backend which now returns actual recipient counts
+    const sentCount = stats?.total_sent ?? 0;
+    const deliveredCount = stats?.total_delivered ?? 0;
+    const readCount = stats?.total_opened ?? 0;
+    const failedCount = stats?.status_counts?.failed ?? 0;
+    const latestFailedError = stats?.latest_failed_error ?? null;
     const statusCounts = stats?.status_counts;
     const refreshStatus = getRefreshStatusMeta(
         sentCount,
         deliveredCount,
         readCount,
         failedCount,
-        failedErrorMessage,
+        latestFailedError,
         isDarkMode
     );
 
     const handleExecuteCampaign = async () => {
         if (!campaign || !canExecuteCampaign(campaign.status)) return;
 
+        // F-7: Optimistic update
+        const previousCampaign = campaign;
         try {
             setExecuting(true);
+            // Immediately update UI to show active status
+            setCampaign({
+                ...campaign,
+                status: 'active',
+                scheduled_at: null,
+            });
+            toast.success('Campaign started!');
+
             await campaignService.executeCampaign(campaignId);
-            await refetch(); // Refresh data after execution
+            // No need to refetch since state is already updated
         } catch (error: unknown) {
-            toast.error(getErrorMessage(error, 'Failed to execute campaign.'));
+            // Revert optimistic update on error
+            setCampaign(previousCampaign);
+            toast.error(formatApiErrorForUser(error, 'Failed to execute campaign.'));
         } finally {
             setExecuting(false);
         }
@@ -174,7 +186,7 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
             triggerDownload(blob, filename);
             toast.success(`${status ? `${status} recipients` : 'All recipients'} download started.`);
         } catch (error: unknown) {
-            toast.error(getErrorMessage(error, 'Failed to download recipients.'));
+            toast.error(formatApiErrorForUser(error, 'Failed to download recipients.'));
         } finally {
             setDownloadingStatus(null);
         }
@@ -183,14 +195,24 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
     const handlePauseCampaign = async () => {
         if (!campaign || campaign.status !== 'active') return;
 
+        // F-7: Optimistic update
+        const previousCampaign = campaign;
         try {
             setPausing(true);
-            await campaignService.updateCampaignStatus(campaignId, 'paused');
+            // Immediately update UI to show paused status
+            setCampaign({
+                ...campaign,
+                status: 'paused',
+            });
             toast.success('Campaign paused. Remaining recipients will not be sent.');
             setIsStopConfirmationOpen(false);
-            await refetch({ manual: true });
+
+            await campaignService.updateCampaignStatus(campaignId, 'paused');
+            // No need to refetch since state is already updated
         } catch (error: unknown) {
-            toast.error(getErrorMessage(error, 'Failed to pause campaign.'));
+            // Revert optimistic update on error
+            setCampaign(previousCampaign);
+            toast.error(formatApiErrorForUser(error, 'Failed to pause campaign.'));
         } finally {
             setPausing(false);
         }
@@ -199,15 +221,56 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
     const handleResumeCampaign = async () => {
         if (!campaign || campaign.status !== 'paused') return;
 
+        // F-7: Optimistic update
+        const previousCampaign = campaign;
         try {
             setResuming(true);
-            await campaignService.updateCampaignStatus(campaignId, 'active');
+            // Immediately update UI to show active status
+            setCampaign({
+                ...campaign,
+                status: 'active',
+            });
             toast.success('Campaign resumed. Remaining recipients will be sent shortly.');
-            await refetch({ manual: true });
+
+            await campaignService.updateCampaignStatus(campaignId, 'active');
+            // No need to refetch since state is already updated
         } catch (error: unknown) {
-            toast.error(getErrorMessage(error, 'Failed to resume campaign.'));
+            // Revert optimistic update on error
+            setCampaign(previousCampaign);
+            toast.error(formatApiErrorForUser(error, 'Failed to resume campaign.'));
         } finally {
             setResuming(false);
+        }
+    };
+
+    // F-2: Delete/Restore handlers
+    const handleSoftDelete = async () => {
+        if (!campaign) return;
+        try {
+            await softDeleteMutation.mutateAsync(campaignId);
+            setIsDeleteConfirmationOpen(false);
+        } catch (error: unknown) {
+            console.error('Soft delete failed:', error);
+        }
+    };
+
+    const handlePermanentDelete = async () => {
+        if (!campaign) return;
+        try {
+            await permanentDeleteMutation.mutateAsync(campaignId);
+            setIsPermanentDeleteConfirmationOpen(false);
+        } catch (error: unknown) {
+            console.error('Permanent delete failed:', error);
+        }
+    };
+
+    const handleRestore = async () => {
+        if (!campaign) return;
+        try {
+            await restoreMutation.mutateAsync(campaignId);
+            setIsRestoreConfirmationOpen(false);
+        } catch (error: unknown) {
+            console.error('Restore failed:', error);
         }
     };
 
@@ -292,6 +355,58 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                                     <Calendar size={12} />
                                     Scheduled: {formatCampaignDateTime(campaign.scheduled_at)}
                                 </span>
+                            )}
+                        </div>
+
+                        {/* F-2: Delete/Restore action buttons */}
+                        {/* F-12: Check is_deleted flag (not status='deleted') since backend uses is_deleted boolean */}
+                        <div className="flex gap-2 mt-2">
+                            {campaign?.is_deleted ? (
+                                <>
+                                    <button
+                                        onClick={() => setIsRestoreConfirmationOpen(true)}
+                                        disabled={restoreMutation.isPending}
+                                        className={cn(
+                                            'px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2',
+                                            isDarkMode
+                                                ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                                                : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200',
+                                            restoreMutation.isPending && 'opacity-50 cursor-not-allowed'
+                                        )}
+                                    >
+                                        <RotateCcw size={14} />
+                                        {restoreMutation.isPending ? 'Restoring...' : 'Restore'}
+                                    </button>
+                                    <button
+                                        onClick={() => setIsPermanentDeleteConfirmationOpen(true)}
+                                        disabled={permanentDeleteMutation.isPending}
+                                        className={cn(
+                                            'px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2',
+                                            isDarkMode
+                                                ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                                                : 'bg-red-100 text-red-700 hover:bg-red-200',
+                                            permanentDeleteMutation.isPending && 'opacity-50 cursor-not-allowed'
+                                        )}
+                                    >
+                                        <Trash2 size={14} />
+                                        {permanentDeleteMutation.isPending ? 'Deleting...' : 'Delete Permanently'}
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => setIsDeleteConfirmationOpen(true)}
+                                    disabled={softDeleteMutation.isPending}
+                                    className={cn(
+                                        'px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2',
+                                        isDarkMode
+                                            ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                                            : 'bg-red-100 text-red-700 hover:bg-red-200',
+                                        softDeleteMutation.isPending && 'opacity-50 cursor-not-allowed'
+                                    )}
+                                >
+                                    <Trash2 size={14} />
+                                    {softDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                                </button>
                             )}
                         </div>
                     </div>
@@ -385,6 +500,11 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                         </div>
                         <div className="flex-1">
                             <p className="text-sm font-semibold">Campaign paused</p>
+                            {campaign.paused_reason && (
+                                <p className={cn("text-xs mt-1 font-medium", isDarkMode ? "text-amber-300" : "text-amber-800")}>
+                                    Reason: {campaign.paused_reason}
+                                </p>
+                            )}
                             <p className={cn("text-xs mt-0.5", isDarkMode ? "text-amber-400/70" : "text-amber-600")}>
                                 Remaining sends and scheduled retries are suspended until you resume the campaign. If this pause happened because of low wallet balance, recharge first and then continue.
                             </p>
@@ -398,6 +518,29 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                         </button>
                     </div>
                 )}
+
+                {/* F-8: Show stats error inline if fetch failed, instead of silently disappearing */}
+                {statsError ? (
+                    <GlassCard isDarkMode={isDarkMode} className="p-6 bg-amber-500/5 border-amber-500/20">
+                        <div className="flex items-center gap-3">
+                            <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{statsError}</p>
+                            </div>
+                            <button
+                                onClick={() => refetch({ manual: true })}
+                                className={cn(
+                                    "text-xs font-semibold px-3 py-1 rounded transition-colors",
+                                    isDarkMode
+                                        ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                                        : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                )}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    </GlassCard>
+                ) : null}
 
                 {/* Statistics Dashboard */}
                 {statistics && (
@@ -754,6 +897,46 @@ export const CampaignDetailsView = ({ campaignId }: CampaignDetailsViewProps) =>
                 confirmText="Stop Campaign"
                 cancelText="Keep Running"
                 isLoading={pausing}
+                variant="warning"
+            />
+
+            {/* F-2: Delete/Restore confirmation modals */}
+            <ConfirmationModal
+                isOpen={isDeleteConfirmationOpen}
+                onClose={() => !softDeleteMutation.isPending && setIsDeleteConfirmationOpen(false)}
+                onConfirm={handleSoftDelete}
+                title="Delete Campaign"
+                message="This will move the campaign to the trash. You can restore it later, but it will no longer be active."
+                isDarkMode={isDarkMode}
+                confirmText="Delete Campaign"
+                cancelText="Cancel"
+                isLoading={softDeleteMutation.isPending}
+                variant="danger"
+            />
+
+            <ConfirmationModal
+                isOpen={isPermanentDeleteConfirmationOpen}
+                onClose={() => !permanentDeleteMutation.isPending && setIsPermanentDeleteConfirmationOpen(false)}
+                onConfirm={handlePermanentDelete}
+                title="Permanently Delete Campaign"
+                message="This will permanently delete this campaign and cannot be undone. All history and data associated with this campaign will be lost."
+                isDarkMode={isDarkMode}
+                confirmText="Permanently Delete"
+                cancelText="Cancel"
+                isLoading={permanentDeleteMutation.isPending}
+                variant="danger"
+            />
+
+            <ConfirmationModal
+                isOpen={isRestoreConfirmationOpen}
+                onClose={() => !restoreMutation.isPending && setIsRestoreConfirmationOpen(false)}
+                onConfirm={handleRestore}
+                title="Restore Campaign"
+                message="This will restore the campaign from the trash and make it visible again."
+                isDarkMode={isDarkMode}
+                confirmText="Restore Campaign"
+                cancelText="Cancel"
+                isLoading={restoreMutation.isPending}
                 variant="warning"
             />
         </>

@@ -18,7 +18,6 @@ export const formatTimeRange = (start: string, end: string) => {
   return `${format(start)}-${format(end)}`;
 };
 
-
 // src/utils/dateUtils.ts
 export function formatAddDate(iso: string): string {
   const d = new Date(iso);

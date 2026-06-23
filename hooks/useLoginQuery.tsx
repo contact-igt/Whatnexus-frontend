@@ -6,10 +6,8 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { toast } from "@/lib/toast";
 
-
 const { login } = new authApis();
 const whatsappConfigApis = new whatsappConfigApiData();
-
 
 export const useManagementLoginMutation = () => {
     const queryClient = useQueryClient();

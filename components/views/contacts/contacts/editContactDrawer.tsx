@@ -298,7 +298,6 @@ export const EditContactDrawer = ({
                     maxLength={3}
                 />
 
-
                 {/* Tags */}
                 {/* <div>
                     <label className={cn(

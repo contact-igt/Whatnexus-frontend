@@ -4,7 +4,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { SpecializationManagement } from './specializationManagement';
 import { cn } from "@/lib/utils";
 
-
 export const SpecializationView = () => {
     const { isDarkMode } = useTheme();
     return (

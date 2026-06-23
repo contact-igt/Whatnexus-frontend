@@ -5,8 +5,11 @@ import { useSelector } from "react-redux"
 
 type LeadSummaryResponse = {
   data: {
-    summary: string;
+    summary?: string;
+    ai_summary?: string;
+    [key: string]: unknown;
   };
+  [key: string]: unknown;
 };
 
 const leadIntelligenceApis = new LeadIntelligenceApiData()
@@ -17,7 +20,6 @@ export const useLeadIntelligenceQuery = () => {
     queryFn: () => leadIntelligenceApis.getAllLeadIntelligence(),
     staleTime: 2 * 60 * 1000,
   })
-  console.log("data", data)
   return { data, isLoading, isError, refetch }
 }
 
@@ -32,8 +34,6 @@ export const useGetLeadByIdQuery = (id: string) => {
   return { data, isLoading, isError, refetch }
 }
 
-
-
 export const useSummarizeLeadMutation = () => {
   const queryClient = useQueryClient();
 
@@ -42,8 +42,25 @@ export const useSummarizeLeadMutation = () => {
     Error,
     { id: string; date?: string, startDate?: string, endDate?: string }
   >({
-    mutationFn: (data: any) =>
-      leadIntelligenceApis.getLeadSummary(data.id, data.date, data.startDate, data.endDate),
+    mutationFn: async (data: any) => {
+      const response = await leadIntelligenceApis.getLeadSummary(
+        data.id,
+        data.date,
+        data.startDate,
+        data.endDate
+      );
+
+      const normalizedSummary = response?.data?.ai_summary ?? response?.data?.summary;
+
+      return {
+        ...response,
+        data: {
+          ...response?.data,
+          summary: normalizedSummary,
+          ai_summary: normalizedSummary,
+        },
+      };
+    },
 
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

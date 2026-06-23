@@ -1,6 +1,5 @@
 import { _axios } from "@/helper/axios";
 
-
 export interface WhatsappConfigData {
     waba_id: string;
     phone_number_id: string;
@@ -14,7 +13,6 @@ export class whatsappConfigApiData {
         return await _axios("get", "/whatsapp/whatsapp-account");
     }
     saveWhatsappConfig = async (data: WhatsappConfigData) => {
-        console.log("data", data)
         return await _axios("post", "/whatsapp/whatsapp-account/manual", data);
     }
     testWhatsAppConfig = async (data: any) => {

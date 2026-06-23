@@ -195,7 +195,6 @@ export const restoreMediaAsset = async (
   return await _axios("post", `/whatsapp/gallery/${assetId}/restore`);
 };
 
-
 /**
  * Update media asset tags
  */

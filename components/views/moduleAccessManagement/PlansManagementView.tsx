@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import {
   useCreatePlanMutation,
+  useDeletePlanMutation,
   usePatchPlanMutation,
   usePlansQuery,
 } from "@/hooks/useModuleAccessManagementQuery";
@@ -21,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ActionMenu } from "@/components/ui/actionMenu";
 
 const BILLING_CYCLE_OPTIONS = ["monthly", "quarterly", "yearly", "custom"] as const;
 const DEFAULT_BILLING_CYCLE = "monthly";
@@ -55,6 +57,7 @@ export const PlansManagementView = () => {
   const { data, isLoading } = usePlansQuery();
   const { mutate: createPlan, isPending: isCreatePending } = useCreatePlanMutation();
   const { mutate: patchPlan, isPending: isPatchPending } = usePatchPlanMutation();
+  const { mutate: deletePlan, isPending: isDeletePending } = useDeletePlanMutation();
 
   const plans = useMemo(() => data?.data || [], [data]);
 
@@ -62,6 +65,7 @@ export const PlansManagementView = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
   const [pendingStatusPlan, setPendingStatusPlan] = useState<any | null>(null);
+  const [pendingDeletePlan, setPendingDeletePlan] = useState<any | null>(null);
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
@@ -190,6 +194,14 @@ export const PlansManagementView = () => {
     });
   };
 
+  const handleDeletePlan = (plan: any) => {
+    deletePlan(plan.plan_id, {
+      onSuccess: () => {
+        setPendingDeletePlan(null);
+      },
+    });
+  };
+
   return (
     <div className="h-full overflow-y-auto p-8 space-y-6 max-w-[1400px] mx-auto no-scrollbar pb-32">
       <div className="flex justify-between items-end gap-4">
@@ -263,29 +275,18 @@ export const PlansManagementView = () => {
                     </span>
                   </TableCell>
                   <TableCell align="center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => openEdit(plan)}
-                        className={cn(
-                          "px-2.5 py-1.5 text-xs rounded-lg font-medium",
-                          isDarkMode ? "bg-white/10 text-white hover:bg-white/15" : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-                        )}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setPendingStatusPlan(plan)}
-                        disabled={isPatchPending}
-                        className={cn(
-                          "px-2.5 py-1.5 text-xs rounded-lg font-medium",
-                          plan.is_active
-                            ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                            : "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25",
-                          isPatchPending && "opacity-60 cursor-not-allowed",
-                        )}
-                      >
-                        {plan.is_active ? "Deactivate" : "Activate"}
-                      </button>
+                    <div className="flex items-center justify-center">
+                      <ActionMenu
+                        isDarkMode={isDarkMode}
+                        isEdit
+                        onEdit={() => openEdit(plan)}
+                        isDelete
+                        onDelete={() => setPendingDeletePlan(plan)}
+                        isActivate={!plan.is_active}
+                        onActivate={() => setPendingStatusPlan(plan)}
+                        isDeactivate={plan.is_active}
+                        onDeactivate={() => setPendingStatusPlan(plan)}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -494,6 +495,23 @@ export const PlansManagementView = () => {
         onConfirm={() => {
           if (!pendingStatusPlan) return;
           toggleStatus(pendingStatusPlan);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingDeletePlan)}
+        title="Delete Item?"
+        description="Are you sure you want to delete this item? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeletePending}
+        onCancel={() => {
+          if (!isDeletePending) setPendingDeletePlan(null);
+        }}
+        onConfirm={() => {
+          if (!pendingDeletePlan) return;
+          handleDeletePlan(pendingDeletePlan);
         }}
       />
     </div>

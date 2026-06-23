@@ -5,7 +5,6 @@ import { AxiosError } from "axios";
 import { useDispatch } from "react-redux";
 import { toast } from "@/lib/toast";
 
-
 const tenantActivationApis = new TenantActivationApiData();
 
 export const useTenantActivationCheckQuery = (token: string, enabled: boolean)=>{
@@ -17,7 +16,6 @@ export const useTenantActivationCheckQuery = (token: string, enabled: boolean)=>
                 return await tenantActivationApis.CheckInvitedEmailStatus(token)
             } catch (error) {
                 const axiosError = error as AxiosError<any>;
-                console.log("axiosError", axiosError?.response?.data)
                 return axiosError?.response?.data;
             }
         },
@@ -27,7 +25,6 @@ export const useTenantActivationCheckQuery = (token: string, enabled: boolean)=>
         refetchOnReconnect: false,
         retry: false
     })
-    console.log("error", error)
     return {data, isLoading}
 }
 
@@ -42,7 +39,6 @@ export const useRejectInvitationQuery = ()=>{
         mutationFn: (token: any)=> tenantActivationApis.RejectInvitation(token)
     })
 }
-
 
 export const useSetPasswordQuery = ()=>{
     const dispatch = useDispatch();

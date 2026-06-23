@@ -4,9 +4,9 @@ import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useFaqCountsQuery, useFaqReviewsQuery } from "@/hooks/useFaqQuery";
 import { playNotificationSound } from "@/lib/notificationSound";
 import type { FaqReviewItem } from "@/services/faq";
-import { socket } from "@/utils/socket";
+import { connectTenantSocketWithToken, socket } from "@/utils/socket";
 
-const FAQ_NOTIFICATION_ROLES = new Set(["tenant_admin", "staff", "doctor"]);
+const FAQ_NOTIFICATION_ROLES = new Set(["tenant_admin", "staff"]);
 const DEFAULT_PREVIEW_LIMIT = 3;
 const FAQ_SOCKET_EVENT = "faq-updated";
 
@@ -40,20 +40,11 @@ export const useFaqRealtimeUpdates = () => {
   );
 
   useEffect(() => {
-    if (!canListen || !tenantId) return;
-
-    if (!socket.connected) {
-      socket.connect();
-    } else {
-      socket.emit("join-tenant", tenantId);
-    }
+    if (!canListen || !tenantId || !token) return;
 
     const handleConnect = () => {
-      socket.emit("join-tenant", tenantId);
+      connectTenantSocketWithToken(token, tenantId);
     };
-
-    // Remove any stale faq-updated listeners before registering a fresh one (HMR safety)
-    socket.off(FAQ_SOCKET_EVENT);
 
     const handleFaqUpdate = (payload: FaqSocketPayload = {}) => {
       const eventTenantId = payload?.tenant_id;
@@ -64,7 +55,7 @@ export const useFaqRealtimeUpdates = () => {
       const isFlaggedFaqEvent =
         eventAction === "faq-created" && eventStatus === "pending_review";
 
-      console.log("[FAQ-SOCKET] event received:", { eventAction, eventStatus, isFlaggedFaqEvent });
+      
 
       if (isFlaggedFaqEvent) {
         void playNotificationSound({ soundPath: "/sounds/FAQ_notify.mp3" });
@@ -77,12 +68,13 @@ export const useFaqRealtimeUpdates = () => {
 
     socket.on("connect", handleConnect);
     socket.on(FAQ_SOCKET_EVENT, handleFaqUpdate);
+    connectTenantSocketWithToken(token, tenantId);
 
     return () => {
       socket.off("connect", handleConnect);
       socket.off(FAQ_SOCKET_EVENT, handleFaqUpdate);
     };
-  }, [canListen, queryClient, tenantId]);
+  }, [canListen, queryClient, tenantId, token]);
 };
 
 export const useFaqNotifications = (previewLimit = DEFAULT_PREVIEW_LIMIT) => {

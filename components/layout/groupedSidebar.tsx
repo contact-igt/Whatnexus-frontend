@@ -15,6 +15,7 @@ import {
     Megaphone,
     Image,
     Stethoscope,
+    Building2,
     BadgeCheck,
     BookOpen,
     Video,
@@ -24,6 +25,7 @@ import {
     CreditCard,
     Settings,
     MessageSquare,
+    Bell,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -38,6 +40,7 @@ import { useGetWhatsappConfigQuery } from '@/hooks/useWhatsappConfigQuery';
 import { useFaqNotifications } from '@/hooks/useFaqNotifications';
 import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
 import { useFeatureAccess } from '@/redux/selectors/featureAccess/featureAccessSelector';
+import { useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import type { TenantDynamicNavigationPayload } from '@/services/tenantDynamicNavigation';
@@ -60,6 +63,7 @@ const ICON_KEY_MAP: Record<string, LucideIcon> = {
     campaign: Megaphone,
     media_gallery: Image,
     doctors: Stethoscope,
+    branches: Building2,
     specialization: BadgeCheck,
     courses: BookOpen,
     sessions: Video,
@@ -123,8 +127,11 @@ export const GroupedSidebar = ({
     const { unreadCount } = useNotifications();
     const { enabled_features, industry_type } = useFeatureAccess();
     const { pendingCount: faqPendingCount, canAccessFaqNotifications } = useFaqNotifications();
+    const { data: pendingAppointmentsData } = useGetAllAppointmentsQuery({ status: 'pending' });
     useGetWhatsappConfigQuery();
     const { isDarkMode } = useTheme();
+
+    const appointmentPendingCount = pendingAppointmentsData?.data?.length ?? 0;
     const [isExpanded, setIsExpanded] = useState(false);
     const dispatch = useDispatch();
     const router = useRouter();
@@ -197,7 +204,7 @@ export const GroupedSidebar = ({
                 label: "Follow-up Hub",
                 route: "/followups",
                 icon: Clock,
-                featureKey: followUpStaticMeta?.featureKey || "fallback",
+                featureKey: followUpStaticMeta?.featureKey || "followups",
                 requiresWhatsApp: followUpStaticMeta?.requiresWhatsApp ?? true,
                 requiresLocal: followUpStaticMeta?.requiresLocal,
                 roles: followUpStaticMeta?.roles,
@@ -217,6 +224,44 @@ export const GroupedSidebar = ({
                 mappedGroups.push({
                     groupLabel: "Contacts & Leads",
                     items: [followUpItem],
+                });
+            }
+        }
+
+        // Inject Reminders for ALL tenants if not already present in dynamic nav.
+        const hasReminders = mappedGroups.some((group) =>
+            group.items.some((item) => normalizeRoute(item.route) === "/reminders"),
+        );
+
+        if (!hasReminders) {
+            const remindersStaticMeta =
+                staticRouteMeta.exactRouteMap.get("/reminders") ||
+                staticRouteMeta.normalizedRouteMap.get("/reminders");
+
+            const remindersItem: SidebarItem = {
+                label: "Reminders",
+                route: "/reminders",
+                icon: Bell,
+                featureKey: remindersStaticMeta?.featureKey || "appointments",
+                requiresWhatsApp: remindersStaticMeta?.requiresWhatsApp ?? true,
+                requiresLocal: remindersStaticMeta?.requiresLocal,
+                roles: remindersStaticMeta?.roles,
+                matchMode: remindersStaticMeta?.matchMode,
+            };
+
+            const preferredGroupIndex = mappedGroups.findIndex(
+                (group) => group.groupLabel?.toLowerCase() === "contacts & leads",
+            );
+
+            if (preferredGroupIndex >= 0) {
+                mappedGroups[preferredGroupIndex] = {
+                    ...mappedGroups[preferredGroupIndex],
+                    items: [...mappedGroups[preferredGroupIndex].items, remindersItem],
+                };
+            } else {
+                mappedGroups.push({
+                    groupLabel: "Contacts & Leads",
+                    items: [remindersItem],
                 });
             }
         }
@@ -269,13 +314,20 @@ export const GroupedSidebar = ({
     // Check if WhatsApp is connected and active
     const isWhatsAppActive = whatsappApiDetails?.status === 'active';
 
-    // Check if we're in local development mode (for playground visibility)
-    const isLocalServer = typeof window !== 'undefined' && (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.includes('ngrok')
-    );
-
+    // NEXT_PUBLIC_VERCEL_ENV is exposed automatically by Vercel for client-side code:
+    //   'production' → main production deployment  |  'preview' → branch deployments
+    // Fall back to NEXT_PUBLIC_ENV then hostname for non-Vercel / local environments.
+    const _vercelEnv = (process.env.NEXT_PUBLIC_VERCEL_ENV || '').trim();
+    const _appEnv    = (process.env.NEXT_PUBLIC_ENV || '').trim();
+    const isLocalServer = _vercelEnv
+        ? _vercelEnv !== 'production'
+        : _appEnv
+            ? _appEnv !== 'production'
+            : typeof window !== 'undefined' && (
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1' ||
+                window.location.hostname.includes('ngrok')
+              );
 
     // Sync Redux active tab state only — navigation is driven by <Link> in SidebarGroupItem.
     const handleActiveTab = (tab: string) => {
@@ -293,7 +345,6 @@ export const GroupedSidebar = ({
         const uniqueRoutes = [...new Set(visibleRoutes)];
         uniqueRoutes.forEach((route) => router.prefetch(route));
     }, [router, sidebarConfig, user?.role, isLocalServer, enabled_features, isManagement]);
-
 
     // Filter items based on user role (case-insensitive) and local environment requirement
     const filterItemsByRole = (items: SidebarGroup['items']) => {
@@ -535,9 +586,11 @@ export const GroupedSidebar = ({
                                                 notificationCount={
                                                     item.route === '/shared-inbox/live-chats'
                                                         ? unreadCount
-                                                        : item.route === '/knowledge' && canAccessFaqNotifications
-                                                            ? faqPendingCount
-                                                            : 0
+                                                        : item.route === '/appointments'
+                                                            ? appointmentPendingCount
+                                                            : item.route === '/knowledge' && canAccessFaqNotifications
+                                                                ? faqPendingCount
+                                                                : 0
                                                 }
                                             />
                                         );

@@ -21,6 +21,8 @@ export interface NoShowSubmitPayload {
   follow_up_time?: string | null;
   follow_up_type?: "Call" | "WhatsApp" | null;
   template_id: string | null;
+  header_media_url?: string | null;
+  header_file_name?: string | null;
 }
 
 interface NoShowDrawerProps {
@@ -50,6 +52,8 @@ export const NoShowDrawer = ({
   const [followUpDateTime, setFollowUpDateTime] = useState("");
   const [followUpType, setFollowUpType] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [headerMediaUrl, setHeaderMediaUrl] = useState("");
+  const [headerFileName, setHeaderFileName] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<ProcessedTemplate | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isTemplateVariableModalOpen, setIsTemplateVariableModalOpen] =
@@ -63,13 +67,14 @@ export const NoShowDrawer = ({
   const { data: tenantSettingsData } = useGetTenantSettingsQuery();
   const noshowTime = tenantSettingsData?.data?.ai_settings?.noshow_followup_time || "09:00";
 
-
   useEffect(() => {
     if (!isOpen) return;
     setMode("default");
     setFollowUpDateTime("");
     setFollowUpType("");
     setTemplateId("");
+    setHeaderMediaUrl("");
+    setHeaderFileName("");
     setSelectedTemplate(null);
     setSelectedTemplateForVariables(null);
     setIsTemplateModalOpen(false);
@@ -105,6 +110,8 @@ export const NoShowDrawer = ({
 
     setSelectedTemplate(template);
     setTemplateId(template.id);
+    setHeaderMediaUrl("");
+    setHeaderFileName("");
     setIsTemplateModalOpen(false);
   };
 
@@ -130,6 +137,8 @@ export const NoShowDrawer = ({
       follow_up_time: timeOnly ?? null,
       follow_up_type: mode === "manual" ? (followUpType as any || null) : null,
       template_id: isWhatsApp ? templateId : null,
+      header_media_url: isWhatsApp ? headerMediaUrl || null : null,
+      header_file_name: isWhatsApp ? headerFileName || null : null,
     });
   };
 
@@ -205,6 +214,8 @@ export const NoShowDrawer = ({
                   if (value === "default") {
                     setFollowUpDateTime("");
                     setFollowUpType("");
+                    setHeaderMediaUrl("");
+                    setHeaderFileName("");
                   }
                 }}
                 className={cn(
@@ -281,6 +292,8 @@ export const NoShowDrawer = ({
                 setFollowUpType(val);
                 if (val !== "WhatsApp") {
                   setTemplateId("");
+                  setHeaderMediaUrl("");
+                  setHeaderFileName("");
                   setSelectedTemplate(null);
                   setTemplateTouched(false);
                 }
@@ -372,7 +385,20 @@ export const NoShowDrawer = ({
       isOpen={isTemplateVariableModalOpen}
       onClose={() => setIsTemplateVariableModalOpen(false)}
       template={selectedTemplateForVariables}
-      onSend={() => {
+      onSend={(components) => {
+        const headerComp = Array.isArray(components)
+          ? components.find((c) => c?.type === "header")
+          : null;
+        const headerParam = headerComp?.parameters?.[0] || null;
+        const mediaLink =
+          headerParam?.image?.link ||
+          headerParam?.video?.link ||
+          headerParam?.document?.link ||
+          "";
+        const documentFileName = headerParam?.document?.filename || "";
+
+        setHeaderMediaUrl(mediaLink);
+        setHeaderFileName(documentFileName);
         if (!selectedTemplateForVariables) return;
         setSelectedTemplate(selectedTemplateForVariables);
         setTemplateId(selectedTemplateForVariables.id);

@@ -15,7 +15,7 @@ import { BillingPaymentHistory } from "./billingPaymentHistory";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useGetBillingModeQuery, useGetWalletBalanceQuery } from "@/hooks/useBillingQuery";
-import { socket } from "@/utils/socket";
+import { connectTenantSocketWithToken, socket } from "@/utils/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { WhatsAppConnectionPlaceholder } from "../whatsappConfiguration/whatsappConnectionPlaceholder";
@@ -29,7 +29,7 @@ import {
 const billingApis = new billingApiData();
 
 export const BillingView = () => {
-  const { whatsappApiDetails, user } = useAuth();
+  const { whatsappApiDetails, user, token } = useAuth();
   const { isDarkMode } = useTheme();
   const queryClient = useQueryClient();
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -63,22 +63,14 @@ export const BillingView = () => {
   }, [walletBalanceRes?.data?.balance, isPostpaid]);
 
   useEffect(() => {
-    if (!user?.tenant_id) return;
-
-    if (!socket.connected) {
-      socket.connect();
-    }
+    if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
     const joinAndListen = () => {
-      console.log("✅ Billing connected to socket:", socket.id);
-      socket.emit("join-tenant", user.tenant_id);
+      connectTenantSocketWithToken(token, user.tenant_id);
     };
 
     socket.on("connect", joinAndListen);
-
-    if (socket.connected) {
-      joinAndListen();
-    }
+    connectTenantSocketWithToken(token, user.tenant_id);
 
     // Debounced billing update — prevents 900 API calls/min during high msg throughput
     let updateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -109,7 +101,7 @@ export const BillingView = () => {
     };
 
     const handleZeroBalance = (data: any) => {
-      console.log("🛑 Wallet zero:", data);
+      
       setLowBalanceWarning({ balance: 0, message: "Wallet balance is ₹0 — all prepaid operations are blocked. Recharge now to restore services." });
       toast.error("Wallet balance is ₹0 — services blocked", { duration: 10000 });
     };
@@ -125,7 +117,7 @@ export const BillingView = () => {
 
     const handleWalletRestored = (data: any) => {
       if (!data || typeof data !== 'object') return;
-      console.log("✅ Wallet restored:", data);
+      
       setLowBalanceWarning(null);
       toast.success("Wallet recharged — services restored!", { duration: 5000 });
       queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
@@ -135,21 +127,21 @@ export const BillingView = () => {
     };
 
     const handleInvoiceGenerated = (data: any) => {
-      console.log("📄 Invoice generated:", data);
+      
       toast.info(`Invoice ${data?.invoice_number || ''} generated — ₹${parseFloat(data?.amount || 0).toFixed(2)}`, { duration: 8000 });
       queryClient.refetchQueries({ queryKey: ['invoices'] });
       queryClient.refetchQueries({ queryKey: ['billing-mode'] });
     };
 
     const handleInvoiceOverdue = (data: any) => {
-      console.log("⚠️ Invoice overdue:", data);
+      
       setOverdueInvoice(data);
       toast.error(`Invoice ${data?.invoice_number || ''} is overdue — services may be blocked`, { duration: 10000 });
       queryClient.refetchQueries({ queryKey: ['invoices'] });
     };
 
     const handleInvoicePaid = (data: any) => {
-      console.log("✅ Invoice paid:", data);
+      
       setOverdueInvoice(null);
       toast.success(`Invoice ${data?.invoice_number || ''} paid successfully!`, { duration: 5000 });
       queryClient.refetchQueries({ queryKey: ['invoices'] });
@@ -157,13 +149,13 @@ export const BillingView = () => {
     };
 
     const handleCreditLimitWarning = (data: any) => {
-      console.log("⚠️ Credit limit warning:", data);
+      
       setCreditLimitWarning(data);
       toast.warning(`Credit usage at ${data?.percent || 80}% — approaching limit`, { duration: 8000 });
     };
 
     const handleCreditLimitReached = (data: any) => {
-      console.log("🛑 Credit limit reached:", data);
+      
       setCreditLimitWarning({ usage: data?.usage || 0, limit: data?.limit || 0, percent: 100 });
       toast.error("Credit limit reached — new messages & AI calls blocked", { duration: 10000 });
     };
@@ -185,7 +177,7 @@ export const BillingView = () => {
     };
 
     const handleBillingModeChanged = (data: any) => {
-      console.log("🔄 Billing mode changed:", data);
+      
       toast.info(`Billing mode changed to ${data?.new_mode || 'unknown'}`, { duration: 8000 });
       queryClient.refetchQueries({ queryKey: ['billing-mode'] });
       queryClient.refetchQueries({ queryKey: ['invoices'] });
@@ -262,7 +254,7 @@ export const BillingView = () => {
       socket.off("billing-mode-changed", handleBillingModeChanged);
       socket.off("gst-rate-changed", handleGstRateChanged);
     };
-  }, [user?.tenant_id, queryClient]);
+  }, [queryClient, token, user?.tenant_id, user?.user_type]);
 
   const handleDateChange = (start: Date | null, end: Date | null) => {
     setStartDate(start);

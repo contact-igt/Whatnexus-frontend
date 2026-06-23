@@ -15,6 +15,16 @@ export const useGetFollowUpHubQuery = (filters?: FollowUpHubFilters) => {
     });
 };
 
+export const useFollowUpHubDetailQuery = (id?: string | null) => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
+    return useQuery({
+        queryKey: ["followup-hub-detail", tenantId, id],
+        queryFn: () => appointmentApis.getFollowUpHubDetail(String(id)),
+        enabled: Boolean(id),
+        staleTime: 30 * 1000,
+    });
+};
+
 export const useGetPendingFollowUpCountQuery = () => {
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     return useQuery({

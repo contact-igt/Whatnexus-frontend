@@ -9,7 +9,7 @@ import { useLeadIntelligenceQuery } from '@/hooks/useLeadIntelligenceQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
-import { socket } from "@/utils/socket";
+import { connectTenantSocketWithToken, socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { WeeklyChatSummaryModal } from '../weeklyChatSummaryModal';
@@ -41,7 +41,7 @@ const arePhonesEqual = (p1: any, p2: any) => {
 export const ChatView = () => {
     const queryClient = useQueryClient();
     const dispatch = useDispatch();
-    const { user, whatsappApiDetails } = useAuth();
+    const { user, whatsappApiDetails, token } = useAuth();
     const { isDarkMode } = useTheme();
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
@@ -51,7 +51,16 @@ export const ChatView = () => {
         isLoading: isChatsLoading,
         refetch: refetchChats,
     } = useGetAllLiveChatsQuery();
-    console.log("chatList", chatList)
+    // Debug: Check for interactive messages and buttons_info
+    useEffect(() => {
+        if (chatList?.data) {
+            const interactiveChats = chatList.data.filter((c: any) => c.message_type === 'interactive');
+            if (interactiveChats.length > 0) {
+                
+            }
+        }
+    }, [chatList?.data]);
+    
     const [filteredChats, setFilteredChats] = useState<any[]>([]);
 
     useEffect(() => {
@@ -496,6 +505,7 @@ export const ChatView = () => {
                     contact_id: data.contact_id || existing.contact_id,
                     message: data.message,
                     message_type: data.message_type || existing.message_type,
+                    interactive_payload: data.interactive_payload || existing.interactive_payload,
                     last_message_time: data.created_at || data.timestamp,
                     seen: isUser ? "false" : existing.seen,
                     unread_count: isUser ? (Number(existing.unread_count) || 0) + 1 : existing.unread_count
@@ -509,6 +519,7 @@ export const ChatView = () => {
                     name: data.name,
                     message: data.message,
                     message_type: data.message_type || null,
+                    interactive_payload: data.interactive_payload || null,
                     last_message_time: data.created_at || data.timestamp,
                     seen: isUser ? "false" : "true",
                     unread_count: isUser ? 1 : 0
@@ -516,20 +527,26 @@ export const ChatView = () => {
                 ...safePrev,
             ];
         });
-        queryClient.invalidateQueries({ queryKey: ["livechats"] });
+        
+        // Refetch chat list to update button info for interactive messages
+        if (data.message_type === 'interactive' || data.interactive_payload) {
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
+            queryClient.invalidateQueries({ queryKey: ["chats"] });
+        } else {
+            queryClient.invalidateQueries({ queryKey: ["livechats"] });
+        }
     };
 
     useEffect(() => {
-        if (!user?.tenant_id) return;
+        if (!user?.tenant_id || !token || user?.user_type !== "tenant") return;
 
         // Register event listeners BEFORE connecting to ensure we don't miss events
         const handleConnect = () => {
-            console.log("[Socket] Connected, joining tenant room:", user.tenant_id);
-            socket.emit("join-tenant", user.tenant_id);
+            connectTenantSocketWithToken(token, user.tenant_id);
         };
 
         const handleAiTyping = (data: any) => {
-            console.log("[Socket] ai-typing event received:", data);
+            
             if (arePhonesEqual(selectedChatRef.current?.phone, data.phone)) {
                 setIsAiTyping(data.status);
             }
@@ -583,11 +600,7 @@ export const ChatView = () => {
         socket.on("insufficient-balance", handleInsufficientBalance);
 
         // Then connect (or emit join if already connected)
-        if (socket.connected) {
-            socket.emit("join-tenant", user.tenant_id);
-        } else {
-            socket.connect();
-        }
+        connectTenantSocketWithToken(token, user.tenant_id);
 
         return () => {
             socket.off("connect", handleConnect);
@@ -599,7 +612,7 @@ export const ChatView = () => {
             socket.off("wallet-suspended", handleWalletSuspended);
             socket.off("insufficient-balance", handleInsufficientBalance);
         };
-    }, [user?.tenant_id]);
+    }, [token, user?.tenant_id, user?.user_type]);
 
     useEffect(() => {
         if (displayMessages.length > 0 && !highlightParam) {
@@ -631,7 +644,7 @@ export const ChatView = () => {
     useEffect(() => {
         if (!isAiTyping) return;
         const timeoutId = setTimeout(() => {
-            console.log("[Typing] Safety timeout reached, clearing typing indicator");
+            
             setIsAiTyping(false);
         }, 30000);
         return () => clearTimeout(timeoutId);

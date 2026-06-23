@@ -7,7 +7,6 @@ import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Mail, Phone, User, Briefcase, Award, Edit2, Save, X, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 
-
 export const ProfileView = () => {
     const { isDarkMode } = useTheme();
     const { user } = useAuth();
@@ -42,7 +41,6 @@ export const ProfileView = () => {
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
-    console.log("formData", formData)
     return (
         <div className={cn(
             "flex-1 overflow-y-auto p-8",
@@ -233,7 +231,6 @@ export const ProfileView = () => {
                                 </div>
                             )}
                         </div>
-
 
                         <div className="md:col-span-2">
                             <label className={cn(

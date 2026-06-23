@@ -65,7 +65,7 @@ export const LeadSummaryDrawer = ({ isOpen, onClose, lead, isDarkMode }: LeadSum
 
         try {
             const result = await summarizeLeadMutation.mutateAsync(payload);
-            setSummary(result?.data?.summary ?? "No summary available for this period.");
+            setSummary(result?.data?.ai_summary ?? "No summary available for this period.");
         } catch (error) {
             console.error("Failed to summarize lead:", error);
             setSummary("Failed to generate summary. Please try again.");

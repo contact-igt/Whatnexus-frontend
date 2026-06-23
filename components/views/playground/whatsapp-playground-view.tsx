@@ -6,6 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import {
     usePlaygroundChatMutation,
+    usePlaygroundInboundMutation,
     usePlaygroundKnowledgeSources,
 } from "@/hooks/usePlaygroundQuery";
 import type { KnowledgeSource } from "@/services/playground";
@@ -66,6 +67,10 @@ interface ChatMessage {
         category: string;
         reason: string;
     } | null;
+    interactive?: any;
+    rawPayload?: any;
+    debug?: any;
+    mode?: string;
 }
 
 export const WhatsAppPlaygroundView = () => {
@@ -75,10 +80,13 @@ export const WhatsAppPlaygroundView = () => {
     const [inputValue, setInputValue] = useState("");
     const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
     const [isTyping, setIsTyping] = useState(false);
+    const [runtimeMode, setRuntimeMode] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const playgroundSessionIdRef = useRef(`pg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
 
     const chatMutation = usePlaygroundChatMutation();
+    const inboundMutation = usePlaygroundInboundMutation();
     const { data: knowledgeData } = usePlaygroundKnowledgeSources();
 
     const scrollToBottom = useCallback(() => {
@@ -91,8 +99,61 @@ export const WhatsAppPlaygroundView = () => {
 
     const tenantName = user?.username || user?.tenant_name || "Your Business";
 
+    const isPending = chatMutation.isPending || inboundMutation.isPending;
+
+    const buildConversationHistory = () =>
+        messages.map((m) => ({
+            sender: m.sender,
+            message: m.message,
+        }));
+
+    const appendRuntimeResponses = (result: any) => {
+        const responses = result.data.responses?.length
+            ? result.data.responses
+            : [{ type: "text", text: "Done." }];
+        const aiMessages: ChatMessage[] = responses.map((response: any, index: number) => ({
+            id: `msg_${Date.now()}_runtime_${index}`,
+            sender: "ai",
+            message: response.text || "Done.",
+            timestamp: new Date(),
+            interactive: response.interactive || null,
+            rawPayload: response.rawPayload || null,
+            debug: result.data.debug,
+            mode: result.data.mode,
+            technicalLogs: result.data.debug?.ai?.technicalLogs,
+            responseOrigin: result.data.debug?.ai?.responseOrigin || (result.data.mode === "AI" ? "ai_generated" : undefined),
+            tokenUsage: result.data.debug?.ai?.tokenUsage,
+            knowledgeSources: result.data.debug?.ai?.knowledgeSources,
+        }));
+
+        setMessages((prev) => [...prev, ...aiMessages]);
+        if (aiMessages.length) setSelectedMessageId(aiMessages[aiMessages.length - 1].id);
+    };
+
+    const sendRuntimeInbound = async ({
+        message,
+        interactiveReplyId = null,
+        replyTitle = "",
+        source = "text",
+    }: {
+        message?: string;
+        interactiveReplyId?: string | null;
+        replyTitle?: string;
+        source?: "text" | "quick_reply" | "button_reply" | "list_reply";
+    }) => {
+        const result = await inboundMutation.mutateAsync({
+            message,
+            interactiveReplyId,
+            replyTitle,
+            source,
+            playgroundSessionId: playgroundSessionIdRef.current,
+            conversationHistory: buildConversationHistory(),
+        });
+        appendRuntimeResponses(result);
+    };
+
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || chatMutation.isPending) return;
+        if (!inputValue.trim() || isPending) return;
 
         const userMessage: ChatMessage = {
             id: `msg_${Date.now()}`,
@@ -108,14 +169,17 @@ export const WhatsAppPlaygroundView = () => {
         setIsTyping(true);
 
         try {
-            const conversationHistory = messages.map((m) => ({
-                sender: m.sender,
-                message: m.message,
-            }));
+            if (runtimeMode) {
+                await sendRuntimeInbound({
+                    message: currentInput,
+                    source: "text",
+                });
+                return;
+            }
 
             const result = await chatMutation.mutateAsync({
                 message: currentInput,
-                conversationHistory,
+                conversationHistory: buildConversationHistory(),
             });
 
             const aiMessage: ChatMessage = {
@@ -147,6 +211,41 @@ export const WhatsAppPlaygroundView = () => {
         }
     };
 
+    const handleInteractiveReply = async (
+        option: { id: string; title: string; source: "button_reply" | "list_reply" }
+    ) => {
+        if (isPending) return;
+
+        const userMessage: ChatMessage = {
+            id: `msg_${Date.now()}_reply`,
+            sender: "user",
+            message: option.title,
+            timestamp: new Date(),
+            status: "read",
+        };
+
+        setMessages((prev) => [...prev, userMessage]);
+        setIsTyping(true);
+
+        try {
+            await sendRuntimeInbound({
+                interactiveReplyId: option.id,
+                replyTitle: option.title,
+                source: option.source,
+            });
+        } catch {
+            const errorMessage: ChatMessage = {
+                id: `msg_${Date.now()}_err`,
+                sender: "ai",
+                message: "Sorry, I encountered an error. Please try again.",
+                timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -165,6 +264,31 @@ export const WhatsAppPlaygroundView = () => {
             minute: "2-digit",
             hour12: true,
         });
+    };
+
+    const getInteractiveOptions = (interactive: any) => {
+        if (!interactive?.action) return [];
+        if (interactive.type === "button") {
+            return (interactive.action.buttons || [])
+                .map((button: any) => ({
+                    id: button?.reply?.id,
+                    title: button?.reply?.title,
+                    source: "button_reply" as const,
+                }))
+                .filter((item: any) => item.id && item.title);
+        }
+        if (interactive.type === "list") {
+            return (interactive.action.sections || []).flatMap((section: any) =>
+                (section.rows || []).map((row: any) => ({
+                    id: row.id,
+                    title: row.title,
+                    description: row.description,
+                    sectionTitle: section.title,
+                    source: "list_reply" as const,
+                }))
+            ).filter((item: any) => item.id && item.title);
+        }
+        return [];
     };
 
     const totalTokens = messages.reduce(
@@ -216,6 +340,29 @@ export const WhatsAppPlaygroundView = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Runtime / AI Chat mode toggle */}
+                    <button
+                        onClick={() => {
+                            setRuntimeMode(prev => !prev);
+                            setMessages([]);
+                            setSelectedMessageId(null);
+                            playgroundSessionIdRef.current = `pg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                        }}
+                        className={cn(
+                            "px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-all",
+                            runtimeMode
+                                ? isDarkMode
+                                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                    : "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                : isDarkMode
+                                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                                    : "bg-amber-50 border-amber-300 text-amber-700"
+                        )}
+                        title={runtimeMode ? "Switch to AI Chat mode (no appointment routing)" : "Switch to Runtime mode (full appointment flow)"}
+                    >
+                        {runtimeMode ? "⚡ Runtime" : "✦ AI Chat"}
+                    </button>
+
                     {/* Token counter */}
                     {totalTokens > 0 && (
                         <div
@@ -402,6 +549,85 @@ export const WhatsAppPlaygroundView = () => {
                                         {msg.message}
                                     </p>
 
+                                    {/* Interactive buttons / list options */}
+                                    {msg.sender === "ai" && msg.interactive && (() => {
+                                        const options = getInteractiveOptions(msg.interactive);
+                                        if (!options.length) return null;
+                                        if (msg.interactive.type === "button") {
+                                            return (
+                                                <div className={cn(
+                                                    "mt-2 pt-2 border-t -mx-3 px-3 flex flex-col gap-1",
+                                                    isDarkMode ? "border-white/10" : "border-slate-200/60"
+                                                )}>
+                                                    {options.map((opt: any) => (
+                                                        <button
+                                                            key={opt.id}
+                                                            onClick={() => !isPending && handleInteractiveReply(opt)}
+                                                            disabled={isPending}
+                                                            className={cn(
+                                                                "w-full text-center text-[13px] font-medium py-1.5 rounded-md border transition-colors",
+                                                                isDarkMode
+                                                                    ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-40"
+                                                                    : "border-emerald-400/60 text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
+                                                            )}
+                                                        >
+                                                            {opt.title}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        if (msg.interactive.type === "list") {
+                                            const sections: Record<string, typeof options> = {};
+                                            options.forEach((opt: any) => {
+                                                const key = (opt as any).sectionTitle || "";
+                                                if (!sections[key]) sections[key] = [];
+                                                sections[key].push(opt);
+                                            });
+                                            return (
+                                                <div className={cn(
+                                                    "mt-2 pt-2 border-t -mx-3 px-3 flex flex-col gap-0.5",
+                                                    isDarkMode ? "border-white/10" : "border-slate-200/60"
+                                                )}>
+                                                    {Object.entries(sections).map(([sectionTitle, rows]) => (
+                                                        <div key={sectionTitle} className="mb-1">
+                                                            {sectionTitle && (
+                                                                <p className={cn(
+                                                                    "text-[9px] font-bold uppercase tracking-wider px-1 mb-1 mt-0.5",
+                                                                    isDarkMode ? "text-white/30" : "text-slate-400"
+                                                                )}>
+                                                                    {sectionTitle}
+                                                                </p>
+                                                            )}
+                                                            {rows.map((opt: any) => (
+                                                                <button
+                                                                    key={opt.id}
+                                                                    onClick={() => !isPending && handleInteractiveReply(opt)}
+                                                                    disabled={isPending}
+                                                                    className={cn(
+                                                                        "w-full text-left px-2 py-1.5 rounded-md text-[12px] font-medium transition-colors flex items-center gap-2",
+                                                                        isDarkMode
+                                                                            ? "text-white/80 hover:bg-white/5 disabled:opacity-40"
+                                                                            : "text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                                                                    )}
+                                                                >
+                                                                    <ChevronRight size={12} className={isDarkMode ? "text-white/20" : "text-slate-300"} />
+                                                                    <span className="flex-1">{opt.title}</span>
+                                                                    {(opt as any).description && (
+                                                                        <span className={cn("text-[10px]", isDarkMode ? "text-white/30" : "text-slate-400")}>
+                                                                            {(opt as any).description}
+                                                                        </span>
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+
                                     {/* Time + status */}
                                     <div className="flex items-center justify-end gap-1 mt-0.5 -mb-0.5">
                                         <span
@@ -423,7 +649,7 @@ export const WhatsAppPlaygroundView = () => {
                                         )}
                                     </div>
 
-                                    {/* Knowledge sources indicator */}
+                                    {/* Knowledge sources / runtime mode indicator */}
                                     {msg.sender === "ai" && (
                                         <button
                                             onClick={() => setSelectedMessageId(
@@ -431,21 +657,29 @@ export const WhatsAppPlaygroundView = () => {
                                             )}
                                             className={cn(
                                                 "flex items-center gap-1 mt-1.5 px-2 py-1 rounded-md text-[10px] font-medium transition-colors",
-                                                msg.responseOrigin === "knowledge_base"
-                                                    ? isDarkMode
-                                                        ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                                                        : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                                                    : isDarkMode
-                                                        ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                                                        : "bg-amber-50 text-amber-600 hover:bg-amber-100",
+                                                msg.mode === "BOOK_APPOINTMENT"
+                                                    ? isDarkMode ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20" : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                                    : msg.mode === "MANAGE_APPOINTMENT"
+                                                        ? isDarkMode ? "bg-purple-500/10 text-purple-400 hover:bg-purple-500/20" : "bg-purple-50 text-purple-600 hover:bg-purple-100"
+                                                        : msg.responseOrigin === "knowledge_base"
+                                                            ? isDarkMode ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                                            : isDarkMode ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20" : "bg-amber-50 text-amber-600 hover:bg-amber-100",
                                                 selectedMessageId === msg.id && (
-                                                    msg.responseOrigin === "knowledge_base"
-                                                        ? isDarkMode ? "ring-1 ring-emerald-500/30" : "ring-1 ring-emerald-300"
-                                                        : isDarkMode ? "ring-1 ring-amber-500/30" : "ring-1 ring-amber-300"
+                                                    msg.mode === "BOOK_APPOINTMENT"
+                                                        ? isDarkMode ? "ring-1 ring-blue-500/30" : "ring-1 ring-blue-300"
+                                                        : msg.mode === "MANAGE_APPOINTMENT"
+                                                            ? isDarkMode ? "ring-1 ring-purple-500/30" : "ring-1 ring-purple-300"
+                                                            : msg.responseOrigin === "knowledge_base"
+                                                                ? isDarkMode ? "ring-1 ring-emerald-500/30" : "ring-1 ring-emerald-300"
+                                                                : isDarkMode ? "ring-1 ring-amber-500/30" : "ring-1 ring-amber-300"
                                                 )
                                             )}
                                         >
-                                            {msg.responseOrigin === "knowledge_base" ? (
+                                            {msg.mode === "BOOK_APPOINTMENT" ? (
+                                                <><Zap size={10} />Booking Flow</>
+                                            ) : msg.mode === "MANAGE_APPOINTMENT" ? (
+                                                <><Zap size={10} />Manage Flow</>
+                                            ) : msg.responseOrigin === "knowledge_base" ? (
                                                 <>
                                                     <BookOpen size={10} />
                                                     {msg.knowledgeSources?.length || 0} KB source{(msg.knowledgeSources?.length || 0) > 1 ? "s" : ""} used
@@ -708,6 +942,7 @@ export const WhatsAppPlaygroundView = () => {
 
                         // Selected message: show detailed analysis
                         const isKB = selectedMsg.responseOrigin === "knowledge_base";
+                        const isRuntimeMode = !!selectedMsg.mode && selectedMsg.mode !== "AI";
                         const sources = selectedMsg.knowledgeSources || [];
                         const chunks = selectedMsg.knowledgeChunksUsed || [];
                         const resolvedLogs = selectedMsg.resolvedLogsUsed || "";
@@ -723,7 +958,13 @@ export const WhatsAppPlaygroundView = () => {
                                     )}
                                 >
                                     <div className="flex items-center gap-2">
-                                        {isKB ? (
+                                        {isRuntimeMode ? (
+                                            <Zap size={16} className={
+                                                selectedMsg.mode === "BOOK_APPOINTMENT"
+                                                    ? isDarkMode ? "text-blue-400" : "text-blue-600"
+                                                    : isDarkMode ? "text-purple-400" : "text-purple-600"
+                                            } />
+                                        ) : isKB ? (
                                             <BookOpen size={16} className={isDarkMode ? "text-emerald-400" : "text-emerald-600"} />
                                         ) : (
                                             <Brain size={16} className={isDarkMode ? "text-amber-400" : "text-amber-600"} />
@@ -734,7 +975,7 @@ export const WhatsAppPlaygroundView = () => {
                                                 isDarkMode ? "text-white" : "text-slate-900"
                                             )}
                                         >
-                                            Response Analysis & Thought Process
+                                            {isRuntimeMode ? "Runtime Debug" : "Response Analysis & Thought Process"}
                                         </h3>
                                     </div>
                                     <button
@@ -751,62 +992,201 @@ export const WhatsAppPlaygroundView = () => {
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto">
-                                    {/* Response Origin Badge */}
+                                    {/* Response Origin / Mode Badge */}
                                     <div className="px-4 pt-4 pb-2">
-                                        <div
-                                            className={cn(
+                                        {isRuntimeMode ? (
+                                            <div className={cn(
                                                 "flex items-center gap-2.5 p-3 rounded-xl border",
-                                                isKB
-                                                    ? isDarkMode
-                                                        ? "bg-emerald-500/5 border-emerald-500/20"
-                                                        : "bg-emerald-50 border-emerald-200"
-                                                    : isDarkMode
-                                                        ? "bg-amber-500/5 border-amber-500/20"
-                                                        : "bg-amber-50 border-amber-200"
-                                            )}
-                                        >
+                                                selectedMsg.mode === "BOOK_APPOINTMENT"
+                                                    ? isDarkMode ? "bg-blue-500/5 border-blue-500/20" : "bg-blue-50 border-blue-200"
+                                                    : isDarkMode ? "bg-purple-500/5 border-purple-500/20" : "bg-purple-50 border-purple-200"
+                                            )}>
+                                                <div className={cn(
+                                                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                                                    selectedMsg.mode === "BOOK_APPOINTMENT"
+                                                        ? isDarkMode ? "bg-blue-500/20" : "bg-blue-100"
+                                                        : isDarkMode ? "bg-purple-500/20" : "bg-purple-100"
+                                                )}>
+                                                    <Zap size={16} className={
+                                                        selectedMsg.mode === "BOOK_APPOINTMENT"
+                                                            ? isDarkMode ? "text-blue-400" : "text-blue-600"
+                                                            : isDarkMode ? "text-purple-400" : "text-purple-600"
+                                                    } />
+                                                </div>
+                                                <div>
+                                                    <p className={cn(
+                                                        "text-xs font-bold",
+                                                        selectedMsg.mode === "BOOK_APPOINTMENT"
+                                                            ? isDarkMode ? "text-blue-400" : "text-blue-700"
+                                                            : isDarkMode ? "text-purple-400" : "text-purple-700"
+                                                    )}>
+                                                        {selectedMsg.mode === "BOOK_APPOINTMENT" ? "Booking Flow" : "Manage Appointments Flow"}
+                                                    </p>
+                                                    <p className={cn("text-[10px] mt-0.5", isDarkMode ? "text-white/40" : "text-slate-500")}>
+                                                        Routed by appointment operation router
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : (
                                             <div
                                                 className={cn(
-                                                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                                                    "flex items-center gap-2.5 p-3 rounded-xl border",
                                                     isKB
                                                         ? isDarkMode
-                                                            ? "bg-emerald-500/20"
-                                                            : "bg-emerald-100"
+                                                            ? "bg-emerald-500/5 border-emerald-500/20"
+                                                            : "bg-emerald-50 border-emerald-200"
                                                         : isDarkMode
-                                                            ? "bg-amber-500/20"
-                                                            : "bg-amber-100"
+                                                            ? "bg-amber-500/5 border-amber-500/20"
+                                                            : "bg-amber-50 border-amber-200"
                                                 )}
                                             >
-                                                {isKB ? (
-                                                    <Database size={16} className={isDarkMode ? "text-emerald-400" : "text-emerald-600"} />
-                                                ) : (
-                                                    <Sparkles size={16} className={isDarkMode ? "text-amber-400" : "text-amber-600"} />
-                                                )}
-                                            </div>
-                                            <div>
-                                                <p
+                                                <div
                                                     className={cn(
+                                                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                                                        isKB
+                                                            ? isDarkMode ? "bg-emerald-500/20" : "bg-emerald-100"
+                                                            : isDarkMode ? "bg-amber-500/20" : "bg-amber-100"
+                                                    )}
+                                                >
+                                                    {isKB ? (
+                                                        <Database size={16} className={isDarkMode ? "text-emerald-400" : "text-emerald-600"} />
+                                                    ) : (
+                                                        <Sparkles size={16} className={isDarkMode ? "text-amber-400" : "text-amber-600"} />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className={cn(
                                                         "text-xs font-bold",
                                                         isKB
                                                             ? isDarkMode ? "text-emerald-400" : "text-emerald-700"
                                                             : isDarkMode ? "text-amber-400" : "text-amber-700"
-                                                    )}
-                                                >
-                                                    {isKB ? "Knowledge Base Response" : "AI Generated Response"}
-                                                </p>
-                                                <p
-                                                    className={cn(
+                                                    )}>
+                                                        {isKB ? "Knowledge Base Response" : "AI Generated Response"}
+                                                    </p>
+                                                    <p className={cn(
                                                         "text-[10px] mt-0.5",
                                                         isDarkMode ? "text-white/40" : "text-slate-500"
-                                                    )}
-                                                >
-                                                    {isKB
-                                                        ? `Based on ${sources.length} knowledge source${sources.length > 1 ? "s" : ""}`
-                                                        : "No matching knowledge found — AI generated this response"}
-                                                </p>
+                                                    )}>
+                                                        {isKB
+                                                            ? `Based on ${sources.length} knowledge source${sources.length > 1 ? "s" : ""}`
+                                                            : "No matching knowledge found — AI generated this response"}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
+
+                                    {/* Runtime Debug Section */}
+                                    {isRuntimeMode && selectedMsg.debug && (
+                                        <div className="px-4 pb-2 space-y-2">
+                                            {/* Input details row */}
+                                            <div className={cn(
+                                                "rounded-lg border",
+                                                isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-200"
+                                            )}>
+                                                <div className="p-2.5 flex flex-wrap gap-3">
+                                                    <div>
+                                                        <p className={cn("text-[9px] font-bold uppercase tracking-wider mb-0.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Source</p>
+                                                        <p className={cn("text-[11px] font-mono font-medium", isDarkMode ? "text-white/70" : "text-slate-700")}>{selectedMsg.debug.inputSource || "text"}</p>
+                                                    </div>
+                                                    {selectedMsg.debug.interactiveReplyId && (
+                                                        <div>
+                                                            <p className={cn("text-[9px] font-bold uppercase tracking-wider mb-0.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Reply ID</p>
+                                                            <p className={cn("text-[11px] font-mono font-medium", isDarkMode ? "text-white/70" : "text-slate-700")}>{selectedMsg.debug.interactiveReplyId}</p>
+                                                        </div>
+                                                    )}
+                                                    {selectedMsg.debug.appointmentResult?.event && (
+                                                        <div>
+                                                            <p className={cn("text-[9px] font-bold uppercase tracking-wider mb-0.5", isDarkMode ? "text-white/30" : "text-slate-400")}>Event</p>
+                                                            <p className={cn("text-[11px] font-mono font-medium", isDarkMode ? "text-emerald-400" : "text-emerald-600")}>{selectedMsg.debug.appointmentResult.event}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Router decision */}
+                                            {selectedMsg.debug.routerDecision && (
+                                                <div className={cn(
+                                                    "rounded-lg border overflow-hidden",
+                                                    isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-200"
+                                                )}>
+                                                    <details className="group">
+                                                        <summary className="flex items-center justify-between p-2 cursor-pointer hover:bg-white/5 transition-colors">
+                                                            <span className={cn("text-[10px] font-bold uppercase", isDarkMode ? "text-white/40" : "text-slate-500")}>Router Decision</span>
+                                                            <ChevronRight size={12} className="group-open:rotate-90 transition-transform" />
+                                                        </summary>
+                                                        <div className="p-3 pt-0">
+                                                            <pre className={cn(
+                                                                "text-[9px] leading-relaxed whitespace-pre-wrap font-mono max-h-32 overflow-y-auto",
+                                                                isDarkMode ? "text-white/50" : "text-slate-600"
+                                                            )}>
+                                                                {JSON.stringify(selectedMsg.debug.routerDecision, null, 2)}
+                                                            </pre>
+                                                        </div>
+                                                    </details>
+                                                </div>
+                                            )}
+
+                                            {/* Session snapshots */}
+                                            {(selectedMsg.debug.sessionBefore || selectedMsg.debug.sessionAfter) && (
+                                                <div className={cn(
+                                                    "rounded-lg border overflow-hidden",
+                                                    isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-200"
+                                                )}>
+                                                    <details className="group">
+                                                        <summary className="flex items-center justify-between p-2 cursor-pointer hover:bg-white/5 transition-colors">
+                                                            <span className={cn("text-[10px] font-bold uppercase", isDarkMode ? "text-white/40" : "text-slate-500")}>Session Snapshot</span>
+                                                            <ChevronRight size={12} className="group-open:rotate-90 transition-transform" />
+                                                        </summary>
+                                                        <div className="p-3 pt-0 space-y-2">
+                                                            <div>
+                                                                <p className={cn("text-[9px] font-bold uppercase mb-1", isDarkMode ? "text-white/25" : "text-slate-400")}>Before</p>
+                                                                <pre className={cn(
+                                                                    "text-[9px] leading-relaxed whitespace-pre-wrap font-mono",
+                                                                    isDarkMode ? "text-white/40" : "text-slate-500"
+                                                                )}>
+                                                                    {JSON.stringify(selectedMsg.debug.sessionBefore, null, 2)}
+                                                                </pre>
+                                                            </div>
+                                                            <div>
+                                                                <p className={cn("text-[9px] font-bold uppercase mb-1", isDarkMode ? "text-white/25" : "text-slate-400")}>After</p>
+                                                                <pre className={cn(
+                                                                    "text-[9px] leading-relaxed whitespace-pre-wrap font-mono",
+                                                                    isDarkMode ? "text-white/50" : "text-slate-600"
+                                                                )}>
+                                                                    {JSON.stringify(selectedMsg.debug.sessionAfter, null, 2)}
+                                                                </pre>
+                                                            </div>
+                                                        </div>
+                                                    </details>
+                                                </div>
+                                            )}
+
+                                            {/* Side effect preview */}
+                                            {selectedMsg.debug.sideEffectPreview && (
+                                                <div className={cn(
+                                                    "p-3 rounded-lg border",
+                                                    isDarkMode ? "bg-amber-500/5 border-amber-500/20" : "bg-amber-50 border-amber-200"
+                                                )}>
+                                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                                        <AlertTriangle size={12} className={isDarkMode ? "text-amber-400" : "text-amber-500"} />
+                                                        <p className={cn("text-[10px] font-bold uppercase tracking-wider", isDarkMode ? "text-amber-400" : "text-amber-600")}>AI Side Effect Preview</p>
+                                                    </div>
+                                                    <p className={cn("text-[11px] font-mono font-bold mb-1", isDarkMode ? "text-white/80" : "text-slate-800")}>
+                                                        [{selectedMsg.debug.sideEffectPreview.tag}]
+                                                    </p>
+                                                    {selectedMsg.debug.sideEffectPreview.payload && (
+                                                        <p className={cn("text-[10px] mb-1", isDarkMode ? "text-white/50" : "text-slate-600")}>
+                                                            payload: {selectedMsg.debug.sideEffectPreview.payload}
+                                                        </p>
+                                                    )}
+                                                    <p className={cn("text-[10px] italic", isDarkMode ? "text-amber-400/60" : "text-amber-600/70")}>
+                                                        {selectedMsg.debug.sideEffectPreview.reason}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Technical Logs / Thought Process */}
                                     {selectedMsg.technicalLogs && (
@@ -1118,7 +1498,7 @@ export const WhatsAppPlaygroundView = () => {
                                     )}
 
                                     {/* No KB — AI generated info */}
-                                    {!isKB && chunks.length === 0 && !resolvedLogs?.trim() && (
+                                    {!isRuntimeMode && !isKB && chunks.length === 0 && !resolvedLogs?.trim() && (
                                         <div className="px-4 pb-3">
                                             <div
                                                 className={cn(

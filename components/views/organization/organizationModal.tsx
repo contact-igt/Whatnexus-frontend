@@ -174,7 +174,6 @@ export const OrganizationModal = ({
         return options;
     }, [plans, formData.plan_id]);
 
-
     // Derived Location Options
     const countryOptions = Country.getAllCountries().map(c => ({
         label: c.name,

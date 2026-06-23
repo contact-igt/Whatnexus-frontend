@@ -52,7 +52,6 @@ const formatDate = (dateString: string) => {
     });
 };
 
-
 export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, uploadedData, setUploadedData, setIsDragging, handleDragEnter, handleDragOver, handleDragLeave, handleDrop, handleUploadFile, handleDeleteClick, handlePermanentDeleteClick, handleRestore, handleEdit, handleView, uploading }: PromptConfigurationProps) => {
     const fileRef = useRef<HTMLInputElement>(null);
     const { user } = useAuth();
@@ -78,7 +77,6 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
             validateAndSetFile(e.target.files[0]);
         }
     };
-    console.log("promptsData", promptsData)
     const validateAndSetFile = async (file: File) => {
         const allowedTypes = ['text/plain', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
         if (!allowedTypes.includes(file.type)) {

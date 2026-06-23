@@ -186,8 +186,6 @@ export const GeneralSettingsView = () => {
         // { id: 'notifications', label: 'Notifications', icon: Bell },
     ];
 
-
-
     const aiFeatures: {
         key: keyof AiSettings;
         icon: React.ElementType;
@@ -492,8 +490,6 @@ export const GeneralSettingsView = () => {
                                         </div>
                                     </div>
                                 )}
-
-
 
                                 {/* Info Footer */}
                                 <div className={cn(

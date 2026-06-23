@@ -38,7 +38,6 @@ const createFormSchema = z.object({
     role: z.enum(["platform_admin"], { message: "Role is required." }),
 });
 
-
 // Edit Form Schema
 const editFormSchema = z.object({
     username: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
