@@ -27,7 +27,7 @@ export const GovernanceSection = () => {
     ];
 
     return (
-        <section className="py-20 md:py-32 px-6 bg-[#0D0D0F]">
+        <section id="governance" className="py-20 md:py-32 px-6 bg-[#0D0D0F]">
             <div className="container mx-auto">
                 <SectionHeader title="Governance & Control" subtitle="Enterprise Trust" centered />
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">

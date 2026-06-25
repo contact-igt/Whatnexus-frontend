@@ -178,7 +178,7 @@ export const VideoDemoSection = () => {
     };
 
     return (
-        <section className="py-32 px-6 relative overflow-hidden bg-[#0A0A0B]">
+        <section id="how-it-works" className="py-32 px-6 relative overflow-hidden bg-[#0A0A0B]">
             {/* Background Effects */}
             <div className="absolute inset-0 pointer-events-none">
                 {/* Emerald Glow - Right Side */}

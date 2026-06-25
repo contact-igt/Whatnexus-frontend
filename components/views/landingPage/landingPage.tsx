@@ -14,6 +14,7 @@ import { DataSection } from './dataSection';
 import { HealthcareSection } from './healthcareSection';
 import { UseCasesSection } from './useCasesSection';
 import { GovernanceSection } from './governanceSection';
+import PricingSection from './pricingSection';
 import { CtaSection } from './ctaSection';
 import { FooterSection } from './footerSection';
 
@@ -41,8 +42,10 @@ export default function LandingPage() {
             <HealthcareSection />
             <UseCasesSection />
             <GovernanceSection />
+            <PricingSection />
             <CtaSection onDemoClick={() => setIsDemoModalOpen(true)} />
             <FooterSection />
         </div>
     );
 }
+
