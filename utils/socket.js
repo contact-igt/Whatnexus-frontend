@@ -2,6 +2,12 @@ import { io } from "socket.io-client";
 
 const env = (process.env.NEXT_PUBLIC_ENV || "").trim();
 
+const normalizeSocketUrl = (value) => {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  return raw.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+};
+
 const isPrivateIpv4Host = (hostname) => {
   return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(hostname);
 };
@@ -31,18 +37,37 @@ const isNgrokBrowserHost = () => {
 };
 
 const SOCKET_URL = (() => {
-  const localhostUrl = (
-    process.env.NEXT_PUBLIC_SOCKET_LOCALHOST_URL || "http://localhost:8000"
-  ).trim();
-  const ngrokUrl = (process.env.NEXT_PUBLIC_SOCKET_NGROK_URL || "").trim();
+  const localhostUrl = normalizeSocketUrl(
+    process.env.NEXT_PUBLIC_SOCKET_LOCALHOST_URL ||
+      process.env.NEXT_PUBLIC_LOCALHOST_API_URL ||
+      "http://localhost:8000",
+  );
+  const ngrokUrl = normalizeSocketUrl(
+    process.env.NEXT_PUBLIC_SOCKET_NGROK_URL || process.env.NEXT_PUBLIC_NGROK_URL,
+  );
+  const envSocketUrlMap = {
+    production: normalizeSocketUrl(
+      process.env.NEXT_PUBLIC_SOCKET_PRODUCTION_API_URL ||
+        process.env.NEXT_PUBLIC_PRODUCTION_API_URL,
+    ),
+    stage: normalizeSocketUrl(
+      process.env.NEXT_PUBLIC_SOCKET_STAGE_API_URL ||
+        process.env.NEXT_PUBLIC_STAGE_API_URL,
+    ),
+    development: localhostUrl,
+    local: localhostUrl,
+  };
 
   switch (env) {
     case "ngrok":
       return ngrokUrl;
     case "production":
-      return (process.env.NEXT_PUBLIC_SOCKET_PRODUCTION_API_URL || "").trim();
+      return envSocketUrlMap.production;
     case "stage":
-      return (process.env.NEXT_PUBLIC_SOCKET_STAGE_API_URL || "").trim();
+      return envSocketUrlMap.stage;
+    case "development":
+    case "local":
+      return envSocketUrlMap[env] || localhostUrl || ngrokUrl;
     default:
       if (isNgrokBrowserHost() && ngrokUrl) {
         return ngrokUrl;
