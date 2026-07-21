@@ -8,6 +8,7 @@ import { useGetTenantSettingsQuery } from '@/hooks/useTenantSettingsQuery';
 import { useLeadIntelligenceQuery } from '@/hooks/useLeadIntelligenceQuery';
 import { callOpenAI } from '@/lib/openai';
 import { useTheme } from '@/hooks/useTheme';
+import { useGetBillingModeQuery } from '@/hooks/useBillingQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { connectTenantSocketWithToken, socket } from "@/utils/socket";
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -43,6 +44,8 @@ export const ChatView = () => {
     const dispatch = useDispatch();
     const { user, whatsappApiDetails, token } = useAuth();
     const { isDarkMode } = useTheme();
+    const { data: billingModeResponse } = useGetBillingModeQuery();
+    const billingMode = billingModeResponse?.data?.billing_mode || 'prepaid';
     const bottomRef = useRef<HTMLDivElement>(null);
     const [newMessage, setNewMessage] = useState<any[]>([]);
     const [isAiTyping, setIsAiTyping] = useState<boolean>(false);
@@ -561,6 +564,7 @@ export const ChatView = () => {
         };
 
         const handleWalletSuspended = (data: any) => {
+            if (billingMode === 'postpaid') return;
             toast.error(data?.message || 'Insufficient balance. AI auto-reply is paused. Please recharge your wallet.', {
                 duration: 8000,
                 id: 'wallet-suspended',
@@ -568,6 +572,7 @@ export const ChatView = () => {
         };
 
         const handleInsufficientBalance = (data: any) => {
+            if (billingMode === 'postpaid') return;
             toast.warning(`Low balance: ₹${data?.balance?.toFixed?.(2) || '0'}. Required: ₹${data?.required?.toFixed?.(2) || '0'}. Please recharge.`, {
                 duration: 6000,
                 id: 'insufficient-balance',
@@ -612,7 +617,7 @@ export const ChatView = () => {
             socket.off("wallet-suspended", handleWalletSuspended);
             socket.off("insufficient-balance", handleInsufficientBalance);
         };
-    }, [token, user?.tenant_id, user?.user_type]);
+    }, [billingMode, queryClient, token, user?.tenant_id, user?.user_type]);
 
     useEffect(() => {
         if (displayMessages.length > 0 && !highlightParam) {

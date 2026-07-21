@@ -9,6 +9,7 @@ import type {
     ExecuteCampaignResponse,
     CampaignStatsResponse,
     RecipientStatus,
+    CampaignCostEstimate,
 } from "./campaign.types";
 
 /**
@@ -254,16 +255,7 @@ export class CampaignService {
     estimateCost = async (
         template_id: string,
         recipient_count: number
-    ): Promise<{
-        success: boolean;
-        category: string;
-        recipient_count: number;
-        per_message_cost_inr: number;
-        total_cost_inr: number;
-        wallet_balance: number;
-        is_sufficient: boolean;
-        shortfall: number;
-    }> => {
+    ): Promise<CampaignCostEstimate> => {
         try {
             const response = await _axios(
                 "post",

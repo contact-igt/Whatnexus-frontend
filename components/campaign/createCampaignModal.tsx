@@ -11,7 +11,8 @@ import type {
     CampaignType,
     RecipientSource,
     CSVRecipient,
-    CreateCampaignRequest
+    CreateCampaignRequest,
+    CampaignCostEstimate
 } from '@/services/campaign/campaign.types';
 import { parseCSV, validateCSVData, validateCSVHeaders, validateCSVRowsDetailed, downloadCSVTemplate } from '@/utils/campaign.utils';
 // import CSVColumnMapper from './csvColumnMapper';
@@ -295,7 +296,8 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
         { number: 4, title: 'Review', icon: Check },
     ];
 
-    const [costEstimate, setCostEstimate] = useState<any>(null);
+    const [costEstimate, setCostEstimate] = useState<CampaignCostEstimate | null>(null);
+    const safeMoney = (value: number | null | undefined) => Number.isFinite(Number(value)) ? Number(value) : 0;
     const [isEstimatingCost, setIsEstimatingCost] = useState(false);
 
     const variableDefinitions = (selectedTemplate?.variableArray || []).map((v: any, index: number) => {
@@ -408,6 +410,7 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
             if (currentStep === 3) {
                 try {
                     setIsEstimatingCost(true);
+                    setCostEstimate(null);
                     setError(null);
 
                     // Calculate recipient count
@@ -2101,23 +2104,23 @@ export const CreateCampaignModal = ({ isOpen, onClose, onSuccess }: CreateCampai
 
                                     <div className="flex justify-between items-center text-sm">
                                         <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>
-                                            {costEstimate.recipient_count} recipients × ₹{costEstimate.per_message_cost_inr.toFixed(2)}
+                                            {costEstimate.recipient_count} recipients × ₹{safeMoney(costEstimate.per_message_cost_inr).toFixed(2)}
                                         </span>
                                         <span className="font-semibold text-emerald-500">
-                                            ₹{costEstimate.total_cost_inr.toFixed(2)}
+                                            ₹{safeMoney(costEstimate.total_cost_inr).toFixed(2)}
                                         </span>
                                     </div>
 
                                     <div className="flex justify-between items-center text-sm pt-2 border-t border-current/10">
-                                        <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>Wallet Balance</span>
+                                        <span className={isDarkMode ? 'text-white/70' : 'text-slate-600'}>{costEstimate.billing_mode === 'postpaid' ? 'Available Credit' : 'Wallet Balance'}</span>
                                         <span className={cn("font-semibold", !costEstimate.is_sufficient ? 'text-red-500' : isDarkMode ? 'text-white' : 'text-slate-900')}>
-                                            ₹{costEstimate.wallet_balance.toFixed(2)}
+                                            ₹{safeMoney(costEstimate.available_amount).toFixed(2)}
                                         </span>
                                     </div>
 
                                     {!costEstimate.is_sufficient && (
                                         <div className="text-xs text-red-500 mt-2 font-medium">
-                                            Insufficient balance. You need ₹{costEstimate.shortfall.toFixed(2)} more to send this campaign.
+                                            {costEstimate.blocked_reason || `Billing access blocked. Shortfall: ₹${safeMoney(costEstimate.shortfall).toFixed(2)}`}
                                         </div>
                                     )}
                                 </div>
