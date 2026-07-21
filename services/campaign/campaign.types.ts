@@ -64,6 +64,19 @@ export interface CampaignDetailsParams {
 // RESPONSE INTERFACES
 // ============================================
 
+export interface CampaignCostEstimate {
+    success: boolean;
+    category: string;
+    recipient_count: number;
+    per_message_cost_inr: number | null;
+    billing_mode: 'prepaid' | 'postpaid';
+    total_cost_inr: number | null;
+    available_amount: number | null;
+    wallet_balance: number | null;
+    is_sufficient: boolean;
+    shortfall: number | null;
+    blocked_reason: string | null;
+}
 export interface CreateCampaignResponse {
     message: string;
     // API returns nested campaign object

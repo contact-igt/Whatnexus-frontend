@@ -92,6 +92,7 @@ export const BillingView = () => {
     };
 
     const handleLowBalance = (data: any) => {
+      if (isPostpaid) return;
       if (typeof data?.balance !== 'number' || typeof data?.message !== 'string') {
         console.warn("[BILLING] Invalid low-balance payload:", data);
         return;
@@ -101,6 +102,7 @@ export const BillingView = () => {
     };
 
     const handleZeroBalance = (data: any) => {
+      if (isPostpaid) return;
       
       setLowBalanceWarning({ balance: 0, message: "Wallet balance is ₹0 — all prepaid operations are blocked. Recharge now to restore services." });
       toast.error("Wallet balance is ₹0 — services blocked", { duration: 10000 });
@@ -179,6 +181,8 @@ export const BillingView = () => {
     const handleBillingModeChanged = (data: any) => {
       
       toast.info(`Billing mode changed to ${data?.new_mode || 'unknown'}`, { duration: 8000 });
+      if (data?.new_mode === 'postpaid') setLowBalanceWarning(null);
+      queryClient.invalidateQueries({ queryKey: ['billing-mode'] });
       queryClient.refetchQueries({ queryKey: ['billing-mode'] });
       queryClient.refetchQueries({ queryKey: ['invoices'] });
       queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
@@ -209,7 +213,10 @@ export const BillingView = () => {
     };
 
     const handleInsufficientBalance = (data: any) => {
-      setLowBalanceWarning({ balance: data?.balance || 0, message: `Insufficient balance — ₹${(data?.required || 0).toFixed(2)} needed, ₹${(data?.balance || 0).toFixed(2)} available. Recharge now.` });
+      if (isPostpaid) return;
+      const balance = Number(data?.balance) || 0;
+      const required = Number(data?.required) || 0;
+      setLowBalanceWarning({ balance, message: `Insufficient balance — ₹${required.toFixed(2)} needed, ₹${balance.toFixed(2)} available. Recharge now.` });
       toast.error(`Insufficient balance for billing. Please recharge.`, { duration: 8000 });
       queryClient.refetchQueries({ queryKey: ['wallet-balance'] });
       queryClient.refetchQueries({ queryKey: ['billing-kpi'] });
@@ -254,7 +261,7 @@ export const BillingView = () => {
       socket.off("billing-mode-changed", handleBillingModeChanged);
       socket.off("gst-rate-changed", handleGstRateChanged);
     };
-  }, [queryClient, token, user?.tenant_id, user?.user_type]);
+  }, [isPostpaid, queryClient, token, user?.tenant_id, user?.user_type]);
 
   const handleDateChange = (start: Date | null, end: Date | null) => {
     setStartDate(start);
@@ -387,7 +394,7 @@ export const BillingView = () => {
       )}
 
       {/* Low Balance Warning Banner (Prepaid) */}
-      {lowBalanceWarning && !overdueInvoice && (
+      {lowBalanceWarning && !isPostpaid && !overdueInvoice && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

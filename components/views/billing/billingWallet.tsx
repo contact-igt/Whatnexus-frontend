@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,9 @@ export const BillingWallet = ({ isDarkMode, onRecharge, billingMode = 'prepaid' 
   const { data: autoRechargeResponse } = useGetAutoRechargeSettingsQuery();
   const updateAutoRecharge = useUpdateAutoRechargeSettingsMutation();
 
-  const balance = balanceResponse?.data?.balance || 0;
+  const walletBalance = Number(balanceResponse?.data?.balance) || 0;
+  const availableCredit = Number(balanceResponse?.data?.postpaid?.availableCredit) || 0;
+  const balance = billingMode === 'postpaid' ? availableCredit : walletBalance;
   const currency = balanceResponse?.data?.currency || 'INR';
   const balanceStatus = balanceResponse?.data?.balanceStatus || 'healthy';
   const currencySymbol = currency === 'INR' ? '₹' : currency;
@@ -156,7 +158,7 @@ For support: support@whatnexus.com
     <div>
       <h2 className={cn("text-xs font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2", isDarkMode ? 'text-white/25' : 'text-slate-400')}>
         <div className="w-4 h-px bg-emerald-500/50" />
-        Wallet & Payments
+        {billingMode === 'postpaid' ? 'Credit & Invoices' : 'Wallet & Payments'}
       </h2>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Platform Wallet */}
@@ -181,7 +183,7 @@ For support: support@whatnexus.com
                   )}>
                     <Wallet size={16} className="text-emerald-500" />
                   </div>
-                  <h3 className={cn("font-bold text-sm uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>Platform Wallet</h3>
+                  <h3 className={cn("font-bold text-sm uppercase tracking-[0.2em]", isDarkMode ? 'text-white/30' : 'text-slate-400')}>{billingMode === 'postpaid' ? 'Postpaid Credit' : 'Platform Wallet'}</h3>
                 </div>
               </div>
 
@@ -192,7 +194,7 @@ For support: support@whatnexus.com
                   `${currencySymbol}${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                 )}
               </div>
-              <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 opacity-40", isDarkMode ? 'text-white' : 'text-slate-900')}>Available credits</p>
+              <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 opacity-40", isDarkMode ? 'text-white' : 'text-slate-900')}>{billingMode === 'postpaid' ? 'Available Credit' : 'Wallet Balance'}</p>
 
               {/* Balance bar */}
               <div className={cn("h-1 w-full rounded-full overflow-hidden mb-6", isDarkMode ? 'bg-white/5' : 'bg-slate-100')}>

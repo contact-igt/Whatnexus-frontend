@@ -1,5 +1,7 @@
 import { billingApiData, BillingLedgerParams } from "@/services/billing";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { socket } from "@/utils/socket";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { useSelector } from "react-redux";
 
@@ -191,8 +193,20 @@ export const useGetWalletStatusQuery = () => {
 
 export const useGetBillingModeQuery = () => {
     const { user, token } = useAuth();
+    const queryClient = useQueryClient();
     const isManagement = user?.user_type === 'management';
     const tenantId = user?.tenant_id;
+
+    useEffect(() => {
+        if (!tenantId || !token || isManagement) return;
+        const handleModeChange = async () => {
+            await queryClient.invalidateQueries({ queryKey: ['billing-mode', tenantId] });
+            await queryClient.refetchQueries({ queryKey: ['billing-mode', tenantId], type: 'active' });
+        };
+        socket.on('billing-mode-changed', handleModeChange);
+        return () => { socket.off('billing-mode-changed', handleModeChange); };
+    }, [isManagement, queryClient, tenantId, token]);
+
     return useQuery({
         queryKey: ['billing-mode', tenantId],
         queryFn: () => billingApis.getBillingMode(),
