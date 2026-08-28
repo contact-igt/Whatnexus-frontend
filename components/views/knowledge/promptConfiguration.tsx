@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Upload, FileText, FileUp, Loader2, Trash2 } from 'lucide-react';
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { ActionMenu } from "@/components/ui/actionMenu";
 import { useGetPromptConfigurationQuery, useActivatePromptMutation, useCreatePromptMutation, useDeletedPromptList } from '@/hooks/usePromptQuery';
+import { useGetTenantSettingsQuery, useUpdateTenantAiSettingsMutation } from '@/hooks/useTenantSettingsQuery';
 import { toast } from "@/lib/toast";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { Pagination } from '@/components/ui/pagination';
@@ -71,6 +72,19 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
     const { data: promptsDeletedData, isLoading: isPromptsDeletedLoading, isError: isPromptsDeletedError } = useDeletedPromptList();
     const { mutate: createPromptMutate, isPending: isCreatePromptPending } = useCreatePromptMutation();
     const { mutate: activatePromptMutate, isPending: isActivatePromptPending } = useActivatePromptMutation();
+    const { data: tenantSettingsData } = useGetTenantSettingsQuery();
+    const { mutate: updateTenantAiSettings, isPending: isAppointmentPromptSaving } = useUpdateTenantAiSettingsMutation();
+    const [appointmentBookingPrompt, setAppointmentBookingPrompt] = useState("");
+    const [isAppointmentPromptDirty, setIsAppointmentPromptDirty] = useState(false);
+
+    const tenantAiSettings = tenantSettingsData?.data?.ai_settings || {};
+    const showAppointmentBookingPrompt =
+        tenantAiSettings?.appointment_booking_type === 'ai_agent';
+
+    useEffect(() => {
+        if (isAppointmentPromptDirty) return;
+        setAppointmentBookingPrompt(tenantAiSettings?.appointment_booking_ai_prompt || "");
+    }, [tenantAiSettings?.appointment_booking_ai_prompt, isAppointmentPromptDirty]);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -199,6 +213,28 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
 
     const handleToggleActive = (id: string, isActive: boolean) => {
         activatePromptMutate({ id, data: { is_active: isActive ? 0 : 1 } });
+    };
+
+    const handleSaveAppointmentBookingPrompt = () => {
+        const prompt = appointmentBookingPrompt.trim();
+        if (prompt && prompt.length < 10) {
+            toast.error("Appointment booking prompt must be at least 10 characters long.");
+            return;
+        }
+
+        updateTenantAiSettings(
+            { ai_settings: { appointment_booking_ai_prompt: prompt } },
+            {
+                onSuccess: () => {
+                    setIsAppointmentPromptDirty(false);
+                    toast.success("Appointment booking AI prompt saved");
+                },
+                onError: (err: unknown) => {
+                    const message = err instanceof Error ? err.message : "Failed to save appointment booking prompt";
+                    toast.error(message);
+                },
+            }
+        );
     };
 
     const promptItemsPerPage = 5;
@@ -527,6 +563,55 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                     </div>
                 </GlassCard>
             </div>
+
+            {showAppointmentBookingPrompt && (
+                <GlassCard isDarkMode={isDarkMode} className="p-6">
+                    <div className="flex items-start justify-between gap-4 mb-5">
+                        <div>
+                            <h3 className={cn("text-lg font-bold", isDarkMode ? 'text-white' : 'text-slate-900')}>
+                                Appointment Booking AI Agent Prompt
+                            </h3>
+                            <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                Organization-specific instructions used only by the AI appointment booking agent.
+                            </p>
+                        </div>
+                        {isAppointmentPromptSaving && (
+                            <Loader2 className="text-emerald-500 animate-spin shrink-0" size={18} />
+                        )}
+                    </div>
+
+                    <div className="space-y-3">
+                        <textarea
+                            value={appointmentBookingPrompt}
+                            onChange={(e) => {
+                                setAppointmentBookingPrompt(e.target.value);
+                                setIsAppointmentPromptDirty(true);
+                            }}
+                            placeholder="Example: Ask for patient name, preferred doctor, date, time, and reason for visit. Keep replies short and book only when all details are available."
+                            rows={7}
+                            className={cn(
+                                "w-full px-4 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none",
+                                isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30' : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+                            )}
+                        />
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className={cn("text-xs", isDarkMode ? 'text-white/40' : 'text-slate-400')}>
+                                {appointmentBookingPrompt.length} characters
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleSaveAppointmentBookingPrompt}
+                                disabled={isAppointmentPromptSaving}
+                                className="px-6 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center justify-center space-x-2"
+                            >
+                                {isAppointmentPromptSaving && <Loader2 className="animate-spin" size={16} />}
+                                <span>{isAppointmentPromptSaving ? "Saving..." : "Save Appointment Prompt"}</span>
+                            </button>
+                        </div>
+                    </div>
+                </GlassCard>
+            )}
+
             <GlassCard isDarkMode={isDarkMode} className="p-6">
                 <div className="flex items-center justify-between mb-6">
                     <div>

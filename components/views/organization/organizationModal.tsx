@@ -15,6 +15,16 @@ import { Country, State, City } from 'country-state-city';
 import { sanitizePhoneInput } from "@/lib/phone";
 import { IndustryType } from "./TenantFeatureAccessChecklist";
 
+type AppointmentBookingType = 'state_machine' | 'ai_agent';
+
+type OrganizationAiSettingsPayload = {
+    input_model: string;
+    output_model: string;
+    gstin: string;
+    appointment_booking_type: AppointmentBookingType;
+    openai_api_key?: string;
+};
+
 interface OrganizationModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -38,6 +48,7 @@ export const OrganizationModal = ({
         industry_type?: IndustryType;
         industry_id?: string;
         plan_id?: string;
+        appointment_booking_type?: AppointmentBookingType;
     }>({
         company_name: '',
         owner_name: '',
@@ -62,7 +73,8 @@ export const OrganizationModal = ({
         input_model: 'gpt-4o-mini',
         output_model: 'gpt-4o',
         openai_api_key: '',
-        gstin: ''
+        gstin: '',
+        appointment_booking_type: 'state_machine'
     });
     // ISO codes used to drive cascading dropdowns
     const [countryIso, setCountryIso] = useState('');
@@ -174,6 +186,46 @@ export const OrganizationModal = ({
         return options;
     }, [plans, formData.plan_id]);
 
+    const appointmentBookingTypeOptions = [
+        { value: 'state_machine', label: 'State machine appointment booking' },
+        { value: 'ai_agent', label: 'AI Appointment booking' },
+    ];
+
+    const isHealthcareIndustryRecord = (industry: Record<string, unknown> | null) => {
+        if (!industry) return false;
+        const haystack = [
+            industry.industry_id,
+            industry.industry_key,
+            industry.industry_name,
+            industry.name,
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+        return haystack.includes('health');
+    };
+
+    const isHealthcareIndustryId = (industryId: string) => {
+        if (!industryId) return false;
+        const industry = (industries as Array<Record<string, unknown>>).find(
+            (item) => item?.industry_id === industryId
+        );
+        return isHealthcareIndustryRecord(industry || null);
+    };
+
+    const selectedDynamicIndustry = useMemo(() => {
+        const selectedIndustryId = typeof formData.industry_id === 'string' ? formData.industry_id : '';
+        if (!selectedIndustryId) return null;
+        return (industries as Array<Record<string, unknown>>).find(
+            (industry) => industry?.industry_id === selectedIndustryId
+        ) || null;
+    }, [industries, formData.industry_id]);
+
+    const isHealthcareDynamicIndustry = isHealthcareIndustryRecord(selectedDynamicIndustry);
+
+    const showAppointmentBookingType =
+        formData.industry_type === 'healthcare' && isHealthcareDynamicIndustry;
+
     // Derived Location Options
     const countryOptions = Country.getAllCountries().map(c => ({
         label: c.name,
@@ -279,6 +331,10 @@ export const OrganizationModal = ({
                 output_model: aiSettings?.output_model || 'gpt-4o',
                 gstin: aiSettings?.gstin || '',
                 openai_api_key: '',
+                appointment_booking_type:
+                    aiSettings?.appointment_booking_type === 'ai_agent'
+                        ? 'ai_agent'
+                        : 'state_machine',
             });
         } else {
             setCountryIso('');
@@ -307,7 +363,8 @@ export const OrganizationModal = ({
                 input_model: 'gpt-4o-mini',
                 output_model: 'gpt-4o',
                 openai_api_key: '',
-                gstin: ''
+                gstin: '',
+                appointment_booking_type: 'state_machine'
             });
         }
         setIsIndustryIdTouched(false);
@@ -343,7 +400,7 @@ export const OrganizationModal = ({
     }, [mode, isPlanIdTouched, formData.plan_id, plans]);
 
     const handleChange = (
-        field: keyof Organization | 'input_model' | 'output_model' | 'openai_api_key' | 'gstin' | 'industry_type' | 'industry_id' | 'plan_id',
+        field: keyof Organization | 'input_model' | 'output_model' | 'openai_api_key' | 'gstin' | 'industry_type' | 'industry_id' | 'plan_id' | 'appointment_booking_type',
         value: any
     ) => {
         let sanitizedValue = value;
@@ -356,7 +413,19 @@ export const OrganizationModal = ({
             sanitizedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
         }
 
-        setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
+        const shouldResetAppointmentBookingType =
+            (field === 'industry_type' && sanitizedValue !== 'healthcare') ||
+            (field === 'industry_id' && !isHealthcareIndustryId(String(sanitizedValue || '')));
+
+        setFormData(prev => ({
+            ...prev,
+            [field]: sanitizedValue,
+            ...(
+                shouldResetAppointmentBookingType
+                    ? { appointment_booking_type: 'state_machine' as AppointmentBookingType }
+                    : {}
+            ),
+        }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
@@ -475,16 +544,20 @@ export const OrganizationModal = ({
             openai_api_key,
             gstin,
             industry_type,
+            appointment_booking_type,
             ...rest
         } = formData;
         void openai_api_key;
         void industry_type;
         const normalizedGstin = gstin?.trim().toUpperCase() || '';
 
-        const aiSettingsPayload: any = {
+        const aiSettingsPayload: OrganizationAiSettingsPayload = {
             input_model: input_model || 'gpt-4o-mini',
             output_model: output_model || 'gpt-4o',
             gstin: normalizedGstin,
+            appointment_booking_type: showAppointmentBookingType
+                ? appointment_booking_type || 'state_machine'
+                : 'state_machine',
         };
         // Only include key in payload if user entered a new one
         if (rawKey) {
@@ -681,6 +754,17 @@ export const OrganizationModal = ({
                         disabled={isView}
                         error={errors.industry_id}
                     />
+
+                    {showAppointmentBookingType && (
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="Appointment booking type"
+                            value={formData.appointment_booking_type || 'state_machine'}
+                            onChange={(value) => handleChange('appointment_booking_type', value as AppointmentBookingType)}
+                            options={appointmentBookingTypeOptions}
+                            disabled={isView}
+                        />
+                    )}
 
                     {/* {mode === 'create' && (
                         <Input

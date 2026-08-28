@@ -17,7 +17,7 @@ export const CapabilityMatrixSection = () => {
     ];
 
     return (
-        <section id="matrix" className="py-32 px-6 bg-white/[0.01]">
+        <section id="features" className="py-32 px-6 bg-white/[0.01]">
             <div className="container mx-auto">
                 <SectionHeader title="Capability Matrix" subtitle="The Neural Roadmap" centered />
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

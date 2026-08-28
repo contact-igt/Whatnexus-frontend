@@ -17,8 +17,8 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
 
     return (
         <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isMobileMenuOpen ? 'bg-[#0A0A0B] py-3 border-b border-white/5' : isScrolled ? 'bg-black/80 backdrop-blur-md py-3 border-b border-white/5' : 'bg-transparent py-5'}`}>
-            <div className="container mx-auto px-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <div className="container mx-auto px-6 flex items-center justify-between relative">
+                <div className="flex items-center gap-3 relative z-10">
                     {/* <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center rotate-12 shadow-xl">
                         <Zap size={20} className="text-emerald-600 fill-emerald-600" />
                     </div> */}
@@ -30,28 +30,30 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
                         <span className="text-[8.9px] text-white/30 font-bold tracking-widest uppercase">Powered by Invictus Global Tech</span>
                     </div>
                 </div>
-                <div className="hidden xl:flex items-center gap-4 2xl:gap-8">
-                    <nav className="flex items-center gap-4 2xl:gap-8 text-[11px] font-black uppercase tracking-widest text-white/40">
-                        <a href="#matrix" className="hover:text-emerald-400 transition-colors">Matrix</a>
-                        <a href="#ui" className="hover:text-emerald-400 transition-colors">UI Preview</a>
-                        <a href="#healthcare" className="hover:text-emerald-400 transition-colors">Healthcare</a>
-                    </nav>
-                    <div className="flex items-center gap-2 2xl:gap-3">
-                        <Link href="/management/login">
-                            <Button variant="secondary" className="px-3 py-2 text-[10px] 2xl:text-[11px] uppercase tracking-widest flex items-center gap-1.5">
-                                <LogIn size={14} /> Admin
-                            </Button>
-                        </Link>
-                        <Link href="/login">
-                            <Button variant="secondary" className="py-2 text-[11px] uppercase tracking-widest">
-                                <LogIn size={16} /> Login
-                            </Button>
-                        </Link>
-                        <Button onClick={onDemoClick} className="py-2 text-[11px] uppercase tracking-widest">Request Demo</Button>
-                    </div>
+
+                <nav className="hidden xl:flex absolute left-1/2 -translate-x-1/2 items-center gap-8 2xl:gap-12 text-[11px] font-black uppercase tracking-widest text-white/40">
+                    <a href="#features" className="hover:text-emerald-400 transition-colors">Features</a>
+                    <a href="#how-it-works" className="hover:text-emerald-400 transition-colors">How It Works</a>
+                    <a href="#solutions" className="hover:text-emerald-400 transition-colors">Solutions</a>
+                    <a href="#pricing" className="hover:text-emerald-400 transition-colors">Pricing</a>
+                </nav>
+
+                <div className="hidden xl:flex items-center gap-2 2xl:gap-3 relative z-10">
+                    <Link href="/management/login">
+                        <Button variant="secondary" className="px-3 py-2 text-[10px] 2xl:text-[11px] uppercase tracking-widest flex items-center gap-1.5">
+                            <LogIn size={14} /> Admin
+                        </Button>
+                    </Link>
+                    <Link href="/login">
+                        <Button variant="secondary" className="py-2 text-[11px] uppercase tracking-widest">
+                            <LogIn size={16} /> Login
+                        </Button>
+                    </Link>
+                    <Button onClick={onDemoClick} className="py-2 text-[11px] uppercase tracking-widest">Request Demo</Button>
                 </div>
+
                 <button
-                    className="xl:hidden text-white/50 hover:text-emerald-400 transition-colors p-2 -mr-2"
+                    className="xl:hidden text-white/50 hover:text-emerald-400 transition-colors p-2 -mr-2 relative z-10"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 >
                     {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -62,9 +64,10 @@ export const HeaderSection = ({ onDemoClick }: { onDemoClick: () => void }) => {
             {isMobileMenuOpen && (
                 <div className="xl:hidden absolute top-full left-0 right-0 bg-[#0A0A0B] border-b border-white/5 p-6 animate-in slide-in-from-top-2">
                     <nav className="flex flex-col gap-6 text-sm font-bold uppercase tracking-widest text-white/60">
-                        <a href="#matrix" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Matrix</a>
-                        <a href="#ui" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>UI Preview</a>
-                        <a href="#healthcare" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Healthcare</a>
+                        <a href="#features" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Features</a>
+                        <a href="#how-it-works" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>How It Works</a>
+                        <a href="#solutions" className="hover:text-emerald-400 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Solutions</a>
+                        <a href="#pricing" className="hover:text-emerald-400 transition-colors" onClick={() => { setIsMobileMenuOpen(false); }}>Pricing</a>
 
                         <div className="h-px bg-white/5 my-2" />
 

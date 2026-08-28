@@ -21,7 +21,7 @@ export const UseCasesSection = () => {
     ];
 
     return (
-        <section className="py-20 md:py-32 px-6">
+        <section id="solutions" className="py-20 md:py-32 px-6">
             <div className="container mx-auto max-w-4xl">
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 mb-16">
                     <button

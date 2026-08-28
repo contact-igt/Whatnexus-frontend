@@ -98,10 +98,8 @@ const getApiBaseUrl = (): string => {
     local: normalizeBaseUrl(process.env.NEXT_PUBLIC_LOCALHOST_API_URL),
   };
 
-  const selected =
-    directApiUrl ||
-    (env ? envApiUrlMap[env] || "" : "") ||
-    getHostBasedApiFallback();
+  const envSelected = env ? envApiUrlMap[env] || "" : "";
+  const selected = envSelected || directApiUrl || getHostBasedApiFallback();
 
   const normalized = normalizeBaseUrl(selected);
 
