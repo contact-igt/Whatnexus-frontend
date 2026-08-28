@@ -17,6 +17,10 @@ import { IndustryType } from "./TenantFeatureAccessChecklist";
 
 type AppointmentBookingType = 'state_machine' | 'ai_agent';
 
+// Placeholder shown in edit/view mode so the stored OpenAI key is never exposed.
+// This value is display-only — it must never be validated or sent to the backend.
+const MASKED_API_KEY = '****************';
+
 type OrganizationAiSettingsPayload = {
     input_model: string;
     output_model: string;
@@ -81,6 +85,9 @@ export const OrganizationModal = ({
     const [stateIso, setStateIso] = useState('');
     const [isIndustryIdTouched, setIsIndustryIdTouched] = useState(false);
     const [isPlanIdTouched, setIsPlanIdTouched] = useState(false);
+    // True once the admin has actually typed into the OpenAI key field in edit mode.
+    // While false, the field only holds the masked placeholder and no key is saved.
+    const [isApiKeyDirty, setIsApiKeyDirty] = useState(false);
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { mutate: createTenantMutate, isPending: isCreateTenantPending } = useCreateTenantMutation();
@@ -330,7 +337,9 @@ export const OrganizationModal = ({
                 input_model: aiSettings?.input_model || 'gpt-4o-mini',
                 output_model: aiSettings?.output_model || 'gpt-4o',
                 gstin: aiSettings?.gstin || '',
-                openai_api_key: '',
+                // Show a masked placeholder instead of the real key. Replaced with a
+                // real value only if the admin types a new one (see isApiKeyDirty).
+                openai_api_key: MASKED_API_KEY,
                 appointment_booking_type:
                     aiSettings?.appointment_booking_type === 'ai_agent'
                         ? 'ai_agent'
@@ -369,6 +378,7 @@ export const OrganizationModal = ({
         }
         setIsIndustryIdTouched(false);
         setIsPlanIdTouched(false);
+        setIsApiKeyDirty(false);
         setErrors({});
     }, [organization, mode, isOpen]);
 
@@ -454,11 +464,13 @@ export const OrganizationModal = ({
             newErrors.owner_mobile = "Mobile number must be 10 digits";
         }
 
-        if (!formData.openai_api_key?.trim()) {
+        const trimmedApiKey = formData.openai_api_key?.trim();
+        const apiKeyProvided = !!trimmedApiKey && trimmedApiKey !== MASKED_API_KEY;
+        if (!apiKeyProvided) {
             if (mode === 'create') {
                 newErrors.openai_api_key = "OpenAI API key is required";
             }
-        } else if (!formData.openai_api_key.trim().startsWith('sk-')) {
+        } else if (!trimmedApiKey!.startsWith('sk-')) {
             newErrors.openai_api_key = "Invalid format. OpenAI keys start with 'sk-'";
         }
 
@@ -506,8 +518,10 @@ export const OrganizationModal = ({
     const handleSubmit = async () => {
         if (!validate()) return;
 
-        // Validate the OpenAI key with backend if a new key is provided
-        const rawKey = formData.openai_api_key?.trim();
+        // Validate the OpenAI key with backend if a new key is provided.
+        // The masked placeholder means "keep existing key" — never send it.
+        const trimmedKey = formData.openai_api_key?.trim();
+        const rawKey = trimmedKey && trimmedKey !== MASKED_API_KEY ? trimmedKey : '';
         if (rawKey) {
             try {
                 await validateOpenAIKey({ openai_api_key: rawKey });
@@ -756,14 +770,21 @@ export const OrganizationModal = ({
                     />
 
                     {showAppointmentBookingType && (
-                        <Select
-                            isDarkMode={isDarkMode}
-                            label="Appointment booking type"
-                            value={formData.appointment_booking_type || 'state_machine'}
-                            onChange={(value) => handleChange('appointment_booking_type', value as AppointmentBookingType)}
-                            options={appointmentBookingTypeOptions}
-                            disabled={isView}
-                        />
+                        <div>
+                            <Select
+                                isDarkMode={isDarkMode}
+                                label="Appointment booking type"
+                                value={formData.appointment_booking_type || 'state_machine'}
+                                onChange={(value) => handleChange('appointment_booking_type', value as AppointmentBookingType)}
+                                options={appointmentBookingTypeOptions}
+                                disabled={isView}
+                            />
+                            <p className={cn("mt-2 text-xs", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
+                                {formData.appointment_booking_type === 'ai_agent'
+                                    ? 'AI collects appointment request details only; it does not create or confirm appointments.'
+                                    : 'State machine creates real appointments using configured doctors and available slots.'}
+                            </p>
+                        </div>
                     )}
 
                     {/* {mode === 'create' && (
@@ -966,17 +987,35 @@ export const OrganizationModal = ({
                             isDarkMode={isDarkMode}
                             label="OpenAI API Key"
                             icon={Key}
-                            placeholder={mode === 'edit' ? 'Enter new key to replace existing one' : 'sk-...'}
+                            placeholder={mode === 'create' ? 'sk-...' : 'Type a new key to replace the current one'}
                             value={formData.openai_api_key}
-                            onChange={(e) => handleChange('openai_api_key', e.target.value.trim())}
+                            onFocus={() => {
+                                if (
+                                    mode !== 'create' &&
+                                    !isApiKeyDirty &&
+                                    formData.openai_api_key === MASKED_API_KEY
+                                ) {
+                                    handleChange('openai_api_key', '');
+                                }
+                            }}
+                            onChange={(e) => {
+                                if (mode !== 'create') setIsApiKeyDirty(true);
+                                handleChange('openai_api_key', e.target.value.trim());
+                            }}
+                            onBlur={() => {
+                                if (mode !== 'create' && !formData.openai_api_key?.trim()) {
+                                    setIsApiKeyDirty(false);
+                                    handleChange('openai_api_key', MASKED_API_KEY);
+                                }
+                            }}
                             error={errors.openai_api_key}
                             disabled={isView}
                             required={mode === 'create'}
                         />
                         <p className={cn("text-[10px] mt-1 ml-1", isDarkMode ? 'text-white/40' : 'text-slate-500')}>
-                            {mode === 'edit'
-                                ? 'Leave empty to keep current key. Enter a new key to replace it. Key is validated and encrypted before storage.'
-                                : 'Required. Key will be validated with OpenAI and stored encrypted.'}
+                            {mode === 'create'
+                                ? 'Required. Key will be validated with OpenAI and stored encrypted.'
+                                : 'The current key is hidden. Type a new key to replace it, or leave the masked value to keep it unchanged.'}
                         </p>
                     </div>
                 </div>

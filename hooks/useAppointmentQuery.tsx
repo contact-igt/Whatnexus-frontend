@@ -63,6 +63,8 @@ type MutationResponse = {
     success?: boolean;
     message?: string;
     data?: unknown;
+    email_sent?: boolean;
+    email_failure_reason?: string | null;
 };
 
 type ReminderRulesResponse = {
@@ -151,9 +153,17 @@ export const useUpdateAppointmentStatusMutation = () => {
             queryClient.invalidateQueries({ queryKey: ["appointments"] });
             queryClient.invalidateQueries({ queryKey: ["lead-intelligence"] });
             if (nextStatus === "Confirmed") {
-                toast.success("Appointment confirmed. Email sent to patient.");
+                if (data?.email_sent) {
+                    toast.success("Appointment confirmed. Email sent to patient.");
+                } else {
+                    toast.warning(data?.message || "Appointment confirmed, but the email could not be sent.");
+                }
             } else if (nextStatus === "Cancelled") {
-                toast.success("Appointment cancelled. Patient notified by email.");
+                if (data?.email_sent) {
+                    toast.success("Appointment cancelled. Patient notified by email.");
+                } else {
+                    toast.warning(data?.message || "Appointment cancelled, but the email could not be sent.");
+                }
             } else {
                 toast.success(data?.message || "Appointment status updated.");
             }

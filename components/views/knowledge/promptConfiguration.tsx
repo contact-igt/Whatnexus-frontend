@@ -572,7 +572,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                 Appointment Booking AI Agent Prompt
                             </h3>
                             <p className={cn("text-xs mt-1", isDarkMode ? 'text-white/50' : 'text-slate-500')}>
-                                Organization-specific instructions used only by the AI appointment booking agent.
+                                Customize what information the AI appointment intake assistant collects. If left blank, it collects Name, Email, and Reason for Visit. This flow does not create or confirm appointments.
                             </p>
                         </div>
                         {isAppointmentPromptSaving && (
@@ -587,7 +587,7 @@ export const PromptConfiguration = ({ isDarkMode, setSelectedItem, isDragging, u
                                 setAppointmentBookingPrompt(e.target.value);
                                 setIsAppointmentPromptDirty(true);
                             }}
-                            placeholder="Example: Ask for patient name, preferred doctor, date, time, and reason for visit. Keep replies short and book only when all details are available."
+                            placeholder="Example: Collect Name, Email, Age, and Reason for Visit. Ask all fields together, then tell the patient our team will contact them."
                             rows={7}
                             className={cn(
                                 "w-full px-4 py-3 rounded-lg text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none",
