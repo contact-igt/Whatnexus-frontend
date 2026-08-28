@@ -105,6 +105,9 @@ export const WhatsAppPlaygroundView = () => {
         messages.map((m) => ({
             sender: m.sender,
             message: m.message,
+            event: m.debug?.appointmentResult?.event || null,
+            appointmentAiAction: m.debug?.appointmentResult?.action || null,
+            appointment_intake: m.debug?.appointment_intake || null,
         }));
 
     const appendRuntimeResponses = (result: any) => {
@@ -1121,6 +1124,29 @@ export const WhatsAppPlaygroundView = () => {
                                                                 isDarkMode ? "text-white/50" : "text-slate-600"
                                                             )}>
                                                                 {JSON.stringify(selectedMsg.debug.routerDecision, null, 2)}
+                                                            </pre>
+                                                        </div>
+                                                    </details>
+                                                </div>
+                                            )}
+
+                                            {/* Appointment intake state (keys only; no patient values) */}
+                                            {selectedMsg.debug.appointment_intake && (
+                                                <div className={cn(
+                                                    "rounded-lg border overflow-hidden",
+                                                    isDarkMode ? "bg-white/[0.02] border-white/5" : "bg-slate-50 border-slate-200"
+                                                )}>
+                                                    <details className="group">
+                                                        <summary className="flex items-center justify-between p-2 cursor-pointer hover:bg-white/5 transition-colors">
+                                                            <span className={cn("text-[10px] font-bold uppercase", isDarkMode ? "text-white/40" : "text-slate-500")}>Appointment Intake</span>
+                                                            <ChevronRight size={12} className="group-open:rotate-90 transition-transform" />
+                                                        </summary>
+                                                        <div className="p-3 pt-0">
+                                                            <pre className={cn(
+                                                                "text-[9px] leading-relaxed whitespace-pre-wrap font-mono max-h-40 overflow-y-auto",
+                                                                isDarkMode ? "text-white/50" : "text-slate-600"
+                                                            )}>
+                                                                {JSON.stringify(selectedMsg.debug.appointment_intake, null, 2)}
                                                             </pre>
                                                         </div>
                                                     </details>
