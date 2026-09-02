@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Wallet, CreditCard, Download, Plus, Loader2, Settings, Zap, FileDown } from "lucide-react";
 import { useGetWalletBalanceQuery, useGetPaymentHistoryQuery, useGetAutoRechargeSettingsQuery, useUpdateAutoRechargeSettingsMutation } from "@/hooks/useBillingQuery";
+import { billingApiData } from "@/services/billing";
 import { toast } from "@/lib/toast";
 
 interface BillingWalletProps {
@@ -16,11 +17,7 @@ export const BillingWallet = ({ isDarkMode, onRecharge, billingMode = 'prepaid' 
   const [showAutoRechargeConfig, setShowAutoRechargeConfig] = useState(false);
   const [localThreshold, setLocalThreshold] = useState<string>("");
   const [localAmount, setLocalAmount] = useState<string>("");
-
-  const formatRateLabel = (rate: number) => {
-    const safeRate = Number.isFinite(rate) ? rate : 0;
-    return safeRate % 1 === 0 ? safeRate.toFixed(0) : safeRate.toFixed(2).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
-  };
+  const billingApi = new billingApiData();
 
   const { data: balanceResponse, isLoading: isLoadingBalance } = useGetWalletBalanceQuery();
   const { data: paymentHistoryResponse, isLoading: isLoadingPayments } = useGetPaymentHistoryQuery({ limit: 50 });
@@ -39,75 +36,21 @@ export const BillingWallet = ({ isDarkMode, onRecharge, billingMode = 'prepaid' 
   const balanceScale = Math.max(balance, 1000);
   const balancePercent = Math.min((balance / balanceScale) * 100, 100);
 
-  // Download a GST-compliant tax invoice receipt for wallet recharge payments.
-  const handleDownloadReceipt = (payment: any) => {
-    // Use gross_amount (what was paid) when available; fall back to amount for legacy records
-    const grossAmt = parseFloat(payment.gross_amount || payment.amount || 0);
-    const baseAmt = parseFloat(payment.base_amount || payment.amount || 0);
-    const gstAmt = parseFloat(payment.gst_amount || 0);
-    const paymentGstRate = Number(payment.gst_rate || 18);
-    const halfGstRate = paymentGstRate / 2;
-    const halfGst = (gstAmt / 2).toFixed(2);
-    const isIntra = Boolean(payment.is_intra_state);
-
-    const gstLines = gstAmt > 0
-      ? isIntra
-        ? `CGST (${formatRateLabel(halfGstRate)}%):           ${currencySymbol}${halfGst}\nSGST (${formatRateLabel(halfGstRate)}%):           ${currencySymbol}${halfGst}`
-        : `IGST (${formatRateLabel(paymentGstRate)}%):             ${currencySymbol}${gstAmt.toFixed(2)}`
-      : `GST:                    ${currencySymbol}0.00`;
-
-    const receiptContent = `
-=====================================
-    WHATNEXUS — TAX INVOICE
-=====================================
-
-Invoice No : ${payment.invoice_number || `REC-${payment.id}`}
-Date       : ${new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
-Time       : ${new Date(payment.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-HSN/SAC    : 998314
-
--------------------------------------
-TRANSACTION DETAILS
--------------------------------------
-Payment ID : ${payment.razorpay_payment_id || 'N/A'}
-Order ID   : ${payment.razorpay_order_id || 'N/A'}
-Description: ${payment.description || 'Wallet Recharge'}
-Method     : ${payment.payment_method || 'Online'}
-
--------------------------------------
-AMOUNT BREAKDOWN
--------------------------------------
-Taxable Value (credited): ${currencySymbol}${baseAmt.toFixed(2)}
-${gstLines}
-                          ─────────────
-TOTAL PAID:               ${currencySymbol}${grossAmt.toFixed(2)}
-
--------------------------------------
-WALLET BALANCE
--------------------------------------
-Balance Before: ${currencySymbol}${parseFloat(payment.balance_before || 0).toFixed(2)}
-Balance After : ${currencySymbol}${parseFloat(payment.balance_after || 0).toFixed(2)}
-
--------------------------------------
-PAYMENT STATUS: SUCCESS
--------------------------------------
-
-Thank you for using Whatnexus!
-For support: support@whatnexus.com
-
-=====================================
-    `;
-
-    const blob = new Blob([receiptContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${payment.invoice_number || `Receipt-${payment.id}`}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success('Receipt downloaded!');
+  const handleDownloadReceipt = async (payment: any) => {
+    try {
+      const pdfBlob = await billingApi.downloadReceiptPdf(payment.id);
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${payment.invoice_number || `Receipt-${payment.id}`}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Receipt PDF downloaded!');
+    } catch {
+      toast.error('Failed to download receipt PDF');
+    }
   };
 
   // Export all payments to CSV

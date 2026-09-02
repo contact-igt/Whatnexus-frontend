@@ -22,6 +22,8 @@ interface ContactListProps {
     onRestore?: (contact: Contact) => void;
     onPermanentDelete?: (contact: Contact) => void;
     isTrash?: boolean;
+    /** When false, selection checkboxes are hidden entirely. */
+    selectionMode?: boolean;
 }
 
 export const ContactList = ({
@@ -36,7 +38,8 @@ export const ContactList = ({
     onDelete,
     onRestore,
     onPermanentDelete,
-    isTrash = false
+    isTrash = false,
+    selectionMode = false
 }: ContactListProps) => {
     const { user } = useAuth();
     const isRestrictedRole = ['staff', 'doctor'].includes(user?.role || '');
@@ -49,8 +52,8 @@ export const ContactList = ({
     const startIndex = (currentPage - 1) * itemsPerPage;
     const currentContacts = contacts.slice(startIndex, startIndex + itemsPerPage);
 
-    const columns: ColumnDef<Contact>[] = useMemo(() => [
-        {
+    const columns: ColumnDef<Contact>[] = useMemo(() => {
+        const selectColumn: ColumnDef<Contact> = {
             field: 'select',
             headerName: '',
             width: 150,
@@ -63,7 +66,10 @@ export const ContactList = ({
                     aria-label={`Select ${row.name}`}
                 />
             )
-        },
+        };
+
+        return [
+        ...(selectionMode ? [selectColumn] : []),
         {
             field: 'id', // S.No
             headerName: 'S.No',
@@ -143,7 +149,8 @@ export const ContactList = ({
                 />
             )
         }
-    ], [isDarkMode, selectedContacts, isTrash, onSelectContact, onEdit, onDelete, onRestore, onPermanentDelete, startIndex]);
+        ];
+    }, [isDarkMode, selectedContacts, isTrash, selectionMode, onSelectContact, onEdit, onDelete, onRestore, onPermanentDelete, startIndex]);
 
     // Custom Header for Select All
     // We need to inject the Select All checkbox into the header for the 'select' column.
@@ -163,7 +170,7 @@ export const ContactList = ({
             )}>
                 <DataTable
                     columns={columns.map(col => {
-                        if (col.field === 'select') {
+                        if (col.field === 'select' && selectionMode) {
                             return {
                                 ...col,
                                 headerName: (

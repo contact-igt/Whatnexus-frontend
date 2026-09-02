@@ -44,6 +44,8 @@ export const ContactsView = () => {
     // Selected Contact State
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+    // Multi-select mode is off by default — checkboxes only appear once enabled.
+    const [selectionMode, setSelectionMode] = useState(false);
     const [actionType, setActionType] = useState<'delete' | 'permanent_delete' | 'restore'>('delete');
 
     // Search State
@@ -156,7 +158,7 @@ export const ContactsView = () => {
             }
         });
         setIsBulkDeleteModalOpen(false);
-        setSelectedContacts([]);
+        exitSelectionMode();
     };
 
     const handleImportCSV = (file: File) => {
@@ -189,6 +191,19 @@ export const ContactsView = () => {
             { name: "Vikram Kumar", phone: "+919012345678", email: "", age: "" }
         ];
         handleCSVDownloadData(sampleData, 'contacts_sample');
+    };
+
+    const exitSelectionMode = () => {
+        setSelectionMode(false);
+        setSelectedContacts([]);
+    };
+
+    const toggleSelectionMode = () => {
+        if (selectionMode) {
+            exitSelectionMode();
+        } else {
+            setSelectionMode(true);
+        }
     };
 
     const handleSelectContact = (contactId: string) => {
@@ -249,12 +264,15 @@ export const ContactsView = () => {
                 onDownloadSample={handleDownloadSample}
                 selectedCount={selectedContacts.length}
                 onBulkDelete={selectedContacts.length > 0 ? () => setIsBulkDeleteModalOpen(true) : undefined}
+                selectionMode={selectionMode}
+                onToggleSelectionMode={toggleSelectionMode}
+                canSelect={filteredContacts.length > 0}
             />
 
             {/* Tabs */}
             <div className="flex items-center space-x-1 border-b border-white/5">
                 <button
-                    onClick={() => { setActiveTab('all'); setSelectedContacts([]); }}
+                    onClick={() => { setActiveTab('all'); exitSelectionMode(); }}
                     className={cn(
                         "px-4 py-2 text-sm font-medium border-b-2 transition-all",
                         activeTab === 'all'
@@ -265,7 +283,7 @@ export const ContactsView = () => {
                     All Contacts
                 </button>
                 <button
-                    onClick={() => { setActiveTab('trash'); setSelectedContacts([]); }}
+                    onClick={() => { setActiveTab('trash'); exitSelectionMode(); }}
                     className={cn(
                         "px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center space-x-2",
                         activeTab === 'trash'
@@ -292,6 +310,7 @@ export const ContactsView = () => {
                 onRestore={openRestoreModal}
                 onPermanentDelete={openPermanentDeleteModal}
                 isTrash={activeTab === 'trash'}
+                selectionMode={selectionMode}
             />
 
             {/* Add Contact Drawer */}
@@ -361,10 +380,14 @@ export const ContactsView = () => {
                 isOpen={isBulkDeleteModalOpen}
                 onClose={() => setIsBulkDeleteModalOpen(false)}
                 onConfirm={handleBulkDelete}
-                title="Delete Multiple Contacts"
-                message={`Are you sure you want to ${activeTab === 'trash' ? 'permanently ' : ''}delete ${selectedContacts.length} contact(s)? This action cannot be undone.`}
+                title={selectedContacts.length === 1 ? "Delete Contact" : "Delete Multiple Contacts"}
+                message={
+                    selectedContacts.length === 1
+                        ? `Are you sure you want to ${activeTab === 'trash' ? 'permanently delete this contact' : 'delete this contact'}? ${activeTab === 'trash' ? 'This action cannot be undone.' : 'It will be moved to the trash.'}`
+                        : `Are you sure you want to ${activeTab === 'trash' ? 'permanently ' : ''}delete ${selectedContacts.length} contacts? ${activeTab === 'trash' ? 'This action cannot be undone.' : 'They will be moved to the trash.'}`
+                }
                 isDarkMode={isDarkMode}
-                confirmText="Delete All"
+                confirmText={selectedContacts.length === 1 ? "Delete" : "Delete All"}
                 cancelText="Cancel"
                 isLoading={isDeleting || isPermanentlyDeleting}
                 variant="danger"

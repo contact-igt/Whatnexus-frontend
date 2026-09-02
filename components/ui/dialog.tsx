@@ -97,7 +97,7 @@ export const DialogPortal = ({ children }: DialogPortalProps) => {
 
 // ── DialogOverlay ─────────────────────────────────────────────────────────────
 
-interface DialogOverlayProps extends React.HTMLAttributes<HTMLDivElement> {}
+type DialogOverlayProps = React.HTMLAttributes<HTMLDivElement>;
 
 export const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
     ({ className, ...props }, ref) => (
@@ -140,32 +140,41 @@ export const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps
         return (
             <DialogPortal>
                 {/* Overlay */}
-                <DialogOverlay onClick={() => { onPointerDownOutside?.(); onOpenChange(false); }} />
+                <DialogOverlay />
 
-                {/* Panel */}
                 <div
-                    ref={ref}
-                    className={cn(
-                        "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-                        "w-full max-w-lg max-h-[90vh] overflow-y-auto",
-                        "rounded-xl border border-[#2a2a2a] bg-[#111111] shadow-2xl",
-                        "animate-in fade-in zoom-in-95 duration-150",
-                        "p-6",
-                        className
-                    )}
-                    {...props}
+                    className="fixed inset-0 z-50 overflow-y-auto"
                 >
-                    {children}
-
-                    {/* Close button */}
-                    <button
-                        type="button"
-                        onClick={() => onOpenChange(false)}
-                        className="absolute right-4 top-4 rounded-full p-1.5 text-gray-400 transition-all hover:bg-white/10 hover:text-white hover:rotate-90"
-                        aria-label="Close dialog"
+                    <div
+                        className="flex min-h-full items-start justify-center p-4 sm:p-6"
+                        onClick={() => { onPointerDownOutside?.(); onOpenChange(false); }}
                     >
-                        <X className="h-4 w-4" />
-                    </button>
+                        {/* Panel */}
+                        <div
+                            ref={ref}
+                            className={cn(
+                                "relative my-auto w-full max-w-lg",
+                                "rounded-xl border border-[#2a2a2a] bg-[#111111] shadow-2xl",
+                                "animate-in fade-in zoom-in-95 duration-150",
+                                "p-6",
+                                className
+                            )}
+                            onClick={(event) => event.stopPropagation()}
+                            {...props}
+                        >
+                            {children}
+
+                            {/* Close button */}
+                            <button
+                                type="button"
+                                onClick={() => onOpenChange(false)}
+                                className="absolute right-4 top-4 rounded-full p-1.5 text-gray-400 transition-all hover:bg-white/10 hover:text-white hover:rotate-90"
+                                aria-label="Close dialog"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </DialogPortal>
         );

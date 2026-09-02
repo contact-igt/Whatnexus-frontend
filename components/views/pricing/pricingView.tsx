@@ -705,25 +705,25 @@ export const PricingView = () => {
                 onClose={() => { setIsDeleteOpen(false); setDeleteRuleId(null); }}
                 isDarkMode={isDarkMode}
                 className={cn(
-                    "max-w-md p-6 rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
+                    "max-w-md rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
                     isDarkMode ? "bg-[#0A0A0B] border-white/10" : "bg-white border-slate-200"
                 )}
             >
-                <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <div className="p-3 bg-red-500/10 rounded-xl">
+                <div className="space-y-8 pb-1">
+                    <div className="flex items-center gap-5">
+                        <div className="shrink-0 p-3.5 bg-red-500/10 rounded-xl">
                             <Trash2 className="w-6 h-6 text-red-500" />
                         </div>
-                        <div>
-                            <h3 className={cn("text-lg font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
+                        <div className="min-w-0 space-y-2">
+                            <h3 className={cn("text-lg font-semibold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
                                 Delete Pricing Rule
                             </h3>
-                            <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                Are you sure you want to delete this pricing rule? This cannot be undone.
+                            <p className={cn("text-sm leading-6", isDarkMode ? "text-white/60" : "text-slate-500")}>
+                                This rule will be permanently removed and will no longer apply to future charges.
                             </p>
                         </div>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex gap-3 pt-1">
                         <button
                             onClick={() => { setIsDeleteOpen(false); setDeleteRuleId(null); }}
                             className={cn(
@@ -1020,25 +1020,25 @@ export const PricingView = () => {
                 onClose={() => { setIsAiDeleteOpen(false); setAiDeleteRuleId(null); }}
                 isDarkMode={isDarkMode}
                 className={cn(
-                    "max-w-md p-6 rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
+                    "max-w-md rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
                     isDarkMode ? "bg-[#0A0A0B] border-white/10" : "bg-white border-slate-200"
                 )}
             >
-                <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <div className="p-3 bg-red-500/10 rounded-xl">
+                <div className="space-y-8 pb-1">
+                    <div className="flex items-center gap-5">
+                        <div className="shrink-0 p-3.5 bg-red-500/10 rounded-xl">
                             <Trash2 className="w-6 h-6 text-red-500" />
                         </div>
-                        <div>
-                            <h3 className={cn("text-lg font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
+                        <div className="min-w-0 space-y-2">
+                            <h3 className={cn("text-lg font-semibold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
                                 Delete AI Pricing Rule
                             </h3>
-                            <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                Are you sure? The system will fall back to hardcoded rates for this model.
+                            <p className={cn("text-sm leading-6", isDarkMode ? "text-white/60" : "text-slate-500")}>
+                                This custom rate will be removed. Future charges for this model will use the default rate.
                             </p>
                         </div>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex gap-3 pt-1">
                         <button
                             onClick={() => { setIsAiDeleteOpen(false); setAiDeleteRuleId(null); }}
                             className={cn(

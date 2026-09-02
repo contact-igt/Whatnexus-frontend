@@ -10,7 +10,13 @@ import { Appointment } from './bookingList';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { AppointmentDrawer } from './appointmentDrawer';
 import { useGetAllAppointmentsQuery } from '@/hooks/useAppointmentQuery';
+import { useGetAllDoctorsQuery } from '@/hooks/useDoctorQuery';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Tablet, Clock, User, Stethoscope } from 'lucide-react';
+
+// Time-grid window for week / day views — keeps slots readable instead of a 24h scroll.
+const DAY_START = new Date(1970, 0, 1, 7, 0, 0);
+const DAY_END = new Date(1970, 0, 1, 21, 0, 0);
+const SCROLL_TO = new Date(1970, 0, 1, 9, 0, 0);
 
 import { GlassCard } from '@/components/ui/glassCard';
 
@@ -132,7 +138,7 @@ const CustomDateHeader = ({ label, date, isDarkMode }: any) => {
     );
 };
 
-const CustomEvent = ({ event, isDarkMode }: any) => {
+const CustomEvent = ({ event, isDarkMode, showDoctor }: any) => {
     const appointment = event.resource as Appointment;
     let colorClass = "text-emerald-400";
     let bgClass = "bg-emerald-500/10";
@@ -161,16 +167,28 @@ const CustomEvent = ({ event, isDarkMode }: any) => {
             break;
     }
 
+    const timeLabel = appointment.appointment_time || format(event.start, 'hh:mm a');
+    const doctorLabel = appointment.doctor?.name
+        ? `${appointment.doctor.title ? appointment.doctor.title + ' ' : ''}${appointment.doctor.name}`
+        : null;
+
     return (
         <div className={cn(
-            "flex items-center space-x-2 px-3 py-1.5 rounded-xl border backdrop-blur-md h-full w-full shadow-lg transition-transform",
+            "flex flex-col justify-center px-3 py-1.5 rounded-xl border backdrop-blur-md h-full w-full shadow-lg transition-transform overflow-hidden",
             isDarkMode ? "border-white/5" : "border-black/5",
             bgClass
         )}>
-            <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", dotClass)} />
-            <span className={cn("text-[0.65rem] font-black truncate uppercase tracking-tight", colorClass)}>
-                {event.title}
-            </span>
+            <div className="flex items-center space-x-2">
+                <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", dotClass)} />
+                <span className={cn("text-[0.65rem] font-black truncate uppercase tracking-tight", colorClass)}>
+                    {timeLabel} · {event.title}
+                </span>
+            </div>
+            {showDoctor && doctorLabel && (
+                <span className={cn("text-[0.55rem] font-semibold truncate pl-3.5 opacity-70", colorClass)}>
+                    {doctorLabel}
+                </span>
+            )}
         </div>
     );
 };
@@ -329,13 +347,26 @@ const CustomAgendaEvent = ({ event, isDarkMode }: any) => {
 };
 
 export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
-    const [view, setView] = useState<View>('month');
+    const [view, setView] = useState<View>('week');
     const [date, setDate] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
 
     const { data, isLoading } = useGetAllAppointmentsQuery();
-    const appointments: Appointment[] = data?.data || [];
+    const { data: doctorsData } = useGetAllDoctorsQuery();
+    const doctors: any[] = doctorsData?.data || [];
+    const allAppointments: Appointment[] = data?.data || [];
+
+    // Doctor filter — narrow the schedule to one doctor's day when selected.
+    const appointments = useMemo(() => {
+        if (!selectedDoctorId) return allAppointments;
+        return allAppointments.filter(
+            (apt) => (apt.doctor_id || apt.doctor?.doctor_id) === selectedDoctorId,
+        );
+    }, [allAppointments, selectedDoctorId]);
+
+    const selectedDoctor = doctors.find((d) => d.doctor_id === selectedDoctorId);
 
     // Convert appointments to calendar events
     const events = useMemo(() => {
@@ -445,6 +476,53 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                     boxShadow: isDarkMode ? '0 25px 50px -12px rgba(0, 0, 0, 0.7)' : '0 25px 50px -12px rgba(0, 0, 0, 0.05)'
                 }}
             >
+                {/* Doctor filter + schedule summary */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8">
+                    <div className={cn(
+                        "relative flex items-center rounded-xl border px-3 py-1",
+                        isDarkMode ? "bg-[#1a1c1e] border-white/10" : "bg-slate-50 border-slate-200"
+                    )}>
+                        <Stethoscope size={14} className={isDarkMode ? "text-white/40" : "text-slate-400"} />
+                        <select
+                            value={selectedDoctorId}
+                            onChange={(e) => setSelectedDoctorId(e.target.value)}
+                            className={cn(
+                                "bg-transparent text-xs font-bold uppercase tracking-wider py-2 pl-2 pr-6 focus:outline-none cursor-pointer",
+                                isDarkMode ? "text-white/80" : "text-slate-700"
+                            )}
+                        >
+                            <option value="">All Doctors</option>
+                            {doctors.map((doc) => (
+                                <option key={doc.doctor_id} value={doc.doctor_id}>
+                                    {doc.title ? `${doc.title} ` : ''}{doc.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <span className={cn(
+                        "text-[0.65rem] font-bold uppercase tracking-widest",
+                        isDarkMode ? "text-white/40" : "text-slate-400"
+                    )}>
+                        {events.length} appointment{events.length === 1 ? '' : 's'}
+                        {selectedDoctor ? ` · ${selectedDoctor.title ? selectedDoctor.title + ' ' : ''}${selectedDoctor.name}` : ''}
+                    </span>
+
+                    {/* Booked / available legend for the time-grid views */}
+                    {(view === 'week' || view === 'day') && (
+                        <div className={cn(
+                            "flex items-center gap-4 sm:ml-auto text-[0.6rem] font-bold uppercase tracking-widest",
+                            isDarkMode ? "text-white/40" : "text-slate-400"
+                        )}>
+                            <span className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Booked
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className={cn("w-2.5 h-2.5 rounded-full border", isDarkMode ? "border-white/20" : "border-slate-300")} /> Open slot
+                            </span>
+                        </div>
+                    )}
+                </div>
+
                 <BigCalendar
                     localizer={localizer}
                     events={events}
@@ -457,9 +535,15 @@ export const CalendarView = ({ isDarkMode }: CalendarViewProps) => {
                     onNavigate={handleNavigate}
                     onSelectEvent={handleSelectEvent}
                     eventPropGetter={eventStyleGetter}
+                    step={30}
+                    timeslots={1}
+                    min={DAY_START}
+                    max={DAY_END}
+                    scrollToTime={SCROLL_TO}
+                    dayLayoutAlgorithm="no-overlap"
                     components={{
                         toolbar: (props) => <CustomToolbar {...props} isDarkMode={isDarkMode} />,
-                        event: (props) => <CustomEvent {...props} isDarkMode={isDarkMode} />,
+                        event: (props) => <CustomEvent {...props} isDarkMode={isDarkMode} showDoctor={!selectedDoctorId && view !== 'month'} />,
                         month: {
                             dateHeader: (props) => <CustomDateHeader {...props} isDarkMode={isDarkMode} />,
                         },

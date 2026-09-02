@@ -90,13 +90,20 @@ export const useCampaigns = (
         enabled: false,
     });
 
+    // React Query's `refetch` identity is stable across renders; depend on it
+    // directly so these callbacks stay stable. Depending on the whole query
+    // object recreated the callbacks every render, which made effects that list
+    // them as deps (e.g. the Trash-tab fetch) loop forever and never settle.
+    const campaignRefetch = campaignQuery.refetch;
+    const deletedCampaignsRefetch = deletedCampaignsQuery.refetch;
+
     const refetch = useCallback(async () => {
-        await campaignQuery.refetch();
-    }, [campaignQuery]);
+        await campaignRefetch();
+    }, [campaignRefetch]);
 
     const fetchDeletedCampaigns = useCallback(async () => {
-        await deletedCampaignsQuery.refetch();
-    }, [deletedCampaignsQuery]);
+        await deletedCampaignsRefetch();
+    }, [deletedCampaignsRefetch]);
 
     const setPage = useCallback((page: number) => {
         setCurrentPage(page);

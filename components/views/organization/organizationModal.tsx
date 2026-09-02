@@ -19,7 +19,7 @@ type AppointmentBookingType = 'state_machine' | 'ai_agent';
 
 // Placeholder shown in edit/view mode so the stored OpenAI key is never exposed.
 // This value is display-only — it must never be validated or sent to the backend.
-const MASKED_API_KEY = '****************';
+const MASKED_API_KEY = '••••••••••••••••';
 
 type OrganizationAiSettingsPayload = {
     input_model: string;

@@ -211,7 +211,7 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                 onClose={() => setDeleteId(null)}
                 onConfirm={handleConfirmDelete}
                 title="Delete Specialization"
-                message="Are you sure you want to delete this specialization? This action cannot be undone."
+                message="Are you sure you want to move this specialization to trash? You can restore it later."
                 confirmText="Delete"
                 cancelText="Cancel"
                 variant="danger"

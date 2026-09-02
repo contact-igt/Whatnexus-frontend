@@ -23,6 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ActionMenu } from "@/components/ui/actionMenu";
+import { Plus } from "lucide-react";
+import type { SaaSModule } from "@/services/moduleAccessManagement";
 
 const MODULE_TYPES = ["core", "feature", "addon", "experimental", "enterprise"] as const;
 const VISIBILITY_TYPES = ["sidebar", "hidden", "internal", "api_only"] as const;
@@ -66,9 +68,9 @@ export const SaaSModulesManagementView = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedModule, setSelectedModule] = useState<any | null>(null);
-  const [pendingStatusModule, setPendingStatusModule] = useState<any | null>(null);
-  const [pendingDeleteModule, setPendingDeleteModule] = useState<any | null>(null);
+  const [selectedModule, setSelectedModule] = useState<SaaSModule | null>(null);
+  const [pendingStatusModule, setPendingStatusModule] = useState<SaaSModule | null>(null);
+  const [pendingDeleteModule, setPendingDeleteModule] = useState<SaaSModule | null>(null);
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
@@ -122,7 +124,7 @@ export const SaaSModulesManagementView = () => {
     setCreateErrors({});
   };
 
-  const openEdit = (module: any) => {
+  const openEdit = (module: SaaSModule) => {
     setSelectedModule(module);
     setEditForm({
       module_key: module.module_key || "",
@@ -215,8 +217,8 @@ export const SaaSModulesManagementView = () => {
           parent_module_id: editForm.parent_module_id || null,
           route_path: toNullableText(editForm.route_path),
           icon_key: toNullableText(editForm.icon_key),
-          module_type: editForm.module_type as any,
-          visibility_type: editForm.visibility_type as any,
+          module_type: normalizeModuleType(editForm.module_type),
+          visibility_type: normalizeVisibilityType(editForm.visibility_type),
           is_system_core: Boolean(editForm.is_system_core),
           is_active: Boolean(editForm.is_active),
           sort_order: Number(editForm.sort_order || 0),
@@ -231,7 +233,7 @@ export const SaaSModulesManagementView = () => {
     );
   };
 
-  const toggleStatus = (module: any) => {
+  const toggleStatus = (module: SaaSModule) => {
     patchModule({
       moduleId: module.module_id,
       payload: { is_active: !Boolean(module.is_active) },
@@ -240,7 +242,7 @@ export const SaaSModulesManagementView = () => {
     });
   };
 
-  const handleDeleteModule = (module: any) => {
+  const handleDeleteModule = (module: SaaSModule) => {
     deleteSaaSModule(module.module_id, {
       onSuccess: () => {
         setPendingDeleteModule(null);
@@ -248,7 +250,7 @@ export const SaaSModulesManagementView = () => {
     });
   };
 
-  const parentOptions = modules.map((module: any) => ({
+  const parentOptions = modules.map((module) => ({
     value: module.module_id,
     label: `${module.module_name} (${module.module_id})`,
   }));
@@ -271,8 +273,9 @@ export const SaaSModulesManagementView = () => {
 
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
         >
+          <Plus size={16} />
           Add Module
         </button>
       </div>
@@ -309,7 +312,7 @@ export const SaaSModulesManagementView = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              modules.map((module: any, index: number) => (
+              modules.map((module, index) => (
                 <TableRow key={module.module_id} isDarkMode={isDarkMode} isLast={index === modules.length - 1}>
                   <TableCell>{module.module_id}</TableCell>
                   <TableCell>{module.module_key}</TableCell>
@@ -389,6 +392,7 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Module ID"
+            placeholder="e.g., mod_analytics"
             required
             value={createForm.module_id}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, module_id: e.target.value }))}
@@ -397,6 +401,7 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Module Key"
+            placeholder="e.g., analytics"
             required
             value={createForm.module_key}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, module_key: e.target.value }))}
@@ -405,6 +410,7 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Module Name"
+            placeholder="e.g., Analytics"
             required
             value={createForm.module_name}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, module_name: e.target.value }))}
@@ -413,12 +419,14 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Description"
+            placeholder="e.g., Reporting and analytics tools"
             value={createForm.description}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))}
           />
           <Input
             isDarkMode={isDarkMode}
             label="Category"
+            placeholder="e.g., common"
             value={createForm.category}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, category: e.target.value }))}
           />
@@ -433,12 +441,14 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Route Path"
+            placeholder="e.g., /analytics"
             value={createForm.route_path}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, route_path: e.target.value }))}
           />
           <Input
             isDarkMode={isDarkMode}
             label="Icon Key"
+            placeholder="e.g., dashboard"
             value={createForm.icon_key}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, icon_key: e.target.value }))}
           />
@@ -458,25 +468,42 @@ export const SaaSModulesManagementView = () => {
           />
           <Input
             isDarkMode={isDarkMode}
-            label="Sort Order"
-            type="number"
+            label="Display Order"
+            type="text"
+            inputMode="numeric"
             value={createForm.sort_order}
-            onChange={(e) => setCreateForm((prev) => ({ ...prev, sort_order: e.target.value }))}
+            onChange={(e) =>
+              setCreateForm((prev) => ({ ...prev, sort_order: e.target.value.replace(/\D/g, "") }))
+            }
           />
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={createForm.is_system_core}
-                onCheckedChange={(checked) => setCreateForm((prev) => ({ ...prev, is_system_core: checked }))}
-              />
-              <span className={cn("text-sm", isDarkMode ? "text-white/90" : "text-slate-800")}>Is System Core</span>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox
+                  checked={createForm.is_system_core}
+                  onCheckedChange={(checked) => setCreateForm((prev) => ({ ...prev, is_system_core: checked }))}
+                />
+                <span className={cn("text-sm font-medium", isDarkMode ? "text-white/90" : "text-slate-800")}>
+                  Always included
+                </span>
+              </label>
+              <p className={cn("pl-7 text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                Every customer gets this module and can't turn it off.
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={createForm.is_active}
-                onCheckedChange={(checked) => setCreateForm((prev) => ({ ...prev, is_active: checked }))}
-              />
-              <span className={cn("text-sm", isDarkMode ? "text-white/90" : "text-slate-800")}>Is Active</span>
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox
+                  checked={createForm.is_active}
+                  onCheckedChange={(checked) => setCreateForm((prev) => ({ ...prev, is_active: checked }))}
+                />
+                <span className={cn("text-sm font-medium", isDarkMode ? "text-white/90" : "text-slate-800")}>
+                  Available to use
+                </span>
+              </label>
+              <p className={cn("pl-7 text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                Turn off to hide this module everywhere without deleting it.
+              </p>
             </div>
           </div>
         </div>
@@ -521,6 +548,7 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Module Key"
+            placeholder="e.g., analytics"
             required
             value={editForm.module_key}
             onChange={(e) => setEditForm((prev) => ({ ...prev, module_key: e.target.value }))}
@@ -529,6 +557,7 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Module Name"
+            placeholder="e.g., Analytics"
             required
             value={editForm.module_name}
             onChange={(e) => setEditForm((prev) => ({ ...prev, module_name: e.target.value }))}
@@ -537,12 +566,14 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Description"
+            placeholder="e.g., Reporting and analytics tools"
             value={editForm.description}
             onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
           />
           <Input
             isDarkMode={isDarkMode}
             label="Category"
+            placeholder="e.g., common"
             value={editForm.category}
             onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
           />
@@ -557,12 +588,14 @@ export const SaaSModulesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Route Path"
+            placeholder="e.g., /analytics"
             value={editForm.route_path}
             onChange={(e) => setEditForm((prev) => ({ ...prev, route_path: e.target.value }))}
           />
           <Input
             isDarkMode={isDarkMode}
             label="Icon Key"
+            placeholder="e.g., dashboard"
             value={editForm.icon_key}
             onChange={(e) => setEditForm((prev) => ({ ...prev, icon_key: e.target.value }))}
           />
@@ -582,25 +615,42 @@ export const SaaSModulesManagementView = () => {
           />
           <Input
             isDarkMode={isDarkMode}
-            label="Sort Order"
-            type="number"
+            label="Display Order"
+            type="text"
+            inputMode="numeric"
             value={editForm.sort_order}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, sort_order: e.target.value }))}
+            onChange={(e) =>
+              setEditForm((prev) => ({ ...prev, sort_order: e.target.value.replace(/\D/g, "") }))
+            }
           />
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={editForm.is_system_core}
-                onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, is_system_core: checked }))}
-              />
-              <span className={cn("text-sm", isDarkMode ? "text-white/90" : "text-slate-800")}>Is System Core</span>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox
+                  checked={editForm.is_system_core}
+                  onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, is_system_core: checked }))}
+                />
+                <span className={cn("text-sm font-medium", isDarkMode ? "text-white/90" : "text-slate-800")}>
+                  Always included
+                </span>
+              </label>
+              <p className={cn("pl-7 text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                Every customer gets this module and can't turn it off.
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={editForm.is_active}
-                onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, is_active: checked }))}
-              />
-              <span className={cn("text-sm", isDarkMode ? "text-white/90" : "text-slate-800")}>Is Active</span>
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox
+                  checked={editForm.is_active}
+                  onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, is_active: checked }))}
+                />
+                <span className={cn("text-sm font-medium", isDarkMode ? "text-white/90" : "text-slate-800")}>
+                  Available to use
+                </span>
+              </label>
+              <p className={cn("pl-7 text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
+                Turn off to hide this module everywhere without deleting it.
+              </p>
             </div>
           </div>
         </div>

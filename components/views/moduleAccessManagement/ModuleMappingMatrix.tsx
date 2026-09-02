@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { SaaSModule } from "@/services/moduleAccessManagement";
 
@@ -133,7 +132,7 @@ export const ModuleMappingMatrix = ({
                     <td className={cn("px-4 py-3", isDarkMode ? "text-white/80" : "text-slate-700")}>
                       <div className="flex items-center gap-2">
                         <span>{module.module_type}</span>
-                        {module.is_system_core && (
+                        {Boolean(module.is_system_core) && (
                           <span className="px-2 py-0.5 text-[10px] rounded-md font-semibold bg-emerald-500/15 text-emerald-500">
                             Core
                           </span>
@@ -157,11 +156,33 @@ export const ModuleMappingMatrix = ({
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center">
-                        <Checkbox
-                          checked={isEnabled}
-                          disabled={toggleDisabled}
-                          onCheckedChange={(checked) => onChange(module.module_id, checked)}
-                        />
+                        <label
+                          className={cn(
+                            "relative inline-flex items-center",
+                            toggleDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={isEnabled}
+                            disabled={toggleDisabled}
+                            onChange={(e) => onChange(module.module_id, e.target.checked)}
+                          />
+                          <div
+                            className={cn(
+                              "w-11 h-6 rounded-full peer transition-all peer-checked:bg-emerald-500",
+                              isDarkMode ? "bg-white/10" : "bg-slate-300",
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all shadow-sm",
+                                isEnabled ? "translate-x-5" : "translate-x-0",
+                              )}
+                            />
+                          </div>
+                        </label>
                       </div>
                     </td>
                   </tr>

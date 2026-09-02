@@ -23,9 +23,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ActionMenu } from "@/components/ui/actionMenu";
+import type { Plan } from "@/services/moduleAccessManagement";
+import { Plus } from "lucide-react";
 
 const BILLING_CYCLE_OPTIONS = ["monthly", "quarterly", "yearly", "custom"] as const;
 const DEFAULT_BILLING_CYCLE = "monthly";
+const isValidPrice = (value: string) => /^\d*(?:\.\d{0,2})?$/.test(value);
+const isValidDisplayOrder = (value: string) => /^\d*$/.test(value);
 
 const toSnakeCaseKey = (value: string) =>
   value
@@ -63,9 +67,9 @@ export const PlansManagementView = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
-  const [pendingStatusPlan, setPendingStatusPlan] = useState<any | null>(null);
-  const [pendingDeletePlan, setPendingDeletePlan] = useState<any | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [pendingStatusPlan, setPendingStatusPlan] = useState<Plan | null>(null);
+  const [pendingDeletePlan, setPendingDeletePlan] = useState<Plan | null>(null);
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
@@ -76,7 +80,7 @@ export const PlansManagementView = () => {
     description: "",
     price: "",
     billing_cycle: DEFAULT_BILLING_CYCLE,
-    sort_order: "0",
+    sort_order: "",
     is_active: true,
   });
 
@@ -98,19 +102,19 @@ export const PlansManagementView = () => {
       description: "",
       price: "",
       billing_cycle: DEFAULT_BILLING_CYCLE,
-      sort_order: "0",
+      sort_order: "",
       is_active: true,
     });
     setCreateErrors({});
   };
 
-  const openEdit = (plan: any) => {
+  const openEdit = (plan: Plan) => {
     setSelectedPlan(plan);
     setEditForm({
       plan_key: plan.plan_key || "",
       plan_name: plan.plan_name || "",
       description: plan.description || "",
-      price: plan.price === null || plan.price === undefined ? "" : String(plan.price),
+      price: plan.price === null || plan.price === undefined ? "" : Number(plan.price).toFixed(2),
       billing_cycle: plan.billing_cycle || "monthly",
       sort_order: String(plan.sort_order ?? 0),
       is_active: Boolean(plan.is_active),
@@ -171,7 +175,7 @@ export const PlansManagementView = () => {
           plan_name: editForm.plan_name.trim(),
           description: toNullableText(editForm.description),
           price: toNullableNumber(editForm.price),
-          billing_cycle: editForm.billing_cycle as any,
+          billing_cycle: normalizeBillingCycle(editForm.billing_cycle),
           sort_order: Number(editForm.sort_order || 0),
           is_active: Boolean(editForm.is_active),
         },
@@ -185,7 +189,7 @@ export const PlansManagementView = () => {
     );
   };
 
-  const toggleStatus = (plan: any) => {
+  const toggleStatus = (plan: Plan) => {
     patchPlan({
       planId: plan.plan_id,
       payload: { is_active: !Boolean(plan.is_active) },
@@ -194,7 +198,7 @@ export const PlansManagementView = () => {
     });
   };
 
-  const handleDeletePlan = (plan: any) => {
+  const handleDeletePlan = (plan: Plan) => {
     deletePlan(plan.plan_id, {
       onSuccess: () => {
         setPendingDeletePlan(null);
@@ -216,8 +220,9 @@ export const PlansManagementView = () => {
 
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
         >
+          <Plus size={16} />
           Add Plan
         </button>
       </div>
@@ -231,7 +236,7 @@ export const PlansManagementView = () => {
               <TableHead isDarkMode={isDarkMode}>Name</TableHead>
               <TableHead isDarkMode={isDarkMode}>Billing Cycle</TableHead>
               <TableHead isDarkMode={isDarkMode} align="right">Price</TableHead>
-              <TableHead isDarkMode={isDarkMode} align="right">Sort</TableHead>
+              <TableHead isDarkMode={isDarkMode} align="right">Display Order</TableHead>
               <TableHead isDarkMode={isDarkMode} align="center">Status</TableHead>
               <TableHead isDarkMode={isDarkMode} align="center">Actions</TableHead>
             </TableRow>
@@ -254,7 +259,7 @@ export const PlansManagementView = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              plans.map((plan: any, index: number) => (
+              plans.map((plan, index) => (
                 <TableRow key={plan.plan_id} isDarkMode={isDarkMode} isLast={index === plans.length - 1}>
                   <TableCell>{plan.plan_id}</TableCell>
                   <TableCell>{plan.plan_key}</TableCell>
@@ -334,6 +339,7 @@ export const PlansManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Plan ID"
+            placeholder="e.g., starter_plan"
             required
             value={createForm.plan_id}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, plan_id: e.target.value }))}
@@ -342,6 +348,7 @@ export const PlansManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Plan Key"
+            placeholder="e.g., starter"
             required
             value={createForm.plan_key}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, plan_key: e.target.value }))}
@@ -350,6 +357,7 @@ export const PlansManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Plan Name"
+            placeholder="e.g., Starter Plan"
             required
             value={createForm.plan_name}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, plan_name: e.target.value }))}
@@ -358,30 +366,46 @@ export const PlansManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Description"
+            placeholder="e.g., Essential features for small teams"
             value={createForm.description}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))}
           />
           <Input
             isDarkMode={isDarkMode}
             label="Price"
-            type="number"
+            inputMode="decimal"
+            placeholder="e.g., 999.00"
             value={createForm.price}
-            onChange={(e) => setCreateForm((prev) => ({ ...prev, price: e.target.value }))}
+            onChange={(e) => {
+              if (isValidPrice(e.target.value)) {
+                setCreateForm((prev) => ({ ...prev, price: e.target.value }));
+              }
+            }}
           />
           <Select
             isDarkMode={isDarkMode}
             label="Billing Cycle"
             value={normalizeBillingCycle(createForm.billing_cycle)}
             onChange={(value) => setCreateForm((prev) => ({ ...prev, billing_cycle: value }))}
-            options={BILLING_CYCLE_OPTIONS.map((v) => ({ value: v, label: v }))}
+            options={BILLING_CYCLE_OPTIONS.map((v) => ({ value: v, label: `${v[0].toUpperCase()}${v.slice(1)}` }))}
           />
-          <Input
-            isDarkMode={isDarkMode}
-            label="Sort Order"
-            type="number"
-            value={createForm.sort_order}
-            onChange={(e) => setCreateForm((prev) => ({ ...prev, sort_order: e.target.value }))}
-          />
+          <div>
+            <Input
+              isDarkMode={isDarkMode}
+              label="Display Order"
+              inputMode="numeric"
+              placeholder="e.g., 1"
+              value={createForm.sort_order}
+              onChange={(e) => {
+                if (isValidDisplayOrder(e.target.value)) {
+                  setCreateForm((prev) => ({ ...prev, sort_order: e.target.value }));
+                }
+              }}
+            />
+            <p className={cn("mt-1 ml-1 text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>
+              Controls where the plan appears. Lower numbers are shown first.
+            </p>
+          </div>
           <div className="flex items-center gap-3">
             <Checkbox
               checked={createForm.is_active}
@@ -431,6 +455,7 @@ export const PlansManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Plan Key"
+            placeholder="e.g., starter"
             required
             value={editForm.plan_key}
             onChange={(e) => setEditForm((prev) => ({ ...prev, plan_key: e.target.value }))}
@@ -439,6 +464,7 @@ export const PlansManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Plan Name"
+            placeholder="e.g., Starter Plan"
             required
             value={editForm.plan_name}
             onChange={(e) => setEditForm((prev) => ({ ...prev, plan_name: e.target.value }))}
@@ -447,30 +473,46 @@ export const PlansManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Description"
+            placeholder="e.g., Essential features for small teams"
             value={editForm.description}
             onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
           />
           <Input
             isDarkMode={isDarkMode}
             label="Price"
-            type="number"
+            inputMode="decimal"
+            placeholder="e.g., 999.00"
             value={editForm.price}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, price: e.target.value }))}
+            onChange={(e) => {
+              if (isValidPrice(e.target.value)) {
+                setEditForm((prev) => ({ ...prev, price: e.target.value }));
+              }
+            }}
           />
           <Select
             isDarkMode={isDarkMode}
             label="Billing Cycle"
             value={editForm.billing_cycle}
             onChange={(value) => setEditForm((prev) => ({ ...prev, billing_cycle: value }))}
-            options={BILLING_CYCLE_OPTIONS.map((v) => ({ value: v, label: v }))}
+            options={BILLING_CYCLE_OPTIONS.map((v) => ({ value: v, label: `${v[0].toUpperCase()}${v.slice(1)}` }))}
           />
-          <Input
-            isDarkMode={isDarkMode}
-            label="Sort Order"
-            type="number"
-            value={editForm.sort_order}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, sort_order: e.target.value }))}
-          />
+          <div>
+            <Input
+              isDarkMode={isDarkMode}
+              label="Display Order"
+              inputMode="numeric"
+              placeholder="e.g., 1"
+              value={editForm.sort_order}
+              onChange={(e) => {
+                if (isValidDisplayOrder(e.target.value)) {
+                  setEditForm((prev) => ({ ...prev, sort_order: e.target.value }));
+                }
+              }}
+            />
+            <p className={cn("mt-1 ml-1 text-xs", isDarkMode ? "text-white/40" : "text-slate-500")}>
+              Controls where the plan appears. Lower numbers are shown first.
+            </p>
+          </div>
           <div className="flex items-center gap-3">
             <Checkbox
               checked={editForm.is_active}

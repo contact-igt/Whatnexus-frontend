@@ -170,6 +170,19 @@ export class billingApiData {
   };
 
   /**
+   * Download payment receipt PDF
+   */
+  downloadReceiptPdf = async (id: number, isAdmin = false) => {
+    const route = isAdmin
+      ? `/whatsapp/admin/payments/${id}/receipt-pdf`
+      : `/whatsapp/billing/payments/${id}/receipt-pdf`;
+
+    return await _axios("get", route, null, undefined, undefined, {
+      responseType: "blob",
+    });
+  };
+
+  /**
    * Pay a specific invoice via Razorpay
    */
   payInvoice = async (id: number, paymentData: {

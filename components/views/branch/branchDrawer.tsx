@@ -26,15 +26,33 @@ const branchSchema = z.object({
     .trim()
     .optional()
     .or(z.literal(""))
-    .refine((value) => !value || /^\+?[0-9]{7,15}$/.test(value.replace(/\s+/g, "")), {
-      message: "Phone must be a valid phone number",
-    }),
-  email: z.string().trim().email("Invalid email").optional().or(z.literal("")),
+    .refine(
+      (value) => !value || /^\+?[0-9]{7,15}$/.test(value.replace(/[\s()-]/g, "")),
+      {
+        message: "Enter a valid phone number (7–15 digits, optional leading +)",
+      },
+    ),
+  email: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value),
+      { message: "Enter a valid email address, e.g. branch@hospital.com" },
+    ),
   address: z.string().trim().optional().or(z.literal("")),
   city: z.string().trim().optional().or(z.literal("")),
   state: z.string().trim().optional().or(z.literal("")),
   country: z.string().trim().optional().or(z.literal("")),
-  pincode: z.string().trim().optional().or(z.literal("")),
+  pincode: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine((value) => !value || /^[0-9]{4,10}$/.test(value), {
+      message: "Pincode must be 4–10 digits",
+    }),
   google_map_url: z
     .string()
     .trim()
@@ -332,6 +350,7 @@ export const BranchDrawer = ({
             disabled={isView}
             error={errors.city?.message}
             {...register("city")}
+            placeholder="Chennai"
           />
           <Input
             isDarkMode={isDarkMode}
@@ -339,6 +358,7 @@ export const BranchDrawer = ({
             disabled={isView}
             error={errors.state?.message}
             {...register("state")}
+            placeholder="Tamil Nadu"
           />
         </div>
 
@@ -349,13 +369,17 @@ export const BranchDrawer = ({
             disabled={isView}
             error={errors.country?.message}
             {...register("country")}
+            placeholder="India"
           />
           <Input
             isDarkMode={isDarkMode}
             label="Pincode"
             disabled={isView}
             error={errors.pincode?.message}
+            type="text"
+            inputMode="numeric"
             {...register("pincode")}
+            placeholder="600040"
           />
         </div>
 
@@ -376,6 +400,7 @@ export const BranchDrawer = ({
             disabled={isView}
             error={errors.landmark?.message}
             {...register("landmark")}
+            placeholder="Near Tower Park"
           />
           <Input
             isDarkMode={isDarkMode}

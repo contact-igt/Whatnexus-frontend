@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { SaaSModule } from "@/services/moduleAccessManagement";
 
@@ -137,7 +136,7 @@ export const TenantModuleOverrideMatrix = ({
             ) : (
               filteredModules.map((module) => {
                 const checked = Boolean(overrideState[module.module_id]);
-                const isLocked = module.is_system_core;
+                const isLocked = Boolean(module.is_system_core);
                 const toggleDisabled = disabled || isLocked;
 
                 return (
@@ -152,7 +151,7 @@ export const TenantModuleOverrideMatrix = ({
                     <td className={cn("px-4 py-3", isDarkMode ? "text-white/80" : "text-slate-700")}>
                       <div className="flex items-center gap-2">
                         <span>{module.module_type}</span>
-                        {module.is_system_core && (
+                        {isLocked && (
                           <span className="px-2 py-0.5 text-[10px] rounded-md font-semibold bg-emerald-500/15 text-emerald-500">
                             Core
                           </span>
@@ -162,11 +161,33 @@ export const TenantModuleOverrideMatrix = ({
                     <td className={cn("px-4 py-3", isDarkMode ? "text-white/80" : "text-slate-700")}>{module.visibility_type}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={checked}
-                          disabled={toggleDisabled}
-                          onCheckedChange={(value) => onToggle(module.module_id, value)}
-                        />
+                        <label
+                          className={cn(
+                            "relative inline-flex items-center",
+                            toggleDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={checked}
+                            disabled={toggleDisabled}
+                            onChange={(e) => onToggle(module.module_id, e.target.checked)}
+                          />
+                          <div
+                            className={cn(
+                              "w-11 h-6 rounded-full peer transition-all peer-checked:bg-emerald-500",
+                              isDarkMode ? "bg-white/10" : "bg-slate-300",
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-all shadow-sm",
+                                checked ? "translate-x-5" : "translate-x-0",
+                              )}
+                            />
+                          </div>
+                        </label>
                         {isLocked && (
                           <span className={cn("text-xs", isDarkMode ? "text-amber-300" : "text-amber-700")}>
                             Locked (system core)

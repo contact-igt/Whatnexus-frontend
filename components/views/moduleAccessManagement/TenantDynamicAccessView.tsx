@@ -16,6 +16,9 @@ import {
   useSaaSModulesQuery,
 } from "@/hooks/useModuleAccessManagementQuery";
 import { TenantModuleOverrideMatrix } from "./TenantModuleOverrideMatrix";
+import { Badge } from "@/components/ui/badge";
+
+const SELECTED_TENANT_STORAGE_KEY = "whatsnexus:selected-tenant-id";
 
 export const TenantDynamicAccessView = () => {
   const { isDarkMode } = useTheme();
@@ -24,7 +27,13 @@ export const TenantDynamicAccessView = () => {
   const searchParams = useSearchParams();
   const queryTenantId = searchParams.get("tenantId") || "";
 
-  const [selectedTenantId, setSelectedTenantId] = useState(queryTenantId);
+  const [selectedTenantId, setSelectedTenantId] = useState(
+    () =>
+      queryTenantId ||
+      (typeof window === "undefined"
+        ? ""
+        : window.localStorage.getItem(SELECTED_TENANT_STORAGE_KEY) || ""),
+  );
   const [selectedIndustryId, setSelectedIndustryId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [overrideState, setOverrideState] = useState<Record<string, boolean>>({});
@@ -69,6 +78,22 @@ export const TenantDynamicAccessView = () => {
       setSelectedTenantId(queryTenantId);
     }
   }, [queryTenantId, selectedTenantId]);
+
+  // Default to the first tenant when nothing valid is selected, and keep the
+  // selection persisted so a page refresh restores it.
+  useEffect(() => {
+    if (tenants.length === 0) return;
+
+    const isValid = tenants.some((tenant: any) => tenant.tenant_id === selectedTenantId);
+    const nextTenantId = isValid ? selectedTenantId : tenants[0]?.tenant_id || "";
+
+    if (!nextTenantId) return;
+
+    if (nextTenantId !== selectedTenantId) {
+      setSelectedTenantId(nextTenantId);
+    }
+    window.localStorage.setItem(SELECTED_TENANT_STORAGE_KEY, nextTenantId);
+  }, [tenants, selectedTenantId]);
 
   useEffect(() => {
     if (!selectedTenantId || !tenantDynamicAccess) {
@@ -213,6 +238,12 @@ export const TenantDynamicAccessView = () => {
   const handleTenantChange = (tenantId: string) => {
     setSelectedTenantId(tenantId);
 
+    if (tenantId) {
+      window.localStorage.setItem(SELECTED_TENANT_STORAGE_KEY, tenantId);
+    } else {
+      window.localStorage.removeItem(SELECTED_TENANT_STORAGE_KEY);
+    }
+
     const params = new URLSearchParams(searchParams.toString());
     if (tenantId) {
       params.set("tenantId", tenantId);
@@ -296,34 +327,52 @@ export const TenantDynamicAccessView = () => {
                 <p className={cn("text-xs font-semibold uppercase", isDarkMode ? "text-white/60" : "text-slate-600")}>
                   Modules
                 </p>
-                <p className={cn("text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
-                  Enabled {tenantDynamicAccess.enabled_modules?.length || 0} / Disabled {tenantDynamicAccess.disabled_modules?.length || 0}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Badge isDarkMode={isDarkMode} variant="success" size="sm">
+                    {tenantDynamicAccess.enabled_modules?.length || 0} Enabled
+                  </Badge>
+                  <Badge isDarkMode={isDarkMode} variant="danger" size="sm">
+                    {tenantDynamicAccess.disabled_modules?.length || 0} Disabled
+                  </Badge>
+                </div>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              <div>
-                <p className={cn("text-xs font-semibold uppercase mb-2", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                  Enabled Module Keys
-                </p>
-                <div className={cn("text-xs rounded-lg p-3 min-h-16", isDarkMode ? "bg-white/5 text-white/80" : "bg-slate-50 text-slate-700")}>
-                  {(tenantDynamicAccess.enabled_module_keys || []).length > 0
-                    ? tenantDynamicAccess.enabled_module_keys.join(", ")
-                    : "None"}
+              {([
+                {
+                  title: "Enabled Module Keys",
+                  keys: (tenantDynamicAccess.enabled_module_keys || []) as string[],
+                  variant: "success" as const,
+                },
+                {
+                  title: "Disabled Module Keys",
+                  keys: (tenantDynamicAccess.disabled_module_keys || []) as string[],
+                  variant: "danger" as const,
+                },
+              ]).map(({ title, keys, variant }) => (
+                <div key={title}>
+                  <p className={cn("text-xs font-semibold uppercase mb-2 flex items-center gap-2", isDarkMode ? "text-white/60" : "text-slate-600")}>
+                    {title}
+                    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold", isDarkMode ? "bg-white/10 text-white/70" : "bg-slate-200 text-slate-700")}>
+                      {keys.length}
+                    </span>
+                  </p>
+                  <div className={cn("rounded-lg p-3 min-h-16", isDarkMode ? "bg-white/5" : "bg-slate-50")}>
+                    {keys.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {keys.map((key) => (
+                          <Badge key={key} isDarkMode={isDarkMode} variant={variant} size="sm">
+                            {key}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>None</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <p className={cn("text-xs font-semibold uppercase mb-2", isDarkMode ? "text-white/60" : "text-slate-600")}>
-                  Disabled Module Keys
-                </p>
-                <div className={cn("text-xs rounded-lg p-3 min-h-16", isDarkMode ? "bg-white/5 text-white/80" : "bg-slate-50 text-slate-700")}>
-                  {(tenantDynamicAccess.disabled_module_keys || []).length > 0
-                    ? tenantDynamicAccess.disabled_module_keys.join(", ")
-                    : "None"}
-                </div>
-              </div>
+              ))}
             </div>
 
             {ignoredOverrides.length > 0 && (

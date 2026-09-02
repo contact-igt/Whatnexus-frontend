@@ -301,33 +301,34 @@ export const DashboardView = () => {
                 {(() => {
                     if (!wabaConnected || isManagement) return null;
 
-                    const tier = dashboardData!.wabaInfo.tier;
-                    // WABA-level (portfolio) daily unique-user limits per Meta's current tier model
-                    const tierLimits: Record<string, number> = {
-                        TIER_NOT_SET: 250,
-                        TIER_2K:      2000,
-                        TIER_10K:     10000,
-                        TIER_100K:    100000,
-                        TIER_UNLIMITED: Infinity,
-                    };
-                    const limit = tierLimits[tier?.toUpperCase?.()] ?? 250;
+                    // Tier semantics come entirely from the backend resolver — no local map.
+                    const w = dashboardData!.wabaInfo;
                     return (
                         <section>
                             <SectionHeader
                                 icon={<Layers3 size={18} />}
                                 title="Account & Messaging Limits"
-                                subtitle="Rolling 24-hour limit status and account upgrade protection"
+                                subtitle="Estimated rolling 24-hour activity — Meta remains authoritative"
                                 accentColor="#8b5cf6"
                                 isDarkMode={isDarkMode}
                             />
                             <MessagingLimitTracker
                                 isDarkMode={isDarkMode}
                                 limitData={{
-                                    limit,
-                                    used: dashboardData!.wabaInfo?.rolling24hUsed ?? 0,
-                                    sevenDayUnique: dashboardData!.wabaInfo?.sevenDayUnique ?? 0,
-                                    thirtyDayUnique: dashboardData!.wabaInfo?.thirtyDayUnique ?? 0,
-                                    quality: dashboardData!.wabaInfo.quality as 'GREEN' | 'YELLOW' | 'RED',
+                                    limit: w.dailyLimit ?? null,
+                                    isUnlimited: !!w.isUnlimited,
+                                    isKnown: !!w.isTierKnown,
+                                    used: w.rolling24hUsed ?? 0,
+                                    sevenDayUnique: w.sevenDayUnique ?? 0,
+                                    thirtyDayUnique: w.thirtyDayUnique ?? 0,
+                                    quality: w.quality,
+                                    upgradeTarget: w.upgradeTarget ?? null,
+                                    upgradeWindowDays: w.upgradeWindowDays ?? null,
+                                    allowsVerificationPath: !!w.allowsVerificationPath,
+                                    requiresHighQuality: !!w.requiresHighQuality,
+                                    isEstimate: w.messagingLimitIsEstimate ?? true,
+                                    source: w.messagingLimitSource,
+                                    syncedAt: w.messagingLimitSyncedAt ?? null,
                                 }}
                             />
                         </section>

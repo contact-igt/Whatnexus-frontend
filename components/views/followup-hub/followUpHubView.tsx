@@ -839,7 +839,7 @@ export const FollowUpHubView = () => {
             className="inline-flex items-center gap-0.5 rounded-xl p-0.5"
             style={{ background: isDarkMode ? "#18181b" : "#f4f4f5", border: `1px solid ${borderColor}` }}
           >
-            {segBtn(sendTypeFilter === "all", "All triggers", () => { setSendTypeFilter("all"); setCurrentPage(1); })}
+            {segBtn(sendTypeFilter === "all", "All Appointments", () => { setSendTypeFilter("all"); setCurrentPage(1); })}
             {segBtn(sendTypeFilter === "follow_up", "Follow-up", () => { setSendTypeFilter("follow_up"); setCurrentPage(1); })}
             {segBtn(sendTypeFilter === "noshow", "No-show", () => { setSendTypeFilter("noshow"); setCurrentPage(1); })}
           </div>

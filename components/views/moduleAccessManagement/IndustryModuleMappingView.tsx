@@ -14,9 +14,15 @@ import {
 } from "@/hooks/useModuleAccessManagementQuery";
 import { toast } from "@/lib/toast";
 
+const SELECTED_INDUSTRY_STORAGE_KEY = "whatsnexus:selected-industry-id";
+
 export const IndustryModuleMappingView = () => {
   const { isDarkMode } = useTheme();
-  const [selectedIndustryId, setSelectedIndustryId] = useState("");
+  const [selectedIndustryOverride, setSelectedIndustryId] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : window.localStorage.getItem(SELECTED_INDUSTRY_STORAGE_KEY) || "",
+  );
   const [mappingState, setMappingState] = useState<Record<string, boolean>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingMappings, setPendingMappings] = useState<
@@ -25,6 +31,14 @@ export const IndustryModuleMappingView = () => {
 
   const { data: industriesData, isLoading: isIndustriesLoading } = useIndustriesQuery();
   const { data: modulesData, isLoading: isModulesLoading } = useSaaSModulesQuery();
+  const industries = useMemo(() => industriesData?.data || [], [industriesData]);
+  const modules = useMemo(() => modulesData?.data || [], [modulesData]);
+  const selectedIndustryId = industries.some(
+    (industry) => industry.industry_id === selectedIndustryOverride,
+  )
+    ? selectedIndustryOverride
+    : industries[0]?.industry_id || "";
+
   const {
     data: industryMappingData,
     isLoading: isIndustryMappingLoading,
@@ -33,8 +47,6 @@ export const IndustryModuleMappingView = () => {
   const { mutate: patchIndustryMappings, isPending: isSaving } =
     usePatchIndustrySaaSModulesMutation();
 
-  const industries = useMemo(() => industriesData?.data || [], [industriesData]);
-  const modules = useMemo(() => modulesData?.data || [], [modulesData]);
   const serverMappings = useMemo(
     () => industryMappingData?.data?.mappings || [],
     [industryMappingData],
@@ -59,7 +71,7 @@ export const IndustryModuleMappingView = () => {
     setMappingState(next);
   }, [selectedIndustryId, modules, serverMappings]);
 
-  const industryOptions = industries.map((industry: any) => ({
+  const industryOptions = industries.map((industry) => ({
     value: industry.industry_id,
     label: `${industry.industry_name} (${industry.industry_id})`,
   }));
@@ -69,6 +81,11 @@ export const IndustryModuleMappingView = () => {
       ...prev,
       [moduleId]: isEnabled,
     }));
+  };
+
+  const handleIndustryChange = (industryId: string) => {
+    setSelectedIndustryId(industryId);
+    window.localStorage.setItem(SELECTED_INDUSTRY_STORAGE_KEY, industryId);
   };
 
   const handleSave = () => {
@@ -125,9 +142,9 @@ export const IndustryModuleMappingView = () => {
       <div className={cn("rounded-xl border p-4", isDarkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white")}>
         <Select
           isDarkMode={isDarkMode}
-          label="Select Industry"
+          label="Select an industry to manage module mappings"
           value={selectedIndustryId}
-          onChange={(value) => setSelectedIndustryId(value)}
+          onChange={handleIndustryChange}
           options={industryOptions}
           disabled={isIndustriesLoading}
         />

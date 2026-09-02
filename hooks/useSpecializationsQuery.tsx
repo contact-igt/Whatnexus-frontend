@@ -47,7 +47,8 @@ export const useDeleteSpecializationMutation = () => {
         mutationFn: (id: string) => specializationsApis.deleteSpecialization(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['specializations'] })
-            toast.success("Specialization deleted successfully")
+            queryClient.invalidateQueries({ queryKey: ['deleted-specializations'] })
+            toast.success("Specialization moved to trash")
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.message || "Failed to delete specialization")

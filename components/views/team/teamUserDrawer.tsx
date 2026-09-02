@@ -119,12 +119,12 @@ export const TeamUserDrawer = ({
     const isEdit = mode === 'edit';
     const isCreate = mode === 'create';
 
-    const dialogTitle = isCreate ? 'Invite New Node' : isEdit ? 'Edit Node' : 'Node Details';
+    const dialogTitle = isCreate ? 'Invite Staff Member' : isEdit ? 'Edit Staff Member' : 'Staff Member Details';
     const dialogDescription = isCreate
         ? 'Add a new team member to your agent matrix.'
         : isEdit
-            ? 'Update node information and permissions.'
-            : 'View node information.';
+            ? 'Update staff member information and permissions.'
+            : 'View staff member information.';
 
     const handleFormSubmit = async (data: TeamUserFormValues) => {
         await onSubmit(data);

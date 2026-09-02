@@ -105,6 +105,32 @@ body {
   scrollbar-width: none;
 }
 
+/* Scrollbar hidden until the element is hovered */
+.hover-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hover-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.hover-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.hover-scrollbar:hover {
+  scrollbar-width: thin;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.5);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
 /* ─── Skeleton / Shimmer ─── */
 @keyframes shimmer {
   0% {
