@@ -54,6 +54,7 @@ export const useGetAvailableContactsQuery = (groupId: string, enabled: boolean =
 
 // Update Group
 export const useUpdateGroupMutation = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ groupId, data }: { groupId: string; data: UpdateGroupDto }) => {
@@ -61,7 +62,7 @@ export const useUpdateGroupMutation = () => {
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['contact-group', variables.groupId] });
+            queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] });
             toast.success(data?.message || 'Group updated successfully!');
         },
         onError: (error: any) => {
@@ -72,6 +73,7 @@ export const useUpdateGroupMutation = () => {
 
 // Add Contacts to Group
 export const useAddContactsToGroupMutation = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ groupId, data }: { groupId: string; data: AddContactsToGroupDto }) => {
@@ -79,8 +81,8 @@ export const useAddContactsToGroupMutation = () => {
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['contact-group', variables.groupId] });
-            queryClient.invalidateQueries({ queryKey: ['available-contacts', variables.groupId] });
+            queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] });
+            queryClient.invalidateQueries({ queryKey: ['available-contacts', tenantId, variables.groupId] });
             const count = variables.data.contact_ids.length;
             toast.success(data?.message || `${count} contact${count > 1 ? 's' : ''} added to group`);
         },
@@ -92,6 +94,7 @@ export const useAddContactsToGroupMutation = () => {
 
 // Remove Contact from Group
 export const useRemoveContactFromGroupMutation = () => {
+    const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ groupId, contactId }: { groupId: string; contactId: string }) => {
@@ -99,8 +102,8 @@ export const useRemoveContactFromGroupMutation = () => {
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['contact-group', variables.groupId] });
-            queryClient.invalidateQueries({ queryKey: ['available-contacts', variables.groupId] });
+            queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] });
+            queryClient.invalidateQueries({ queryKey: ['available-contacts', tenantId, variables.groupId] });
             toast.success(data?.message || 'Contact removed from group');
         },
         onError: (error: any) => {

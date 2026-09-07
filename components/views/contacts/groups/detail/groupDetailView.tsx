@@ -18,7 +18,7 @@ import { AddMembersModal } from "./addMembersModal";
 import { EditGroupModal } from "../editGroupModal";
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
 
-export const GroupDetailView = () => {
+export const GroupDetailView = ({ initiallyOpenAddMembers = false }: { initiallyOpenAddMembers?: boolean }) => {
     const { isDarkMode } = useTheme();
     const params = useParams();
     const router = useRouter();
@@ -27,7 +27,7 @@ export const GroupDetailView = () => {
     // Modal States
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isAddMembersModalOpen, setIsAddMembersModalOpen] = useState(false);
+    const [isAddMembersModalOpen, setIsAddMembersModalOpen] = useState(initiallyOpenAddMembers);
     const [isRemoveMemberModalOpen, setIsRemoveMemberModalOpen] = useState(false);
 
     // Selected Member State

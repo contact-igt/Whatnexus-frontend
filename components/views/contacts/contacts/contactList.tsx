@@ -42,6 +42,7 @@ export const ContactList = ({
     selectionMode = false
 }: ContactListProps) => {
     const { user } = useAuth();
+    const canPermanentlyDelete = user?.user_type === 'tenant' && user?.role === 'tenant_admin';
     const isRestrictedRole = ['staff', 'doctor'].includes(user?.role || '');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 7;
@@ -129,6 +130,26 @@ export const ContactList = ({
             )
         },
         {
+            field: 'created_at',
+            headerName: 'Created At',
+            width: 230,
+            renderCell: ({ row }) => (
+                <span className={cn(
+                    "text-sm whitespace-nowrap",
+                    isDarkMode ? 'text-white/70' : 'text-slate-600'
+                )}>
+                    {row.created_at ? new Date(row.created_at).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                    }) : '—'}
+                </span>
+            )
+        },
+        {
             field: 'actions',
             headerName: 'Actions',
             width: 100,
@@ -141,7 +162,7 @@ export const ContactList = ({
                     isEdit={!isTrash && !isRestrictedRole}
                     isDelete={!isTrash && !isRestrictedRole}
                     isRestore={isTrash && !isRestrictedRole}
-                    isPermanentDelete={false}
+                    isPermanentDelete={isTrash && canPermanentlyDelete}
                     onEdit={() => onEdit(row)}
                     onDelete={() => onDelete(row)}
                     onRestore={() => onRestore?.(row)}
@@ -150,7 +171,7 @@ export const ContactList = ({
             )
         }
         ];
-    }, [isDarkMode, selectedContacts, isTrash, selectionMode, onSelectContact, onEdit, onDelete, onRestore, onPermanentDelete, startIndex]);
+    }, [isDarkMode, selectedContacts, isTrash, isRestrictedRole, canPermanentlyDelete, selectionMode, onSelectContact, onEdit, onDelete, onRestore, onPermanentDelete, startIndex]);
 
     // Custom Header for Select All
     // We need to inject the Select All checkbox into the header for the 'select' column.

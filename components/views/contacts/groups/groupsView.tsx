@@ -57,7 +57,7 @@ export const GroupsView = () => {
     // Get groups from API response - backend returns { message, data: { groups: [], totalItems, totalPages, currentPage } }
     const groups: ContactGroup[] = activeTab === 'all'
         ? groupsData?.data?.groups || []
-        : deletedGroupsData?.data?.groups || [];
+        : deletedGroupsData?.data?.items || [];
 
     const isLoading = activeTab === 'all' ? isLoadingGroups : isLoadingDeleted;
 
@@ -177,6 +177,7 @@ export const GroupsView = () => {
 
             {/* Groups List */}
             <GroupsList
+                key={`${activeTab}:${debouncedSearchQuery}`}
                 isDarkMode={isDarkMode}
                 groups={filteredGroups}
                 isLoading={isLoading}

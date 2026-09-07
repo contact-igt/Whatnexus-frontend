@@ -86,7 +86,7 @@ export const ContactsView = () => {
     // Get contacts from API response based on tab
     const contacts: Contact[] = activeTab === 'all'
         ? contactsData?.data?.contacts || []
-        : deletedContactsData?.data?.contacts || [];
+        : deletedContactsData?.data?.items || [];
 
     const isLoading = activeTab === 'all' ? isLoadingContacts : isLoadingDeleted;
 
@@ -298,6 +298,7 @@ export const ContactsView = () => {
 
             {/* Contact List */}
             <ContactList
+                key={`${activeTab}:${searchQuery}`}
                 isDarkMode={isDarkMode}
                 contacts={filteredContacts}
                 isLoading={isLoading}

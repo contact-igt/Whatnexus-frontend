@@ -6,6 +6,7 @@ import { Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/ui/dataTable";
 import { Pagination } from "@/components/ui/pagination";
+import { useAuth } from "@/redux/selectors/auth/authSelector";
 
 interface GroupsListProps {
     isDarkMode: boolean;
@@ -29,6 +30,8 @@ export const GroupsList = ({
     isTrash = false
 }: GroupsListProps) => {
     const router = useRouter();
+    const { user } = useAuth();
+    const canPermanentlyDelete = user?.user_type === 'tenant' && user?.role === 'tenant_admin';
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 7;
 
@@ -106,7 +109,7 @@ export const GroupsList = ({
                         "text-sm font-medium",
                         isDarkMode ? 'text-white/70' : 'text-slate-600'
                     )}>
-                        {row?.members?.length}
+                        {row.members?.length ?? 0}
                     </span>
                 </div>
             )
@@ -125,8 +128,9 @@ export const GroupsList = ({
                         isEdit={!isTrash}
                         isDelete={!isTrash}
                         isRestore={isTrash}
-                        isPermanentDelete={isTrash}
+                        isPermanentDelete={isTrash && canPermanentlyDelete}
                         onView={() => router.push(`/contacts/groups/${row.group_id}`)}
+                        onAddMembers={isTrash ? undefined : () => router.push(`/contacts/groups/${row.group_id}?addMembers=true`)}
                         onEdit={() => onEdit(row)}
                         onDelete={() => onDelete(row)}
                         onRestore={() => onRestore?.(row)}
@@ -135,7 +139,7 @@ export const GroupsList = ({
                 </div>
             )
         }
-    ], [isDarkMode, isTrash, onEdit, onDelete, onRestore, onPermanentDelete, router, startIndex]);
+    ], [isDarkMode, isTrash, canPermanentlyDelete, onEdit, onDelete, onRestore, onPermanentDelete, router, startIndex]);
 
     return (
         <div>
@@ -148,7 +152,7 @@ export const GroupsList = ({
                     data={currentGroups}
                     isLoading={isLoading}
                     isDarkMode={isDarkMode}
-                    onRowClick={(row) => router.push(`/contacts/groups/${row.group_id}`)}
+                    onRowClick={isTrash ? undefined : (row) => router.push(`/contacts/groups/${row.group_id}`)}
                     emptyState={
                         <div className="flex flex-col items-center justify-center py-16">
                             <div className={cn(
