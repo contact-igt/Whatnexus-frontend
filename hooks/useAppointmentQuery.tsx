@@ -110,7 +110,10 @@ export const useGetAllAppointmentsQuery = (
     return useQuery({
         queryKey: ["appointments", tenantId, params],
         queryFn: () => appointmentApis.getAllAppointments(params) as Promise<AppointmentListResponse>,
-        staleTime: 30 * 1000,
+        staleTime: 60 * 1000,
+        gcTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
+        placeholderData: (prev) => prev, // keep last data visible during refetch — no skeleton flash
         enabled:
             !!token &&
             userType === "tenant" &&

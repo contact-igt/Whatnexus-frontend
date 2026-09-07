@@ -288,6 +288,13 @@ export const KnowledgeView = () => {
         const MAX_FILE_SIZE_MB = 5;
         const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
         if (!files || files.length === 0) return;
+        // Single-file upload only — one document is staged at a time.
+        if (uploadedData.length >= 1) {
+            toast.error("Remove the current file before adding another.");
+            return;
+        }
+        // Ignore all but the first selected/dropped file.
+        files = [files[0]] as unknown as FileList;
         const allowedTypes = [
             "application/pdf",
             "application/msword",

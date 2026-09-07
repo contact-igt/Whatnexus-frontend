@@ -54,7 +54,7 @@ export const AppointmentsView = () => {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-8 space-y-6 animate-in slide-in-from-bottom-8 duration-700 max-w-[1400px] mx-auto no-scrollbar pb-32">
+        <div className="h-full overflow-y-auto p-8 space-y-6 animate-in fade-in duration-200 max-w-[1400px] mx-auto no-scrollbar pb-32">
             <div className="space-y-2">
                 <h1 className={cn("text-3xl font-bold tracking-tight", isDarkMode ? 'text-white' : 'text-slate-900')}>
                     Appointments

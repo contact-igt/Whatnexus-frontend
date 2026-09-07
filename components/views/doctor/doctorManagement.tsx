@@ -145,8 +145,8 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
 
         setPendingStatus({ doctorId: doctor.doctor_id, status });
         try {
+            // Optimistic cache update happens inside the mutation; no manual refetch.
             await updateDoctorMutation.mutateAsync({ doctorId: doctor.doctor_id, data: { status } });
-            await refetchActive();
         } catch (error) {
             console.error("Doctor status update failed", error);
         } finally {
@@ -228,14 +228,22 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     const getAvailableDays = (availability: Doctor['availability']) => {
         if (!availability) return 'No availability';
 
+        const abbr = (day: unknown) =>
+            typeof day === 'string' && day.length > 0
+                ? day.charAt(0).toUpperCase() + day.slice(1, 3)
+                : '';
+
         if (Array.isArray(availability)) {
-            const days = Array.from(new Set(availability.map(a => a.day_of_week)));
-            return days.map(day => day.charAt(0).toUpperCase() + day.slice(1, 3)).join(', ') || 'No availability';
+            const days = Array.from(
+                new Set(availability.map(a => a?.day_of_week).filter(Boolean)),
+            );
+            return days.map(abbr).filter(Boolean).join(', ') || 'No availability';
         }
 
         return Object.entries(availability)
             .filter(([_, data]) => data?.enabled)
-            .map(([day]) => day.charAt(0).toUpperCase() + day.slice(1, 3))
+            .map(([day]) => abbr(day))
+            .filter(Boolean)
             .join(', ') || 'No availability';
     };
 
