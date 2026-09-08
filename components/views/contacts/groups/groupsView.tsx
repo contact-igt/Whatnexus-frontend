@@ -57,7 +57,7 @@ export const GroupsView = () => {
     // Get groups from API response - backend returns { message, data: { groups: [], totalItems, totalPages, currentPage } }
     const groups: ContactGroup[] = activeTab === 'all'
         ? groupsData?.data?.groups || []
-        : deletedGroupsData?.data?.items || [];
+        : deletedGroupsData?.data?.items ?? deletedGroupsData?.data?.groups ?? [];
 
     const isLoading = activeTab === 'all' ? isLoadingGroups : isLoadingDeleted;
 

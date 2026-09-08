@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from 'react';
-import { Search, Plus, Briefcase, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Plus, Briefcase, Trash2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { SpecializationDrawer, Specialization } from './specializationDrawer';
-import { useGetAllSpecializationsQuery, useDeleteSpecializationMutation, useToggleSpecializationStatusMutation } from '@/hooks/useSpecializationsQuery';
+import { useGetAllSpecializationsQuery, useDeleteSpecializationMutation, useToggleSpecializationStatusMutation, useGetDeletedSpecializationsQuery, useRestoreSpecializationMutation, usePermanentDeleteSpecializationMutation } from '@/hooks/useSpecializationsQuery';
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
+import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { ActionMenu } from '@/components/ui/actionMenu';
 
 interface SpecializationManagementProps {
@@ -13,6 +14,14 @@ interface SpecializationManagementProps {
 }
 
 export const SpecializationManagement = ({ isDarkMode }: SpecializationManagementProps) => {
+    const [isTrash, setIsTrash] = useState(false);
+    const [trashPage, setTrashPage] = useState(1);
+    const { user } = useAuth();
+    const canManageTrash = user?.user_type === 'tenant' && user?.role === 'tenant_admin';
+    const { data: deletedData, isLoading: isLoadingTrash, isError: isTrashError } = useGetDeletedSpecializationsQuery(trashPage);
+    const restoreMutation = useRestoreSpecializationMutation();
+    const permanentDeleteMutation = usePermanentDeleteSpecializationMutation();
+    const [action, setAction] = useState<'delete' | 'restore' | 'permanent'>('delete');
     const { data: specializationsData, isLoading } = useGetAllSpecializationsQuery();
     const deleteMutation = useDeleteSpecializationMutation();
     const toggleStatusMutation = useToggleSpecializationStatusMutation();
@@ -25,7 +34,8 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
     // Confirmation State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    const specializations = specializationsData?.data || [];
+    const specializations = isTrash ? deletedData?.data?.items || [] : specializationsData?.data || [];
+    const isPending = deleteMutation.isPending || restoreMutation.isPending || permanentDeleteMutation.isPending;
 
     const filteredSpecializations = specializations.filter((spec: Specialization) =>
         (spec.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
@@ -45,18 +55,18 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
     };
 
     const handleDeleteClick = (id: string) => {
+        setAction('delete');
         setDeleteId(id);
     };
 
     const handleConfirmDelete = async () => {
         if (deleteId) {
             try {
-                await deleteMutation.mutateAsync(deleteId);
+                await (action === 'restore' ? restoreMutation : action === 'permanent' ? permanentDeleteMutation : deleteMutation).mutateAsync(deleteId);
+                setDeleteId(null);
                 // Toast handled in mutation
             } catch (error) {
                 console.error("Failed to delete specialization", error);
-            } finally {
-                setDeleteId(null);
             }
         }
     };
@@ -81,7 +91,7 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                     )} size={18} />
                     <input
                         type="text"
-                        placeholder="Search specializations..."
+                        placeholder={isTrash ? "Search this trash page..." : "Search specializations..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className={cn(
@@ -106,13 +116,23 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                 </button>
             </div>
 
+            <div className="flex gap-4 border-b border-slate-500/20" aria-label="Specialization views">
+                {[false, true].map(trash => (
+                    <button key={String(trash)} onClick={() => { setIsTrash(trash); setSearchQuery(''); }}
+                        aria-pressed={isTrash === trash}
+                        className={cn("flex items-center gap-2 px-3 py-2 border-b-2 text-sm font-medium", isTrash === trash ? "border-emerald-500 text-emerald-500" : "border-transparent text-slate-500")}>
+                        {trash && <Trash2 size={16} />}
+                        {trash ? 'Trash' : 'All Specializations'}
+                    </button>
+                ))}
+            </div>
             {/* List View */}
             <div className="grid gap-4">
-                {isLoading ? (
+                {(isTrash ? isLoadingTrash : isLoading) ? (
                     <div className="flex justify-center py-12">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
                     </div>
-                ) : filteredSpecializations.length === 0 ? (
+                ) : isTrash && isTrashError ? (<p role="alert" className="text-red-500">Unable to load trash. Please try again.</p>) : filteredSpecializations.length === 0 ? (
                     <div className={cn(
                         "text-center py-12 rounded-2xl border border-dashed",
                         isDarkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"
@@ -121,10 +141,10 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                             <Briefcase className={isDarkMode ? "text-white/40" : "text-slate-400"} size={24} />
                         </div>
                         <h3 className={cn("text-sm font-medium mb-1", isDarkMode ? "text-white" : "text-slate-900")}>
-                            No specializations found
+                            {isTrash ? 'No deleted specializations found' : 'No specializations found'}
                         </h3>
                         <p className={cn("text-xs", isDarkMode ? "text-white/50" : "text-slate-500")}>
-                            {searchQuery ? "Try adjusting your search terms" : "Get started by adding a new specialization"}
+                            {searchQuery ? "Try adjusting your search terms" : isTrash ? "Deleted specializations will appear here" : "Get started by adding a new specialization"}
                         </p>
                     </div>
                 ) : (
@@ -152,7 +172,7 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                                                     ? (isDarkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200")
                                                     : (isDarkMode ? "bg-slate-500/10 text-slate-400 border-slate-500/20" : "bg-slate-100 text-slate-600 border-slate-200")
                                             )}>
-                                                {spec.is_active ? "Active" : "Inactive"}
+                                                {isTrash ? "Deleted" : spec.is_active ? "Active" : "Inactive"}
                                             </span>
                                         </div>
                                         <p className={cn("text-sm line-clamp-2", isDarkMode ? "text-white/60" : "text-slate-600")}>
@@ -162,7 +182,7 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
 
                                     {/* Actions */}
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <label className="relative inline-flex items-center cursor-pointer">
+                                        {!isTrash && <label className="relative inline-flex items-center cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
@@ -179,14 +199,18 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                                                     spec.is_active ? "translate-x-5" : "translate-x-0"
                                                 )} />
                                             </div>
-                                        </label>
+                                        </label>}
 
                                         <ActionMenu
                                             isDarkMode={isDarkMode}
-                                            isEdit={true}
+                                            isEdit={!isTrash}
                                             onEdit={() => handleEdit(spec)}
-                                            isDelete={true}
+                                            isDelete={!isTrash && canManageTrash}
                                             onDelete={() => handleDeleteClick(spec.specialization_id)}
+                                            isRestore={isTrash && canManageTrash}
+                                            isPermanentDelete={isTrash && canManageTrash}
+                                            onRestore={() => { setAction('restore'); setDeleteId(spec.specialization_id); }}
+                                            onPermanentDelete={() => { setAction('permanent'); setDeleteId(spec.specialization_id); }}
                                         />
                                     </div>
                                 </div>
@@ -196,6 +220,13 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                 )}
             </div>
 
+            {isTrash && (deletedData?.data?.total || 0) > 20 && (
+                <div className="flex justify-end items-center gap-4 text-sm">
+                    <button disabled={trashPage === 1} onClick={() => setTrashPage(p => p - 1)} className="text-emerald-500 disabled:opacity-40">Previous</button>
+                    <span className="text-slate-500">Page {trashPage}</span>
+                    <button disabled={trashPage * 20 >= deletedData.data.total} onClick={() => setTrashPage(p => p + 1)} className="text-emerald-500 disabled:opacity-40">Next</button>
+                </div>
+            )}
             {/* Drawer */}
             <SpecializationDrawer
                 isOpen={isDrawerOpen}
@@ -210,11 +241,12 @@ export const SpecializationManagement = ({ isDarkMode }: SpecializationManagemen
                 isOpen={!!deleteId}
                 onClose={() => setDeleteId(null)}
                 onConfirm={handleConfirmDelete}
-                title="Delete Specialization"
-                message="Are you sure you want to move this specialization to trash? You can restore it later."
-                confirmText="Delete"
+                isLoading={isPending}
+                title={action === 'restore' ? 'Restore Specialization' : action === 'permanent' ? 'Permanently Delete Specialization' : 'Delete Specialization'}
+                message={action === 'restore' ? 'Restore this specialization?' : action === 'permanent' ? 'Permanently delete this specialization? This action cannot be undone.' : 'Are you sure you want to move this specialization to trash? You can restore it later.'}
+                confirmText={action === 'restore' ? 'Restore' : action === 'permanent' ? 'Delete Forever' : 'Delete'}
                 cancelText="Cancel"
-                variant="danger"
+                variant={action === 'restore' ? 'info' : 'danger'}
                 isDarkMode={isDarkMode}
             />
         </div>

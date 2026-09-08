@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ImageIcon, X, FileText, Video, File } from "lucide-react";
+import { ImageIcon, X, FileText, Video, File, RotateCw } from "lucide-react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
 
@@ -385,19 +385,37 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleCancel}
-                className={cn(
-                  "w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0",
-                  isDarkMode
-                    ? "text-white/30 hover:bg-white/8 hover:text-white/80"
-                    : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                )}
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => loadMediaAssets()}
+                  disabled={loading || uploading}
+                  title="Refresh — check for updated approval status"
+                  className={cn(
+                    "px-4 py-2 rounded-xl border text-sm font-semibold transition-all duration-200 flex items-center gap-2",
+                    isDarkMode
+                      ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50",
+                    (loading || uploading) && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <RotateCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className={cn(
+                    "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                    isDarkMode
+                      ? "text-white/30 hover:bg-white/8 hover:text-white/80"
+                      : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  )}
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* ── Toolbar ───────────────────────────────────────────────────── */}

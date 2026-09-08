@@ -13,8 +13,8 @@ export const useCreateGroupMutation = () => {
         mutationFn: (data: CreateGroupDto) => {
             return contactGroupApis.createGroup(data);
         },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
+        onSuccess: async (data) => {
+            await queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
             toast.success(data?.message || 'Group created successfully!');
         },
         onError: (error: any) => {
@@ -60,9 +60,11 @@ export const useUpdateGroupMutation = () => {
         mutationFn: ({ groupId, data }: { groupId: string; data: UpdateGroupDto }) => {
             return contactGroupApis.updateGroup(groupId, data);
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] });
+        onSuccess: async (data, variables) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['contact-groups'] }),
+                queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] }),
+            ]);
             toast.success(data?.message || 'Group updated successfully!');
         },
         onError: (error: any) => {
@@ -79,10 +81,12 @@ export const useAddContactsToGroupMutation = () => {
         mutationFn: ({ groupId, data }: { groupId: string; data: AddContactsToGroupDto }) => {
             return contactGroupApis.addContactsToGroup(groupId, data);
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] });
-            queryClient.invalidateQueries({ queryKey: ['available-contacts', tenantId, variables.groupId] });
+        onSuccess: async (data, variables) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['contact-groups'] }),
+                queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] }),
+                queryClient.invalidateQueries({ queryKey: ['available-contacts', tenantId, variables.groupId] }),
+            ]);
             const count = variables.data.contact_ids.length;
             toast.success(data?.message || `${count} contact${count > 1 ? 's' : ''} added to group`);
         },
@@ -100,10 +104,12 @@ export const useRemoveContactFromGroupMutation = () => {
         mutationFn: ({ groupId, contactId }: { groupId: string; contactId: string }) => {
             return contactGroupApis.removeContactFromGroup(groupId, contactId);
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] });
-            queryClient.invalidateQueries({ queryKey: ['available-contacts', tenantId, variables.groupId] });
+        onSuccess: async (data, variables) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['contact-groups'] }),
+                queryClient.invalidateQueries({ queryKey: ['contact-group', tenantId, variables.groupId] }),
+                queryClient.invalidateQueries({ queryKey: ['available-contacts', tenantId, variables.groupId] }),
+            ]);
             toast.success(data?.message || 'Contact removed from group');
         },
         onError: (error: any) => {
@@ -119,9 +125,11 @@ export const useDeleteGroupMutation = () => {
         mutationFn: (groupId: string) => {
             return contactGroupApis.deleteGroup(groupId);
         },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['deleted-groups'] });
+        onSuccess: async (data) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['contact-groups'] }),
+                queryClient.invalidateQueries({ queryKey: ['deleted-groups'] }),
+            ]);
             toast.success(data?.message || 'Group deleted successfully');
         },
         onError: (error: any) => {
@@ -146,9 +154,11 @@ export const useRestoreGroupMutation = () => {
         mutationFn: (groupId: string) => {
             return contactGroupApis.restoreGroup(groupId);
         },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['contact-groups'] });
-            queryClient.invalidateQueries({ queryKey: ['deleted-groups'] });
+        onSuccess: async (data) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['contact-groups'] }),
+                queryClient.invalidateQueries({ queryKey: ['deleted-groups'] }),
+            ]);
             toast.success(data?.message || 'Group restored successfully');
         },
         onError: (error: any) => {
@@ -164,8 +174,8 @@ export const usePermanentDeleteGroupMutation = () => {
         mutationFn: (groupId: string) => {
             return contactGroupApis.permanentDeleteGroup(groupId);
         },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['deleted-groups'] });
+        onSuccess: async (data) => {
+            await queryClient.invalidateQueries({ queryKey: ['deleted-groups'] });
             toast.success(data?.message || 'Group permanently deleted successfully');
         },
         onError: (error: any) => {

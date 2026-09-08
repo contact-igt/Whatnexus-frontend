@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
-const { QueryClient } = require('@tanstack/react-query');
+const { QueryClient, QueryObserver } = require('@tanstack/react-query');
 
 test('group mutations invalidate tenant-scoped member data', async () => {
     const client = new QueryClient();
@@ -44,6 +44,31 @@ test('group mutations invalidate tenant-scoped member data', async () => {
             assert.equal(client.getQueryState(availableKey).isInvalidated, true, hook);
         }
         assert.equal(client.getQueryState(otherTenantKey).isInvalidated, false);
+    }
+    for (const hook of ['useAddContactsToGroupMutation', 'useRemoveContactFromGroupMutation', 'useUpdateGroupMutation', 'useDeleteGroupMutation']) {
+        const key = hook === 'useDeleteGroupMutation'
+            ? exports.useGetDeletedGroupsQuery().queryKey : groupKey;
+        client.setQueryData(key, { data: [] });
+        let resolveRefresh;
+        const observer = new QueryObserver(client, {
+            queryKey: key,
+            staleTime: Infinity,
+            queryFn: () => new Promise(resolve => { resolveRefresh = resolve; }),
+        });
+        const unsubscribe = observer.subscribe(() => {});
+        let completed = false;
+        const saving = exports[hook]().onSuccess({}, {
+            groupId: 'GRP01291', data: { contact_ids: ['contact-1'] },
+        });
+        Promise.resolve(saving).then(() => { completed = true; });
+        await Promise.resolve();
+        assert.equal(completed, false, hook + ' must wait for refreshed data');
+        assert.equal(typeof resolveRefresh, 'function', hook + ' automatically refetches');
+        const fresh = { data: [{ group_name: 'Updated group', members: ['contact-1'] }] };
+        resolveRefresh(fresh);
+        await saving;
+        assert.deepEqual(client.getQueryData(key), fresh);
+        unsubscribe();
     }
     client.clear();
 });

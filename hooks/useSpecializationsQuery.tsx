@@ -70,11 +70,11 @@ export const useToggleSpecializationStatusMutation = () => {
     })
 }
 
-export const useGetDeletedSpecializationsQuery = () => {
+export const useGetDeletedSpecializationsQuery = (page = 1) => {
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id)
     return useQuery({
-        queryKey: ['deleted-specializations', tenantId],
-        queryFn: () => specializationsApis.getDeletedSpecializations()
+        queryKey: ['deleted-specializations', tenantId, page],
+        queryFn: () => specializationsApis.getDeletedSpecializations(page)
     })
 }
 

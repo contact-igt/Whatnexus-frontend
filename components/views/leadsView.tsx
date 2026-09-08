@@ -198,7 +198,13 @@ export const LeadsView = () => {
             time
         ].some(val => val?.toString().toLowerCase().includes(searchLower));
 
-        const matchesOrigin = filters.origin === 'all' || (lead?.origin || lead?.source) === filters.origin;
+        const leadOrigin = String(lead?.origin || lead?.source || '').toLowerCase();
+        const matchesOrigin =
+            filters.origin === 'all' ||
+            leadOrigin === filters.origin ||
+            // Legacy leads created before WhatsApp became the default source are
+            // stored as "none"/empty — they still came through the WhatsApp bot.
+            (filters.origin === 'whatsapp' && (leadOrigin === '' || leadOrigin === 'none'));
 
         let matchesScore = true;
         if (filters.score > 0) matchesScore = getLeadFinalScore(lead) >= filters.score;

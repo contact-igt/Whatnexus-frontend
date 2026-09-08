@@ -25,8 +25,8 @@ export class specializationApiData {
         return await _axios("patch", `/whatsapp/specialization/${id}/status`)
     }
 
-    getDeletedSpecializations = async () => {
-        return await _axios("get", "/whatsapp/specializations/deleted")
+    getDeletedSpecializations = async (page = 1) => {
+        return await _axios("get", "/whatsapp/specializations/deleted", null, undefined, { page, limit: 20 })
     }
 
     restoreSpecialization = async (id: string) => {

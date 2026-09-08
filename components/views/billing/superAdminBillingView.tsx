@@ -830,15 +830,41 @@ const InvoiceManagement = ({ isDarkMode }: { isDarkMode: boolean }) => {
 
 // ────────────── Audit Log ──────────────
 const AuditLog = ({ isDarkMode }: { isDarkMode: boolean }) => {
-    const [tenantFilter, setTenantFilter] = useState("");
+    const [query, setQuery] = useState("");
     const [page, setPage] = useState(1);
 
+    // One search box, everything client-side. Pull a wide window so the filter
+    // spans real history, not just the current 20 rows.
     const { data: response, isLoading } = useAdminGetAuditLogQuery({
-        tenant_id: tenantFilter || undefined,
         page,
-        limit: 20,
+        limit: 200,
     });
-    const logs = response?.logs || [];
+    const allLogs = response?.logs || [];
+
+    const logs = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return allLogs;
+        return allLogs.filter((log: any) => {
+            const haystack = [
+                log.admin_name,
+                log.admin_id,
+                log.performed_by,
+                log.action_type,
+                log.action,
+                log.tenant_name,
+                log.tenant_id,
+                log.reason,
+                log.details,
+                typeof log.before_state === "string" ? log.before_state : JSON.stringify(log.before_state || ""),
+                typeof log.after_state === "string" ? log.after_state : JSON.stringify(log.after_state || ""),
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+            return haystack.includes(q);
+        });
+    }, [allLogs, query]);
+
     const totalPages = response?.pagination?.totalPages || 1;
 
     const exportCsv = useCallback(() => {
@@ -889,11 +915,17 @@ const AuditLog = ({ isDarkMode }: { isDarkMode: boolean }) => {
                         <Search size={14} className="opacity-40" />
                         <input
                             type="text"
-                            placeholder="Filter by tenant ID..."
-                            value={tenantFilter}
-                            onChange={(e) => { setTenantFilter(e.target.value); setPage(1); }}
-                            className={cn("bg-transparent text-sm outline-none w-40", isDarkMode ? "text-white placeholder:text-white/30" : "text-slate-900 placeholder:text-slate-400")}
+                            data-gramm="false"
+                            autoComplete="off"
+                            spellCheck={false}
+                            placeholder="Search tenant, ID, admin, action, details..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            className={cn("bg-transparent text-sm outline-none w-64", isDarkMode ? "text-white placeholder:text-white/30" : "text-slate-900 placeholder:text-slate-400")}
                         />
+                        {query && (
+                            <button type="button" onClick={() => setQuery("")} className="opacity-40 hover:opacity-100 text-xs">✕</button>
+                        )}
                     </div>
                 </div>
             </div>
