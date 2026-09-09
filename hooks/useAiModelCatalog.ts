@@ -5,8 +5,9 @@ import { _axios } from "@/helper/axios";
 import { socket } from "@/utils/socket";
 
 export type CatalogState =
-  | "Pending review" | "Unsupported" | "Pricing needed" | "Test required"
-  | "Ready to activate" | "Active" | "Deprecated" | "Retired" | "Unavailable";
+  | "Pending review" | "Unsupported" | "Pricing needed" | "Test required" | "Test failed"
+  | "Ready to activate" | "Active" | "Active (legacy — not live-tested)"
+  | "Deprecated" | "Retired" | "Unavailable";
 
 export interface CatalogRequestProfile {
   endpoint: "chat_completions" | "responses";
@@ -51,7 +52,9 @@ export interface CatalogModel {
   lifecycle_status: "available" | "deprecated" | "shutdown" | "unknown";
   shutdown_date: string | null;
   request_profile: CatalogRequestProfile | null;
-  test_status: "not_tested" | "passed" | "failed";
+  test_status: "not_tested" | "passed" | "failed" | "legacy_grandfathered";
+  is_legacy_grandfathered?: boolean;
+  runtimeBlockers?: string[];
   test_error: string | null;
   last_tested_at: string | null;
   reviewed_at: string | null;

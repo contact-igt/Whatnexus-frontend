@@ -26,8 +26,10 @@ const STATE_VARIANT: Record<CatalogState, "default" | "primary" | "success" | "w
   "Unsupported": "default",
   "Pricing needed": "warning",
   "Test required": "info",
+  "Test failed": "danger",
   "Ready to activate": "primary",
   "Active": "success",
+  "Active (legacy — not live-tested)": "warning",
   "Deprecated": "warning",
   "Retired": "danger",
   "Unavailable": "danger",
@@ -35,7 +37,7 @@ const STATE_VARIANT: Record<CatalogState, "default" | "primary" | "success" | "w
 
 const REVIEW_STATUSES = ["pending", "approved", "unsupported", "retired"];
 const LIFECYCLE_STATUSES = ["unknown", "available", "deprecated", "shutdown"];
-const TEST_STATUSES = ["not_tested", "passed", "failed"];
+const TEST_STATUSES = ["not_tested", "passed", "failed", "legacy_grandfathered"];
 
 const errMessage = (e: unknown, fallback: string): string => {
   const withResp = e as { response?: { data?: { message?: string } }; message?: string } | undefined;
@@ -283,8 +285,8 @@ export const AiModelCatalog = ({ isDarkMode, onConfigurePricing }: Props) => {
                     </Badge>
                   </TableCell>
                   <TableCell align="center">
-                    <Badge isDarkMode={isDarkMode} size="sm" variant={m.test_status === "passed" ? "success" : m.test_status === "failed" ? "danger" : "default"}>
-                      {m.test_status}
+                    <Badge isDarkMode={isDarkMode} size="sm" variant={m.test_status === "passed" ? "success" : m.test_status === "failed" ? "danger" : m.test_status === "legacy_grandfathered" ? "warning" : "default"}>
+                      {m.test_status === "legacy_grandfathered" ? "legacy" : m.test_status}
                     </Badge>
                   </TableCell>
                   <TableCell align="right">

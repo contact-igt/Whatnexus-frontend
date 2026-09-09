@@ -10,6 +10,7 @@ import { Building2, Mail, Phone, MapPin, Users, Loader2, Cpu, Key, ShieldCheck }
 import { cn } from "@/lib/utils";
 import { useCreateTenantMutation, useUpdateTenantMutation, useValidateOpenAIKeyMutation } from "@/hooks/useTenantQuery";
 import { useGetAiPricingRulesQuery } from "@/hooks/useManagementQuery";
+import { useGetAvailableAiModelsQuery } from "@/hooks/useBillingQuery";
 import { useIndustriesQuery, usePlansQuery } from "@/hooks/useModuleAccessManagementQuery";
 import { Country, State, City } from 'country-state-city';
 import { sanitizePhoneInput } from "@/lib/phone";
@@ -125,23 +126,47 @@ export const OrganizationModal = ({
     const isModelActive = (m: AiPricingRuleLite) =>
         m?.is_active === true || m?.is_active === 1 || m?.is_active === '1';
     const activeAiModels = aiModels.filter(isModelActive);
-    const aiModelOptions = activeAiModels.map((m) => ({
-        label: `${m.model} (${m.category})`,
-        value: m.model
-    }));
-    const activeModelSet = new Set(aiModelOptions.map((m) => m.value));
-    const appendInactiveSelectedModel = (model?: string) => {
-        if (!model || activeModelSet.has(model)) return;
-        aiModelOptions.push({
-            label: `${model} (inactive)`,
-            value: model,
-        });
-    };
-    appendInactiveSelectedModel(formData.input_model);
-    appendInactiveSelectedModel(formData.output_model);
 
-    const hasInvalidInputModel = !!formData.input_model && !activeModelSet.has(formData.input_model);
-    const hasInvalidOutputModel = !!formData.output_model && !activeModelSet.has(formData.output_model);
+    // Editing an existing tenant → use tenant-scoped, purpose-specific
+    // availability (respects that tenant's catalog + credential). Creating a new
+    // tenant → no tenant exists yet, so fall back to the platform active list.
+    const editTenantId = mode === 'edit' ? (organization?.tenant_id || undefined) : undefined;
+    const inputModelsQ = useGetAvailableAiModelsQuery({ purpose: 'input', tenantId: editTenantId, enabled: !!editTenantId });
+    const outputModelsQ = useGetAvailableAiModelsQuery({ purpose: 'output', tenantId: editTenantId, enabled: !!editTenantId });
+
+    const buildModelOptions = (
+        q: typeof inputModelsQ,
+        saved: string | undefined,
+    ): { options: { label: string; value: string }[]; savedUnavailable: boolean; loading: boolean; error: boolean } => {
+        if (editTenantId) {
+            if (q.isLoading) return { options: [], savedUnavailable: false, loading: true, error: false };
+            if (q.isError) return { options: [], savedUnavailable: false, loading: false, error: true };
+            const payload = q.data as { data?: { model: string }[]; meta?: { saved_selection_entry?: { unavailability_reason?: string } } } | undefined;
+            const list = payload?.data ?? [];
+            const options = list.map((m) => ({ label: m.model, value: m.model }));
+            let savedUnavailable = false;
+            if (saved && !options.some((o) => o.value === saved)) {
+                savedUnavailable = true;
+                const reason = payload?.meta?.saved_selection_entry?.unavailability_reason;
+                options.unshift({ label: `${saved} — unavailable${reason ? ` (${reason})` : ''}`, value: saved });
+            }
+            return { options, savedUnavailable, loading: false, error: false };
+        }
+        // create mode — platform active list
+        const options = activeAiModels.map((m) => ({ label: `${m.model} (${m.category})`, value: m.model }));
+        let savedUnavailable = false;
+        if (saved && !options.some((o) => o.value === saved)) {
+            savedUnavailable = true;
+            options.push({ label: `${saved} (inactive)`, value: saved });
+        }
+        return { options, savedUnavailable, loading: false, error: false };
+    };
+
+    const inputModelInfo = buildModelOptions(inputModelsQ, formData.input_model);
+    const outputModelInfo = buildModelOptions(outputModelsQ, formData.output_model);
+
+    const hasInvalidInputModel = inputModelInfo.savedUnavailable;
+    const hasInvalidOutputModel = outputModelInfo.savedUnavailable;
 
     const resolveApiArray = <T,>(payload: unknown): T[] => {
         if (Array.isArray(payload)) return payload as T[];
@@ -955,29 +980,44 @@ export const OrganizationModal = ({
                         </h3>
                     </div>
 
-                    <Select
-                        isDarkMode={isDarkMode}
-                        label="Input Model (Classification/Extraction)"
-                        value={formData.input_model || 'gpt-4o-mini'}
-                        onChange={(value) => handleChange('input_model', value)}
-                        options={aiModelOptions}
-                        disabled={isView}
-                        error={errors.input_model}
-                    />
+                    <div>
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="Input Model (Classification/Extraction)"
+                            value={formData.input_model || 'gpt-4o-mini'}
+                            onChange={(value) => handleChange('input_model', value)}
+                            options={inputModelInfo.options}
+                            disabled={isView || inputModelInfo.loading}
+                            error={errors.input_model}
+                        />
+                        {inputModelInfo.loading && <p className={cn("text-[10px] ml-1 mt-1", isDarkMode ? 'text-white/40' : 'text-slate-400')}>Loading available models…</p>}
+                        {inputModelInfo.error && <p className="text-[10px] ml-1 mt-1 text-red-500">Could not load available models.</p>}
+                        {inputModelInfo.savedUnavailable && <p className="text-[10px] ml-1 mt-1 text-amber-500">The saved input model is no longer available for this tenant. Choose a replacement.</p>}
+                    </div>
 
-                    <Select
-                        isDarkMode={isDarkMode}
-                        label="Output Model (Generation/Responses)"
-                        value={formData.output_model || 'gpt-4o'}
-                        onChange={(value) => handleChange('output_model', value)}
-                        options={aiModelOptions}
-                        disabled={isView}
-                        error={errors.output_model}
-                    />
+                    <div>
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="Output Model (Generation/Responses)"
+                            value={formData.output_model || 'gpt-4o'}
+                            onChange={(value) => handleChange('output_model', value)}
+                            options={outputModelInfo.options}
+                            disabled={isView || outputModelInfo.loading}
+                            error={errors.output_model}
+                        />
+                        {outputModelInfo.loading && <p className={cn("text-[10px] ml-1 mt-1", isDarkMode ? 'text-white/40' : 'text-slate-400')}>Loading available models…</p>}
+                        {outputModelInfo.error && <p className="text-[10px] ml-1 mt-1 text-red-500">Could not load available models.</p>}
+                        {outputModelInfo.savedUnavailable && <p className="text-[10px] ml-1 mt-1 text-amber-500">The saved output model is no longer available for this tenant. Choose a replacement.</p>}
+                    </div>
 
-                    {activeAiModels.length === 0 && (
+                    {!editTenantId && activeAiModels.length === 0 && (
                         <p className={cn("text-[10px] ml-1 col-span-full", isDarkMode ? 'text-amber-300' : 'text-amber-700')}>
-                            No active AI models are configured. Please activate at least one model in AI Pricing before creating or updating an organization.
+                            No active AI models are configured. Activate at least one model in the Model Catalog before creating an organization.
+                        </p>
+                    )}
+                    {editTenantId && !inputModelInfo.loading && inputModelInfo.options.length === 0 && !inputModelInfo.error && (
+                        <p className={cn("text-[10px] ml-1 col-span-full", isDarkMode ? 'text-amber-300' : 'text-amber-700')}>
+                            This tenant has no available AI models. Check catalog activation and the tenant&apos;s OpenAI credential.
                         </p>
                     )}
 
