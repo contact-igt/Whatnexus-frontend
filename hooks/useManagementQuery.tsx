@@ -213,7 +213,7 @@ export const useGetAiPricingRulesQuery = () => {
 export const useCreateAiPricingRuleMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: { model: string, input_rate: number, output_rate: number, markup_percent?: number, usd_to_inr_rate?: number, description?: string, recommended_for?: "input" | "output" | "both", category?: "premium" | "mid-tier" | "budget" | "reasoning" }) =>
+        mutationFn: (data: { model: string, input_rate: number, output_rate: number, cached_input_price_per_million?: number | null, markup_percent?: number, usd_to_inr_rate?: number, description?: string, recommended_for?: "input" | "output" | "both", category?: "premium" | "mid-tier" | "budget" | "reasoning" }) =>
             managementApis.createAiPricingRule(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["ai-pricing-rules"] });
@@ -228,7 +228,7 @@ export const useCreateAiPricingRuleMutation = () => {
 export const useUpdateAiPricingRuleMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: number, data: { input_rate?: number, output_rate?: number, markup_percent?: number, usd_to_inr_rate?: number, is_active?: boolean, description?: string, recommended_for?: "input" | "output" | "both", category?: "premium" | "mid-tier" | "budget" | "reasoning" } }) =>
+        mutationFn: ({ id, data }: { id: number, data: { input_rate?: number, output_rate?: number, cached_input_price_per_million?: number | null, markup_percent?: number, usd_to_inr_rate?: number, is_active?: boolean, description?: string, recommended_for?: "input" | "output" | "both", category?: "premium" | "mid-tier" | "budget" | "reasoning" } }) =>
             managementApis.updateAiPricingRule(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["ai-pricing-rules"] });
