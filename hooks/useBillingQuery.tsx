@@ -171,11 +171,24 @@ export const useUpdateAutoRechargeSettingsMutation = () => {
     });
 };
 
-export const useGetAvailableAiModelsQuery = () => {
+/**
+ * Tenant-scoped, purpose-specific available AI models.
+ * Query key includes tenantId + purpose so Tenant A's list is never served to
+ * Tenant B and the input/output/vision lists stay separate. A management caller
+ * may pass an explicit tenantId (super_admin / platform_admin only, server-checked).
+ */
+export const useGetAvailableAiModelsQuery = (
+    opts: { purpose?: 'input' | 'output' | 'vision'; tenantId?: string; enabled?: boolean } = {},
+) => {
+    const { user, token } = useAuth();
+    const purpose = opts.purpose ?? 'output';
+    const isManagement = user?.user_type === 'management';
+    const effectiveTenantId = opts.tenantId ?? (isManagement ? undefined : user?.tenant_id);
     return useQuery({
-        queryKey: ['available-ai-models'],
-        queryFn: () => billingApis.getAvailableAiModels(),
-        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+        queryKey: ['available-ai-models', effectiveTenantId ?? 'self', purpose],
+        queryFn: () => billingApis.getAvailableAiModels({ purpose, tenantId: opts.tenantId }),
+        enabled: (opts.enabled ?? true) && !!token && (isManagement ? !!opts.tenantId : !!user?.tenant_id),
+        staleTime: 60 * 1000,
     });
 };
 

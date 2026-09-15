@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreHorizontal, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play, Sparkles, RefreshCw, MessageSquare, RotateCcw, CheckCircle, Ban, Lock } from 'lucide-react';
+import { MoreHorizontal, UserPlus, Eye, Edit2, Trash2, MessageCircle, Send, Save, Play, Sparkles, RefreshCw, MessageSquare, RotateCcw, CheckCircle, Ban, Lock } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 
@@ -15,6 +15,7 @@ interface ActionMenuProps {
     isWhatsAppConfig?: boolean;
     onWhatsAppConfig?: () => void;
     onView?: () => void;
+    onAddMembers?: () => void;
     onEdit?: () => void;
     isSubmitTemplate?: boolean;
     onSubmitTemplate?: () => void;
@@ -44,7 +45,7 @@ interface ActionMenuProps {
 
 }
 
-export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, isRestore, onRestore, onWhatsAppConfig, onView, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute, isAnswer, onAnswer, isSummary, isSummaryLocked, onSummary, isMessage, onMessage, isRefresh, onRefresh, isActivate, onActivate, isDeactivate, onDeactivate }: ActionMenuProps) => {
+export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppConfig, isPermanentDelete, isRestore, onRestore, onWhatsAppConfig, onView, onAddMembers, onEdit, onDelete, onPermanentDelete, isSubmitTemplate, onSubmitTemplate, isSyncTemplate, onSyncTemplate, isExecute, onExecute, isAnswer, onAnswer, isSummary, isSummaryLocked, onSummary, isMessage, onMessage, isRefresh, onRefresh, isActivate, onActivate, isDeactivate, onDeactivate }: ActionMenuProps) => {
     const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -98,7 +99,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
 
     // Recalculate position if we can (optional, but closing on scroll is safer)
 
-    const hasAnyAction = isView || isEdit || isDelete || isWhatsAppConfig || isPermanentDelete ||
+    const hasAnyAction = !!onAddMembers || isView || isEdit || isDelete || isWhatsAppConfig || isPermanentDelete ||
         isRestore || isSubmitTemplate || isSyncTemplate || isExecute || isAnswer ||
         isSummary || isMessage || isRefresh || isActivate || isDeactivate;
 
@@ -141,6 +142,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                         {/* Group 1: Navigation Control */}
                         {[
                             { show: !!isView && !!onView, onClick: () => onView?.(), icon: Eye, label: "View" },
+                            { show: !!onAddMembers, onClick: () => onAddMembers?.(), icon: UserPlus, label: "Add Members" },
                             { show: !!isMessage && !!onMessage, onClick: () => onMessage?.(), icon: MessageSquare, label: "Message" },
                             { show: !!isEdit && !!onEdit, onClick: () => onEdit?.(), icon: Edit2, label: "Edit" },
                             { show: !!isAnswer && !!onAnswer, onClick: () => onAnswer?.(), icon: MessageCircle, label: "Answer", customClass: isDarkMode ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-emerald-500 hover:bg-emerald-50' },
@@ -149,6 +151,7 @@ export const ActionMenu = ({ isDarkMode, isView, isEdit, isDelete, isWhatsAppCon
                                 <div className="px-1.5 space-y-0.5">
                                     {[
                                         { show: !!isView && !!onView, onClick: () => onView?.(), icon: Eye, label: "View" },
+                            { show: !!onAddMembers, onClick: () => onAddMembers?.(), icon: UserPlus, label: "Add Members" },
                                         { show: !!isMessage && !!onMessage, onClick: () => onMessage?.(), icon: MessageSquare, label: "Message" },
                                         { show: !!isEdit && !!onEdit, onClick: () => onEdit?.(), icon: Edit2, label: "Edit" },
                                         { show: !!isAnswer && !!onAnswer, onClick: () => onAnswer?.(), icon: MessageCircle, label: "Answer", customClass: isDarkMode ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-emerald-500 hover:bg-emerald-50' },

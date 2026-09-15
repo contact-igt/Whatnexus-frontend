@@ -287,7 +287,7 @@ export const BranchManagement = ({ isDarkMode }: BranchManagementProps) => {
                                                     <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", branch.is_active ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') : (isDarkMode ? 'bg-slate-500/10 text-white/60' : 'bg-slate-100 text-slate-500'))}>
                                                         {branch.is_active ? 'Active' : 'Inactive'}
                                                     </span>
-                                                    {branch.is_main && (
+                                                    {Boolean(branch.is_main) && (
                                                         <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700')}>
                                                             Main
                                                         </span>

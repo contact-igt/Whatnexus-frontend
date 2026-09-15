@@ -13,7 +13,12 @@ export const useGetSuperAdminDashboardQuery = (period: string = "30days") => {
         queryKey: ["super-admin-dashboard", period],
         enabled: !!token && isManagement,
         queryFn: () => dashboardApis.getDashboardData(period),
-        staleTime: 5 * 60 * 1000,
-        refetchInterval: 10 * 60 * 1000,
+        // Keep the dashboard close to live; cross-app mutations also invalidate
+        // this key (see lib/queryClient.ts).
+        staleTime: 30 * 1000,
+        refetchInterval: 2 * 60 * 1000,
+        refetchIntervalInBackground: false,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
     });
 };

@@ -2,14 +2,16 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Eye, Edit2, Trash2, UserCircle, Clock, Briefcase, Phone, Mail, CheckCircle, XCircle, MinusCircle, RefreshCw, RotateCcw } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Trash2, UserCircle, Clock, Briefcase, Phone, Mail, CheckCircle, XCircle, MinusCircle, RefreshCw, RotateCcw, ChevronDown } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { DoctorDrawer } from './doctorDrawer';
 import { Select } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/lib/toast";
 import {
     useGetAllDoctorsQuery,
     useGetDeletedDoctorsQuery,
+    useUpdateDoctorMutation,
     useDeleteDoctorMutation,
     useRestoreDoctorMutation,
     usePermanentDeleteDoctorMutation
@@ -23,6 +25,12 @@ interface DoctorManagementProps {
     isDarkMode: boolean;
 }
 
+const STATUS_OPTIONS: { value: NonNullable<Doctor['status']>; label: string }[] = [
+    { value: 'available', label: 'Available' },
+    { value: 'busy', label: 'Busy' },
+    { value: 'off_duty', label: 'Off Duty' }
+];
+
 export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
     const [searchQuery, setSearchQuery] = useState('');
@@ -31,6 +39,8 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
+    const [pendingStatus, setPendingStatus] = useState<{ doctorId: string; status: NonNullable<Doctor['status']> } | null>(null);
+    const [statusMenuDoctorId, setStatusMenuDoctorId] = useState<string | null>(null);
 
     // Confirmation Modal State
     const [confirmationState, setConfirmationState] = useState<{
@@ -65,6 +75,7 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     } = useGetDeletedDoctorsQuery({ search: searchQuery });
 
     const deleteDoctorMutation = useDeleteDoctorMutation();
+    const updateDoctorMutation = useUpdateDoctorMutation();
     const restoreDoctorMutation = useRestoreDoctorMutation();
     const permanentDeleteDoctorMutation = usePermanentDeleteDoctorMutation();
 
@@ -126,6 +137,21 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
         setSelectedDoctor(doctor);
         setModalMode('edit');
         setIsModalOpen(true);
+    };
+
+    const handleStatusChange = async (doctor: Doctor, status: NonNullable<Doctor['status']>) => {
+        setStatusMenuDoctorId(null);
+        if (status === doctor.status) return;
+
+        setPendingStatus({ doctorId: doctor.doctor_id, status });
+        try {
+            // Optimistic cache update happens inside the mutation; no manual refetch.
+            await updateDoctorMutation.mutateAsync({ doctorId: doctor.doctor_id, data: { status } });
+        } catch (error) {
+            console.error("Doctor status update failed", error);
+        } finally {
+            setPendingStatus(null);
+        }
     };
 
     const handleDeleteDoctor = (doctor: Doctor) => {
@@ -202,14 +228,22 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
     const getAvailableDays = (availability: Doctor['availability']) => {
         if (!availability) return 'No availability';
 
+        const abbr = (day: unknown) =>
+            typeof day === 'string' && day.length > 0
+                ? day.charAt(0).toUpperCase() + day.slice(1, 3)
+                : '';
+
         if (Array.isArray(availability)) {
-            const days = Array.from(new Set(availability.map(a => a.day_of_week)));
-            return days.map(day => day.charAt(0).toUpperCase() + day.slice(1, 3)).join(', ') || 'No availability';
+            const days = Array.from(
+                new Set(availability.map(a => a?.day_of_week).filter(Boolean)),
+            );
+            return days.map(abbr).filter(Boolean).join(', ') || 'No availability';
         }
 
         return Object.entries(availability)
             .filter(([_, data]) => data?.enabled)
-            .map(([day]) => day.charAt(0).toUpperCase() + day.slice(1, 3))
+            .map(([day]) => abbr(day))
+            .filter(Boolean)
             .join(', ') || 'No availability';
     };
 
@@ -334,11 +368,62 @@ export const DoctorManagement = ({ isDarkMode }: DoctorManagementProps) => {
                                                     {doctor.title} {doctor.name}
                                                 </h3>
                                                 {(() => {
-                                                    const status = doctor.status || 'off_duty';
-                                                    return (
-                                                        <div className={cn("flex items-center rounded-full p-1 px-3 w-fit space-x-1.5 text-xs mt-1", getStatusColor(status))}>
+                                                    const status = pendingStatus?.doctorId === doctor.doctor_id
+                                                        ? pendingStatus.status
+                                                        : doctor.status || 'off_duty';
+                                                    return !isDoctor ? (
+                                                        <Popover
+                                                            open={statusMenuDoctorId === doctor.doctor_id}
+                                                            onOpenChange={(open) => setStatusMenuDoctorId(open ? doctor.doctor_id : null)}
+                                                        >
+                                                            <PopoverTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    aria-label={`Change availability status for ${doctor.name}`}
+                                                                    title="Change availability status"
+                                                                    disabled={updateDoctorMutation.isPending}
+                                                                    className={cn(
+                                                                        "group mt-1 inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all hover:ring-1 hover:ring-current/30 disabled:cursor-wait disabled:opacity-60",
+                                                                        getStatusColor(status)
+                                                                    )}
+                                                                >
+                                                                    {getStatusIcon(status)}
+                                                                    <span className="capitalize">{status.replace('_', ' ')}</span>
+                                                                    <ChevronDown size={13} className="opacity-60 transition-transform group-data-[state=open]:rotate-180" />
+                                                                </button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent
+                                                                isDarkMode={isDarkMode}
+                                                                align="start"
+                                                                sideOffset={6}
+                                                                className="w-44 rounded-xl p-1.5 shadow-xl"
+                                                            >
+                                                                <div className="space-y-1">
+                                                                    {STATUS_OPTIONS.map((option) => (
+                                                                        <button
+                                                                            key={option.value}
+                                                                            type="button"
+                                                                            onClick={() => void handleStatusChange(doctor, option.value)}
+                                                                            className={cn(
+                                                                                "flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                                                                                option.value === status
+                                                                                    ? getStatusColor(option.value)
+                                                                                    : isDarkMode
+                                                                                        ? "text-white/70 hover:bg-white/10 hover:text-white"
+                                                                                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                                                            )}
+                                                                        >
+                                                                            {getStatusIcon(option.value)}
+                                                                            <span>{option.label}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    ) : (
+                                                        <div className={cn("mt-1 inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium", getStatusColor(status))}>
                                                             {getStatusIcon(status)}
-                                                            <span className="capitalize font-medium">{status.replace('_', ' ')}</span>
+                                                            <span className="capitalize">{status.replace('_', ' ')}</span>
                                                         </div>
                                                     );
                                                 })()}

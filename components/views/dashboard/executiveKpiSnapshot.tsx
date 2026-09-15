@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
     Users, UserPlus, MessageCircle,
     Brain, PhoneForwarded, CalendarCheck,
@@ -43,8 +44,10 @@ const KPICard = ({ kpi, index, isDarkMode, show }: { kpi: any; index: number; is
     const badge = statusBadge[kpi.status] ?? statusBadge.good;
     const t = tx(isDarkMode);
     return (
-        <div
-            className="rounded-xl p-5 flex flex-col gap-3 relative transition-all duration-300 border hover:border-zinc-300 dark:hover:border-zinc-700"
+        <Link
+            href={kpi.href}
+            aria-label={`View ${kpi.label}`}
+            className="rounded-xl p-5 flex flex-col gap-3 relative transition-all duration-300 border cursor-pointer hover:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:hover:border-zinc-700"
             style={{
                 ...glassCard(isDarkMode),
                 opacity: show ? 1 : 0,
@@ -92,7 +95,7 @@ const KPICard = ({ kpi, index, isDarkMode, show }: { kpi: any; index: number; is
                     }}
                 />
             </div>
-        </div>
+        </Link>
     );
 };
 
@@ -172,6 +175,7 @@ export const ExecutiveKPILayer = ({
     const analyticsKpis = [
         {
             label: leadsLabel,
+            href: '/leads',
             value: leadsValue.toLocaleString(),
             icon: Users,
             trend: trendText(kpisData?.totalLeads?.trend),
@@ -183,6 +187,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'AI Auto-Resolved',
+            href: '/shared-inbox/history',
             value: `${kpisData?.aiAutoResolved?.value ?? 0}%`,
             icon: Brain,
             trend: trendText(kpisData?.aiAutoResolved?.trend),
@@ -194,6 +199,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Total Campaigns',
+            href: '/campaign',
             value: totalCampaigns.toLocaleString(),
             icon: Megaphone,
             trend: isAllTime ? 'All time campaigns' : 'Period campaigns',
@@ -205,6 +211,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Approved Templates',
+            href: '/templates',
             value: approvedTemplates.toLocaleString(),
             icon: FileText,
             trend: 'Ready to send',
@@ -216,6 +223,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Knowledge Sources',
+            href: '/knowledge?tab=data-sources',
             value: totalSources.toLocaleString(),
             icon: BookOpen,
             trend: isAllTime ? 'All time sources' : 'Period sources',
@@ -227,6 +235,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Total FAQs',
+            href: '/knowledge?tab=faq-review',
             value: totalFaqs.toLocaleString(),
             icon: CircleHelp,
             trend: isAllTime ? 'All time FAQs' : 'Period FAQs',
@@ -238,6 +247,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Total Contacts',
+            href: '/contacts/contacts',
             value: totalContacts.toLocaleString(),
             icon: UsersRound,
             trend: isAllTime ? 'All time contacts' : 'Period contacts',
@@ -249,6 +259,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Total Groups',
+            href: '/contacts/groups',
             value: totalGroups.toLocaleString(),
             icon: LayoutGrid,
             trend: isAllTime ? 'All time groups' : 'Period groups',
@@ -264,6 +275,7 @@ export const ExecutiveKPILayer = ({
     const liveKpis = [
         {
             label: 'New Leads Today',
+            href: '/leads',
             value: kpisData?.newLeadsToday?.value?.toLocaleString() ?? '0',
             icon: UserPlus,
             trend: 'Inbound today',
@@ -275,6 +287,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Active Chats',
+            href: '/shared-inbox/live-chats',
             value: kpisData?.activeChats?.value?.toLocaleString() ?? '0',
             icon: MessageCircle,
             trend: 'Live monitoring',
@@ -286,6 +299,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Escalated to Agent',
+            href: '/shared-inbox/live-chats',
             value: kpisData?.escalatedToAgent?.value?.toLocaleString() ?? '0',
             icon: PhoneForwarded,
             trend: trendText(kpisData?.escalatedToAgent?.trend),
@@ -297,6 +311,7 @@ export const ExecutiveKPILayer = ({
         },
         {
             label: 'Appointments Today',
+            href: '/appointments',
             value: kpisData?.appointmentsToday?.value?.toLocaleString() ?? '0',
             icon: CalendarCheck,
             trend: trendText(kpisData?.appointmentsToday?.trend),

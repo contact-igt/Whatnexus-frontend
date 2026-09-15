@@ -37,7 +37,7 @@ export const EditGroupModal = ({
             setErrors({});
             setTouched({});
         }
-    }, [group]);
+    }, [group, isOpen]);
 
     const validateField = (name: string, value: string): string => {
         if (name === "group_name") {
@@ -79,7 +79,6 @@ export const EditGroupModal = ({
         setTouched({ group_name: true, description: true });
         if (group && validateForm()) {
             onSubmit(group.group_id, formData);
-            onClose();
         }
     };
 

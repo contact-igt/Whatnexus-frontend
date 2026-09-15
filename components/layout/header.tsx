@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Globe, Sun, Moon, Power, Flag, MessageSquare, Shield, Zap, RefreshCw, Bell, CalendarClock } from 'lucide-react';
+import { Globe, Sun, Moon, Power, Flag, MessageSquare, Shield, Zap, RefreshCw, Bell, CalendarClock, Info } from 'lucide-react';
 import { AiScheduleModal, AiStatusPill } from '../ui/aiScheduleModal';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/redux/selectors/auth/authSelector';
@@ -24,37 +24,32 @@ import { useNotifications } from '@/redux/selectors/notifications/notificationSe
 import { FAQ_REVIEW_ROUTE, useFaqNotifications } from '@/hooks/useFaqNotifications';
 import { toast } from '@/lib/toast';
 
-export const META_TIER_CONFIG: Record<string, { name: string, limit: string | number, upgradeHint: string | null }> = {
-    TIER_NOT_SET: {
-        name: "Trial",
-        limit: 250,
-        upgradeHint: "Send 2,000 unique users in 30 days OR verify your business",
-    },
-    TIER_2K: {
-        name: "Standard",
-        limit: 2000,
-        upgradeHint: "Reach 1,000 unique users in last 7 days & maintain GREEN quality",
-    },
-    TIER_10K: {
-        name: "Growth",
-        limit: 10000,
-        upgradeHint: "Reach 5,000 unique users in last 7 days & maintain GREEN quality",
-    },
-    TIER_100K: {
-        name: "Scale",
-        limit: 100000,
-        upgradeHint: "Reach 50,000 unique users in last 7 days & maintain GREEN quality",
-    },
-    TIER_UNLIMITED: {
-        name: "Unlimited",
-        limit: "Unlimited",
-        upgradeHint: null,
-    },
+// Tier semantics are owned by the backend resolver (utils/metaMessagingTier.js) and
+// delivered on `whatsappApiDetails.messaging_limit`. The header only formats them.
+// Unknown / unsynced tiers stay unknown — never assume "Trial" or 250.
+type HeaderTierInfo = {
+    name: string;
+    limit: number | 'Unlimited' | null;   // null = unknown
+    isKnown: boolean;
+    isUnlimited: boolean;
+    upgradeHint: string | null;
 };
 
-function getTierInfo(tier: string | undefined | null) {
-    const rawTier = tier ? tier.toUpperCase() : "TIER_NOT_SET";
-    return META_TIER_CONFIG[rawTier] || META_TIER_CONFIG.TIER_NOT_SET;
+function getTierInfo(details: any, connected: boolean): HeaderTierInfo {
+    if (!connected) {
+        return { name: 'N/A', limit: null, isKnown: false, isUnlimited: false, upgradeHint: null };
+    }
+    const ml = details?.messaging_limit;
+    if (ml && typeof ml === 'object') {
+        return {
+            name: ml.is_known ? (ml.tier_name || ml.tier_key) : 'Not synced',
+            limit: ml.is_unlimited ? 'Unlimited' : (typeof ml.daily_limit === 'number' ? ml.daily_limit : null),
+            isKnown: !!ml.is_known,
+            isUnlimited: !!ml.is_unlimited,
+            upgradeHint: null,
+        };
+    }
+    return { name: 'Not synced', limit: null, isKnown: false, isUnlimited: false, upgradeHint: null };
 }
 
 /** Map quality_rating to label + dot colour */
@@ -77,6 +72,25 @@ const IconBadge = ({ children, color }: { children: React.ReactNode; color: stri
 // ── Thin vertical separator ──────────────────────────────────────────────────
 const Sep = ({ isDarkMode }: { isDarkMode: boolean }) => (
     <div className={cn('h-4 w-px shrink-0', isDarkMode ? 'bg-white/10' : 'bg-slate-300/60')} />
+);
+
+// ── Hoverable info icon with tooltip ─────────────────────────────────────────
+const InfoHint = ({ isDarkMode, children }: { isDarkMode: boolean; children: React.ReactNode }) => (
+    <span className="relative group inline-flex items-center">
+        <Info
+            size={11}
+            className={cn('cursor-help transition-colors', isDarkMode ? 'text-white/40 group-hover:text-white/80' : 'text-slate-400 group-hover:text-slate-600')}
+        />
+        <span
+            role="tooltip"
+            className={cn(
+                'pointer-events-none absolute left-1/2 top-full z-[60] mt-2 w-64 -translate-x-1/2 rounded-lg border p-2.5 text-[11px] font-medium leading-snug shadow-xl opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0',
+                isDarkMode ? 'border-white/10 bg-zinc-900 text-white/80' : 'border-slate-200 bg-white text-slate-600',
+            )}
+        >
+            {children}
+        </span>
+    </span>
 );
 
 type UnreadChatRow = {
@@ -238,7 +252,7 @@ export const Header = () => {
         /^\d+$/.test(String(wabaNumber).replace(/[\s+]/g, '')) &&
         isLive;
     const quality = formatQuality(isWabaConnected ? (whatsappApiDetails?.quality_rating ?? whatsappApiDetails?.quality) : null);
-    const tierInfo = getTierInfo(isWabaConnected ? (whatsappApiDetails?.messaging_limit_tier ?? whatsappApiDetails?.tier) : null);
+    const tierInfo = getTierInfo(whatsappApiDetails, isWabaConnected);
 
     // ── Shared text styles ───────────────────────────────────────────────────
     const labelCls = cn('text-[10px] font-semibold', isDarkMode ? 'text-white/40' : 'text-slate-400');
@@ -273,7 +287,7 @@ export const Header = () => {
 
                 {isManagement ? (
                     /* ── Super Admin header info ──────────────────────────────── */
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         {/* Role badge */}
                         <div className="flex items-center gap-1.5">
                             <IconBadge color="bg-violet-500">
@@ -305,7 +319,7 @@ export const Header = () => {
                     </div>
                 ) : (
                     /* ── Tenant WABA info pills ──────────────────────────────── */
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
 
                         {/* ── WABA Number ── */}
                         <div className="flex items-center gap-1.5">
@@ -396,10 +410,22 @@ export const Header = () => {
                                     ? isDarkMode ? 'text-white/70' : 'text-slate-700'
                                     : isDarkMode ? 'text-white/40' : 'text-slate-400'
                             )}>
-                                {isWabaConnected
-                                    ? (tierInfo.limit === 'Unlimited' ? 'Unlimited' : `${tierInfo.limit.toLocaleString()} / 24h`)
-                                    : 'N/A'}
+                                {!isWabaConnected
+                                    ? 'N/A'
+                                    : tierInfo.isUnlimited
+                                        ? 'Unlimited'
+                                        : typeof tierInfo.limit === 'number'
+                                            ? `${tierInfo.limit.toLocaleString()} / 24h`
+                                            : 'Not available'}
                             </span>
+                            <InfoHint isDarkMode={isDarkMode}>
+                                <span className="block font-semibold mb-1">Rolling 24-hour messaging limit</span>
+                                {isWabaConnected && typeof tierInfo.limit === 'number'
+                                    ? `Estimated: up to ${tierInfo.limit.toLocaleString()} unique customers in any rolling 24-hour window. Capacity frees up as each conversation passes the 24-hour mark. Final capacity is determined by Meta.`
+                                    : tierInfo.isUnlimited
+                                        ? 'No portfolio messaging cap is currently reported by Meta.'
+                                        : 'Messaging tier is not synchronized with Meta yet.'}
+                            </InfoHint>
                         </div>
 
                         <Sep isDarkMode={isDarkMode} />

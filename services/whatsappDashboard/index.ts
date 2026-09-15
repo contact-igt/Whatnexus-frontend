@@ -122,10 +122,22 @@ export interface DashboardData {
   wabaInfo: {
     number: string;
     status: string;  // "Live" | "inactive" | "Unknown"
-    quality: string; // "GREEN" | "YELLOW" | "RED"
+    quality: string; // "GREEN" | "YELLOW" | "RED" | "UNKNOWN"
     region: string;
-    tier: string;
-    rolling24hUsed: number;
+    tier: string;            // canonical TIER_* key from the backend resolver
+    tierName?: string;
+    dailyLimit?: number | null;      // null = unknown (never Infinity)
+    isUnlimited?: boolean;
+    isTierKnown?: boolean;
+    upgradeTarget?: number | null;
+    upgradeWindowDays?: number | null;
+    nextTierKey?: string | null;
+    allowsVerificationPath?: boolean;
+    requiresHighQuality?: boolean;
+    messagingLimitSource?: 'meta' | 'cache';
+    messagingLimitSyncedAt?: string | null;
+    messagingLimitIsEstimate?: boolean;
+    rolling24hUsed: number;   // delivery-confirmed estimate
     sevenDayUnique: number;
     thirtyDayUnique: number;
   };

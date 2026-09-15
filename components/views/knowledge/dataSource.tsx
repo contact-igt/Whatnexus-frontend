@@ -333,14 +333,14 @@ export const DataSource = ({ isDarkMode, setSelectedItem, isDragging, uploadedDa
                     />
 
                     <div
-                        onClick={handleFileButtonClick}
+                        onClick={uploadedData?.length >= 1 ? undefined : handleFileButtonClick}
                         className={cn(
                             "border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center space-y-4 transition-all cursor-pointer group relative",
                             isDragging
                                 ? 'border-emerald-500 bg-emerald-500/10 scale-[1.02]'
                                 : 'hover:border-emerald-500/50',
                             isDarkMode ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-slate-200 bg-slate-50 hover:bg-slate-100',
-                            uploading && 'pointer-events-none opacity-60'
+                            (uploading || uploadedData?.length >= 1) && 'pointer-events-none opacity-60'
                         )}
                     >
 

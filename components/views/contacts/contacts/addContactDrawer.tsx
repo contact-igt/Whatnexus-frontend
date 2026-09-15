@@ -49,8 +49,10 @@ export const AddContactDrawer = ({
             newErrors.phone = "Phone number must be 10 digits";
         }
 
-        // Email validation (optional)
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        // Email validation - Required
+        if (!formData.email || !formData.email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
             newErrors.email = "Invalid email format";
         }
 
@@ -175,10 +177,11 @@ export const AddContactDrawer = ({
                     icon={User}
                 />
 
-                {/* Email */}
+                {/* Email - Required Field */}
                 <Input
                     isDarkMode={isDarkMode}
                     label="Email"
+                    required
                     type="email"
                     placeholder="Enter email address"
                     value={formData.email || ""}

@@ -38,6 +38,25 @@ export const useGetDoctorByIdQuery = (doctorId: string) => {
     });
 };
 
+// Recursively patch a doctor (matched by doctor_id/id) inside whatever shape the
+// cached ['doctors'] response has: axios response, { data: { doctors|items } },
+// a bare array, etc.
+const patchDoctorInCache = (node: any, doctorId: string, patch: Record<string, any>): any => {
+    if (Array.isArray(node)) {
+        return node.map((d) =>
+            d && (d.doctor_id === doctorId || d.id === doctorId) ? { ...d, ...patch } : d,
+        );
+    }
+    if (node && typeof node === 'object') {
+        const next: any = { ...node };
+        for (const key of ['doctors', 'items', 'data']) {
+            if (key in next) next[key] = patchDoctorInCache(next[key], doctorId, patch);
+        }
+        return next;
+    }
+    return node;
+};
+
 export const useUpdateDoctorMutation = () => {
     const queryClient = useQueryClient();
     const tenantId = useSelector((state: any) => state.auth?.user?.tenant_id);
@@ -45,14 +64,30 @@ export const useUpdateDoctorMutation = () => {
         mutationFn: ({ doctorId, data }: { doctorId: string; data: UpdateDoctorDto }) => {
             return doctorApis.updateDoctor(doctorId, data);
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['doctors'] });
-            queryClient.invalidateQueries({ queryKey: ['doctor', tenantId, variables.doctorId] });
+        // Optimistic update — the card reflects the new value immediately and
+        // only rolls back if the request fails.
+        onMutate: async ({ doctorId, data }) => {
+            await queryClient.cancelQueries({ queryKey: ['doctors'] });
+            const previous = queryClient.getQueriesData({ queryKey: ['doctors'] });
+            queryClient.setQueriesData({ queryKey: ['doctors'] }, (old: any) =>
+                old ? patchDoctorInCache(old, doctorId, data as Record<string, any>) : old,
+            );
+            return { previous };
+        },
+        onError: (error: any, _variables, context: any) => {
+            context?.previous?.forEach(([key, value]: any) =>
+                queryClient.setQueryData(key, value),
+            );
+            toast.error(error?.response?.data?.message || 'Doctor update failed!');
+        },
+        onSuccess: (data) => {
             toast.success(data?.message || 'Doctor updated successfully!');
         },
-        onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Doctor update failed!');
-        }
+        // Reconcile with the server once, after the request settles.
+        onSettled: (_data, _error, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['doctors'] });
+            queryClient.invalidateQueries({ queryKey: ['doctor', tenantId, variables.doctorId] });
+        },
     });
 };
 

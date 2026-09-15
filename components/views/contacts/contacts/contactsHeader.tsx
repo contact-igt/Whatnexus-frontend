@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Search, Plus, Upload, Users, Import, Download, FileDown, ArrowDownToLine, ArrowUpToLine, DownloadIcon, UploadIcon } from "lucide-react";
+import { Search, Plus, Users, Download, Upload, CheckSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
@@ -15,6 +15,9 @@ interface ContactsHeaderProps {
     onDownloadSample: () => void;
     selectedCount: number;
     onBulkDelete?: () => void;
+    selectionMode: boolean;
+    onToggleSelectionMode: () => void;
+    canSelect: boolean;
 }
 
 export const ContactsHeader = ({
@@ -26,7 +29,10 @@ export const ContactsHeader = ({
     onExportCSV,
     onDownloadSample,
     selectedCount,
-    onBulkDelete
+    onBulkDelete,
+    selectionMode,
+    onToggleSelectionMode,
+    canSelect
 }: ContactsHeaderProps) => {
     const router = useRouter();
 
@@ -82,7 +88,7 @@ export const ContactsHeader = ({
                                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                         )}
                     >
-                        <DownloadIcon size={16} />
+                        <Download size={16} />
                         <span>Sample CSV file</span>
                     </button>
                     <button
@@ -94,7 +100,7 @@ export const ContactsHeader = ({
                                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                         )}
                     >
-                        <DownloadIcon size={16} />
+                        <Upload size={16} />
                         <span>Import CSV</span>
                     </button>
                     <button
@@ -106,7 +112,7 @@ export const ContactsHeader = ({
                                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                         )}
                     >
-                        <UploadIcon size={16} />
+                        <Download size={16} />
                         <span>Export CSV</span>
                     </button>
                     <button
@@ -140,29 +146,49 @@ export const ContactsHeader = ({
                     />
                 </div>
 
-                {selectedCount > 0 && (
-                    <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3">
+                    {selectionMode && selectedCount > 0 && (
                         <span className={cn(
                             "text-sm font-medium",
                             isDarkMode ? 'text-white/70' : 'text-slate-600'
                         )}>
                             {selectedCount} selected
                         </span>
-                        {onBulkDelete && (
-                            <button
-                                onClick={onBulkDelete}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                                    isDarkMode
-                                        ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                                        : 'bg-red-50 text-red-600 hover:bg-red-100'
-                                )}
-                            >
-                                Delete Selected
-                            </button>
-                        )}
-                    </div>
-                )}
+                    )}
+
+                    {selectionMode && selectedCount > 0 && onBulkDelete && (
+                        <button
+                            onClick={onBulkDelete}
+                            className={cn(
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                isDarkMode
+                                    ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                                    : 'bg-red-50 text-red-600 hover:bg-red-100'
+                            )}
+                        >
+                            Delete Selected
+                        </button>
+                    )}
+
+                    {canSelect && (
+                        <button
+                            onClick={onToggleSelectionMode}
+                            className={cn(
+                                "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+                                selectionMode
+                                    ? (isDarkMode
+                                        ? 'bg-white/10 border-white/10 text-white'
+                                        : 'bg-slate-100 border-slate-200 text-slate-700')
+                                    : (isDarkMode
+                                        ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900')
+                            )}
+                        >
+                            {selectionMode ? <X size={16} /> : <CheckSquare size={16} />}
+                            <span>{selectionMode ? 'Cancel' : 'Select'}</span>
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

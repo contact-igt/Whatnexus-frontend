@@ -545,7 +545,7 @@ export const GroupedSidebar = ({
             )}
 
             {/* Navigation */}
-            <nav className="flex-1 px-3 overflow-y-auto no-scrollbar relative z-10 pb-4">
+            <nav className="flex-1 px-3 overflow-y-auto hover-scrollbar relative z-10 pb-4">
                 <div className="space-y-6">
                     {sidebarConfig.map((group, groupIndex) => {
                         const filteredItems = filterItemsByRole(group.items);

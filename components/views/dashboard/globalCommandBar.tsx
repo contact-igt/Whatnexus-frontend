@@ -4,7 +4,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Brain, Layers, Shield } from 'lucide-react';
 import { tx } from './glassStyles';
-import { META_TIER_CONFIG } from '@/components/layout/header';
 import { useDispatch } from 'react-redux';
 import { clearWhatsAppUnreadCount } from '@/redux/slices/notifications/notificationsSlice';
 import { useNotifications } from '@/redux/selectors/notifications/notificationSelector';
@@ -76,10 +75,10 @@ export const GlobalCommandBar = ({
 
     return (
         <div className="rounded-xl border transition-all" style={{ background: isDarkMode ? '#09090b' : '#ffffff', borderColor: isDarkMode ? '#27272a' : '#e4e4e7' }}>
-            <div className="px-5 py-3.5 flex items-center justify-between gap-3 flex-wrap">
+            <div className="px-5 py-3.5 flex items-center justify-between gap-5 flex-wrap">
 
                 {/* Left: Logo / Brand + WABA number */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-5">
                     {/* Live indicator + Title */}
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center"
@@ -124,13 +123,14 @@ export const GlobalCommandBar = ({
                                         color: isDarkMode ? '#60a5fa' : '#2563eb'
                                     }}>
                                         {(() => {
-                                        const rawTier = wabaInfo.tier ? wabaInfo.tier.toUpperCase() : 'TIER_NOT_SET';
-                                        const tierCfg = META_TIER_CONFIG[rawTier] || META_TIER_CONFIG.TIER_NOT_SET;
-                                        const limitLabel = typeof tierCfg.limit === 'number'
-                                            ? `${tierCfg.limit.toLocaleString()} users/24h`
-                                            : `${tierCfg.limit}/24h`;
-                                        return `${tierCfg.name} · ${limitLabel}`;
-                                    })()}
+                                            const w: any = wabaInfo;
+                                            if (w.isUnlimited) return 'Unlimited';
+                                            if (!w.isTierKnown) return 'Tier not synced';
+                                            const name = w.tierName || w.tier;
+                                            return typeof w.dailyLimit === 'number'
+                                                ? `${name} · ~${w.dailyLimit.toLocaleString()}/24h`
+                                                : name;
+                                        })()}
                                     </span>
                                 </div>
                             </div>
@@ -139,7 +139,7 @@ export const GlobalCommandBar = ({
                 </div>
 
                 {/* Center: System health pills */}
-                <div className="hidden xl:flex items-center gap-2">
+                <div className="hidden xl:flex items-center gap-3">
                     {systemHealth.map((s, i) => {
                         const cfg = STATUS[s.status];
                         return (

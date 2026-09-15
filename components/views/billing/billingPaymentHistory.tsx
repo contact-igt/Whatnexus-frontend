@@ -7,6 +7,7 @@ import {
     XCircle, Clock, ArrowUpRight, FileDown, Search, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useGetPaymentHistoryQuery } from "@/hooks/useBillingQuery";
+import { billingApiData } from "@/services/billing";
 import { toast } from "@/lib/toast";
 
 interface BillingPaymentHistoryProps {
@@ -17,6 +18,7 @@ export const BillingPaymentHistory = ({ isDarkMode }: BillingPaymentHistoryProps
     const [page, setPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState("");
     const limit = 20;
+    const billingApi = new billingApiData();
 
     const { data: response, isLoading } = useGetPaymentHistoryQuery({ page, limit });
     const payments = response?.data?.payments || [];
@@ -72,43 +74,21 @@ export const BillingPaymentHistory = ({ isDarkMode }: BillingPaymentHistoryProps
         toast.success(`Exported ${payments.length} payments`);
     };
 
-    const handleDownloadReceipt = (payment: any) => {
-        const content = `
-=====================================
-         WHATNEXUS PAYMENT RECEIPT
-=====================================
-
-Receipt #: ${payment.invoice_number || `REC-${payment.id}`}
-Date: ${new Date(payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
-Time: ${new Date(payment.createdAt).toLocaleTimeString('en-IN')}
-
--------------------------------------
-TRANSACTION DETAILS
--------------------------------------
-Razorpay Payment ID: ${payment.razorpay_payment_id || 'N/A'}
-Razorpay Order ID: ${payment.razorpay_order_id || 'N/A'}
-Description: ${payment.description || 'Wallet Recharge'}
-Method: ${payment.payment_method || 'Online'}
-
-Amount: ₹${parseFloat(payment.amount).toFixed(2)}
-Balance Before: ₹${parseFloat(payment.balance_before || 0).toFixed(2)}
-Balance After: ₹${parseFloat(payment.balance_after || 0).toFixed(2)}
-
-Status: ${(payment.status || 'success').toUpperCase()}
-
-=====================================
-    `.trim();
-
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Receipt-${payment.invoice_number || payment.id}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success('Receipt downloaded');
+    const handleDownloadReceipt = async (payment: any) => {
+        try {
+            const pdfBlob = await billingApi.downloadReceiptPdf(payment.id);
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Receipt-${payment.invoice_number || payment.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success('Receipt PDF downloaded');
+        } catch {
+            toast.error('Failed to download receipt PDF');
+        }
     };
 
     return (

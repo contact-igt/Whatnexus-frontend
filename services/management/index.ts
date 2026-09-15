@@ -112,6 +112,7 @@ export class managementApiData {
         model: string,
         input_rate: number,
         output_rate: number,
+        cached_input_price_per_million?: number | null,
         markup_percent?: number,
         usd_to_inr_rate?: number,
         description?: string,
@@ -124,6 +125,7 @@ export class managementApiData {
     updateAiPricingRule = async (id: number, data: {
         input_rate?: number,
         output_rate?: number,
+        cached_input_price_per_million?: number | null,
         markup_percent?: number,
         usd_to_inr_rate?: number,
         is_active?: boolean,

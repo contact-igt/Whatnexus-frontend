@@ -5,6 +5,7 @@ import { Bot, Brain, Wand2, Sparkles, Bell, BellOff, Settings2, CheckCircle2, Lo
 import { cn } from "@/lib/utils";
 import { useTheme } from '@/hooks/useTheme';
 import { useGetTenantSettingsQuery, useUpdateTenantAiSettingsMutation } from '@/hooks/useTenantSettingsQuery';
+import { useGetAvailableAiModelsQuery } from '@/hooks/useBillingQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
@@ -120,6 +121,43 @@ export const GeneralSettingsView = () => {
 
     const hasSyncedModels = useRef(false);
     const hasSyncedAppt = useRef(false);
+
+    // Tenant-scoped, purpose-specific available models. Refetches automatically
+    // after any catalog activation/deactivation or pricing change (shared query key).
+    const inputModelsQ = useGetAvailableAiModelsQuery({ purpose: 'input', enabled: activeTab === 'models' });
+    const outputModelsQ = useGetAvailableAiModelsQuery({ purpose: 'output', enabled: activeTab === 'models' });
+    const [isSavingModels, setIsSavingModels] = useState(false);
+
+    const buildOptions = (q: typeof inputModelsQ, saved: string | null) => {
+        const payload = q.data as
+            | { data?: Array<{ model: string }>; meta?: { saved_selection_entry?: { unavailability_reason?: string } } }
+            | undefined;
+        const list = payload?.data ?? [];
+        const meta = payload?.meta;
+        const opts = list.map((m) => ({ value: m.model, label: m.model, unavailable: false }));
+        // Saved selection that is no longer available — keep it visible with a note.
+        if (saved && !opts.some((o) => o.value === saved)) {
+            opts.unshift({
+                value: saved,
+                label: `${saved} — unavailable${meta?.saved_selection_entry?.unavailability_reason ? ` (${meta.saved_selection_entry.unavailability_reason})` : ''}`,
+                unavailable: true,
+            });
+        }
+        return opts;
+    };
+
+    const handleSaveModels = () => {
+        if (!isAdmin) return;
+        setIsSavingModels(true);
+        updateAiSettings(
+            { ai_settings: { input_model: selectedInputModel || undefined, output_model: selectedOutputModel || undefined } },
+            {
+                onSuccess: () => toast.success('AI model selection saved.'),
+                onError: (e: any) => toast.error(e?.response?.data?.message || 'Could not save model selection.'),
+                onSettled: () => setIsSavingModels(false),
+            },
+        );
+    };
 
     // Sync state ONCE on initial data load — never overwrite after that (to avoid race condition after save)
     useEffect(() => {
@@ -432,63 +470,71 @@ export const GeneralSettingsView = () => {
                                         ))}
                                     </div>
                                 ) : (
+                                    <>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* Current Input Model Display */}
-                                        <div className={cn(
-                                            "p-5 rounded-2xl border",
-                                            isDarkMode ? "bg-white/[0.02] border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
-                                        )}>
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDarkMode ? "bg-blue-500/10" : "bg-blue-50")}>
-                                                    <Brain size={18} className="text-blue-500" />
+                                        {([
+                                            { key: 'input' as const, q: inputModelsQ, selected: selectedInputModel, setter: setSelectedInputModel, fallback: 'gpt-4o-mini', Icon: Brain, iconBg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50', iconColor: 'text-blue-500', title: 'Input Processing Model', sub: 'For classification & extraction' },
+                                            { key: 'output' as const, q: outputModelsQ, selected: selectedOutputModel, setter: setSelectedOutputModel, fallback: 'gpt-4o', Icon: Wand2, iconBg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50', iconColor: 'text-emerald-500', title: 'Output Generation Model', sub: 'For responses & generation' },
+                                        ]).map(({ key, q, selected, setter, fallback, Icon, iconBg, iconColor, title, sub }) => {
+                                            const current = selected || fallback;
+                                            const options = buildOptions(q, current);
+                                            const currentOpt = options.find((o) => o.value === current);
+                                            return (
+                                                <div key={key} className={cn("p-5 rounded-2xl border", isDarkMode ? "bg-white/[0.02] border-white/[0.06]" : "bg-white border-slate-200 shadow-sm")}>
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", iconBg)}>
+                                                            <Icon size={18} className={iconColor} />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>{title}</h3>
+                                                            <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>{sub}</p>
+                                                        </div>
+                                                    </div>
+                                                    {q.isLoading ? (
+                                                        <div className={cn("h-10 rounded-xl animate-pulse", isDarkMode ? "bg-white/5" : "bg-slate-100")} />
+                                                    ) : q.isError ? (
+                                                        <p className="text-xs text-red-500">Could not load available models. <button className="underline" onClick={() => q.refetch()}>Retry</button></p>
+                                                    ) : (
+                                                        <>
+                                                            <select
+                                                                disabled={!isAdmin}
+                                                                value={current}
+                                                                onChange={(e) => setter(e.target.value)}
+                                                                className={cn(
+                                                                    "w-full px-3 py-2.5 rounded-xl border text-sm font-mono outline-none",
+                                                                    !isAdmin && "opacity-60 cursor-not-allowed",
+                                                                    isDarkMode ? "bg-white/5 border-white/10 text-white" : "bg-white border-slate-200 text-slate-900",
+                                                                )}
+                                                            >
+                                                                {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                                            </select>
+                                                            {currentOpt?.unavailable && (
+                                                                <p className="text-[11px] mt-1.5 text-amber-500 flex items-center gap-1">
+                                                                    <AlertTriangle size={12} /> Your saved model is no longer available. Pick a replacement and save.
+                                                                </p>
+                                                            )}
+                                                            {options.length === 0 && (
+                                                                <p className={cn("text-[11px] mt-1.5", isDarkMode ? "text-white/40" : "text-slate-400")}>No models are currently available for this purpose.</p>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <div>
-                                                    <h3 className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                        Input Processing Model
-                                                    </h3>
-                                                    <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>
-                                                        For classification & extraction
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className={cn(
-                                                "p-3 rounded-xl border",
-                                                isDarkMode ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50 border-blue-200"
-                                            )}>
-                                                <span className={cn("font-mono text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                    {selectedInputModel || 'gpt-4o-mini'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Current Output Model Display */}
-                                        <div className={cn(
-                                            "p-5 rounded-2xl border",
-                                            isDarkMode ? "bg-white/[0.02] border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
-                                        )}>
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDarkMode ? "bg-emerald-500/10" : "bg-emerald-50")}>
-                                                    <Wand2 size={18} className="text-emerald-500" />
-                                                </div>
-                                                <div>
-                                                    <h3 className={cn("font-semibold text-sm", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                        Output Generation Model
-                                                    </h3>
-                                                    <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>
-                                                        For responses & generation
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className={cn(
-                                                "p-3 rounded-xl border",
-                                                isDarkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-200"
-                                            )}>
-                                                <span className={cn("font-mono text-sm font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
-                                                    {selectedOutputModel || 'gpt-4o'}
-                                                </span>
-                                            </div>
-                                        </div>
+                                            );
+                                        })}
                                     </div>
+                                    {isAdmin && (
+                                        <div className="flex justify-end mt-4">
+                                            <button
+                                                onClick={handleSaveModels}
+                                                disabled={isSavingModels || isUpdating}
+                                                className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
+                                            >
+                                                {(isSavingModels || isUpdating) && <Loader2 size={14} className="animate-spin" />}
+                                                Save Model Selection
+                                            </button>
+                                        </div>
+                                    )}
+                                    </>
                                 )}
 
                                 {/* Info Footer */}

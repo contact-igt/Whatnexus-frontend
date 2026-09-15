@@ -29,10 +29,12 @@ import {
 import { GlassCard } from "@/components/ui/glassCard";
 import { cn } from "@/lib/utils";
 import { DEFAULT_USD_TO_INR } from "@/lib/billingConfig";
+import { AiModelCatalog } from "./aiModelCatalog";
+import { useAiModelCatalog, type CatalogModel } from "@/hooks/useAiModelCatalog";
 
 export const PricingView = () => {
     const { isDarkMode } = useTheme();
-    const [activeTab, setActiveTab] = useState<"whatsapp" | "ai">("whatsapp");
+    const [activeTab, setActiveTab] = useState<"whatsapp" | "ai" | "catalog">("whatsapp");
 
     // ─── WhatsApp Pricing ───────────────────────────────────────
     const { data: response, isLoading, isError, error } = useGetPricingRulesQuery();
@@ -79,23 +81,34 @@ export const PricingView = () => {
     const [selectedAiRule, setSelectedAiRule] = useState<any>(null);
     const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
 
-    const [aiFormData, setAiFormData] = useState({
-        model: "gpt-4o-mini",
+    const emptyAiForm = {
+        model: "",
         description: "",
         recommended_for: "both",
         category: "mid-tier",
         input_rate: "",
         output_rate: "",
+        cached_input_price_per_million: "",
         markup_percent: "0",
         usd_to_inr_rate: String(DEFAULT_USD_TO_INR),
-        is_active: "true",
-    });
+        is_active: "false",
+    };
+    const [aiFormData, setAiFormData] = useState(emptyAiForm);
+
+    // Model options for the "Add pricing" drawer come from the discovered catalog —
+    // only models that exist in the catalog and don't yet have a pricing row.
+    const { data: catalogData } = useAiModelCatalog();
+    const pricedModels = new Set(aiPricingRules.map((r: any) => r.model));
+    const catalogModelOptions = (catalogData?.models ?? [])
+        .filter((m) => m.review_status !== "retired" && m.review_status !== "unsupported" && !pricedModels.has(m.model))
+        .map((m) => ({ value: m.model, label: `${m.model}${m.review_status !== "approved" ? " — needs review" : ""}` }));
 
     useEffect(() => {
         if (!isAiAddOpen) {
-            setAiFormData({ model: "gpt-4o-mini", description: "", recommended_for: "both", category: "mid-tier", input_rate: "", output_rate: "", markup_percent: "0", usd_to_inr_rate: String(DEFAULT_USD_TO_INR), is_active: "true" });
+            setAiFormData(emptyAiForm);
             setAiErrors({});
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAiAddOpen]);
 
     useEffect(() => {
@@ -123,6 +136,13 @@ export const PricingView = () => {
         return Object.keys(e).length === 0;
     };
 
+    const cachedInputPayload = () => {
+        const raw = aiFormData.cached_input_price_per_million?.trim();
+        if (!raw) return null;
+        const n = parseFloat(raw);
+        return Number.isFinite(n) && n >= 0 ? n : null;
+    };
+
     const handleAiAdd = () => {
         if (!validateAi()) return;
         aiCreateMutation.mutate({
@@ -132,26 +152,33 @@ export const PricingView = () => {
             category: aiFormData.category as "premium" | "mid-tier" | "budget" | "reasoning",
             input_rate: parseFloat(aiFormData.input_rate),
             output_rate: parseFloat(aiFormData.output_rate),
+            cached_input_price_per_million: cachedInputPayload(),
             markup_percent: parseFloat(aiFormData.markup_percent),
             usd_to_inr_rate: parseFloat(aiFormData.usd_to_inr_rate),
-        }, { onSuccess: () => setIsAiAddOpen(false) });
+        }, {
+            onSuccess: () => {
+                setIsAiAddOpen(false);
+                toast.success("Pricing saved as inactive. Review, test and activate it from the Model Catalog tab.");
+            },
+        });
     };
 
     const handleAiEdit = () => {
         if (!selectedAiRule || !validateAi(true)) return;
-        aiUpdateMutation.mutate({
-            id: selectedAiRule.id,
-            data: {
-                description: aiFormData.description.trim() || undefined,
-                recommended_for: aiFormData.recommended_for as "input" | "output" | "both",
-                category: aiFormData.category as "premium" | "mid-tier" | "budget" | "reasoning",
-                input_rate: parseFloat(aiFormData.input_rate),
-                output_rate: parseFloat(aiFormData.output_rate),
-                markup_percent: parseFloat(aiFormData.markup_percent),
-                usd_to_inr_rate: parseFloat(aiFormData.usd_to_inr_rate),
-                is_active: aiFormData.is_active === "true",
-            },
-        }, { onSuccess: () => setIsAiEditOpen(false) });
+        // Activation is only ever done through the guarded catalog flow. From
+        // here we can save rates/metadata and (only) deactivate.
+        const data: Record<string, unknown> = {
+            description: aiFormData.description.trim() || undefined,
+            recommended_for: aiFormData.recommended_for as "input" | "output" | "both",
+            category: aiFormData.category as "premium" | "mid-tier" | "budget" | "reasoning",
+            input_rate: parseFloat(aiFormData.input_rate),
+            output_rate: parseFloat(aiFormData.output_rate),
+            cached_input_price_per_million: cachedInputPayload(),
+            markup_percent: parseFloat(aiFormData.markup_percent),
+            usd_to_inr_rate: parseFloat(aiFormData.usd_to_inr_rate),
+        };
+        if (selectedAiRule.is_active && aiFormData.is_active === "false") data.is_active = false;
+        aiUpdateMutation.mutate({ id: selectedAiRule.id, data }, { onSuccess: () => setIsAiEditOpen(false) });
     };
 
     const openAiEdit = (rule: any) => {
@@ -163,12 +190,29 @@ export const PricingView = () => {
             category: rule.category || "mid-tier",
             input_rate: rule.input_rate?.toString() || "",
             output_rate: rule.output_rate?.toString() || "",
+            cached_input_price_per_million: rule.cached_input_price_per_million?.toString() || "",
             markup_percent: rule.markup_percent?.toString() || "0",
             usd_to_inr_rate: rule.usd_to_inr_rate?.toString() || String(DEFAULT_USD_TO_INR),
             is_active: rule.is_active !== false ? "true" : "false",
         });
         setAiErrors({});
         setIsAiEditOpen(true);
+    };
+
+    // From the catalog panel's "Pricing" action.
+    const handleConfigurePricing = (m: CatalogModel) => {
+        const existing = aiPricingRules.find((r: any) => r.model === m.model);
+        if (existing) { openAiEdit(existing); return; }
+        setAiFormData({
+            ...emptyAiForm,
+            model: m.model,
+            recommended_for: (m.request_profile?.purposes?.includes("input") && m.request_profile?.purposes?.includes("output"))
+                ? "both"
+                : m.request_profile?.purposes?.includes("input") ? "input" : "output",
+        });
+        setAiErrors({});
+        setIsAiAddOpen(true);
+        setActiveTab("ai");
     };
 
     const handleAiDelete = (id: number) => {
@@ -306,19 +350,22 @@ export const PricingView = () => {
                     </p>
                 </div>
 
-                <button
-                    onClick={() => activeTab === "whatsapp" ? setIsAddOpen(true) : setIsAiAddOpen(true)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2"
-                >
-                    <Plus className="w-4 h-4" /> Add Rule
-                </button>
+                {activeTab !== "catalog" && (
+                    <button
+                        onClick={() => activeTab === "whatsapp" ? setIsAddOpen(true) : setIsAiAddOpen(true)}
+                        className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+                    >
+                        <Plus className="w-4 h-4" /> Add Rule
+                    </button>
+                )}
             </div>
 
             {/* Tabs */}
             <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/5 w-fit">
                 {[
                     { key: "whatsapp" as const, label: "WhatsApp Messages", icon: Globe },
-                    { key: "ai" as const, label: "AI Models", icon: Cpu },
+                    { key: "ai" as const, label: "AI Model Pricing", icon: Cpu },
+                    { key: "catalog" as const, label: "Model Catalog", icon: Cpu },
                 ].map((tab) => (
                     <button
                         key={tab.key}
@@ -555,6 +602,11 @@ export const PricingView = () => {
                 </GlassCard>
             )}
 
+            {/* ── Model Catalog (discovery, review, test, activation) ────── */}
+            {activeTab === "catalog" && (
+                <AiModelCatalog isDarkMode={isDarkMode} onConfigurePricing={handleConfigurePricing} />
+            )}
+
             {/* ── Add Rule Modal ─────────────────────────────────────────── */}
             <Drawer
                 isOpen={isAddOpen}
@@ -705,25 +757,25 @@ export const PricingView = () => {
                 onClose={() => { setIsDeleteOpen(false); setDeleteRuleId(null); }}
                 isDarkMode={isDarkMode}
                 className={cn(
-                    "max-w-md p-6 rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
+                    "max-w-md rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
                     isDarkMode ? "bg-[#0A0A0B] border-white/10" : "bg-white border-slate-200"
                 )}
             >
-                <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <div className="p-3 bg-red-500/10 rounded-xl">
+                <div className="space-y-8 pb-1">
+                    <div className="flex items-center gap-5">
+                        <div className="shrink-0 p-3.5 bg-red-500/10 rounded-xl">
                             <Trash2 className="w-6 h-6 text-red-500" />
                         </div>
-                        <div>
-                            <h3 className={cn("text-lg font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
+                        <div className="min-w-0 space-y-2">
+                            <h3 className={cn("text-lg font-semibold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
                                 Delete Pricing Rule
                             </h3>
-                            <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                Are you sure you want to delete this pricing rule? This cannot be undone.
+                            <p className={cn("text-sm leading-6", isDarkMode ? "text-white/60" : "text-slate-500")}>
+                                This rule will be permanently removed and will no longer apply to future charges.
                             </p>
                         </div>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex gap-3 pt-1">
                         <button
                             onClick={() => { setIsDeleteOpen(false); setDeleteRuleId(null); }}
                             className={cn(
@@ -778,32 +830,24 @@ export const PricingView = () => {
                 }
             >
                 <div className="space-y-4 font-sans">
-                    <Select
-                        isDarkMode={isDarkMode}
-                        label="AI Model"
-                        value={aiFormData.model}
-                        onChange={(value) => handleAiChange("model", value)}
-                        options={[
-                            { value: "gpt-4o", label: "GPT-4o (Flagship)" },
-                            { value: "gpt-4o-mini", label: "GPT-4o-mini (Budget)" },
-                            { value: "gpt-4o-audio-preview", label: "GPT-4o Audio Preview" },
-                            { value: "gpt-4.1", label: "GPT-4.1 (Premium)" },
-                            { value: "gpt-4.1-mini", label: "GPT-4.1-mini (Mid-tier)" },
-                            { value: "gpt-4.1-nano", label: "GPT-4.1-nano (Ultra Budget)" },
-                            { value: "gpt-4.5", label: "GPT-4.5 (Most Capable)" },
-                            { value: "o4-mini", label: "o4-mini (Reasoning)" },
-                            { value: "o3-mini", label: "o3-mini (Reasoning)" },
-                            { value: "o1", label: "o1 (Flagship Reasoning)" },
-                            { value: "o1-mini", label: "o1-mini (Reasoning Budget)" },
-                            { value: "o3", label: "o3 (Advanced Reasoning)" },
-                            { value: "o3-pro", label: "o3-pro (Professional Reasoning)" },
-                            { value: "gpt-5.4", label: "GPT-5.4 (Flagship)" },
-                            { value: "gpt-5.4-mini", label: "GPT-5.4-mini (Strong Mini)" },
-                            { value: "gpt-5.4-nano", label: "GPT-5.4-nano (Budget)" },
-                        ]}
-                        error={aiErrors.model}
-                        required
-                    />
+                    {catalogModelOptions.length > 0 ? (
+                        <Select
+                            isDarkMode={isDarkMode}
+                            label="AI Model (from discovered catalog)"
+                            value={aiFormData.model}
+                            onChange={(value) => handleAiChange("model", value)}
+                            options={catalogModelOptions}
+                            error={aiErrors.model}
+                            required
+                        />
+                    ) : (
+                        <div className={cn("rounded-xl border px-3 py-2 text-xs", isDarkMode ? "bg-amber-500/10 border-amber-500/20 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-700")}>
+                            No unpriced models in the catalog. Open the <strong>Model Catalog</strong> tab and run “Refresh models” first.
+                        </div>
+                    )}
+                    <p className={cn("text-[11px] -mt-2 ml-1", isDarkMode ? "text-white/40" : "text-slate-400")}>
+                        New pricing is saved <strong>inactive</strong>. Activate it from the Model Catalog after review and a passing compatibility test.
+                    </p>
                     <Input
                         isDarkMode={isDarkMode}
                         label="Description"
@@ -858,6 +902,17 @@ export const PricingView = () => {
                         onChange={(e) => handleAiChange("output_rate", e.target.value)}
                         error={aiErrors.output_rate}
                         required
+                    />
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Cached Input Rate ($ per 1M tokens) — optional"
+                        icon={ArrowDownToLine}
+                        type="number"
+                        step="0.01"
+                        placeholder="Leave blank if cached-input billing is not approved"
+                        value={aiFormData.cached_input_price_per_million}
+                        onChange={(e) => handleAiChange("cached_input_price_per_million", e.target.value)}
+                        error={aiErrors.cached_input_price_per_million}
                     />
                     <Input
                         isDarkMode={isDarkMode}
@@ -1020,25 +1075,25 @@ export const PricingView = () => {
                 onClose={() => { setIsAiDeleteOpen(false); setAiDeleteRuleId(null); }}
                 isDarkMode={isDarkMode}
                 className={cn(
-                    "max-w-md p-6 rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
+                    "max-w-md rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200",
                     isDarkMode ? "bg-[#0A0A0B] border-white/10" : "bg-white border-slate-200"
                 )}
             >
-                <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <div className="p-3 bg-red-500/10 rounded-xl">
+                <div className="space-y-8 pb-1">
+                    <div className="flex items-center gap-5">
+                        <div className="shrink-0 p-3.5 bg-red-500/10 rounded-xl">
                             <Trash2 className="w-6 h-6 text-red-500" />
                         </div>
-                        <div>
-                            <h3 className={cn("text-lg font-semibold", isDarkMode ? "text-white" : "text-slate-900")}>
+                        <div className="min-w-0 space-y-2">
+                            <h3 className={cn("text-lg font-semibold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>
                                 Delete AI Pricing Rule
                             </h3>
-                            <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-slate-500")}>
-                                Are you sure? The system will fall back to hardcoded rates for this model.
+                            <p className={cn("text-sm leading-6", isDarkMode ? "text-white/60" : "text-slate-500")}>
+                                This custom rate will be removed. Future charges for this model will use the default rate.
                             </p>
                         </div>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex gap-3 pt-1">
                         <button
                             onClick={() => { setIsAiDeleteOpen(false); setAiDeleteRuleId(null); }}
                             className={cn(

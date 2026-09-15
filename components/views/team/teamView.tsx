@@ -299,7 +299,7 @@ export const TeamManagementView = () => {
                         <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2", isDarkMode ? "text-white/30" : "text-slate-400")} size={16} />
                         <input
                             type="text"
-                            placeholder="Search nodes..."
+                            placeholder="Search staff members..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={cn(
@@ -316,7 +316,7 @@ export const TeamManagementView = () => {
                             className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-500/20 flex items-center space-x-2"
                         >
                             <UserPlus size={16} />
-                            <span>Invite Node</span>
+                            <span>Invite Staff Member</span>
                         </button>
                     </RoleBasedWrapper>
                 </div>
@@ -356,7 +356,7 @@ export const TeamManagementView = () => {
                 emptyState={
                     <div className="flex flex-col items-center justify-center space-y-2 py-10">
                         <UserCircle size={48} className="opacity-20 mb-2" />
-                        <p className="text-sm font-semibold opacity-40 uppercase tracking-widest text-center">No nodes discovered in this sector</p>
+                        <p className="text-sm font-semibold opacity-40 uppercase tracking-widest text-center">No staff members found</p>
                     </div>
                 }
                 onRowClick={handleViewClick}

@@ -148,6 +148,7 @@ export const ChatView = () => {
             assigned_admin_id: chat?.assigned_admin_id,
             assigned_agent_name: chat?.assigned_agent_name,
             is_ai_silenced: chat?.is_ai_silenced,
+            ai_pause_reason: chat?.ai_pause_reason,
             last_message_time: chat?.last_message_time,
         });
         setMessage("");
@@ -337,6 +338,7 @@ export const ChatView = () => {
                         assigned_admin_id: chatFromUrl.assigned_admin_id,
                         assigned_agent_name: chatFromUrl.assigned_agent_name,
                         is_ai_silenced: chatFromUrl.is_ai_silenced,
+                        ai_pause_reason: chatFromUrl.ai_pause_reason,
                         last_message_time: chatFromUrl.last_message_time,
                     });
                 }
@@ -362,6 +364,7 @@ export const ChatView = () => {
                         assigned_admin_id: chatFromFiltered.assigned_admin_id,
                         assigned_agent_name: chatFromFiltered.assigned_agent_name,
                         is_ai_silenced: chatFromFiltered.is_ai_silenced,
+                        ai_pause_reason: chatFromFiltered.ai_pause_reason,
                         last_message_time: chatFromFiltered.last_message_time,
                     });
                 }

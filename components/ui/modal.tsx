@@ -59,7 +59,10 @@ export const Modal = ({
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-b-transparent">
+                <div className={cn(
+                    "flex items-center justify-between border-b border-b-transparent",
+                    title || description ? "p-6" : "absolute right-4 top-4 z-10"
+                )}>
                     <div>
                         {title && (
                             <h2 className={cn("text-lg font-semibold", isDarkMode ? 'text-white' : 'text-slate-900')}>
@@ -86,7 +89,10 @@ export const Modal = ({
                 </div>
 
                 {/* Content */}
-                <div className="p-6 pt-2 overflow-y-auto custom-scrollbar flex-1">
+                <div className={cn(
+                    "p-6 overflow-y-auto custom-scrollbar flex-1",
+                    title || description ? "pt-2" : "pt-6"
+                )}>
                     {children}
                 </div>
 

@@ -122,10 +122,15 @@ export class billingApiData {
   };
 
   /**
-   * Fetch available AI models for selection
+   * Fetch available AI models for selection (tenant-scoped, purpose-specific).
+   * Response: { success, data: Model[], meta: { purpose, saved_selection, saved_selection_entry, saved_selection_unavailable } }
    */
-  getAvailableAiModels = async () => {
-    return await _axios("get", "/whatsapp/billing/ai-models");
+  getAvailableAiModels = async (params?: { purpose?: "input" | "output" | "vision"; tenantId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.purpose) qs.set("purpose", params.purpose);
+    if (params?.tenantId) qs.set("tenant_id", params.tenantId);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return await _axios("get", `/whatsapp/billing/ai-models${suffix}`);
   };
 
   /**
@@ -163,6 +168,19 @@ export class billingApiData {
     const route = isAdmin
       ? `/whatsapp/admin/invoices/${id}/pdf`
       : `/whatsapp/billing/invoices/${id}/pdf`;
+
+    return await _axios("get", route, null, undefined, undefined, {
+      responseType: "blob",
+    });
+  };
+
+  /**
+   * Download payment receipt PDF
+   */
+  downloadReceiptPdf = async (id: number, isAdmin = false) => {
+    const route = isAdmin
+      ? `/whatsapp/admin/payments/${id}/receipt-pdf`
+      : `/whatsapp/billing/payments/${id}/receipt-pdf`;
 
     return await _axios("get", route, null, undefined, undefined, {
       responseType: "blob",

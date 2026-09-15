@@ -14,9 +14,15 @@ import {
 } from "@/hooks/useModuleAccessManagementQuery";
 import { toast } from "@/lib/toast";
 
+const SELECTED_PLAN_STORAGE_KEY = "whatsnexus:selected-plan-id";
+
 export const PlanModuleMappingView = () => {
   const { isDarkMode } = useTheme();
-  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [selectedPlanOverride, setSelectedPlanId] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : window.localStorage.getItem(SELECTED_PLAN_STORAGE_KEY) || "",
+  );
   const [mappingState, setMappingState] = useState<Record<string, boolean>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingMappings, setPendingMappings] = useState<
@@ -25,6 +31,15 @@ export const PlanModuleMappingView = () => {
 
   const { data: plansData, isLoading: isPlansLoading } = usePlansQuery();
   const { data: modulesData, isLoading: isModulesLoading } = useSaaSModulesQuery();
+
+  const plans = useMemo(() => plansData?.data || [], [plansData]);
+  const modules = useMemo(() => modulesData?.data || [], [modulesData]);
+  const selectedPlanId = plans.some(
+    (plan: any) => plan.plan_id === selectedPlanOverride,
+  )
+    ? selectedPlanOverride
+    : plans[0]?.plan_id || "";
+
   const {
     data: planMappingData,
     isLoading: isPlanMappingLoading,
@@ -32,8 +47,6 @@ export const PlanModuleMappingView = () => {
   const { mutate: patchPlanMappings, isPending: isSaving } =
     usePatchPlanSaaSModulesMutation();
 
-  const plans = useMemo(() => plansData?.data || [], [plansData]);
-  const modules = useMemo(() => modulesData?.data || [], [modulesData]);
   const serverMappings = useMemo(
     () => planMappingData?.data?.mappings || [],
     [planMappingData],
@@ -62,6 +75,11 @@ export const PlanModuleMappingView = () => {
     value: plan.plan_id,
     label: `${plan.plan_name} (${plan.plan_id})`,
   }));
+
+  const handlePlanChange = (planId: string) => {
+    setSelectedPlanId(planId);
+    window.localStorage.setItem(SELECTED_PLAN_STORAGE_KEY, planId);
+  };
 
   const handleToggleMapping = (moduleId: string, isEnabled: boolean) => {
     setMappingState((prev) => ({
@@ -124,9 +142,9 @@ export const PlanModuleMappingView = () => {
       <div className={cn("rounded-xl border p-4", isDarkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white")}>
         <Select
           isDarkMode={isDarkMode}
-          label="Select Plan"
+          label="Select a plan to manage module mappings"
           value={selectedPlanId}
-          onChange={(value) => setSelectedPlanId(value)}
+          onChange={handlePlanChange}
           options={planOptions}
           disabled={isPlansLoading}
         />

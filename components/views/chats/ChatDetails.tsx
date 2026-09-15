@@ -373,6 +373,14 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                             </div>
                             {!isNeuralSummaryEnabled && <Lock size={14} className="ml-2 shrink-0 opacity-80" />}
                         </button>
+                        {selectedChat?.is_ai_silenced && selectedChat?.ai_pause_reason === 'repeated_user_message' && (
+                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                                AI Paused — Repeated Messages
+                                <div className="mt-0.5 font-normal opacity-80">
+                                    Customer repeated the same message 5 times. Team follow-up required.
+                                </div>
+                            </div>
+                        )}
                         <button
                             onClick={() => {
                                 const newState = !selectedChat.is_ai_silenced;
@@ -390,7 +398,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
                             {selectedChat?.is_ai_silenced ? (
                                 <>
                                     <Bot size={15} />
-                                    <span>Unsilence AI</span>
+                                    <span>Resume AI</span>
                                 </>
                             ) : (
                                 <>

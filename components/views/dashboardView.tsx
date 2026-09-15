@@ -67,7 +67,11 @@ export const DashboardView = () => {
     const isManagement = user?.role === 'super_admin' || user?.role === 'platform_admin';
     const [dateRange, setDateRange] = useState<DateRange>({ startDate: new Date(2000, 0, 1), endDate: todayEnd() });
     const [waBannerDismissed, setWaBannerDismissed] = useState(false);
-    const { data: dashboardResult, isLoading, isFetching, isError, refetch } = useGetWhatsappDashboardQuery(dateRange.startDate, dateRange.endDate);
+    const { data: dashboardResult, isLoading, isFetching, isPlaceholderData, isError, refetch } = useGetWhatsappDashboardQuery(dateRange.startDate, dateRange.endDate);
+    // Only block the UI while switching date ranges (stale placeholder on screen).
+    // Routine background refreshes (60s poll, tab focus, post-mutation) must not
+    // dim the dashboard or swallow clicks.
+    const isSwitchingRange = isFetching && isPlaceholderData;
     const [loaderDone, setLoaderDone] = useState(false);
 
     const dashboardData = dashboardResult?.data;
@@ -144,7 +148,7 @@ export const DashboardView = () => {
         >
 
             <div className="relative z-10 p-4 sm:p-6 sm:px-8 max-w-[1600px] mx-auto space-y-8"
-                style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 0.25s ease', pointerEvents: isFetching ? 'none' : 'auto' }}
+                style={{ opacity: isSwitchingRange ? 0.6 : 1, transition: 'opacity 0.25s ease', pointerEvents: isSwitchingRange ? 'none' : 'auto' }}
             >
 
                 {/* 1. Command Bar */}
@@ -158,7 +162,7 @@ export const DashboardView = () => {
                 />
 
                 {/* 1a. Date Filter Status Indicator */}
-                {isFetching && (
+                {isSwitchingRange && (
                     <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border animate-pulse"
                         style={{
                             background: isDarkMode ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.05)',
@@ -301,33 +305,34 @@ export const DashboardView = () => {
                 {(() => {
                     if (!wabaConnected || isManagement) return null;
 
-                    const tier = dashboardData!.wabaInfo.tier;
-                    // WABA-level (portfolio) daily unique-user limits per Meta's current tier model
-                    const tierLimits: Record<string, number> = {
-                        TIER_NOT_SET: 250,
-                        TIER_2K:      2000,
-                        TIER_10K:     10000,
-                        TIER_100K:    100000,
-                        TIER_UNLIMITED: Infinity,
-                    };
-                    const limit = tierLimits[tier?.toUpperCase?.()] ?? 250;
+                    // Tier semantics come entirely from the backend resolver — no local map.
+                    const w = dashboardData!.wabaInfo;
                     return (
                         <section>
                             <SectionHeader
                                 icon={<Layers3 size={18} />}
                                 title="Account & Messaging Limits"
-                                subtitle="Rolling 24-hour limit status and account upgrade protection"
+                                subtitle="Estimated rolling 24-hour activity — Meta remains authoritative"
                                 accentColor="#8b5cf6"
                                 isDarkMode={isDarkMode}
                             />
                             <MessagingLimitTracker
                                 isDarkMode={isDarkMode}
                                 limitData={{
-                                    limit,
-                                    used: dashboardData!.wabaInfo?.rolling24hUsed ?? 0,
-                                    sevenDayUnique: dashboardData!.wabaInfo?.sevenDayUnique ?? 0,
-                                    thirtyDayUnique: dashboardData!.wabaInfo?.thirtyDayUnique ?? 0,
-                                    quality: dashboardData!.wabaInfo.quality as 'GREEN' | 'YELLOW' | 'RED',
+                                    limit: w.dailyLimit ?? null,
+                                    isUnlimited: !!w.isUnlimited,
+                                    isKnown: !!w.isTierKnown,
+                                    used: w.rolling24hUsed ?? 0,
+                                    sevenDayUnique: w.sevenDayUnique ?? 0,
+                                    thirtyDayUnique: w.thirtyDayUnique ?? 0,
+                                    quality: w.quality,
+                                    upgradeTarget: w.upgradeTarget ?? null,
+                                    upgradeWindowDays: w.upgradeWindowDays ?? null,
+                                    allowsVerificationPath: !!w.allowsVerificationPath,
+                                    requiresHighQuality: !!w.requiresHighQuality,
+                                    isEstimate: w.messagingLimitIsEstimate ?? true,
+                                    source: w.messagingLimitSource,
+                                    syncedAt: w.messagingLimitSyncedAt ?? null,
                                 }}
                             />
                         </section>

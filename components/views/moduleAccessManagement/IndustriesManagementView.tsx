@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ActionMenu } from "@/components/ui/actionMenu";
+import type { Industry } from "@/services/moduleAccessManagement";
 
 const toSnakeCaseKey = (value: string) =>
   value
@@ -50,9 +51,9 @@ export const IndustriesManagementView = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedIndustry, setSelectedIndustry] = useState<any | null>(null);
-  const [pendingStatusIndustry, setPendingStatusIndustry] = useState<any | null>(null);
-  const [pendingDeleteIndustry, setPendingDeleteIndustry] = useState<any | null>(null);
+  const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null);
+  const [pendingStatusIndustry, setPendingStatusIndustry] = useState<Industry | null>(null);
+  const [pendingDeleteIndustry, setPendingDeleteIndustry] = useState<Industry | null>(null);
 
   const [createForm, setCreateForm] = useState({
     industry_id: "",
@@ -83,7 +84,7 @@ export const IndustriesManagementView = () => {
     setCreateErrors({});
   };
 
-  const openEdit = (industry: any) => {
+  const openEdit = (industry: Industry) => {
     setSelectedIndustry(industry);
     setEditForm({
       industry_key: industry.industry_key || "",
@@ -155,7 +156,7 @@ export const IndustriesManagementView = () => {
     );
   };
 
-  const toggleIndustryStatus = (industry: any) => {
+  const toggleIndustryStatus = (industry: Industry) => {
     patchIndustry({
       industryId: industry.industry_id,
       payload: { is_active: !Boolean(industry.is_active) },
@@ -164,7 +165,7 @@ export const IndustriesManagementView = () => {
     });
   };
 
-  const handleDeleteIndustry = (industry: any) => {
+  const handleDeleteIndustry = (industry: Industry) => {
     deleteIndustry(industry.industry_id, {
       onSuccess: () => {
         setPendingDeleteIndustry(null);
@@ -222,7 +223,7 @@ export const IndustriesManagementView = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              industries.map((industry: any, index: number) => (
+              industries.map((industry, index) => (
                 <TableRow key={industry.industry_id} isDarkMode={isDarkMode} isLast={index === industries.length - 1}>
                   <TableCell>{industry.industry_id}</TableCell>
                   <TableCell>{industry.industry_key}</TableCell>
@@ -329,7 +330,7 @@ export const IndustriesManagementView = () => {
             label="Description"
             value={createForm.description}
             onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))}
-            placeholder="Optional description"
+            placeholder="e.g., Healthcare and medical services"
           />
 
           <div className="flex items-center gap-3">
@@ -402,6 +403,7 @@ export const IndustriesManagementView = () => {
           <Input
             isDarkMode={isDarkMode}
             label="Description"
+            placeholder="e.g., Healthcare and medical services"
             value={editForm.description}
             onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
           />
