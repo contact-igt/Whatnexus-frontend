@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface TabsProps {
@@ -70,8 +70,10 @@ export const Tabs = ({
 
 export const TabsList = ({ children, className, isDarkMode }: TabsListProps) => {
   const { value, onValueChange } = React.useContext(TabsContext);
+  const layoutId = React.useId();
   return (
     <TabsContext.Provider value={{ value, onValueChange, isDarkMode }}>
+      <LayoutGroup id={layoutId}>
       <div
         className={cn(
           "inline-flex h-12 items-center justify-center rounded-2xl p-1 mb-8 border",
@@ -81,6 +83,7 @@ export const TabsList = ({ children, className, isDarkMode }: TabsListProps) => 
       >
         {children}
       </div>
+      </LayoutGroup>
     </TabsContext.Provider>
   );
 };

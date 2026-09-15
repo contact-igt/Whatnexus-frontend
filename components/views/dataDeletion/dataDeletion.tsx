@@ -2,12 +2,12 @@
 
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowLeft, Mail, MapPin, Trash2, ShieldCheck, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowUp, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FooterSection } from "../landingPage/footerSection";
 
-const LAST_UPDATED = "March 5, 2026";
+const LAST_UPDATED = "September 15, 2026";
 
 export default function DataDeletionPage() {
     const { isDarkMode } = useTheme();
@@ -82,282 +82,317 @@ export default function DataDeletionPage() {
 
                 <hr className={cn("mb-10 mt-8", hr)} />
 
-                {/* ── Intro ─────────────────────────────────────── */}
-                <P cls={body}>
-                    <B d={D}>Invictus Global Tech</B> provides <B d={D}>WhatsNexus</B>, an AI-powered messaging automation
-                    platform built for managing customer conversations and workflows on the WhatsApp Business Platform.
-                    If you would like to request deletion of data associated with your use of WhatsNexus, this page
-                    explains how to submit that request and what to expect.
-                </P>
-
-                {/* ── Quick summary card ─────────────────────────── */}
-                <div className={cn(
-                    "my-8 p-5 rounded-2xl border",
-                    D ? "bg-emerald-500/8 border-emerald-500/20" : "bg-emerald-50 border-emerald-200"
-                )}>
-                    <div className="flex items-start gap-3">
-                        <ShieldCheck className={cn("w-5 h-5 mt-0.5 shrink-0", D ? "text-emerald-400" : "text-emerald-600")} />
-                        <div>
-                            <p className={cn("text-sm font-black mb-1", D ? "text-emerald-400" : "text-emerald-700")}>Quick Summary</p>
-                            <p className={cn("text-sm leading-relaxed", body)}>
-                                Send an email to{" "}
-                                <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A> with
-                                the subject <B d={D}>Data Deletion Request</B>. Include your name, organisation, WhatsApp
-                                number(s), account email, and the type of deletion you need. After verifying your identity,
-                                we will process the deletion in accordance with applicable law.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>WhatsNexus</strong> is an AI-powered messaging automation and customer communication platform developed, operated, supported, and administered through the business collaboration between <strong className={strong}>Invictus Global Tech</strong> and <strong className={strong}>Kingpin Ventures</strong>.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>WhatsNexus helps organizations manage customer conversations, leads, workflows, AI-assisted communications, and integrations with the <strong className={strong}>WhatsApp Business Platform (Cloud API)</strong>.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>As part of this business collaboration, a Meta Business Portfolio associated with <strong className={strong}>Kingpin Ventures</strong> may be used to support or administer relevant WhatsNexus integrations with Meta and the WhatsApp Business Platform.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>If you would like to request deletion of data associated with your use of WhatsNexus, this page explains how to submit a request, what information you should provide, how we verify requests, and what happens after a deletion request is received.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>References on this page to <strong className={strong}>“WhatsNexus,” “we,” “us,” or “our”</strong> refer, where applicable, to <strong className={strong}>Invictus Global Tech and Kingpin Ventures</strong> according to their respective roles in operating and supporting the WhatsNexus platform.</p>
                 <hr className={cn("my-10", hr)} />
-
-                {/* ── 1. How to Submit a Deletion Request ─────────── */}
-                <section id="how-to-request">
-                    <SecHeading d={D}>1. How to Submit a Deletion Request</SecHeading>
-                    <P cls={body}>
-                        To request deletion of your data, please send an email to:
-                    </P>
-
-                    {/* Email highlight box */}
-                    <div className={cn(
-                        "flex items-center gap-4 p-4 rounded-xl border mb-6",
-                        D ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"
-                    )}>
-                        <Mail className={cn("w-5 h-5 shrink-0", D ? "text-emerald-400" : "text-emerald-600")} />
-                        <div>
-                            <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-0.5", muted)}>Email</p>
-                            <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A>
-                        </div>
-                    </div>
-
-                    <P cls={body}>Please use the following subject line in your email:</P>
-                    <div className={cn(
-                        "px-4 py-3 rounded-xl border mb-6 font-mono text-sm",
-                        D ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"
-                    )}>
-                        Subject: Data Deletion Request
-                    </div>
-                </section>
-
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>Quick Summary</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>To request deletion of data associated with WhatsNexus, send an email to:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><a href="mailto:sushilathithiyaa@gmail.com" className="underline underline-offset-2 text-emerald-500">sushilathithiyaa@gmail.com</a></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Use the subject:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Data Deletion Request</strong></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Please include:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">your full name</li>
+                <li className="ml-5 list-disc pl-1">organisation name, if applicable</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp number(s) associated with the request</li>
+                <li className="ml-5 list-disc pl-1">WhatsNexus account email</li>
+                <li className="ml-5 list-disc pl-1">the type of deletion requested</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>After verifying your identity or authority to make the request, we will process the request in accordance with applicable law, contractual obligations, security requirements, and legitimate recordkeeping requirements.</p>
                 <hr className={cn("my-10", hr)} />
-
-                {/* ── 2. Information to Include ────────────────────── */}
-                <section id="information-to-include">
-                    <SecHeading d={D}>2. Information to Include in Your Request</SecHeading>
-                    <P cls={body}>
-                        To help us identify and process your request efficiently, please include the following details
-                        in your email:
-                    </P>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet><B d={D}>Full Name</B> — your first and last name</Bullet>
-                        <Bullet><B d={D}>Organisation Name</B> — the name of your organisation or business (if applicable)</Bullet>
-                        <Bullet><B d={D}>WhatsApp Number(s)</B> — the WhatsApp number(s) associated with the request</Bullet>
-                        <Bullet><B d={D}>Account Email</B> — the email address registered with your WhatsNexus account</Bullet>
-                        <Bullet>
-                            <B d={D}>Type of Deletion Requested</B> — please specify one of the following:
-                            <ul className="mt-2 space-y-1 ml-4">
-                                <li className="flex items-start gap-2">
-                                    <span className="mt-[6px] block w-1 h-1 rounded-full bg-current shrink-0 opacity-40" />
-                                    <span>Account deletion</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="mt-[6px] block w-1 h-1 rounded-full bg-current shrink-0 opacity-40" />
-                                    <span>Contact data deletion</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="mt-[6px] block w-1 h-1 rounded-full bg-current shrink-0 opacity-40" />
-                                    <span>Conversation data deletion</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="mt-[6px] block w-1 h-1 rounded-full bg-current shrink-0 opacity-40" />
-                                    <span>Complete data deletion (all data associated with your account)</span>
-                                </li>
-                            </ul>
-                        </Bullet>
-                    </ul>
-                </section>
-
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>1. How to Submit a Deletion Request</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>To request deletion of your data, please send an email to:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Email:</strong> <a href="mailto:sushilathithiyaa@gmail.com" className="underline underline-offset-2 text-emerald-500">sushilathithiyaa@gmail.com</a></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Please use the following subject line:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Subject: Data Deletion Request</strong></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>You may submit a request relating to:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">your WhatsNexus account</li>
+                <li className="ml-5 list-disc pl-1">contact information</li>
+                <li className="ml-5 list-disc pl-1">conversation information</li>
+                <li className="ml-5 list-disc pl-1">uploaded knowledge content</li>
+                <li className="ml-5 list-disc pl-1">Meta / WhatsApp integration information</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp Business Platform configuration associated with your WhatsNexus account</li>
+                <li className="ml-5 list-disc pl-1">other Customer Data processed through WhatsNexus</li>
+                </ul>
                 <hr className={cn("my-10", hr)} />
-
-                {/* ── 3. Verification Process ──────────────────────── */}
-                <section id="verification">
-                    <SecHeading d={D}>3. Verification Process</SecHeading>
-                    <P cls={body}>
-                        To protect the data of users and customers, we may need to verify your identity or confirm
-                        that you are authorised to make the deletion request before we process it. This may include:
-                    </P>
-                    <ul className={cn("mt-2 mb-5 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet>Verifying your identity using the information provided in your request</Bullet>
-                        <Bullet>Confirming ownership of the account email or WhatsApp number(s) specified</Bullet>
-                        <Bullet>Requesting additional information if needed to confirm your authorisation</Bullet>
-                    </ul>
-                    <P cls={body}>
-                        We will communicate with you via the contact information provided in your request during
-                        the verification process.
-                    </P>
-                </section>
-
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>2. Information to Include in Your Request</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>To help us identify and process your request efficiently, please include the following details where applicable:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1"><strong className={strong}>Full Name</strong> — your first and last name</li>
+                <li className="ml-5 list-disc pl-1"><strong className={strong}>Organisation Name</strong> — the name of your organisation or business</li>
+                <li className="ml-5 list-disc pl-1"><strong className={strong}>WhatsApp Number(s)</strong> — WhatsApp number(s) associated with the request</li>
+                <li className="ml-5 list-disc pl-1"><strong className={strong}>Account Email</strong> — the email address registered with your WhatsNexus account</li>
+                <li className="ml-5 list-disc pl-1"><strong className={strong}>WhatsApp Business Account Information</strong> — where applicable, information that helps identify the connected WhatsApp Business Account</li>
+                <li className="ml-5 list-disc pl-1"><strong className={strong}>Type of Deletion Requested</strong></li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>You may request deletion of one or more of the following:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">Account deletion</li>
+                <li className="ml-5 list-disc pl-1">Contact data deletion</li>
+                <li className="ml-5 list-disc pl-1">Conversation data deletion</li>
+                <li className="ml-5 list-disc pl-1">Message-related data deletion</li>
+                <li className="ml-5 list-disc pl-1">Knowledge Hub content deletion</li>
+                <li className="ml-5 list-disc pl-1">Uploaded document or business content deletion</li>
+                <li className="ml-5 list-disc pl-1">Lead data deletion</li>
+                <li className="ml-5 list-disc pl-1">Meta / WhatsApp integration data deletion</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp Business Account connection removal</li>
+                <li className="ml-5 list-disc pl-1">Complete data deletion for all applicable data associated with your account</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>If you are requesting deletion on behalf of an organisation, we may also ask you to confirm that you are authorised to make the request.</p>
                 <hr className={cn("my-10", hr)} />
-
-                {/* ── 4. What Happens After Your Request ───────────── */}
-                <section id="what-happens-after">
-                    <SecHeading d={D}>4. What Happens After Your Request</SecHeading>
-                    <P cls={body}>
-                        Once your request has been received and verified, we will review and process the deletion
-                        or anonymisation of the requested data in accordance with:
-                    </P>
-                    <ul className={cn("mt-2 mb-6 space-y-2 text-sm leading-relaxed", body)}>
-                        <Bullet>Applicable data protection and privacy laws</Bullet>
-                        <Bullet>Contractual obligations we may have with you or your organisation</Bullet>
-                        <Bullet>Legitimate operational or security requirements</Bullet>
-                    </ul>
-
-                    {/* Retention exceptions */}
-                    <div className={cn(
-                        "p-5 rounded-2xl border mb-5",
-                        D ? "bg-amber-500/8 border-amber-500/20" : "bg-amber-50 border-amber-200"
-                    )}>
-                        <div className="flex items-start gap-3">
-                            <AlertCircle className={cn("w-5 h-5 mt-0.5 shrink-0", D ? "text-amber-400" : "text-amber-600")} />
-                            <div>
-                                <p className={cn("text-sm font-black mb-2", D ? "text-amber-400" : "text-amber-700")}>
-                                    Please note — some data may be retained
-                                </p>
-                                <p className={cn("text-sm leading-relaxed mb-3", body)}>
-                                    In some cases, certain information may be retained where required for legitimate
-                                    purposes, including:
-                                </p>
-                                <ul className={cn("space-y-1.5 text-sm leading-relaxed", body)}>
-                                    <li className="flex items-start gap-2">
-                                        <span className="mt-[7px] block w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-50" />
-                                        <span>Legal compliance and regulatory obligations</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span className="mt-[7px] block w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-50" />
-                                        <span>Security and fraud prevention</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span className="mt-[7px] block w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-50" />
-                                        <span>Audit and operational recordkeeping</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span className="mt-[7px] block w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-50" />
-                                        <span>Enforcement of contractual obligations</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>3. Verification Process</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>To protect the privacy and security of Customers, users, and end users, we may need to verify your identity or confirm that you are authorised to make the deletion request before processing it.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Verification may include:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">Verifying your identity using information provided in the request</li>
+                <li className="ml-5 list-disc pl-1">Confirming ownership of the account email address</li>
+                <li className="ml-5 list-disc pl-1">Confirming access to the WhatsApp number(s) specified</li>
+                <li className="ml-5 list-disc pl-1">Confirming your role within the relevant organisation</li>
+                <li className="ml-5 list-disc pl-1">Confirming your authority to request deletion of organisation-level data</li>
+                <li className="ml-5 list-disc pl-1">Requesting additional information where reasonably necessary</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We will communicate with you using the contact information provided in your request during the verification process.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We may refuse or delay a request where we cannot reasonably verify the identity or authority of the requester.</p>
                 <hr className={cn("my-10", hr)} />
-
-                {/* ── 5. Processing Timeline ───────────────────────── */}
-                <section id="processing-timeline">
-                    <SecHeading d={D}>5. Processing Timeline</SecHeading>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        {[
-                            { icon: <Mail className="w-5 h-5" />, step: "Step 1", title: "Submit Request", desc: "Send your email to sushilathithiyaa@gmail.com with all required details.", hex: "#10b981" },
-                            { icon: <ShieldCheck className="w-5 h-5" />, step: "Step 2", title: "Verification", desc: "We verify your identity and confirm your authorisation to make the request.", hex: "#6366f1" },
-                            { icon: <CheckCircle2 className="w-5 h-5" />, step: "Step 3", title: "Deletion Processed", desc: "We process your deletion request within a commercially reasonable timeframe.", hex: "#3b82f6" },
-                        ].map((card, i) => (
-                            <div key={i} className={cn(
-                                "p-4 rounded-2xl border flex flex-col gap-3",
-                                D ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"
-                            )}>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                                        style={{ background: `${card.hex}20`, color: card.hex }}>
-                                        {card.icon}
-                                    </div>
-                                    <span className={cn("text-[9px] font-black uppercase tracking-widest", muted)}>{card.step}</span>
-                                </div>
-                                <div>
-                                    <p className={cn("text-sm font-black mb-1", strong)}>{card.title}</p>
-                                    <p className={cn("text-xs leading-relaxed", body)}>{card.desc}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <P cls={body}>
-                        We will make reasonable efforts to process verified deletion requests within a commercially
-                        reasonable timeframe. The exact duration may vary depending on the complexity of the request
-                        and the type of data involved.
-                    </P>
-                </section>
-
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>4. What Happens After Your Request</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Once your deletion request has been received and verified, we will review the request and determine which information is eligible for deletion, anonymisation, disconnection, or other appropriate action.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Depending on the type of request, this may include deletion or anonymisation of:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">WhatsNexus account information</li>
+                <li className="ml-5 list-disc pl-1">user profile information</li>
+                <li className="ml-5 list-disc pl-1">contacts</li>
+                <li className="ml-5 list-disc pl-1">lead information</li>
+                <li className="ml-5 list-disc pl-1">conversations</li>
+                <li className="ml-5 list-disc pl-1">message-related records</li>
+                <li className="ml-5 list-disc pl-1">uploaded knowledge materials</li>
+                <li className="ml-5 list-disc pl-1">AI configuration data</li>
+                <li className="ml-5 list-disc pl-1">organisation settings</li>
+                <li className="ml-5 list-disc pl-1">integration configuration</li>
+                <li className="ml-5 list-disc pl-1">operational data associated with the Customer account</li>
+                <li className="ml-5 list-disc pl-1">Meta / WhatsApp integration information where applicable</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Deletion requests will be processed in accordance with:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">applicable data protection and privacy laws</li>
+                <li className="ml-5 list-disc pl-1">contractual obligations</li>
+                <li className="ml-5 list-disc pl-1">legitimate security requirements</li>
+                <li className="ml-5 list-disc pl-1">operational requirements</li>
+                <li className="ml-5 list-disc pl-1">legal and regulatory obligations</li>
+                </ul>
                 <hr className={cn("my-10", hr)} />
-
-                {/* ── 6. Additional Rights ─────────────────────────── */}
-                <section id="additional-rights">
-                    <SecHeading d={D}>6. Additional Privacy Rights</SecHeading>
-                    <P cls={body}>
-                        Depending on your location and applicable law, you may also have additional rights with
-                        respect to your personal data, including the right to access, correct, or restrict processing
-                        of your data. To exercise any of these rights, please contact us using the information below.
-                    </P>
-                    <P cls={body}>
-                        For full details on how we collect, use, and protect your data, please refer to our{" "}
-                        <A href="/privacyPolicy" d={D}>Privacy Policy</A>.
-                    </P>
-                </section>
-
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>5. Meta and WhatsApp Business Platform Data</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>WhatsNexus integrates with the <strong className={strong}>WhatsApp Business Platform (Cloud API)</strong> provided by Meta.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Where a Customer has connected a WhatsApp Business Account to WhatsNexus, the platform may process information such as:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">WhatsApp Business Account identifiers</li>
+                <li className="ml-5 list-disc pl-1">WABA IDs</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp business phone number identifiers</li>
+                <li className="ml-5 list-disc pl-1">configuration metadata</li>
+                <li className="ml-5 list-disc pl-1">connection status information</li>
+                <li className="ml-5 list-disc pl-1">webhook event information</li>
+                <li className="ml-5 list-disc pl-1">message status information</li>
+                <li className="ml-5 list-disc pl-1">message template information</li>
+                <li className="ml-5 list-disc pl-1">other authorised Meta / WhatsApp Business Platform data</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>As part of the business collaboration supporting WhatsNexus, relevant Meta and WhatsApp integration administration may involve a Meta Business Portfolio associated with <strong className={strong}>Kingpin Ventures</strong>.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>For Meta platform integration purposes, WhatsNexus uses a Meta application named “Nexus Connect.” Nexus Connect is the technical Meta application used to enable authorized Meta and WhatsApp Business Platform functionality for WhatsNexus and is not a separate customer-facing service. This includes customer onboarding, account authorization, messaging, webhook processing, and related integration management. WhatsNexus remains the public-facing platform and product; Nexus Connect is only the technical Meta application name and does not represent a separate company or change Customer ownership or control of their own Meta and WhatsApp business assets.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>A request to delete WhatsNexus data does not automatically delete or transfer ownership of a Customer&apos;s own:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">Meta Business Portfolio</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp Business Account</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp business phone number</li>
+                <li className="ml-5 list-disc pl-1">Meta account</li>
+                <li className="ml-5 list-disc pl-1">other Customer-controlled Meta or WhatsApp assets</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Those assets remain subject to the Customer&apos;s control and to applicable Meta and WhatsApp policies.</p>
                 <hr className={cn("my-10", hr)} />
-
-                {/* ── 7. Contact Information ───────────────────────── */}
-                <section id="contact">
-                    <SecHeading d={D}>7. Contact Information</SecHeading>
-                    <P cls={body}>
-                        For any privacy-related questions, data deletion requests, or additional inquiries, contact:
-                    </P>
-
-                    <div className={cn(
-                        "p-5 rounded-2xl border space-y-4",
-                        D ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"
-                    )}>
-                        <div>
-                            <p className={cn("text-base font-black mb-1", strong)}>Invictus Global Tech</p>
-                            <p className={cn("text-[10px] font-bold uppercase tracking-widest", muted)}>
-                                Data Controller / Platform Provider
-                            </p>
-                        </div>
-                        <div className={cn("border-t pt-4 space-y-3", D ? "border-slate-800" : "border-slate-200")}>
-                            <div className="flex items-center gap-3">
-                                <Mail className={cn("w-4 h-4 shrink-0", D ? "text-emerald-400" : "text-emerald-600")} />
-                                <div>
-                                    <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-0.5", muted)}>Email</p>
-                                    <A href="mailto:sushilathithiyaa@gmail.com" d={D}>sushilathithiyaa@gmail.com</A>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <MapPin className={cn("w-4 h-4 shrink-0 mt-0.5", D ? "text-emerald-400" : "text-emerald-600")} />
-                                <div>
-                                    <p className={cn("text-[9px] font-bold uppercase tracking-widest mb-0.5", muted)}>Address</p>
-                                    <p className={cn("text-sm", body)}>
-                                        LIG 13/19, NH3<br />
-                                        Vanjinathan Street<br />
-                                        Maraimalai Nagar<br />
-                                        Chennai – 603209<br />
-                                        India
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* ── Related pages ────────────────────────────────── */}
-                <div className={cn("mt-12 p-5 rounded-2xl border", D ? "border-slate-800" : "border-slate-200")}>
-                    <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4", muted)}>Related Policies</p>
-                    <div className="flex flex-wrap gap-3">
-                        <A href="/privacyPolicy" d={D}>Privacy Policy</A>
-                        <span className={muted}>·</span>
-                        <A href="/termsAndConditions" d={D}>Terms and Conditions</A>
-                    </div>
-                </div>
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>6. Disconnecting Meta or WhatsApp Integrations</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Where applicable, a Customer may also request that its WhatsApp Business Platform integration be disconnected from WhatsNexus.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>After disconnection, WhatsNexus may no longer be authorised to access or use the applicable connected WhatsApp Business Account or business phone number for platform functionality.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Disconnection may involve actions such as:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">disabling the connection within WhatsNexus</li>
+                <li className="ml-5 list-disc pl-1">revoking or removing applicable integration authorisation</li>
+                <li className="ml-5 list-disc pl-1">stopping processing of new WhatsApp webhook events for the disconnected connection where applicable</li>
+                <li className="ml-5 list-disc pl-1">preventing WhatsNexus from sending new messages through the disconnected integration</li>
+                <li className="ml-5 list-disc pl-1">removing stored integration configuration where appropriate</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Disconnecting WhatsNexus from a Meta or WhatsApp integration does not necessarily delete data directly controlled or retained by Meta or WhatsApp.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Customers may need to use Meta&apos;s or WhatsApp&apos;s own account management tools for information or assets maintained independently by those platforms.</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>7. Some Data May Be Retained</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>In some circumstances, certain information may be retained even after a deletion request has been processed.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Information may be retained where reasonably necessary for:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">legal compliance</li>
+                <li className="ml-5 list-disc pl-1">regulatory obligations</li>
+                <li className="ml-5 list-disc pl-1">security</li>
+                <li className="ml-5 list-disc pl-1">fraud prevention</li>
+                <li className="ml-5 list-disc pl-1">abuse prevention</li>
+                <li className="ml-5 list-disc pl-1">audit requirements</li>
+                <li className="ml-5 list-disc pl-1">operational recordkeeping</li>
+                <li className="ml-5 list-disc pl-1">financial or tax requirements</li>
+                <li className="ml-5 list-disc pl-1">dispute resolution</li>
+                <li className="ml-5 list-disc pl-1">enforcement of contractual obligations</li>
+                <li className="ml-5 list-disc pl-1">protection of legal rights</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Where appropriate, retained information may be:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">restricted</li>
+                <li className="ml-5 list-disc pl-1">archived</li>
+                <li className="ml-5 list-disc pl-1">anonymised</li>
+                <li className="ml-5 list-disc pl-1">isolated from normal platform use</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We will not retain information longer than reasonably necessary for the applicable purpose.</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>8. Processing Timeline</h2>
+                <h3 className={cn("text-sm font-bold mb-2 mt-4", strong)}>Step 1 — Submit Request</h3>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Send your email to:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><a href="mailto:sushilathithiyaa@gmail.com" className="underline underline-offset-2 text-emerald-500">sushilathithiyaa@gmail.com</a></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>with the subject:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Data Deletion Request</strong></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>and include the information described above.</p>
+                <h3 className={cn("text-sm font-bold mb-2 mt-4", strong)}>Step 2 — Verification</h3>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We verify your identity and, where applicable, confirm your authority to make the request on behalf of an organisation.</p>
+                <h3 className={cn("text-sm font-bold mb-2 mt-4", strong)}>Step 3 — Review</h3>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We identify the relevant:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">account data</li>
+                <li className="ml-5 list-disc pl-1">Customer Data</li>
+                <li className="ml-5 list-disc pl-1">conversation data</li>
+                <li className="ml-5 list-disc pl-1">contact data</li>
+                <li className="ml-5 list-disc pl-1">uploaded information</li>
+                <li className="ml-5 list-disc pl-1">integration information</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>covered by the request.</p>
+                <h3 className={cn("text-sm font-bold mb-2 mt-4", strong)}>Step 4 — Deletion, Anonymisation, or Disconnection</h3>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We process the appropriate deletion, anonymisation, integration disconnection, or other applicable action.</p>
+                <h3 className={cn("text-sm font-bold mb-2 mt-4", strong)}>Step 5 — Confirmation</h3>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Where appropriate, we will confirm that the request has been processed or advise you if additional information is required.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We will make reasonable efforts to process verified deletion requests within a <strong className={strong}>commercially reasonable timeframe</strong>.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>The exact processing time may vary depending on:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">the complexity of the request</li>
+                <li className="ml-5 list-disc pl-1">the amount of information involved</li>
+                <li className="ml-5 list-disc pl-1">the type of deletion requested</li>
+                <li className="ml-5 list-disc pl-1">verification requirements</li>
+                <li className="ml-5 list-disc pl-1">legal requirements</li>
+                <li className="ml-5 list-disc pl-1">technical dependencies</li>
+                <li className="ml-5 list-disc pl-1">third-party platform requirements</li>
+                </ul>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>9. Organisation and Administrator Requests</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>WhatsNexus is designed for use by organisations and may contain data belonging to or controlled by a Customer organisation.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>An individual user may not always have authority to request deletion of all organisation-level information.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>For example, deletion of:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">an entire organisation account</li>
+                <li className="ml-5 list-disc pl-1">all organisation contacts</li>
+                <li className="ml-5 list-disc pl-1">all conversations</li>
+                <li className="ml-5 list-disc pl-1">organisation-wide knowledge content</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp Business Account integrations</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>may require approval from an authorised organisation administrator or account owner.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We may verify administrator or account-owner authority before processing such requests.</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>10. End-User and Message Recipient Requests</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>If you are an individual who communicated through WhatsApp with a business using WhatsNexus, the business you communicated with may be the primary organisation responsible for determining how your information is used.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Where appropriate, we may:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">process your request directly where we are able to do so</li>
+                <li className="ml-5 list-disc pl-1">request additional information to identify the relevant Customer</li>
+                <li className="ml-5 list-disc pl-1">coordinate with the relevant Customer organisation</li>
+                <li className="ml-5 list-disc pl-1">direct you to the Customer where the Customer is responsible for the requested action</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>This helps ensure that information is not deleted or disclosed without appropriate authorisation.</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>11. Additional Privacy Rights</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Depending on your location and applicable law, you may have additional rights relating to personal data.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>These rights may include the ability to request:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">access to personal data</li>
+                <li className="ml-5 list-disc pl-1">correction of inaccurate information</li>
+                <li className="ml-5 list-disc pl-1">deletion of personal data</li>
+                <li className="ml-5 list-disc pl-1">restriction of processing</li>
+                <li className="ml-5 list-disc pl-1">information regarding processing</li>
+                <li className="ml-5 list-disc pl-1">other rights available under applicable privacy law</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>The availability and scope of these rights depend on applicable law and the context in which information is processed.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>To exercise any applicable privacy rights, contact:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><a href="mailto:sushilathithiyaa@gmail.com" className="underline underline-offset-2 text-emerald-500">sushilathithiyaa@gmail.com</a></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>For full details regarding how WhatsNexus collects, uses, processes, stores, and shares information, please review our:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><a href="/privacyPolicy" className="underline underline-offset-2 text-emerald-500">Privacy Policy</a></p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>12. Security of Deletion Requests</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We take reasonable measures designed to prevent unauthorised deletion or disclosure of Customer information.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>For this reason, we may not process a deletion request solely based on information contained in an email where we are unable to verify the requester&apos;s identity or authority.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We may request additional verification where necessary to protect:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">Customer accounts</li>
+                <li className="ml-5 list-disc pl-1">organisation data</li>
+                <li className="ml-5 list-disc pl-1">conversations</li>
+                <li className="ml-5 list-disc pl-1">contacts</li>
+                <li className="ml-5 list-disc pl-1">WhatsApp Business integrations</li>
+                <li className="ml-5 list-disc pl-1">other Customer-controlled information</li>
+                </ul>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>13. Business and Platform Relationship</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>WhatsNexus</strong> is developed, operated, supported, and administered through the business collaboration between:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Invictus Global Tech</strong></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>and</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Kingpin Ventures</strong></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>The two businesses collaborate in connection with WhatsNexus according to their respective technical, operational, administrative, integration, security, support, and service responsibilities.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>This collaboration may include:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">WhatsNexus platform operations</li>
+                <li className="ml-5 list-disc pl-1">product development</li>
+                <li className="ml-5 list-disc pl-1">technical infrastructure</li>
+                <li className="ml-5 list-disc pl-1">customer support</li>
+                <li className="ml-5 list-disc pl-1">security</li>
+                <li className="ml-5 list-disc pl-1">Meta and WhatsApp Business Platform integrations</li>
+                <li className="ml-5 list-disc pl-1">service administration</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>The description of Invictus Global Tech and Kingpin Ventures as business partners does not, by itself, represent that they have formed a separate legal partnership entity unless expressly stated in a separate legal agreement.</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>14. Changes to These Data Deletion Instructions</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>We may update these Data Deletion Instructions from time to time.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Updates may be made to reflect:</p>
+                <ul className={cn("mt-2 mb-5 space-y-1 text-sm leading-relaxed", body)}>
+                <li className="ml-5 list-disc pl-1">changes to WhatsNexus functionality</li>
+                <li className="ml-5 list-disc pl-1">changes to privacy requirements</li>
+                <li className="ml-5 list-disc pl-1">new integrations</li>
+                <li className="ml-5 list-disc pl-1">changes to Meta or WhatsApp platform requirements</li>
+                <li className="ml-5 list-disc pl-1">changes to our operational processes</li>
+                <li className="ml-5 list-disc pl-1">changes to the business collaboration between Invictus Global Tech and Kingpin Ventures</li>
+                </ul>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Updates will be published on this page, and the <strong className={strong}>“Last Updated”</strong> date will be revised accordingly.</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>15. Contact Information</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>For privacy-related questions, data deletion requests, integration removal requests, or other related inquiries, contact:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>WhatsNexus</strong></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Operated and supported through the business collaboration between:</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Invictus Global Tech</strong></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>and</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Kingpin Ventures</strong></p>
+                <h3 className={cn("text-sm font-bold mb-2 mt-4", strong)}>Email</h3>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><a href="mailto:sushilathithiyaa@gmail.com" className="underline underline-offset-2 text-emerald-500">sushilathithiyaa@gmail.com</a></p>
+                <h3 className={cn("text-sm font-bold mb-2 mt-4", strong)}>Address</h3>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>LIG 13/19, NH3<br />Vanjinathan Street<br />Maraimalai Nagar<br />Chennai – 603209<br />India</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>Related Policies</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><a href="/privacyPolicy" className="underline underline-offset-2 text-emerald-500">Privacy Policy</a></p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><a href="/termsAndConditions" className="underline underline-offset-2 text-emerald-500">Terms and Conditions</a></p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>Platform Information</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Platform:</strong> WhatsNexus</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Business Partners:</strong><br />Invictus Global Tech<br />Kingpin Ventures</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Meta / WhatsApp Business Platform Integration:</strong> Relevant Meta and WhatsApp Business Platform integration activities may be supported or administered through the Meta Business Portfolio associated with Kingpin Ventures as part of the business partners&apos; operation and support of WhatsNexus.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>WhatsNexus, Invictus Global Tech, and Kingpin Ventures are independent from Meta Platforms, Inc. and WhatsApp LLC.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Meta, WhatsApp, and their respective names, trademarks, and associated marks belong to their respective owners.</p>
 
             </main>
 
@@ -378,46 +413,5 @@ export default function DataDeletionPage() {
                 <ArrowUp className="w-5 h-5" />
             </button>
         </div>
-    );
-}
-
-/* ── Atoms (identical to privacy-policy / terms pages) ──────────────────── */
-
-function P({ cls, children }: { cls: string; children: React.ReactNode }) {
-    return <p className={cn("text-sm leading-relaxed mb-4", cls)}>{children}</p>;
-}
-
-function SecHeading({ d, children }: { d: boolean; children: React.ReactNode }) {
-    return (
-        <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug",
-            d ? "text-slate-100" : "text-slate-900"
-        )}>
-            {children}
-        </h2>
-    );
-}
-
-function B({ d, children }: { d: boolean; children: React.ReactNode }) {
-    return <strong className={d ? "text-slate-100" : "text-slate-900"}>{children}</strong>;
-}
-
-function A({ href, d, children }: { href: string; d: boolean; children: React.ReactNode }) {
-    return (
-        <a href={href} className={cn(
-            "underline underline-offset-2 transition-colors",
-            d ? "text-emerald-400 hover:text-emerald-300"
-                : "text-emerald-600 hover:text-emerald-700"
-        )}>
-            {children}
-        </a>
-    );
-}
-
-function Bullet({ children }: { children: React.ReactNode }) {
-    return (
-        <li className="flex items-start gap-2 text-sm leading-relaxed">
-            <span className="mt-[7px] block w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-50" />
-            <span>{children}</span>
-        </li>
     );
 }

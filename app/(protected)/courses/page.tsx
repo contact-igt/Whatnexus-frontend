@@ -1,6 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { usePathname } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { _axios } from "@/helper/axios";
+import { useAuth } from "@/redux/selectors/auth/authSelector";
 import type {
   Course,
   Mentor,
@@ -184,6 +187,40 @@ interface Session {
   tab:           SessionTab;
   attendees:     number;
 }
+type SavedSession = Pick<Session, "id" | "title" | "host" | "topic" | "scheduledMs" | "meetingLink"> & { durationMinutes: number };
+
+function ScheduleForm({ onClose, onSave, pending, error }: {
+  onClose: () => void;
+  onSave: (data: Omit<SavedSession, "id">) => void;
+  pending: boolean;
+  error: boolean;
+}) {
+  const [validation, setValidation] = useState("");
+  return <form onSubmit={event => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const scheduledMs = new Date(String(data.get("date"))).getTime();
+    if (!Number.isFinite(scheduledMs) || scheduledMs <= Date.now()) {
+      setValidation("Choose a future date and time.");
+      return;
+    }
+    setValidation("");
+    onSave({ title: String(data.get("title")).trim(), host: String(data.get("host")).trim(), topic: data.get("topic") as SessionTopic,
+      scheduledMs, durationMinutes: Number(data.get("duration")), meetingLink: String(data.get("link")).trim() });
+  }}>
+    <ModalHeader title="Schedule Session" subtitle="Date and time use your device's time zone." onClose={onClose} />
+    <div style={{ display: "grid", gap: 16 }}>
+      <label>Session title<input name="title" required pattern=".*\S.*" maxLength={255} style={inputStyle} /></label>
+      <label>Trainer<input name="host" required pattern=".*\S.*" maxLength={255} style={inputStyle} /></label>
+      <label>Topic<select name="topic" style={inputStyle}>{Object.keys(TOPIC_COLORS).map(topic => <option key={topic}>{topic}</option>)}</select></label>
+      <label>Date and time<input name="date" type="datetime-local" required style={inputStyle} /></label>
+      <label>Duration (minutes)<input name="duration" type="number" min={1} max={1440} step={1} defaultValue={60} required style={inputStyle} /></label>
+      <label>Meeting link<input name="link" type="url" pattern="https?://.*" maxLength={2048} required style={inputStyle} /></label>
+      {(validation || error) && <p role="alert">{validation || "Unable to save session. Check the details and try again."}</p>}
+      <button type="submit" disabled={pending} style={btnGreen}>{pending ? "Scheduling…" : "Schedule Session"}</button>
+    </div>
+  </form>;
+}
 const TOPIC_COLORS: Record<SessionTopic, { text: string; bg: string; bar: string }> = {
   Leadership:    { text: "#A78BFA", bg: "rgba(124,58,237,0.12)",  bar: "#7C3AED" },
   Compliance:    { text: "#F87171", bg: "rgba(220,38,38,0.10)",   bar: "#DC2626" },
@@ -193,28 +230,17 @@ const TOPIC_COLORS: Record<SessionTopic, { text: string; bg: string; bar: string
   HR:            { text: "#F9A8D4", bg: "rgba(219,39,119,0.12)",  bar: "#DB2777" },
   Finance:       { text: "#67E8F9", bg: "rgba(8,145,178,0.12)",   bar: "#0891B2" },
 };
-const SESSIONS: Session[] = [
-  { id:"ws1",  title:"Leadership Communication Skills",  dateLabel:"May 20, 2026", timeLabel:"3:00 PM IST",  scheduledMs:Date.UTC(2026,4,20,9,30),  duration:"60 mins",  host:"John Smith",   topic:"Leadership",   meetingLink:"https://zoom.us/j/928374651",                   recordingLink:null,                                          isLive:false, tab:"Upcoming", attendees:0   },
-  { id:"ws2",  title:"Workplace Compliance 2026 Update", dateLabel:"May 25, 2026", timeLabel:"11:00 AM IST", scheduledMs:Date.UTC(2026,4,25,5,30),  duration:"90 mins",  host:"Priya Nair",   topic:"Compliance",   meetingLink:"https://teams.microsoft.com/l/compliance2026",  recordingLink:null,                                          isLive:false, tab:"Upcoming", attendees:0   },
-  { id:"ws3",  title:"Mastering Data-Driven Sales",      dateLabel:"May 28, 2026", timeLabel:"2:00 PM IST",  scheduledMs:Date.UTC(2026,4,28,8,30),  duration:"75 mins",  host:"Arjun Mehta",  topic:"Sales",        meetingLink:"https://meet.google.com/abc-defg-hij",         recordingLink:null,                                          isLive:false, tab:"Upcoming", attendees:0   },
-  { id:"ws4",  title:"AI in Healthcare Operations",      dateLabel:"Jun 5, 2026",  timeLabel:"4:00 PM IST",  scheduledMs:Date.UTC(2026,5,5,10,30),  duration:"120 mins", host:"Dr. Sarah Lee", topic:"Technical",    meetingLink:"https://zoom.us/j/102938475",                   recordingLink:null,                                          isLive:false, tab:"Upcoming", attendees:0   },
-  { id:"ws5",  title:"Inclusive HR Practices 2026",      dateLabel:"Jun 12, 2026", timeLabel:"10:00 AM IST", scheduledMs:Date.UTC(2026,5,12,4,30),  duration:"60 mins",  host:"Ravi Sharma",  topic:"HR",           meetingLink:"https://teams.microsoft.com/l/hrpractices",     recordingLink:null,                                          isLive:false, tab:"Upcoming", attendees:0   },
-  { id:"ws6",  title:"Financial Risk Management — Live", dateLabel:"May 12, 2026", timeLabel:"3:00 PM IST",  scheduledMs:Date.UTC(2026,4,12,9,30),  duration:"90 mins",  host:"Maya Patel",   topic:"Finance",      meetingLink:"https://zoom.us/j/567382910",                   recordingLink:null,                                          isLive:true,  tab:"Upcoming", attendees:142 },
-  { id:"ws7",  title:"Product Leadership Masterclass",   dateLabel:"Apr 15, 2026", timeLabel:"2:00 PM IST",  scheduledMs:Date.UTC(2026,3,15,8,30),  duration:"90 mins",  host:"Tom Wilson",   topic:"Leadership",   meetingLink:"",  recordingLink:"https://vimeo.com/product-leadership-rec",    isLive:false, tab:"Past",     attendees:287 },
-  { id:"ws8",  title:"POSH & Compliance Workshop",       dateLabel:"Apr 28, 2026", timeLabel:"11:00 AM IST", scheduledMs:Date.UTC(2026,3,28,5,30),  duration:"60 mins",  host:"Anita Desai",  topic:"Compliance",   meetingLink:"",  recordingLink:null,                                          isLive:false, tab:"Past",     attendees:194 },
-  { id:"ws9",  title:"Emotional Intelligence at Work",   dateLabel:"Mar 20, 2026", timeLabel:"3:00 PM IST",  scheduledMs:Date.UTC(2026,2,20,9,30),  duration:"60 mins",  host:"Sarah Kumar",  topic:"Soft Skills",  meetingLink:"",  recordingLink:"https://vimeo.com/ei-at-work-rec",            isLive:false, tab:"Past",     attendees:356 },
-  { id:"ws10", title:"Excel & Automation Bootcamp",      dateLabel:"Mar 5, 2026",  timeLabel:"10:00 AM IST", scheduledMs:Date.UTC(2026,2,5,4,30),   duration:"120 mins", host:"Vikram Singh", topic:"Technical",    meetingLink:"",  recordingLink:"https://vimeo.com/excel-automation-rec",      isLive:false, tab:"Past",     attendees:421 },
-];
+
 
 const T = {
-  bg:      "#000000",
-  card:    "#000000",
-  input:   "rgba(255,255,255,0.05)",
-  border:  "rgba(255,255,255,0.10)",
-  borderH: "rgba(255,255,255,0.16)",
-  text:    "#FFFFFF",
-  sub:     "rgba(255,255,255,0.60)",
-  muted:   "rgba(255,255,255,0.45)",
+  bg: "var(--background)",
+  card: "var(--surface)",
+  input: "var(--input)",
+  border: "var(--border)",
+  borderH: "var(--border-hover)",
+  text: "var(--foreground)",
+  sub: "var(--subtle)",
+  muted: "var(--muted)",
   green:   "#059669",
   greenL:  "#10B981",
   greenV:  "#34D399",
@@ -252,7 +278,7 @@ const drawerLabelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 12,
   fontWeight: 600,
-  color: "rgba(255,255,255,0.70)",
+  color: T.sub,
   marginBottom: 8,
 };
 const drawerSectionTitleStyle: React.CSSProperties = {
@@ -339,7 +365,7 @@ function Modal({
         right: 0, 
         top: 0, 
         height: "100vh", 
-        background: "#000000", 
+        background: T.card, color: T.text,
         borderLeft: `1px solid ${T.borderH}`,
         boxShadow: "0 25px 80px rgba(0,0,0,0.45)",
         width: "100%",
@@ -573,12 +599,21 @@ function MentorForm({ initial, onSave, onClose, loading }: {
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <input placeholder="Full Name *" style={inputStyle} value={f.name} onChange={e => upd("name", e.target.value)} />
-        <select style={selectStyle} value={f.expertise} onChange={e => upd("expertise", e.target.value as Category)}>
-          {CATEGORIES.map(x => <option key={x}>{x}</option>)}
-        </select>
-        <input placeholder="Rating (1–5)" type="number" min={1} max={5} step={0.1} style={inputStyle}
-          value={f.rating} onChange={e => upd("rating", Number(e.target.value))} />
+        <div>
+          <label htmlFor="mentor-name" style={drawerLabelStyle}>Full Name *</label>
+          <input id="mentor-name" required placeholder="Enter mentor's full name" style={inputStyle} value={f.name} onChange={e => upd("name", e.target.value)} />
+        </div>
+        <div>
+          <label htmlFor="mentor-expertise" style={drawerLabelStyle}>Expertise</label>
+          <select id="mentor-expertise" style={{ ...selectStyle, width: "100%" }} value={f.expertise} onChange={e => upd("expertise", e.target.value as Category)}>
+            {CATEGORIES.map(x => <option key={x}>{x}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="mentor-rating" style={drawerLabelStyle}>Rating (1–5)</label>
+          <input id="mentor-rating" placeholder="e.g. 4.5" type="number" min={1} max={5} step={0.1} style={inputStyle}
+            value={f.rating} onChange={e => upd("rating", Number(e.target.value))} />
+        </div>
         <div>
           <div style={{ fontSize: 12, color: T.sub, marginBottom: 8 }}>Avatar Color</div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -608,7 +643,7 @@ function DeleteModal({ name, warning, onConfirm, onClose, loading }: {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 14, color: T.yellow }}>
           <Icon.AlertTriangle />
         </div>
-        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Delete "{name}"?</div>
+        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Delete &quot;{name}&quot;?</div>
         <div style={{ fontSize: 13, color: T.sub, marginBottom: warning ? 12 : 24 }}>This action cannot be undone.</div>
         {warning && (
           <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid #FBBF24", borderRadius: 8, padding: "10px 14px", color: T.yellow, fontSize: 12, marginBottom: 24, textAlign: "left" }}>
@@ -646,6 +681,34 @@ type MentorModal =
 
 export default function CoursesPage() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const sessionKey = ["course-sessions", user?.tenant_id];
+  const sessionQuery = useQuery({
+    queryKey: sessionKey,
+    queryFn: (): Promise<{ data: SavedSession[] }> => _axios("get", "/whatsapp/courses/sessions"),
+    enabled: !!user?.tenant_id,
+    refetchInterval: 60000,
+  });
+  const scheduleSession = useMutation({
+    mutationFn: (data: Omit<SavedSession, "id">) => _axios("post", "/whatsapp/courses/sessions", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKey });
+      setScheduleOpen(false);
+      setSessionTab("Upcoming");
+      setSessionSearch("");
+      setSessionTopic("All");
+    },
+  });
+  const sessions: Session[] = (sessionQuery.data?.data ?? []).map(session => {
+    const date = new Date(session.scheduledMs);
+    const end = session.scheduledMs + session.durationMinutes * 60000;
+    return { ...session, dateLabel: date.toLocaleDateString(), timeLabel: date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZoneName: "short" }),
+      duration: `${session.durationMinutes} mins`, recordingLink: null, attendees: 0,
+      isLive: session.scheduledMs <= sessionQuery.dataUpdatedAt && end > sessionQuery.dataUpdatedAt,
+      tab: end <= sessionQuery.dataUpdatedAt ? "Past" : "Upcoming" };
+  });
 
   /* ── Data ── */
   const { data: coursesRes, isLoading: coursesLoading, isError: coursesError } = useGetAllCoursesQuery();
@@ -680,7 +743,7 @@ export default function CoursesPage() {
   const [sessionTab,    setSessionTab]    = useState<SessionTab>("Upcoming");
   const [sessionSearch, setSessionSearch] = useState("");
   const [sessionTopic,  setSessionTopic]  = useState<"All" | SessionTopic>("All");
-  const [registeredIds, setRegisteredIds] = useState<Set<string>>(new Set(["ws2"]));
+  const [registeredIds, setRegisteredIds] = useState<Set<string>>(new Set());
 
   /* ── Computed Stats (live from API data) ── */
   const activeCourses = courses.filter(c => c.status === "Active");
@@ -691,9 +754,9 @@ export default function CoursesPage() {
   const certificates = activeCourses.reduce((a, c) => a + Math.round((c.enrolled ?? 0) * ((c.completion ?? 0) / 100)), 0);
 
   /* ── Session stats ── */
-  const upcomingSessions = SESSIONS.filter(s => s.tab === "Upcoming");
-  const liveSessions     = SESSIONS.filter(s => s.isLive);
-  const pastSessions     = SESSIONS.filter(s => s.tab === "Past");
+  const upcomingSessions = sessions.filter(s => s.tab === "Upcoming");
+  const liveSessions     = sessions.filter(s => s.isLive);
+  const pastSessions     = sessions.filter(s => s.tab === "Past");
   const totalAttendees   = pastSessions.reduce((a, s) => a + s.attendees, 0);
 
   /* ── Handlers: Courses ── */
@@ -740,12 +803,12 @@ export default function CoursesPage() {
 
   /* ── Filtered sessions ── */
   const SESSION_TOPICS: SessionTopic[] = ["Leadership","Compliance","Soft Skills","Technical","Sales","HR","Finance"];
-  const filteredSessions = SESSIONS
+  const filteredSessions = sessions
     .filter(s => s.tab === sessionTab)
     .filter(s => !sessionSearch || s.title.toLowerCase().includes(sessionSearch.toLowerCase()) || s.host.toLowerCase().includes(sessionSearch.toLowerCase()))
     .filter(s => sessionTopic === "All" || s.topic === sessionTopic)
     .sort((a, b) => sessionTab === "Upcoming" ? a.scheduledMs - b.scheduledMs : b.scheduledMs - a.scheduledMs);
-  const sessionTabCount = (t: SessionTab) => SESSIONS.filter(s => s.tab === t).length;
+  const sessionTabCount = (t: SessionTab) => sessions.filter(s => s.tab === t).length;
 
   /* ══════════ RENDER ══════════ */
   return (
@@ -753,7 +816,7 @@ export default function CoursesPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; }
-        select option { background: #000000; color: #F9FAFB; }
+        select option { background: var(--surface); color: var(--foreground); }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.20); border-radius: 3px; }
@@ -796,7 +859,7 @@ export default function CoursesPage() {
           {/* ── Stat Cards ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 16, marginBottom: 32 }}>
             {view === "webinars" ? (<>
-              <StatCard label="Total Sessions"    value={SESSIONS.length}                  icon={<Icon.Video      width={22} height={22} />} />
+              <StatCard label="Total Sessions"    value={sessions.length}                  icon={<Icon.Video      width={22} height={22} />} />
               <StatCard label="Upcoming Sessions" value={upcomingSessions.length}          icon={<Icon.Calendar   width={22} height={22} />} />
               <StatCard label="Live Now"          value={liveSessions.length}              icon={<Icon.RadioTower width={22} height={22} />} />
               <StatCard label="Total Attendees"   value={totalAttendees.toLocaleString()}  icon={<Icon.UsersSmall width={22} height={22} />} />
@@ -984,7 +1047,7 @@ export default function CoursesPage() {
                     </button>
                   ))}
                 </div>
-                <button style={{ ...btnGreen, marginBottom: 2 }}>
+                <button onClick={() => setScheduleOpen(true)} style={{ ...btnGreen, marginBottom: 2 }}>
                   <Icon.Plus /> Schedule Session
                 </button>
               </div>
@@ -1008,7 +1071,8 @@ export default function CoursesPage() {
               {filteredSessions.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "80px 0", color: T.muted }}>
                   <div style={{ display: "flex", justifyContent: "center", marginBottom: 14, opacity: 0.4 }}><Icon.Inbox /></div>
-                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>No sessions found</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{sessionQuery.isLoading ? "Loading sessions…" : sessionQuery.isError ? "Unable to load sessions" : "No sessions found"}</div>
+                  {sessionQuery.isError && <button onClick={() => sessionQuery.refetch()} style={btnGreen}>Retry</button>}
                   <div style={{ fontSize: 13 }}>Try adjusting your filters.</div>
                 </div>
               ) : (
@@ -1207,6 +1271,9 @@ export default function CoursesPage() {
       </div>
 
       {/* ════════ COURSE MODALS ════════ */}
+      {scheduleOpen && <Modal onClose={() => setScheduleOpen(false)}>
+        <ScheduleForm onClose={() => setScheduleOpen(false)} onSave={data => scheduleSession.mutate(data)} pending={scheduleSession.isPending} error={scheduleSession.isError} />
+      </Modal>}
       {courseModal?.type === "add" && (
         <Modal onClose={() => setCourseModal(null)} maxWidth={760}>
           <CourseForm mentors={mentors} onSave={handleSaveCourse} onClose={() => setCourseModal(null)} loading={createCourse.isPending} />
