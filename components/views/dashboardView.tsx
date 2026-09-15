@@ -67,7 +67,11 @@ export const DashboardView = () => {
     const isManagement = user?.role === 'super_admin' || user?.role === 'platform_admin';
     const [dateRange, setDateRange] = useState<DateRange>({ startDate: new Date(2000, 0, 1), endDate: todayEnd() });
     const [waBannerDismissed, setWaBannerDismissed] = useState(false);
-    const { data: dashboardResult, isLoading, isFetching, isError, refetch } = useGetWhatsappDashboardQuery(dateRange.startDate, dateRange.endDate);
+    const { data: dashboardResult, isLoading, isFetching, isPlaceholderData, isError, refetch } = useGetWhatsappDashboardQuery(dateRange.startDate, dateRange.endDate);
+    // Only block the UI while switching date ranges (stale placeholder on screen).
+    // Routine background refreshes (60s poll, tab focus, post-mutation) must not
+    // dim the dashboard or swallow clicks.
+    const isSwitchingRange = isFetching && isPlaceholderData;
     const [loaderDone, setLoaderDone] = useState(false);
 
     const dashboardData = dashboardResult?.data;
@@ -144,7 +148,7 @@ export const DashboardView = () => {
         >
 
             <div className="relative z-10 p-4 sm:p-6 sm:px-8 max-w-[1600px] mx-auto space-y-8"
-                style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 0.25s ease', pointerEvents: isFetching ? 'none' : 'auto' }}
+                style={{ opacity: isSwitchingRange ? 0.6 : 1, transition: 'opacity 0.25s ease', pointerEvents: isSwitchingRange ? 'none' : 'auto' }}
             >
 
                 {/* 1. Command Bar */}
@@ -158,7 +162,7 @@ export const DashboardView = () => {
                 />
 
                 {/* 1a. Date Filter Status Indicator */}
-                {isFetching && (
+                {isSwitchingRange && (
                     <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border animate-pulse"
                         style={{
                             background: isDarkMode ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.05)',

@@ -1349,31 +1349,35 @@ export const AppointmentDrawer = ({
                                             4. Final DETAILS
                                         </h3>
                                         <div className="space-y-4">
-                                            <div>
-                                                <label className={cn("text-[10px] font-bold uppercase mb-1.5 block ml-1 opacity-60", isDarkMode ? 'text-white' : 'text-slate-700')}>
-                                                    Status
-                                                </label>
-                                                <select
-                                                    value={formData.status}
-                                                    onChange={(e) => handleChange('status', e.target.value)}
-                                                    disabled={isEdit && TERMINAL_STATUSES.has(appointment?.status || '')}
-                                                    className={cn(
-                                                        "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none capitalize",
-                                                        isEdit && TERMINAL_STATUSES.has(appointment?.status || '') && "opacity-60 cursor-not-allowed",
-                                                        isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-                                                    )}
-                                                >
-                                                    {APPOINTMENT_STATUSES.map(status => (
-                                                        <option
-                                                            key={status}
-                                                            value={status}
-                                                            disabled={TERMINAL_STATUSES.has(status)}
-                                                        >
-                                                            {status}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                            {/* Status is Pending-first by design; new appointments are advanced via the
+                                                dedicated Confirm/Cancel lifecycle actions, so only expose it when editing. */}
+                                            {!isCreate && (
+                                                <div>
+                                                    <label className={cn("text-[10px] font-bold uppercase mb-1.5 block ml-1 opacity-60", isDarkMode ? 'text-white' : 'text-slate-700')}>
+                                                        Status
+                                                    </label>
+                                                    <select
+                                                        value={formData.status}
+                                                        onChange={(e) => handleChange('status', e.target.value)}
+                                                        disabled={isEdit && TERMINAL_STATUSES.has(appointment?.status || '')}
+                                                        className={cn(
+                                                            "w-full px-4 py-2.5 rounded-xl text-sm border transition-all focus:outline-none capitalize",
+                                                            isEdit && TERMINAL_STATUSES.has(appointment?.status || '') && "opacity-60 cursor-not-allowed",
+                                                            isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+                                                        )}
+                                                    >
+                                                        {APPOINTMENT_STATUSES.map(status => (
+                                                            <option
+                                                                key={status}
+                                                                value={status}
+                                                                disabled={TERMINAL_STATUSES.has(status)}
+                                                            >
+                                                                {status}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
                                             <div>
                                                 <label className={cn("text-[10px] font-bold uppercase mb-1.5 block ml-1 opacity-60", isDarkMode ? 'text-white' : 'text-slate-700')}>
                                                     Notes

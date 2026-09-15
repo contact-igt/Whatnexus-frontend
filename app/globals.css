@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ─── Tailwind Theme ─── */
 @theme inline {
@@ -11,13 +12,25 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #ffffff;
+  --input: #f1f5f9;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --subtle: #475569;
+  --muted: #64748b;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+.dark {
     --background: #080b12;
     --foreground: #e8ecf0;
-  }
+    --surface: #0f1520;
+    --input: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.10);
+    --border-hover: rgba(255,255,255,0.16);
+    --subtle: rgba(255,255,255,0.60);
+    --muted: rgba(255,255,255,0.45);
+    color-scheme: dark;
 }
 
 /* ─── Font — force Plus Jakarta Sans everywhere ─── */

@@ -22,12 +22,15 @@ export const useGetWhatsappDashboardQuery = (startDate: Date, endDate: Date) => 
         queryKey: ['whatsapp-dashboard', tenantId, startStr, endStr],
         enabled: !!token && !!tenantId,
         queryFn: () => dashboardApis.getDashboardData(tenantId as string, startStr, endStr),
-        // staleTime: 30s allows quick filter changes to use cache
-        // while still keeping data reasonably fresh
-        staleTime: 30 * 1000,          // 30 seconds
-        refetchInterval: 5 * 60 * 1000,   // auto-refresh every 5 min
+        // Keep the dashboard close to live: short staleness window so navigating
+        // back re-fetches, a 60s poll, plus refetch on tab focus / reconnect.
+        // Cross-app mutations also invalidate this key (see lib/queryClient.ts).
+        staleTime: 10 * 1000,             // 10 seconds
+        refetchInterval: 60 * 1000,       // auto-refresh every 60s while on screen
+        refetchIntervalInBackground: false, // pause polling when the tab is hidden
         refetchOnMount: true,              // re-fetch on mount if stale
-        refetchOnWindowFocus: false,       // don't refetch on every window focus (reduces load)
+        refetchOnWindowFocus: true,        // refresh when the user returns to the tab
+        refetchOnReconnect: true,          // refresh after the network comes back
         // Keep previous data visible while new fetch is in-flight to avoid
         // wabaConnected flashing false → WhatsAppConnectionPlaceholder.
         placeholderData: keepPreviousData,

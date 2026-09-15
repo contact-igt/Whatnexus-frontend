@@ -46,3 +46,6 @@ next-env.d.ts
 # scratchpads / sharing files
 /price-sharing
 
+# markdown notes
+*.md
+
