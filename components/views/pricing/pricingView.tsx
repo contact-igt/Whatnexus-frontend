@@ -130,6 +130,13 @@ export const PricingView = () => {
         else if (isNaN(parseFloat(aiFormData.input_rate)) || parseFloat(aiFormData.input_rate) < 0) e.input_rate = "Enter a valid positive number";
         if (!aiFormData.output_rate?.trim()) e.output_rate = "Output rate is required";
         else if (isNaN(parseFloat(aiFormData.output_rate)) || parseFloat(aiFormData.output_rate) < 0) e.output_rate = "Enter a valid positive number";
+        const cachedRate = aiFormData.cached_input_price_per_million?.trim();
+        if (isEdit && selectedAiRule?.is_active && aiFormData.is_active !== "false" && !cachedRate) {
+            e.cached_input_price_per_million = "Cached-input rate is required while this model is active";
+        }
+        if (cachedRate && (isNaN(Number(cachedRate)) || Number(cachedRate) < 0)) {
+            e.cached_input_price_per_million = "Enter a valid non-negative number";
+        }
         if (isNaN(parseFloat(aiFormData.markup_percent)) || parseFloat(aiFormData.markup_percent) < 0) e.markup_percent = "Enter a valid positive number";
         if (isNaN(parseFloat(aiFormData.usd_to_inr_rate)) || parseFloat(aiFormData.usd_to_inr_rate) <= 0) e.usd_to_inr_rate = "Enter a valid positive number";
         setAiErrors(e);
@@ -801,7 +808,7 @@ export const PricingView = () => {
                 isOpen={isAiAddOpen}
                 onClose={() => setIsAiAddOpen(false)}
                 title="Add AI Model Pricing"
-                description="Configure pricing for an AI model with input/output token rates"
+                description="Save pricing as an inactive draft. A verified cached-input rate is required before activation."
                 isDarkMode={isDarkMode}
                 className="font-sans max-w-xl"
                 footer={
@@ -905,15 +912,19 @@ export const PricingView = () => {
                     />
                     <Input
                         isDarkMode={isDarkMode}
-                        label="Cached Input Rate ($ per 1M tokens) — optional"
+                        label="Cached Input Rate ($ per 1M tokens)"
                         icon={ArrowDownToLine}
                         type="number"
-                        step="0.01"
-                        placeholder="Leave blank if cached-input billing is not approved"
+                        min="0"
+                        step="0.001"
+                        placeholder="Enter the verified OpenAI cached-input rate"
                         value={aiFormData.cached_input_price_per_million}
                         onChange={(e) => handleAiChange("cached_input_price_per_million", e.target.value)}
                         error={aiErrors.cached_input_price_per_million}
                     />
+                    <p className={cn("-mt-2 ml-1 text-xs", isDarkMode ? "text-amber-300/80" : "text-amber-700")}>
+                        Optional for this inactive draft, but required before activation. Verify it against OpenAI&apos;s official pricing documentation.
+                    </p>
                     <Input
                         isDarkMode={isDarkMode}
                         label="Markup Percentage (%)"
@@ -1028,6 +1039,22 @@ export const PricingView = () => {
                         error={aiErrors.output_rate}
                         required
                     />
+                    <Input
+                        isDarkMode={isDarkMode}
+                        label="Cached Input Rate ($ per 1M tokens)"
+                        icon={ArrowDownToLine}
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        placeholder="Enter the verified OpenAI cached-input rate"
+                        value={aiFormData.cached_input_price_per_million}
+                        onChange={(e) => handleAiChange("cached_input_price_per_million", e.target.value)}
+                        error={aiErrors.cached_input_price_per_million}
+                        required={Boolean(selectedAiRule?.is_active && aiFormData.is_active !== "false")}
+                    />
+                    <p className={cn("-mt-2 ml-1 text-xs", isDarkMode ? "text-amber-300/80" : "text-amber-700")}>
+                        Required while active. Deactivate the model before clearing this rate.
+                    </p>
                     <Input
                         isDarkMode={isDarkMode}
                         label="Markup Percentage (%)"
