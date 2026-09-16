@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FooterSection } from "../landingPage/footerSection";
 
-const LAST_UPDATED = "September 15, 2026";
+const LAST_UPDATED = "September 16, 2026";
 
 export default function PrivacyPolicyPage() {
     const { isDarkMode } = useTheme();
@@ -102,6 +102,11 @@ export default function PrivacyPolicyPage() {
                 <p className={cn("text-sm leading-relaxed mb-4", body)}>Invictus Global Tech and Kingpin Ventures may each perform different operational, technical, administrative, or support responsibilities as part of their business partnership relating to WhatsNexus.</p>
                 <p className={cn("text-sm leading-relaxed mb-4", body)}>References in this Privacy Policy to <strong className={strong}>“WhatsNexus,” “we,” “us,” or “our”</strong> refer collectively, where applicable, to <strong className={strong}>Invictus Global Tech and Kingpin Ventures</strong> in connection with their respective roles in providing and supporting the WhatsNexus platform.</p>
                 <p className={cn("text-sm leading-relaxed mb-4", body)}>This business relationship does not change the ownership of a Customer&apos;s own Meta Business Portfolio, WhatsApp Business Account, phone numbers, contacts, conversations, or other Customer-controlled business assets.</p>
+                <hr className={cn("my-10", hr)} />
+                <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>Data Controller and Business Partnership</h2>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Kingpin Ventures</strong> is the legal entity responsible for determining the purposes and means of processing personal data received through the Nexus Connect Meta application in connection with the WhatsNexus platform.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}><strong className={strong}>Invictus Global Tech</strong> collaborates with <strong className={strong}>Kingpin Ventures</strong> in developing, operating, maintaining, and supporting WhatsNexus. Where Invictus Global Tech processes personal data on behalf of Kingpin Ventures, it does so in accordance with their respective responsibilities and applicable data protection requirements.</p>
+                <p className={cn("text-sm leading-relaxed mb-4", body)}>Customer organizations remain responsible for determining the purposes of their own customer communications and the personal data they collect and process through WhatsNexus, subject to applicable law.</p>
                 <hr className={cn("my-10", hr)} />
                 <h2 className={cn("text-sm font-bold uppercase mb-4 leading-snug", strong)}>1. Scope</h2>
                 <p className={cn("text-sm leading-relaxed mb-4", body)}>This Privacy Policy applies to:</p>
