@@ -7,7 +7,7 @@ import {
     CheckCircle, AlertTriangle, XCircle, Loader2, Receipt,
     MessageCircle, Cpu
 } from "lucide-react";
-import { useGetInvoiceDetailQuery, useCreatePaymentOrderMutation, usePayInvoiceMutation } from "@/hooks/useBillingQuery";
+import { useGetInvoiceDetailQuery, useCreateInvoicePaymentOrderMutation, usePayInvoiceMutation } from "@/hooks/useBillingQuery";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { useAuth } from "@/redux/selectors/auth/authSelector";
 import { toast } from "@/lib/toast";
@@ -39,7 +39,7 @@ export const BillingInvoiceDetail = ({ isDarkMode, invoiceId, onBack }: BillingI
     const invoice = responseData?.invoice || null;
     const cycle = responseData?.cycle || null;
     const { loadScript: loadRazorpay } = useRazorpay();
-    const createOrder = useCreatePaymentOrderMutation();
+    const createOrder = useCreateInvoicePaymentOrderMutation();
     const payInvoice = usePayInvoiceMutation();
     const [isPaying, setIsPaying] = useState(false);
     const billingApi = new billingApiData();
@@ -51,7 +51,7 @@ export const BillingInvoiceDetail = ({ isDarkMode, invoiceId, onBack }: BillingI
             const razorpayLoaded = await loadRazorpay();
             if (!razorpayLoaded) { toast.error("Failed to load Razorpay SDK"); setIsPaying(false); return; }
 
-            const orderRes = await createOrder.mutateAsync(parseFloat(invoice.amount));
+            const orderRes = await createOrder.mutateAsync(invoice.id);
             const order = orderRes?.data;
             if (!order?.id) { toast.error("Failed to create payment order"); setIsPaying(false); return; }
 
