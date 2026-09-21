@@ -357,6 +357,45 @@ function detectContentLanguage(text: string): string {
     return franc(cleaned);
 }
 
+/**
+ * Common English function words used as a fallback signal when content is too
+ * short for franc's n-gram model to classify reliably (franc needs ~50+ chars
+ * of running text; most WhatsApp template bodies are far shorter than that,
+ * which made franc misclassify plain English as other Latin-script languages).
+ */
+const ENGLISH_STOPWORDS = new Set([
+    'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'you', 'your', 'yours', 'we', 'our', 'ours', 'i', 'my', 'me', 'us',
+    'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'their',
+    'please', 'thank', 'thanks', 'for', 'to', 'of', 'and', 'or', 'in', 'on',
+    'at', 'with', 'will', 'has', 'have', 'had', 'not', 'no', 'yes', 'can',
+    'do', 'does', 'did', 'from', 'by', 'as', 'if', 'so', 'now', 'today',
+    'order', 'report', 'reports', 'account', 'payment', 'review', 'update',
+    'new', 'your', 'hi', 'hello', 'dear', 'regards', 'team', 'here',
+]);
+
+/**
+ * Heuristic check for whether short text reads as English, used to override
+ * franc's low-confidence verdict on short strings. Requires at least one
+ * recognizable English stopword and a majority of alphabetic tokens matching
+ * common English words/short function words.
+ */
+function looksLikeEnglish(text: string): boolean {
+    const words = text
+        .toLowerCase()
+        .replace(/[^a-z\s']/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if (words.length === 0) return false;
+
+    const matches = words.filter(w => ENGLISH_STOPWORDS.has(w)).length;
+
+    // Short template bodies rarely have more than a handful of words —
+    // one or two recognizable English words is already a strong signal.
+    return matches >= 1 && matches / words.length >= 0.2;
+}
+
 // ─────────────────────────────────────────────────
 // Main Validation Entry Point
 // ─────────────────────────────────────────────────
@@ -424,8 +463,18 @@ export function validateLanguageMatch(language: string, content: string): Langua
         if (detectedLang === 'und') return { valid: true };
 
         if (isEnglishVariant) {
-            // English selected → franc should detect English
-            if (detectedLang !== 'eng') {
+            // English selected → franc should detect English.
+            // franc is unreliable on short strings (needs ~50+ chars of running
+            // text), and most template bodies are much shorter than that, so we
+            // fall back to a stopword heuristic before rejecting short content.
+            // Below SHORT_CONTENT_THRESHOLD, franc's guess is too unreliable to
+            // act on even without a stopword match (e.g. a single word like
+            // "Confirmed" has no stopwords but is unambiguously English) — treat
+            // it as inconclusive rather than reject.
+            const SHORT_CONTENT_THRESHOLD = 30;
+            const isLongEnoughToTrust = content.trim().length >= SHORT_CONTENT_THRESHOLD;
+
+            if (detectedLang !== 'eng' && !looksLikeEnglish(content) && isLongEnoughToTrust) {
                 return {
                     valid: false,
                     detectedScript: detectedLang,

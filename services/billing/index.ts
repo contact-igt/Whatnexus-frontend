@@ -58,6 +58,10 @@ export class billingApiData {
     return await _axios("post", "/whatsapp/payment/order", { amount });
   };
 
+  createInvoicePaymentOrder = async (invoice_id: number) => {
+    return await _axios("post", "/whatsapp/payment/invoice-order", { invoice_id });
+  };
+
   /**
    * Verify Razorpay payment
    */

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ import {
 import {
     useGetInvoicesQuery,
     useGetInvoiceDetailQuery,
-    useCreatePaymentOrderMutation,
+    useCreateInvoicePaymentOrderMutation,
     usePayInvoiceMutation,
 } from "@/hooks/useBillingQuery";
 import { useRazorpay } from "@/hooks/useRazorpay";
@@ -76,7 +76,7 @@ export const BillingInvoices = ({ isDarkMode }: BillingInvoicesProps) => {
     const { loadScript: loadRazorpay } = useRazorpay();
     const billingApi = new billingApiData();
 
-    const createOrder = useCreatePaymentOrderMutation();
+    const createOrder = useCreateInvoicePaymentOrderMutation();
     const payInvoice = usePayInvoiceMutation();
 
     const { data: invoiceResponse, isLoading } = useGetInvoicesQuery({
@@ -111,7 +111,7 @@ export const BillingInvoices = ({ isDarkMode }: BillingInvoicesProps) => {
                 return;
             }
 
-            const orderRes = await createOrder.mutateAsync(parseFloat(invoice.amount));
+            const orderRes = await createOrder.mutateAsync(invoice.id);
             const order = orderRes?.data;
 
             if (!order?.id) {

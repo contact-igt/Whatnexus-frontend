@@ -78,6 +78,12 @@ export const useCreatePaymentOrderMutation = () => {
     });
 };
 
+export const useCreateInvoicePaymentOrderMutation = () => {
+    return useMutation({
+        mutationFn: (invoiceId: number) => billingApis.createInvoicePaymentOrder(invoiceId)
+    });
+};
+
 export const useVerifyPaymentMutation = () => {
     const queryClient = useQueryClient();
     return useMutation({
