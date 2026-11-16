@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Copy, KeyRound, Loader2, Plug, RefreshCw, Send, ShieldCheck, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Copy, KeyRound, Link2, Loader2, Plug, RefreshCw, Send, ShieldCheck, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmationModal } from "@/components/ui/confirmationModal";
@@ -9,6 +9,8 @@ import { toast } from "@/lib/toast";
 import type { AuditEntry, ReadinessCheck } from "@/services/pulseosIntegration";
 import {
     pulseosErrorMessage,
+    usePulseosCancelPairing,
+    usePulseosCreatePairing,
     usePulseosReadinessQuery,
     usePulseosReplayDead,
     usePulseosRotateApiKey,
@@ -31,6 +33,9 @@ const AUDIT_LABEL: Record<string, string> = {
     enabled: "Enabled the integration",
     disabled: "Disabled the integration",
     callbacks_replayed: "Replayed failed callbacks",
+    pairing_code_created: "Created a pairing code",
+    pairing_code_cancelled: "Cancelled the pairing code",
+    paired: "PulseOS connected with a pairing code",
 };
 
 const OVERLAPS = [
@@ -73,6 +78,8 @@ export const PulseosIntegrationPanel = ({
     const settings = usePulseosUpdateSettings(tenantId);
     const apiKey = usePulseosRotateApiKey(tenantId);
     const secret = usePulseosRotateCallbackSecret(tenantId);
+    const pairing = usePulseosCreatePairing(tenantId);
+    const cancelPairing = usePulseosCancelPairing(tenantId);
     const test = usePulseosTestCallback(tenantId);
     const replay = usePulseosReplayDead(tenantId);
 
@@ -107,7 +114,8 @@ export const PulseosIntegrationPanel = ({
             kind === "ghost" && (isDarkMode ? "bg-white/5 text-white/80 hover:bg-white/10" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"),
         );
 
-    const state = !readiness ? "…" : readiness.enabled ? "Enabled" : readiness.ready ? "Ready to enable" : "Not ready";
+    // An enabled tenant whose checklist no longer passes (new credentials not yet tested, a changed address) is still live, but needs attention.
+    const state = !readiness ? "…" : readiness.enabled ? (readiness.ready ? "Enabled" : "Enabled · needs attention") : readiness.ready ? "Ready to enable" : "Not ready";
     const stateTone =
         state === "Enabled" ? "bg-emerald-500/15 text-emerald-600" : state === "Ready to enable" ? "bg-sky-500/15 text-sky-600" : "bg-amber-500/15 text-amber-600";
 
@@ -144,6 +152,20 @@ export const PulseosIntegrationPanel = ({
         setRotating(which);
     };
 
+    const makePairingCode = () =>
+        pairing
+            .mutateAsync({ expectedPulseosTenantId: UUID.test(pulseosTenant.trim()) ? pulseosTenant.trim() : undefined })
+            .then((res) => {
+                setSaved(false);
+                setReveal({
+                    title: "Pairing code",
+                    label: "Pairing code",
+                    value: res.data.code,
+                    note: `In PulseOS open Integrations → WhatsNexus → Credentials → Connect with code, enter this server's address and paste the code. It works once and expires at ${when(res.data.expiresAt)}.`,
+                });
+            })
+            .catch(() => {});
+
     const sendTest = () =>
         test.mutateAsync().then((res) => {
             const r = res.data;
@@ -159,7 +181,7 @@ export const PulseosIntegrationPanel = ({
         if (which === "replay") replay.mutate(undefined, { onSuccess: (r) => toast.success(`${r.data.replayed} callbacks queued again.`) });
     };
 
-    const busy = settings.isPending || apiKey.isPending || secret.isPending || test.isPending || replay.isPending;
+    const busy = pairing.isPending || cancelPairing.isPending || settings.isPending || apiKey.isPending || secret.isPending || test.isPending || replay.isPending;
 
     return (
         <>
@@ -187,7 +209,9 @@ export const PulseosIntegrationPanel = ({
                                 <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", stateTone)} data-testid="pulseos-state">{state}</span>
                                 <p className={cn("text-xs", muted)}>
                                     {readiness.enabled
-                                        ? "PulseOS can send messages through this tenant's WhatsApp number."
+                                        ? readiness.ready
+                                            ? "PulseOS can send messages through this tenant's WhatsApp number."
+                                            : `Still enabled, but ${readiness.blocking.length} required check${readiness.blocking.length === 1 ? "" : "s"} no longer pass. Send the test callback again.`
                                         : readiness.ready
                                             ? "Every required check passes. Enabling lets PulseOS send messages."
                                             : `${readiness.blocking.length} required check${readiness.blocking.length === 1 ? "" : "s"} still need attention.`}
@@ -226,6 +250,36 @@ export const PulseosIntegrationPanel = ({
                         <section aria-label="Setup" className="space-y-3">
                             <h3 className={cn("text-xs font-semibold uppercase tracking-wide", muted)}>Setup</h3>
                             {!canManage && <p className={cn("text-xs", muted)}>You can see this tenant&apos;s status. Only a super admin can change it.</p>}
+
+                            {canManage && (
+                                <div className={cn(card, "border-emerald-500/30")} data-testid="pulseos-pairing">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className={cn("text-sm font-semibold", strong)}>Connect with code <span className="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-600">Recommended</span></p>
+                                            <p className={cn("mt-1 text-xs", muted)}>
+                                                Make a one-time code and give it to the hospital&apos;s PulseOS administrator. The two servers then exchange the API key and callback secret directly, so nobody reads or types a secret. The code lasts 15 minutes and works once.
+                                            </p>
+                                            {integration?.pairing.active && integration.pairing.expiresAt && (
+                                                <p className="mt-2 text-xs text-emerald-600" data-testid="pulseos-pairing-active">
+                                                    A code is waiting until {when(integration.pairing.expiresAt)}{integration.pairing.expectedPulseosTenantId ? `, locked to PulseOS tenant ${integration.pairing.expectedPulseosTenantId}` : ""}.
+                                                </p>
+                                            )}
+                                            {(issued || hasSecret) && (
+                                                <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600"><AlertTriangle size={13} className="mt-0.5 shrink-0" /> This tenant already has credentials. Pairing replaces the API key and callback secret; the old key keeps working for the usual overlap.</p>
+                                            )}
+                                            {pulseosTenant.trim() && !bindValid && <p className="mt-2 text-xs text-red-500">The PulseOS tenant id below is not a valid UUID, so the code will not be locked to it.</p>}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button className={btn("primary")} disabled={busy} onClick={makePairingCode} data-testid="pulseos-pairing-create">
+                                                {pairing.isPending ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />} {integration?.pairing.active ? "Make a new code" : "Make a pairing code"}
+                                            </button>
+                                            {integration?.pairing.active && <button className={btn()} disabled={busy} onClick={() => cancelPairing.mutate()}>Cancel code</button>}
+                                        </div>
+                                    </div>
+                                    {bindValid && <p className={cn("mt-2 text-xs", muted)}>The code will be locked to PulseOS tenant {pulseosTenant.trim()}, so it cannot be redeemed by any other hospital.</p>}
+                                </div>
+                            )}
+                            <p className={cn("text-xs", muted)}>Or set things up by hand:</p>
 
                             <div className={card}>
                                 <label className={cn("mb-1 block text-xs font-semibold", strong)} htmlFor="pulseos-tenant">PulseOS tenant id</label>

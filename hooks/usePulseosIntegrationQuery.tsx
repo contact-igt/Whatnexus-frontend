@@ -45,6 +45,12 @@ export const usePulseosRotateApiKey = (tenantId: string | null) =>
 export const usePulseosRotateCallbackSecret = (tenantId: string | null) =>
     useAction(tenantId, () => Api.rotateCallbackSecret(tenantId as string), "Could not generate the callback secret");
 
+export const usePulseosCreatePairing = (tenantId: string | null) =>
+    useAction(tenantId, (data: { expectedPulseosTenantId?: string }) => Api.createPairing(tenantId as string, data), "Could not create the pairing code");
+
+export const usePulseosCancelPairing = (tenantId: string | null) =>
+    useAction(tenantId, () => Api.cancelPairing(tenantId as string), "Could not cancel the pairing code", "Pairing code cancelled");
+
 export const usePulseosTestCallback = (tenantId: string | null) =>
     useAction(tenantId, () => Api.testCallback(tenantId as string), "The test callback could not be sent");
 

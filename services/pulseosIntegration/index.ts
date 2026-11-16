@@ -31,6 +31,7 @@ export interface PulseosIntegrationView {
     updatedBy: string | null;
     lastPing: { ok: boolean; at: number; status: number | null; error?: string | null; url: string } | null;
     audit: AuditEntry[];
+    pairing: { active: boolean; expiresAt: string | null; expectedPulseosTenantId: string | null };
 }
 
 export interface PulseosReadiness {
@@ -46,6 +47,7 @@ export interface PulseosReadiness {
 /** What the server returns once, when a credential is generated. Never stored by the page beyond the reveal dialog. */
 export interface ApiKeyIssued { apiKey: string; keyId: string; previousKeyExpiresAt: string | null }
 export interface CallbackSecretIssued { callbackSecret: string }
+export interface PairingIssued { code: string; expiresAt: string }
 export interface TestResult { ok: boolean; status: number | null; error: string | null }
 export interface Envelope<T> { success: boolean; data: T }
 
@@ -63,6 +65,11 @@ export class PulseosIntegrationApiData {
 
     rotateCallbackSecret = async (tenantId: string): Promise<Envelope<CallbackSecretIssued>> =>
         await _axios("post", `${base(tenantId)}/callback-secret`, {});
+
+    createPairing = async (tenantId: string, data: { expectedPulseosTenantId?: string } = {}): Promise<Envelope<PairingIssued>> =>
+        await _axios("post", `${base(tenantId)}/pairing`, data);
+
+    cancelPairing = async (tenantId: string): Promise<Envelope<{ cancelled: boolean }>> => await _axios("delete", `${base(tenantId)}/pairing`);
 
     testCallback = async (tenantId: string): Promise<Envelope<TestResult>> => await _axios("post", `${base(tenantId)}/test-callback`, {});
 
