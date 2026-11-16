@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Check, X } from "lucide-react";
+import { useAuth } from "@/redux/selectors/auth/authSelector";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useGetTenantSettingsQuery, useUpdateTenantAiSettingsMutation } from "@/hooks/useTenantSettingsQuery";
 
@@ -155,7 +157,7 @@ function isWithinPauseWindow(currentMinutes: number, start: number, end: number)
     return currentMinutes >= startMinutes && currentMinutes < endMinutes;
 }
 
-function shouldAiBeActive(schedule: AiSchedule, date = new Date()): boolean {
+export function shouldAiBeActive(schedule: AiSchedule, date = new Date()): boolean {
     if (!schedule.enabled) return true;
     const currentDay = getCurrentDayKey(date);
     if (!schedule.activeDays.includes(currentDay)) return true;
@@ -257,7 +259,10 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
     const saveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { data: settingsData } = useGetTenantSettingsQuery();
-    const { mutate: updateAiSettings } = useUpdateTenantAiSettingsMutation();
+    const { mutate: updateAiSettings, isPending: isUpdating } = useUpdateTenantAiSettingsMutation();
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'tenant_admin';
+    const manuallyDisabled = settingsData?.data?.ai_settings?.auto_responder_disabled === true;
     const tenantSchedule = useMemo(() => getScheduleFromSettings(settingsData), [settingsData]);
     const hasTenantSettings = Boolean(settingsData?.data);
 
@@ -308,12 +313,12 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
     }, [isOpen, onClose]);
 
     useEffect(() => {
-        if (!hasTenantSettings) return;
+        if (!hasTenantSettings || !isAdmin || isUpdating) return;
 
         const enforce = () => {
             const persistedSchedule = tenantSchedule ?? DEFAULT_SCHEDULE;
             const currentAutoResponder = settingsData?.data?.ai_settings?.auto_responder;
-            const shouldBeActive = shouldAiBeActive(persistedSchedule, new Date());
+            const shouldBeActive = !manuallyDisabled && shouldAiBeActive(persistedSchedule, new Date());
 
             if (shouldBeActive && currentAutoResponder === false) {
                 updateAiSettings({ ai_settings: { auto_responder: true } });
@@ -325,7 +330,7 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
         enforce();
         const interval = setInterval(enforce, 60_000);
         return () => clearInterval(interval);
-    }, [hasTenantSettings, settingsData, tenantSchedule, updateAiSettings]);
+    }, [hasTenantSettings, settingsData, tenantSchedule, updateAiSettings, manuallyDisabled, isAdmin, isUpdating]);
 
     const getAngleFromEvent = useCallback((event: MouseEvent | TouchEvent) => {
         if (!svgRef.current) return 0;
@@ -504,13 +509,14 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
     };
 
     const persistSchedule = useCallback((nextSchedule: AiSchedule) => {
+        if (!isAdmin || isUpdating) return;
         updateAiSettings({
             ai_settings: {
                 [TENANT_SETTINGS_KEY]: nextSchedule,
-                auto_responder: shouldAiBeActive(nextSchedule, new Date()),
+                auto_responder: !manuallyDisabled && shouldAiBeActive(nextSchedule, new Date()),
             },
         });
-    }, [updateAiSettings]);
+    }, [updateAiSettings, manuallyDisabled, isAdmin, isUpdating]);
 
     const handleScheduleActivationToggle = useCallback(() => {
         const nextSchedule = {
@@ -643,6 +649,28 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
                         </p>
                     </div>
 
+                    <div className="mb-4 rounded-xl border border-slate-500/25 p-3 text-slate-400">
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold">AI Auto-Responder</span>
+                            <button type="button" role="switch" aria-checked={!manuallyDisabled}
+                                aria-label="Toggle AI Auto-Responder" disabled={!isAdmin || isUpdating || !hasTenantSettings}
+                                className={cn("relative h-6 w-12 rounded-full transition-colors disabled:opacity-50", manuallyDisabled ? "bg-slate-500" : "bg-emerald-500")}
+                                onClick={() => updateAiSettings({ ai_settings: {
+                                    auto_responder_disabled: !manuallyDisabled,
+                                    auto_responder: manuallyDisabled && shouldAiBeActive(tenantSchedule ?? DEFAULT_SCHEDULE),
+                                } }, {
+                                    onSuccess: () => toast.success(manuallyDisabled ? "AI auto-response enabled. Your schedule applies." : "AI auto-response is completely off. Human Active, regardless of schedule."),
+                                    onError: () => toast.error("Could not update AI auto-response. Please try again."),
+                                })}>
+                                <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform", !manuallyDisabled && "translate-x-6")} />
+                            </button>
+                        </div>
+                        <p role="status" className="mt-2 text-xs leading-relaxed">
+                            {manuallyDisabled
+                                ? "AI auto-response is completely off. Human Active applies at all hours, even during scheduled AI hours. Turn this on to resume your saved schedule."
+                                : "Turn this off to stop all AI auto-responses and switch to Human Active. Schedule Activation only controls scheduled pauses."}
+                        </p>
+                    </div>
                     <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         {([
                             { key: "start" as const, label: "AI Paused Start Time:" },
@@ -1054,7 +1082,7 @@ export const AiScheduleModal: React.FC<AiScheduleModalProps> = ({ isOpen, onClos
 export const AiStatusPill: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
     const { data: settingsData } = useGetTenantSettingsQuery();
     const autoResponder = settingsData?.data?.ai_settings?.auto_responder;
-    const isAiActive = autoResponder !== false;
+    const isAiActive = settingsData?.data?.ai_settings?.auto_responder_disabled !== true && autoResponder !== false;
 
     return (
         <div

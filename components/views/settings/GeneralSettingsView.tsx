@@ -9,6 +9,7 @@ import { useGetAvailableAiModelsQuery } from '@/hooks/useBillingQuery';
 import { useAuth } from '@/redux/selectors/auth/authSelector';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import { shouldAiBeActive } from '@/components/ui/aiScheduleModal';
 
 type SettingsTab = 'capabilities' | 'models' | 'notifications' | 'appointments';
 
@@ -174,7 +175,7 @@ export const GeneralSettingsView = () => {
     }, [settingsData?.data]);
 
     const aiSettings: AiSettings = localSettings ?? {
-        auto_responder: settingsData?.data?.ai_settings?.auto_responder ?? true,
+        auto_responder: settingsData?.data?.ai_settings?.auto_responder_disabled !== true,
         smart_reply: settingsData?.data?.ai_settings?.smart_reply ?? true,
         neural_summary: settingsData?.data?.ai_settings?.neural_summary ?? true,
         content_generation: settingsData?.data?.ai_settings?.content_generation ?? true,
@@ -187,10 +188,10 @@ export const GeneralSettingsView = () => {
         setLocalSettings(newSettings); // Optimistic
 
         updateAiSettings(
-            { ai_settings: { [key]: newVal } },
+            { ai_settings: key === 'auto_responder' ? { auto_responder_disabled: !newVal, auto_responder: newVal && (settingsData?.data?.ai_settings?.ai_schedule ? shouldAiBeActive(settingsData.data.ai_settings.ai_schedule) : true) } : { [key]: newVal } },
             {
                 onSuccess: () => {
-                    toast.success(`"${key.replace(/_/g, ' ')}" updated successfully`);
+                    toast.success(key === 'auto_responder' ? newVal ? 'AI auto-response enabled. Your schedule applies.' : 'AI auto-response is completely off. Human Active, regardless of schedule.' : 'AI setting updated successfully');
                 },
                 onError: (err: any) => {
                     toast.error(err?.message || "Failed to update settings");
@@ -239,7 +240,7 @@ export const GeneralSettingsView = () => {
                 iconColor: 'text-emerald-500',
                 iconBg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50',
                 title: 'AI Auto-Responder',
-                description: 'Automatically reply to incoming WhatsApp messages using your AI knowledge base. When disabled, all incoming messages will require manual human responses.',
+                description: 'Automatically reply to incoming WhatsApp messages using your AI knowledge base. Turn off to stop AI auto-responses completely and switch to Human Active, even during scheduled AI hours. Your saved schedule resumes when turned on.',
                 isAdminOnly: true,
             },
             {

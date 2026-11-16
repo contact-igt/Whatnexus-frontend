@@ -11,12 +11,16 @@ import { useDeleteTenantMutation, useGetOnboardedTenantsQuery, useTenantStatusMu
 import { useTheme } from '@/hooks/useTheme';
 import { ActionMenu } from '@/components/ui/actionMenu';
 import { Pagination } from '@/components/ui/pagination';
+import { useAuth } from '@/redux/selectors/auth/authSelector';
+import { PulseosIntegrationButton, PulseosIntegrationPanel } from './pulseosIntegrationPanel';
 import { useGetDeletedTenantsQuery, useRestoreTenantMutation, usePermanentDeleteTenantMutation } from '@/hooks/useTenantQuery';
 
 type TabType = 'active' | 'trash';
 
 export const OnboardedTenantsView = () => {
     const { isDarkMode } = useTheme();
+    const { user } = useAuth();
+    const [pulseosTenant, setPulseosTenant] = useState<any | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('active');
     const { data: onboardedData, isLoading: isActiveLoading } = useGetOnboardedTenantsQuery();
@@ -339,6 +343,8 @@ export const OnboardedTenantsView = () => {
                                     </TableCell>
                                     <TableCell align="center">
                                         {activeTab === 'active' ? (
+                                            <div className="flex items-center justify-center">
+                                            <PulseosIntegrationButton isDarkMode={isDarkMode} onClick={() => setPulseosTenant(tenant)} />
                                             <ActionMenu
                                                 isDarkMode={isDarkMode}
                                                 isView={true}
@@ -348,6 +354,7 @@ export const OnboardedTenantsView = () => {
                                                 onEdit={() => handleOpenModal('edit', tenant)}
                                                 onDelete={() => handleDeleteClick(tenant)}
                                             />
+                                            </div>
                                         ) : (
                                             <div className="flex items-center justify-center space-x-2">
                                                 <button
@@ -390,6 +397,14 @@ export const OnboardedTenantsView = () => {
                     isDarkMode={isDarkMode}
                 />
             )}
+
+            <PulseosIntegrationPanel
+                key={pulseosTenant?.tenant_id ?? 'none'}
+                tenant={pulseosTenant}
+                canManage={user?.role === 'super_admin'}
+                isDarkMode={isDarkMode}
+                onClose={() => setPulseosTenant(null)}
+            />
 
             <OrganizationModal
                 isOpen={isModalOpen}
